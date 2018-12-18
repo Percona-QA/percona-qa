@@ -150,6 +150,7 @@ void dd_write_table<dd..Table>                            ## https://jira.percon
 dd_table_has_instant_cols                                 ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 old_dd_tab .= __null                                      ## https://jira.percona.com/browse/PS-4886 (change string to a more specific version if not fixed before 1/1/2019, and test without it for PS8 GA!)
 TABLE_LIST..prepare_security                              ## https://bugs.mysql.com/bug.php?id=92539
+table_id == id                                            ## https://jira.percona.com/browse/PS-5169
 base_list_iterator..next_fast                             ## https://bugs.mysql.com/bug.php?id=92539
 TEXT=.THD..thread_id.$                                    ## https://jira.percona.com/browse/PS-4896
 void dd_write_table<dd..Partition>                        ## https://jira.percona.com/browse/PS-4892 (opt expand_fast_index_creation)

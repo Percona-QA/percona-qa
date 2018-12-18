@@ -42,6 +42,10 @@ usage () {
   echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
   echo "                                      non_partition_test"
   echo "                                      partition_test"
+  echo "                                      compression_test"
+  echo "                                      innodb_options_test"
+  echo "                                      replication_test_gtid"
+  echo "                                      replication_test_mts"
   echo "                                    If you specify 'all', the script will execute all testcases"
   echo ""
   echo "  -e, --with-encryption             Run the script with encryption feature"
@@ -161,7 +165,7 @@ fi
 if [[ -z "${MYSQL_EXTRA_OPTIONS:-}" ]]; then
   MYSQL_EXTRA_OPTIONS="--innodb_file_per_table=ON"
 fi
-echo "Mysqld process will be started with extra options: $MYSQL_EXTRA_OPTIONS"
+#echo "Mysqld process will be started with extra options: $MYSQL_EXTRA_OPTIONS"
 
 #Format version string (thanks to wsrep_sst_xtrabackup-v2) 
 normalize_version(){
@@ -430,8 +434,66 @@ function test_row_format_tbl(){
   sysbench /usr/share/sysbench/oltp_insert.lua --mysql-db=test_row_format --mysql-user=root --db-driver=mysql --mysql-socket=$SOCKET --threads=5 --tables=5 --table-size=1000 --time=10 run > $WORKDIR/logs/sysbench_test_row_format.log 2>&1
 }
 
+# Upgrade mysqld with higher version
+function start_ps_upper_main(){
+  echoit "Upgrading mysqld with higher version"
+  generate_cnf "${PS_UPPER_BASEDIR}" "$psdatadir" "$PORT" "ps_upper"
+  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_upper.cnf --basedir=${PS_UPPER_BASEDIR} --datadir=$psdatadir --port=$PORT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_upper.err 2>&1 &
+  check_conn "${PS_UPPER_BASEDIR}" "ps_upper"
+
+  $PS_UPPER_BASEDIR/bin/mysql_upgrade -S $WORKDIR/ps_upper.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
+
+  for i in "${TC_ARRAY[@]}"; do
+	if [[ "$i" == "partition_test" ]]; then
+      echo "ALTER TABLE sysbench_partition.sbtest1 COALESCE PARTITION 2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest2 REORGANIZE PARTITION;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest3 ANALYZE PARTITION p1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+      echo "ALTER TABLE sysbench_partition.sbtest4 CHECK PARTITION p2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
+    fi
+  done
+   
+  $PS_UPPER_BASEDIR/bin/mysql -S $WORKDIR/ps_upper.sock  -u root -e "show global variables like 'version';"
+}
+
+function start_ps_downgrade_main(){
+  $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_lower.sock -u root shutdown
+  start_ps_upper_main
+
+  echoit "Downgrade testing with mysqlddump and reload.."
+  $PS_UPPER_BASEDIR/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=$WORKDIR/ps_upper.sock -uroot --databases `$PS_UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
+
+  psdatadir="${MYSQL_VARDIR}/ps_lower_down"
+  PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+
+  generate_cnf "${PS_LOWER_BASEDIR}" "$psdatadir" "$PORT1" "ps_lower_down"
+  ${LOWER_MID} --datadir=$psdatadir ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower_down.err 2>&1 || exit 1;
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower_down.cnf ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower_down.err 2>&1 &
+  check_conn "${PS_LOWER_BASEDIR}" "ps_lower_down"
+  if [ -f $WORKDIR/test/sbtest1copy.ibd ]; then
+     echo "Moving data existing outside data dir"
+     mv $WORKDIR/test/sbtest1copy.ibd $WORKDIR/../
+  fi
+  ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower_down.sock -e"drop database if exists test; create database test"
+}
+
+function ps_downgrade_datacheck(){
+  ${PS_LOWER_BASEDIR}/bin/mysql --socket=$WORKDIR/ps_lower_down.sock -uroot < $WORKDIR/dbdump.sql 2>&1
+  
+  CHECK_DBS=`$PS_UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
+  
+  echoit "Checking table status..."
+  ${PS_LOWER_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/ps_lower_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
+
+  #Stop mysqld processes for lower and upper version
+  ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_lower_down.sock shutdown
+  ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_upper.sock  shutdown
+}
+
 function non_partition_test(){
   local SOCKET=${1:-}	
+
+  echoit "Creating non partitioned tables"
+  start_ps_lower_main
   echoit "Create regular tables with different storage engines"
   create_regular_tbl $SOCKET
   
@@ -492,11 +554,15 @@ function non_partition_test(){
     fi
   fi
 
+  start_ps_downgrade_main
+  ps_downgrade_datacheck
 }
 
 function partition_test(){
   local SOCKET=$1
 
+  echoit "Creating partitioned tables"
+  start_ps_lower_main
   ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower.sock -e"drop database if exists sysbench_partition; create database sysbench_partition"
   echoit "Sysbench Run: Prepare stage"
   sysbench_run innodb sysbench_partition
@@ -567,10 +633,15 @@ function partition_test(){
     fi
   fi
   
+  start_ps_downgrade_main
+  ps_downgrade_datacheck
 }
 
 function compression_test(){
   local SOCKET=${1:-}
+
+  echoit "Creating data for compression test"
+  start_ps_lower_main
   echoit "Sysbench Run: Creating InnoDB tables"
   sysbench_run innodb test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_innodb_prepare.txt
@@ -588,10 +659,16 @@ function compression_test(){
      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "optimize table test.sbtest$i;" 1>/dev/null
      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i modify c varchar(250) column_format compressed with compression_dictionary numbers;"
   done
+
+  start_ps_downgrade_main
+  ps_downgrade_datacheck
 }
 
 function innodb_options_test(){
   local SOCKET=${1:-}
+
+  echoit "Creating data for innodb options test"
+  start_ps_lower_main
   echoit "Sysbench Run: Creating InnoDB tables"
   sysbench_run innodb test
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_innodb_prepare.txt
@@ -607,95 +684,204 @@ function innodb_options_test(){
      fi
      ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "insert into test.sbtest1copy select * from test.sbtest1;"
   fi
+
+  start_ps_downgrade_main
+  ps_downgrade_datacheck
 }
 
-# Upgrade mysqld with higher version
-function start_ps_upper_main(){
-  echoit "Upgrading mysqld with higher version"
-  generate_cnf "${PS_UPPER_BASEDIR}" "$psdatadir" "$PORT" "ps_upper"
-  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_upper.cnf --basedir=${PS_UPPER_BASEDIR} --datadir=$psdatadir --port=$PORT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_upper.err 2>&1 &
-  check_conn "${PS_UPPER_BASEDIR}" "ps_upper"
-
-  $PS_UPPER_BASEDIR/bin/mysql_upgrade -S $WORKDIR/ps_upper.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
-
-  for i in "${TC_ARRAY[@]}"; do
-	if [[ "$i" == "partition_test" ]]; then
-      echo "ALTER TABLE sysbench_partition.sbtest1 COALESCE PARTITION 2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-      echo "ALTER TABLE sysbench_partition.sbtest2 REORGANIZE PARTITION;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-      echo "ALTER TABLE sysbench_partition.sbtest3 ANALYZE PARTITION p1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-      echo "ALTER TABLE sysbench_partition.sbtest4 CHECK PARTITION p2;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -u root || true
-    fi
+function startup_check(){
+  for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
+    sleep 1
+    if ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot -S$1 ping > /dev/null 2>&1; then
+      break
+    fi  
   done
-   
-  $PS_UPPER_BASEDIR/bin/mysql -S $WORKDIR/ps_upper.sock  -u root -e "show global variables like 'version';"
 }
 
-start_ps_lower_main
+function replication_test(){
+  RPL_OPTION="${1:-}"
+  rm -rf ${MYSQL_VARDIR}/ps_master/
+  ps_master_datadir="${MYSQL_VARDIR}/ps_master"
+  PORT_MASTER=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
+  echo "[mysqld]" > ${WORKDIR}/ps_master.cnf
+  echo "datadir=$ps_master_datadir" >> $WORKDIR/ps_master.cnf
+  echo "port=$PORT_MASTER" >> $WORKDIR/ps_master.cnf
+  echo "innodb_file_per_table" >> $WORKDIR/ps_master.cnf
+  echo "default-storage-engine=InnoDB" >> $WORKDIR/ps_master.cnf
+  echo "server-id=101"  >> $WORKDIR/ps_master.cnf
+  echo "log-bin=mysql-bin"  >> $WORKDIR/ps_master.cnf
+  echo "binlog-format=ROW" >> $WORKDIR/ps_master.cnf
+  if [[ "$RPL_OPTION" == "gtid" ]] || [[ "$RPL_OPTION" == "mts" ]]; then
+    echo "gtid-mode=ON" >> $WORKDIR/ps_master.cnf
+    echo "log-slave-updates" >> $WORKDIR/ps_master.cnf
+    echo "enforce-gtid-consistency" >> $WORKDIR/ps_master.cnf
+  fi
+  echo "innodb_flush_method=O_DIRECT" >> $WORKDIR/ps_master.cnf
+  echo "core-file" >> $WORKDIR/ps_master.cnf
+  echo "secure-file-priv=" >> $WORKDIR/ps_master.cnf
+  echo "skip-name-resolve" >> $WORKDIR/ps_master.cnf
+  echo "log-error=$WORKDIR/logs/ps_master.err" >> $WORKDIR/ps_master.cnf
+  echo "socket=$WORKDIR/ps_master.sock" >> $WORKDIR/ps_master.cnf
+  echo "log-output=none" >> $WORKDIR/ps_master.cnf
+
+  ${LOWER_MID} --datadir=$ps_master_datadir  > $WORKDIR/logs/ps_master.err 2>&1 || exit 1;
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_LOWER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 &
+
+  for X in $(seq 0 ${PS_START_TIMEOUT}); do
+    sleep 1
+    if ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_master.sock ping > /dev/null 2>&1; then
+      ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_master.sock -e"drop database if exists test; create database test"
+      ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_master.sock -e"CREATE USER rpl_user@'%'  IDENTIFIED BY 'rpl_pass';GRANT REPLICATION SLAVE ON *.* TO rpl_user@'%';"
+      break
+    fi
+    if [ $X -eq ${PS_START_TIMEOUT} ]; then
+      echoit "PS Master startup failed.."
+      grep "ERROR" $WORKDIR/logs/ps_master.err
+      exit 1
+      fi
+  done
+
+  $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
+
+  sleep 10
+  rm -rf ${MYSQL_VARDIR}/ps_slave
+  mkdir ${MYSQL_VARDIR}/ps_slave
+  ps_slave_datadir="${MYSQL_VARDIR}/ps_slave"
+  cp -r $ps_master_datadir/* ${MYSQL_VARDIR}/ps_slave
+  rm -rf ${MYSQL_VARDIR}/ps_slave/auto.cnf
+
+  #Start master
+  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_LOWER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 &
+
+  startup_check $WORKDIR/ps_master.sock
+
+  #Start slave
+  PORT_SLAVE=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+
+  if [ "$RPL_OPTION" == "gtid" ]; then
+    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  elif [ "$RPL_OPTION" == "mts" ]; then
+    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  else
+    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  fi
+
+  startup_check $WORKDIR/ps_slave.sock
+
+  if [ "$RPL_OPTION" == "gtid" -o "$RPL_OPTION" == "mts" ]; then
+    echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='rpl_user',MASTER_PASSWORD='rpl_pass',MASTER_AUTO_POSITION=1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+  else
+    echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='rpl_user',MASTER_PASSWORD='rpl_pass',MASTER_LOG_FILE='mysql-bin.000001',MASTER_LOG_POS=4;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+  fi
+  echo "START SLAVE;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+
+  echoit "Loading sakila test database"
+  $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_master.sock -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
+
+  #Check replication status
+  SLAVE_IO_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_IO_Running | awk '{ print $2 }'`
+  SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
+  ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" >$WORKDIR/log_status
+
+  if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
+    echoit "Error : Replication is not running, please check.."
+    exit
+  fi
+  echoit "Replication status : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
+
+  #Upgrade PS $PS_LOWER_VERSION slave to $PS_UPPER_VERSION for replication test
+
+  $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
+
+  if [ "$RPL_OPTION" == "gtid" ]; then
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none --skip-slave-start > $WORKDIR/logs/ps_slave.err 2>&1 &
+  elif [ "$RPL_OPTION" == "mts" ]; then
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  else
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  fi
+
+  startup_check $WORKDIR/ps_slave.sock
+
+  ${PS_UPPER_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_slave.sock -uroot > $WORKDIR/logs/ps_rpl_slave_upgrade.log 2>&1
+
+  $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
+
+  if [ "$RPL_OPTION" == "gtid" -o "$RPL_OPTION" == "mts" ]; then
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  elif [ "$RPL_OPTION" == "mts" ]; then
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  else
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  fi
+
+  startup_check $WORKDIR/ps_slave.sock
+
+  sysbench_run innodb test
+  $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
+
+  #Upgrade PS $PS_LOWER_VERSION master
+
+  $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
+
+  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_UPPER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 &
+
+  startup_check $WORKDIR/ps_master.sock
+
+  ${PS_UPPER_BASEDIR}/bin/mysql_upgrade --socket=$WORKDIR/ps_master.sock -uroot > $WORKDIR/logs/ps_rpl_master_upgrade.log 2>&1
+
+  $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
+
+  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_UPPER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 & 
+
+  startup_check $WORKDIR/ps_master.sock
+
+  echo "Waiting for slave to connect to the master"
+  sleep 180
+
+  #Check replication status
+  SLAVE_IO_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_IO_Running | awk '{ print $2 }'`
+  SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
+
+  if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
+    echoit "Error : Replication is not running, please check.."
+    exit
+  fi
+
+  echoit "Replication status after master upgrade : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
+  ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_master.sock shutdown
+  ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/ps_slave.sock shutdown
+}
+
+#Run tests
 for i in "${TC_ARRAY[@]}"; do
   case "$i" in
     partition_test )
-    echoit "Creating partitioned tables"
     partition_test "$WORKDIR/ps_lower.sock"
     ;;
     non_partition_test )
-    echoit "Creating non partitioned tables"
     non_partition_test "$WORKDIR/ps_lower.sock"
     ;;
     compression_test )
-    echoit "Creating data for compression test"
     compression_test "$WORKDIR/ps_lower.sock"
     ;;
     innodb_options_test )
-    echoit "Creating data for innodb options test"
     innodb_options_test "$WORKDIR/ps_lower.sock"
     ;;
+    replication_test_gtid )
+    replication_test "gtid"
+    ;;
+    replication_test_mts )
+    replication_test "mts"
+    ;;
     all )
-    echoit "Creating non partitioned tables"
     non_partition_test "$WORKDIR/ps_lower.sock"
-    echoit "Creating partitioned tables"
     partition_test "$WORKDIR/ps_lower.sock"
-    echoit "Creating data for compression test"
     compression_test "$WORKDIR/ps_lower.sock"
-    echoit "Creating data for innodb options test"
     innodb_options_test "$WORKDIR/ps_lower.sock"
+    replication_test "gtid"
+    replication_test "mts"
     ;;
   esac
 done
-
-
-$PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_lower.sock -u root shutdown
-start_ps_upper_main
-
-echoit "Downgrade testing with mysqlddump and reload.."
-$PS_UPPER_BASEDIR/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=$WORKDIR/ps_upper.sock -uroot --databases `$PS_UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
-
-psdatadir="${MYSQL_VARDIR}/ps_lower_down"
-PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
-
-function start_ps_downgrade_main(){
-  generate_cnf "${PS_LOWER_BASEDIR}" "$psdatadir" "$PORT1" "ps_lower_down"
-  ${LOWER_MID} --datadir=$psdatadir ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower_down.err 2>&1 || exit 1;
-  ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_lower_down.cnf ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_lower_down.err 2>&1 &
-  check_conn "${PS_LOWER_BASEDIR}" "ps_lower_down"
-  if [ -f $WORKDIR/test/sbtest1copy.ibd ]; then
-     echo "Moving data existing outside data dir"
-     mv $WORKDIR/test/sbtest1copy.ibd $WORKDIR/../
-  fi
-  ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/ps_lower_down.sock -e"drop database if exists test; create database test"
-}
-
-function ps_downgrade_datacheck(){
-  ${PS_LOWER_BASEDIR}/bin/mysql --socket=$WORKDIR/ps_lower_down.sock -uroot < $WORKDIR/dbdump.sql 2>&1
-  
-  CHECK_DBS=`$PS_UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
-  
-  echoit "Checking table status..."
-  ${PS_LOWER_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/ps_lower_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
-}
-
-start_ps_downgrade_main
-ps_downgrade_datacheck
-
-${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_lower_down.sock shutdown
-${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_upper.sock  shutdown
