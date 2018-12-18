@@ -209,7 +209,7 @@ ha_innodb.cc line 4529                                            ## SET DEBUG='
 ha_innodb.cc line 4182                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.6
 #row0log.ic line 40                                      ## Fixed ## https://jira.percona.com/browse/PS-396 
 #zip_dict_name.str == 0 .. column_format                 ## Fixed ## https://jira.percona.com/browse/PS-1018
-
+compression_dict..cols_table_delete                               ## https://jira.percona.com/browse/PS-5174
 ## =========== Early 5.7 Prepatory Work ===========
 #buf0flu.cc line 2807                                    ## https://bugs.mysql.com/bug.php?id=85585 (not verified yet, so this line is remarked ftm)
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
