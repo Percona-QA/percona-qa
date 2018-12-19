@@ -356,20 +356,25 @@ elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.
 fi
 
 echo "./stop 2>/dev/null;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop" > sysbench_measure
-if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
-  echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
-  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
-    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
-  else
-    echo "./stop" >> wipe
-  fi
-else
-  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
-    echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
-  else
-    echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
-  fi
-fi
+
+# Replacement for code below which was disabled. RV/RS considered it necessary to leave this to make it easier to use start and immediately have the test db available so it can be used for quick access. It also does not affect using --init-file=...plugins_80.sql 
+echo "./start \${MYEXTRA_OPT}; ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+
+# RV/RS discussed this code 19/12/18 and decided we should disable and ultimately remove it. There is myrocks_tokudb_init already, which can do the same if needed (i.e. load extra TokuDB and RocksDB plugins). The main reason to remove this code is that loading these extra plugins always by defaut will make --init-file=...plugins_80.sql not work with errors like 'Function 'tokudb_file_map' already exists.' which can affect issue reproducibility (as not all plugins are loaded), or even hide bugs with plugins_80.sql if there are any (when it's used with ./start).
+#if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+#  echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
+#  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+#    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
+#  else
+#    echo "./stop" >> wipe
+#  fi
+#else
+#  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+#    echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+#  else
+#    echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+#  fi
+#fi
 
 echo 'if [ $(ls data/*core* 2>/dev/null | wc -l) -eq 0 ]; then' > gdb
 echo '  echo "No core file found in data/*core* - exiting"' >> gdb
