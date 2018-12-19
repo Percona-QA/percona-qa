@@ -20,6 +20,8 @@ grep --binary-files=text -i "ERROR" */log/master.err | \
   grep --binary-files=text -vi "Threadpool could not create additional thread to handle queries, because.*threads was reached." | \
   grep --binary-files=text -vi "Out of sort memory, consider increasing server sort buffer size!" | \
   grep --binary-files=text -vi "Cannot save index statistics for table.*, index.*, stat name.*: Lock wait timeout" | \
+  grep --binary-files=text -vi "Different lower_case_table_names settings for server ('1') and data dictionary ('0')." | \
+  #grep --binary-files=text -vi "" | \
   sed "s|master.err:.*\[ERROR\]|master.err:[ERROR]|" | \
   sed "s|master.err:.*\[Warning\]|master.err:[Warning]|" | \
   sort -u
