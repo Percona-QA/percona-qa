@@ -188,7 +188,7 @@ Item_func_can_access_view..val_int                        ## https://bugs.mysql.
 #TEXT=.THD..thread_id.$                          ## Fixed ## https://jira.percona.com/browse/PS-5134 (dbg)
 #TEXT=.thd_get_thread_id.$                       ## Fixed ## https://jira.percona.com/browse/PS-5134 (opt)
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
-#MYSQL_BIN_LOG..open_binlog                                ## https://jira.percona.com/browse/PS-5173
+#MYSQL_BIN_LOG..open_binlog                                ## https://jira.percona.com/browse/PS-5173   # NEEDS MORE RESEARCH AND/OR TESTCASES
 MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
 MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
 #DsMrr_impl..dsmrr_init                          ## Fixed ## https://jira.percona.com/browse/PS-5163 (opt)
@@ -212,7 +212,7 @@ ha_innodb.cc line 4529                                            ## SET DEBUG='
 ha_innodb.cc line 4182                                            ## SET DEBUG='+d,ib_create_table_fail_too_many_trx'; CREATE COMPRESSION_DICTIONARY d0('a'); Asked Yura email 5.6
 #row0log.ic line 40                                      ## Fixed ## https://jira.percona.com/browse/PS-396 
 #zip_dict_name.str == 0 .. column_format                 ## Fixed ## https://jira.percona.com/browse/PS-1018
-compression_dict..cols_table_delete                               ## https://jira.percona.com/browse/PS-5174
+#compression_dict..cols_table_delete                              ## https://jira.percona.com/browse/PS-5174  ## MORE TESTCASES NEEDED
 ## =========== Early 5.7 Prepatory Work ===========
 #buf0flu.cc line 2807                                    ## https://bugs.mysql.com/bug.php?id=85585 (not verified yet, so this line is remarked ftm)
 #sync0debug.cc line 299                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1414257                                 (# after next bzr pull)
