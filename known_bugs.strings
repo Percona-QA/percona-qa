@@ -188,7 +188,7 @@ Item_func_can_access_view..val_int                        ## https://bugs.mysql.
 #TEXT=.THD..thread_id.$                          ## Fixed ## https://jira.percona.com/browse/PS-5134 (dbg)
 #TEXT=.thd_get_thread_id.$                       ## Fixed ## https://jira.percona.com/browse/PS-5134 (opt)
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
-MYSQL_BIN_LOG..open_binlog                                ## https://jira.percona.com/browse/PS-5173
+#MYSQL_BIN_LOG..open_binlog                                ## https://jira.percona.com/browse/PS-5173
 MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
 MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
 #DsMrr_impl..dsmrr_init                          ## Fixed ## https://jira.percona.com/browse/PS-5163 (opt)
