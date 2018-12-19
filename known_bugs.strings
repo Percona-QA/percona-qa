@@ -81,7 +81,7 @@ TEXT=.new_table \.= nullptr.$                            ## https://bugs.mysql.c
 #next_insert_id == 0                            ## Fixed ## https://bugs.mysql.com/bug.php?id=88276
 #thd->is_system_thread                          ## Fixed ## https://bugs.mysql.com/bug.php?id=88277
 #num_codepoints >= scanner.get_char_index       ## Fixed ## https://bugs.mysql.com/bug.php?id=88278 (Fixed in 8.0.4)
-my_strnncollsp_simple                                    ## https://jira.percona.com/browse/PS-5180
+#my_strnncollsp_simple                                   ## https://jira.percona.com/browse/PS-5180  # WOULD BE GOOD TO HAVE EXTRA TESTCASES
 num_codepoints >= scanner.get_char_index                 ## https://bugs.mysql.com/bug.php?id=92537 and 92569 (New finding in 8.0.12)
 #len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. .col->len == 0 .. col->mtype == 1.  ## Fixed ## https://bugs.mysql.com/bug.php?id=88279
 dict_sdi_set                                             ## https://bugs.mysql.com/bug.php?id=88280
