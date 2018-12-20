@@ -487,6 +487,9 @@ function ps_downgrade_datacheck(){
   #Stop mysqld processes for lower and upper version
   ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_lower_down.sock shutdown
   ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_upper.sock  shutdown
+
+  #Clean data dir
+  rm -fr $psdatadir
 }
 
 function non_partition_test(){
