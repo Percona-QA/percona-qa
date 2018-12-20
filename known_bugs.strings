@@ -47,6 +47,7 @@ addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://jira.percona
 dd_table_has_instant_cols                                ## https://jira.percona.com/browse/PS-4803
 #ha_innodb.cc.4974.0                            ## Fixed ## https://jira.percona.com/browse/PS-4846
 dd..sdi..store                                           ## https://jira.percona.com/browse/PS-4970
+Gtid_set..ensure_sidno                                   ## https://bugs.mysql.com/bug.php?id=90946 (Assertion is from release build) 
 handler..get_ha_share_ptr                                ## https://jira.percona.com/browse/PS-5206
 #is_storage_available.tuple - packed_tuple, 0   ## Fixed ## https://jira.percona.com/browse/PS-4971
 MDL_checker..is_read_locked.m_thd, .object               ## https://jira.percona.com/browse/PS-5208
