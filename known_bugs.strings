@@ -41,6 +41,7 @@ all .. .xs->is_binlogged                                 ## https://bugs.mysql.c
 ## =========== PS/MS 8.0
 #.innodb_inited .. strlen.s_uuid. .= 0           ## Reproduced only with PS-8.0.13-debug release branch (release-8.0.13-3) ## https://jira.percona.com/browse/PS-5189
 .part_share                                              ## https://jira.percona.com/browse/PS-5210
+addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://jira.percona.com/browse/PS-5073
 #ha_innodb.cc.4926.0                            ## Fixed ## https://jira.percona.com/browse/PS-4801
 #mysql_alter_table                              ## Fixed ## https://jira.percona.com/browse/PS-4802
 dd_table_has_instant_cols                                ## https://jira.percona.com/browse/PS-4803
