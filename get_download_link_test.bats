@@ -34,6 +34,9 @@
 
   run ./get_download_link.sh --product psmdb --version 3.6
   [ "$status" -eq 0 ]
+
+  run ./get_download_link.sh --product psmdb --version 4.0
+  [ "$status" -eq 0 ]
 }
 
 @test "check pt" {

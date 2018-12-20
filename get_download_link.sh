@@ -96,7 +96,7 @@ fi
 if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; then VERSION="5.7"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.3"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="3.6"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
   VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
 fi
@@ -189,10 +189,10 @@ get_link(){
     else OPT="${DISTRIBUTION}"; fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+\.[0-9]+-${OPT}-${BUILD_ARCH}\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?-${OPT}-${BUILD_ARCH}\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/tarball/${LINK}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
