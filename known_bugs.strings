@@ -50,6 +50,7 @@ handler..get_ha_share_ptr                                ## https://jira.percona
 #is_storage_available.tuple - packed_tuple, 0   ## Fixed ## https://jira.percona.com/browse/PS-4971
 MDL_checker..is_read_locked.m_thd, .object               ## https://jira.percona.com/browse/PS-5208
 space_id == page_get_space_id.buf_block_get_frame.block.. ## https://bugs.mysql.com/bug.php?id=93651
+srv_track_changed_pages                                  ## https://jira.percona.com/browse/PS-5214
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >.._M_bucket_index    ## https://jira.percona.com/browse/PS-4974
 std.._Hashtable<std..string, std..pair<std..string const, std..list<ACL_USER., Acl_cache_allocator<ACL_USER.> > >, Acl_cache_allocator<std..pair<std..string const, std..list<ACL_USER., Acl_cache_allocator<ACL_USER.> > > >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable                                                        ## https://jira.percona.com/browse/PS-5160
 thread_ids.empty                                         ## https://jira.percona.com/browse/PS-4975
