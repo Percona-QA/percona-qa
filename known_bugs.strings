@@ -59,6 +59,7 @@ plugin_lock                                              ## https://jira.percona
 #PFS_column_row..make_row                       ## Fixed ## https://jira.percona.com/browse/PS-4977
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 #maybe_null                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=83115
+maybe_null                                               ## https://bugs.mysql.com/bug.php?id=93701
 #MDL_checker..is_read_locked.m_thd, .object     ## Fixed ## https://bugs.mysql.com/bug.php?id=83117
 sym_node->table .= NULL                                  ## https://bugs.mysql.com/bug.php?id=86293
 thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespace_name, MDL_INTENTION_EXCLUSIVE  ## https://bugs.mysql.com/bug.php?id=86297
