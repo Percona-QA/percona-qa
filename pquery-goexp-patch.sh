@@ -17,4 +17,5 @@ fi
 
 sed -i "s|^FORCE_SKIPV=1|FORCE_SKIPV=0|" reducer$1.sh
 sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=1000|" reducer$1.sh
+# TODO The following line can be improved further to check what the latest _out_out_out etc. is and to use that one. There is a small risk however that the last _out is not the desired one. That seems minor
 sed -i "s|default.node.tld_thread-0.sql\"$|default.node.tld_thread-0.sql_out\"|" reducer$1.sh

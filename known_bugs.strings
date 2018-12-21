@@ -202,6 +202,7 @@ MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.
 MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.com/bug.php?id=93631 (PS 8.0.13)
 #DsMrr_impl..dsmrr_init                          ## Fixed ## https://jira.percona.com/browse/PS-5163 (opt)
 #TEXT=.table .= __null.$                         ## Fixed ## https://jira.percona.com/browse/PS-5163 (dbg)
+TEXT=.stored_object == nullptr.$                          ## https://jira.percona.com/browse/PS-5224
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
