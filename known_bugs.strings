@@ -52,7 +52,6 @@ handler..get_ha_share_ptr                                ## https://jira.percona
 #is_storage_available.tuple - packed_tuple, 0   ## Fixed ## https://jira.percona.com/browse/PS-4971
 MDL_checker..is_read_locked.m_thd, .object               ## https://jira.percona.com/browse/PS-5208
 MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error         ## https://bugs.mysql.com/bug.php?id=86256
-space_id == page_get_space_id.buf_block_get_frame.block.. ## https://bugs.mysql.com/bug.php?id=93651
 srv_shutdown_state <= SRV_SHUTDOWN_FLUSH_PHASE           ## https://bugs.mysql.com/bug.php?id=93716
 srv_track_changed_pages                                  ## https://jira.percona.com/browse/PS-5214
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >.._M_bucket_index    ## https://jira.percona.com/browse/PS-4974
@@ -189,8 +188,6 @@ ZN7OSMutex5enterEv                                        ## https://jira.percon
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
 #Z9abort_txnP13__toku_db_txn                     ## Fixed ## https://jira.percona.com/browse/PS-5056
-myrocks..rdb_check_mutex_call_result                      ## https://jira.percona.com/browse/PS-5066 (opt)
-s_tx_list.size                                            ## https://jira.percona.com/browse/PS-5066 (dbg)
 TEXT=.Item..save_in_field.$                               ## https://bugs.mysql.com/bug.php?id=93306 (MS)
 TEXT=.Item..save_in_field_inner.$                         ## https://bugs.mysql.com/bug.php?id=93306 (PS, dbg)
 set_field_to_null_with_conversions                        ## https://bugs.mysql.com/bug.php?id=93306 (PS, opt)
@@ -204,6 +201,14 @@ MYSQL_BIN_LOG..rotate                                     ## https://bugs.mysql.
 #DsMrr_impl..dsmrr_init                          ## Fixed ## https://jira.percona.com/browse/PS-5163 (opt)
 #TEXT=.table .= __null.$                         ## Fixed ## https://jira.percona.com/browse/PS-5163 (dbg)
 TEXT=.stored_object == nullptr.$                          ## https://jira.percona.com/browse/PS-5224
+MDL_ticket_store..find_in_lists                           ## https://bugs.mysql.com/bug.php?id=93718
+space_id == page_get_space_id.buf_block_get_frame.block.. ## https://bugs.mysql.com/bug.php?id=93717 (MS)
+#space_id == page_get_space_id.buf_block_get_frame.block.. ## https://bugs.mysql.com/bug.php?id=93651 (Can't repeat)
+myrocks..rdb_check_mutex_call_result                      ## https://jira.percona.com/browse/PS-5066 (opt)
+TEXT=.s_tx_list.size.$                                    ## https://jira.percona.com/browse/PS-5066 (dbg)
+TEXT=.s_tx_list.size.$                                    ## https://jira.percona.com/browse/PS-4065
+TEXT=.s_tx_list.size.$                                    ## https://jira.percona.com/browse/PS-5228 (dbg)
+rocksdb..PessimisticTransactionDB..UnLock                 ## https://jira.percona.com/browse/PS-5228 (opt)
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -815,7 +820,6 @@ pending.*.ttp->thd                                                              
 #pfs->m_processlist_id .= 0                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=78292
 precision > 0                                                                           ## https://bugs.mysql.com/bug.php?id=83433
 #scale.*=.*precision                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74859
-s_tx_list.size                                                                          ## https://jira.percona.com/browse/PS-4065
 engine_type .= __null                                                                   ## https://jira.percona.com/browse/PS-5022 (likely dup of MYR-213)
 dd..sdi..store                                                                          ## https://jira.percona.com/browse/PS-5023 (likely dup of MYR-213)
 share->rows_recorded                                                                    ## https://bugs.mysql.com/bug.php?id=76307
