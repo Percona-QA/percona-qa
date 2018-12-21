@@ -13,7 +13,7 @@
 #    (i.e. more or less the original function of this script). However, as pquery-run.sh now encapulates the mysqld option testing functionality, the offset between this
 #    script and the updated pquery-run.sh is minimal. The only advantage that this script offers is that it is likely (TBD) somewhat better in handling/capturing mysqld
 #    startup failures/crashes then pquery-run.sh is (as pquery-run.sh will simply assume that there is a startup failure).
-# Overall recommendation: unless you have spare hardware to run this on for (for example for a few days, or even two weeks or more), stick with pquery-run.sh for the moment.
+# Overall recommendation: unless you have spare hardware to run this on for (for example for a few days, or even two weeks or more), stick with pquery-run.sh for the moment. Still, it is able to quickly test all mysqld options, so for major GA releases it makes sense to run this script, especially the first layers (options > options with a single value set)
 
 if [ ! -r ./bin/mysqld ]; then
   if [ ! -r ./mysqld ]; then
@@ -28,7 +28,6 @@ if [ ! -r ./bin/mysqld ]; then
 fi
 
 # User Variables
-CORELOC="/cores"    # No trailing slash
 TEST_OR_GENERATE=0  # If 0, the options will be tested against mysqld, if 1, they will simply be generated and written to file (for use with pquery-run.sh)
                     # To generate options for pquery-run.sh (ref ADD_RANDOM_OPTIONS=1 setting in pquery-run.sh), use MAX_LEVELS=1 as pquery has min/max NR_OF_RANDOM_OPTIONS_TO_ADD
 MAX_LEVELS=4        # Maxium amount of depth to test. Set to 0 for max depth. If MAX_LEVELS=1 then mysqld will be tested with only one --option addition. =2 then two options etc.
@@ -43,8 +42,8 @@ declare -a VALUES=('' '0' '1' '2' '10' '240' '-1125899906842624' '11258999068426
 
 # Vars
 MYSQLD_START_TIMEOUT=10  # Default: 30, but this may be tuned down on non-loaded servers with single threaded testruns. Increase when there is more load.
-RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
-WORKDIR=/tmp/${RANDOMD}  # Here we keep the log files, option list, failed items
+RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(.......\).*/\1/')
+WORKDIR=/sda/${RANDOMD}  # Here we keep the log files, option list, failed items
 RUNDIR=/dev/shm/${RANDOMD}  # Here we keep a copy of the data template dir and here we do the actual mysqld runs (--datadir=...). Not required for TEST_OR_GENERATE=1 runs
 FINDS="^Error:|ERROR|allocated at line|missing DBUG_RETURN|^safe_mutex:|Invalid.*old.*table or database|InnoDB: Warning|InnoDB: Error:|InnoDB: Operating system error|Error while setting value"
 IGNOR="Lock wait timeout exceeded|Deadlock found when trying to get lock|innodb_log_block_size has been changed|Sort aborted:|ERROR: the age of the last checkpoint is [0-9]*,|consider increasing server sort buffer size|.ERROR. Event Scheduler:.*does[ ]*n.t exist"
@@ -114,13 +113,12 @@ test_options(){
     else
       echoit "Server failed to start correctly. Checking if there is a coredump for the PID..."
       sleep 2  # Delay to ensure core was written completely
-      if [ $(ls -l ${CORELOC}/core.${MPID}* 2>/dev/null | wc -l) -ge 1 ]; then
+      if [ $(ls -l ${RUNDIR}/data/*core* 2>/dev/null | wc -l) -ge 1 ]; then
         CORES=$[ $CORES + 1 ]
-        echoit "=== !!! Fail: an option failed and generated a core at $(ls ${CORELOC}/core.${MPID}*)"
-        echoit "Copying vardir from ${RUNDIR}/data to ${WORKDIR}/data.${MPID} and moving core"
+        echoit "=== !!! Fail: an option failed and generated a core at $(ls ${RUNDIR}/data/*core*)"
+        echoit "Copying vardir from ${RUNDIR}/data to ${WORKDIR}/data.${MPID}"
         mv ${RUNDIR}/data ${WORKDIR}/data.${MPID}
         mv ${RUNDIR}/log ${WORKDIR}/log.${MPID}
-        mv ${CORELOC}/core.${MPID}* ${WORKDIR}/data.${MPID}/
       else
         echoit "=== ??? Fail: an option failed, but did not generate a core. Relevant error log content:"
         egrep "${FINDS}" ${RUNDIR}/log/master.err | grep -v "${IGNOR}" | sed 's|^|^  |'
@@ -136,15 +134,21 @@ if [ ${TEST_OR_GENERATE} -eq 0 ]; then
   mkdir ${WORKDIR} ${RUNDIR}
   echoit "Mode: mysqld option testing | Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${PWD}"
   echoit "Generating initial rundir subdirectories..."
-  mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
-  echoit "Generating datadir template (using mysql_install_db)..."
   if [ -r ./bin/mysql_install_db ]; then
-    ./bin/mysql_install_db --no-defaults --force --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
+    mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
+    echoit "Generating datadir template (using mysql_install_db)..."
+    ./bin/mysql_install_db --no-defaults --force --basedir=${PWD} --datadir=${RUNDIR}/data > ${WORKDIR}/mysql_install_db.txt 2>&1
   elif [ -r ./scripts/mysql_install_db ]; then
-    ./scripts/mysql_install_db --no-defaults --force --basedir=${PWD} --datadir=${RUNDIR}/data > ${RUNDIR}/log/mysql_install_db.txt 2>&1
-  else
-    echo "Error: mysql_install_db not found in ${PWD}/scripts nor in ${PWD}/bin"
-    exit 1
+    mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
+    echoit "Generating datadir template (using mysql_install_db)..."
+    ./scripts/mysql_install_db --no-defaults --force --basedir=${PWD} --datadir=${RUNDIR}/data > ${WORKDIR}/mysql_install_db.txt 2>&1
+  else  # This needs to become an elif and the else below needs to be renealed
+    mkdir -p ${RUNDIR}/log
+    echoit "Generating datadir template (using mysqld --initialize-insecure)..."
+    ./bin/mysqld --no-defaults --initialize-insecure --basedir=${PWD} --datadir=${RUNDIR}/data > ${WORKDIR}/mysqld_initalize.txt 2>&1
+  #else
+  #  echo "Error: mysql_install_db not found in ${PWD}/scripts nor in ${PWD}/bin"
+  #  exit 1
   fi
   mv ${RUNDIR}/data ${RUNDIR}/data.template
 else
