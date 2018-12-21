@@ -53,6 +53,7 @@ handler..get_ha_share_ptr                                ## https://jira.percona
 m_protocol->type                                         ## https://jira.percona.com/browse/PS-5232
 MDL_checker..is_read_locked.m_thd, .object               ## https://jira.percona.com/browse/PS-5208
 MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error         ## https://bugs.mysql.com/bug.php?id=86256
+safe_mutex_lock                                          ## https://bugs.mysql.com/bug.php?id=93726
 srv_shutdown_state <= SRV_SHUTDOWN_FLUSH_PHASE           ## https://bugs.mysql.com/bug.php?id=93716
 srv_track_changed_pages                                  ## https://jira.percona.com/browse/PS-5214
 std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..allocator<std..pair<std..string const, unsigned long> >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable_traits<true, false, true> >.._M_bucket_index    ## https://jira.percona.com/browse/PS-4974
