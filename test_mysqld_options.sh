@@ -28,6 +28,7 @@ if [ ! -r ./bin/mysqld ]; then
 fi
 
 # User Variables
+MYEXTRA="--log-bin --server-id=0 --plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=RocksDB=ha_rocksdb.so"  # Note that currently MYEXTRA is only used for runs where the data dir does NOT have the msyql_install_db binary in place (i.e. newer versions), irrespective of whetter mysqld accepts --initialize-insecure or not (this can be improved by testing to see if --initialize-insecure can be used, and if so, skip on mysqld_install_db, or check if mysql_install_db accepts MYEXTRA passing
 TEST_OR_GENERATE=0  # If 0, the options will be tested against mysqld, if 1, they will simply be generated and written to file (for use with pquery-run.sh)
                     # To generate options for pquery-run.sh (ref ADD_RANDOM_OPTIONS=1 setting in pquery-run.sh), use MAX_LEVELS=1 as pquery has min/max NR_OF_RANDOM_OPTIONS_TO_ADD
 MAX_LEVELS=4        # Maxium amount of depth to test. Set to 0 for max depth. If MAX_LEVELS=1 then mysqld will be tested with only one --option addition. =2 then two options etc.
@@ -73,7 +74,7 @@ test_options(){
   cp -R ${RUNDIR}/data.template/* ${RUNDIR}/data
   PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
   echoit "Starting mysqld..."
-  CMD="./bin/mysqld --basedir=${PWD} --datadir=${RUNDIR}/data --core-file \
+  CMD="./bin/mysqld ${MYEXRA} --basedir=${PWD} --datadir=${RUNDIR}/data --core-file \
                     --port=${PORT} --pid_file=${RUNDIR}/pid.pid --socket=${RUNDIR}/socket.sock \
                     --log-error=${RUNDIR}/log/master.err ${OPTIONS}"
   ${CMD} >> ${RUNDIR}/log/master.err 2>&1 &
@@ -132,7 +133,9 @@ test_options(){
 if [ ${TEST_OR_GENERATE} -eq 0 ]; then
   rm -Rf ${WORKDIR} ${RUNDIR}
   mkdir ${WORKDIR} ${RUNDIR}
-  echoit "Mode: mysqld option testing | Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${PWD}"
+  echoit "Mode: mysqld option testing | Workdir: ${WORKDIR} | Rundir: ${RUNDIR}"
+  echoit "Basedir: ${PWD}"
+  echoit "MYEXTRA: ${MYEXTRA}"
   echoit "Generating initial rundir subdirectories..."
   if [ -r ./bin/mysql_install_db ]; then
     mkdir -p ${RUNDIR}/data/test ${RUNDIR}/data/mysql ${RUNDIR}/log
@@ -145,7 +148,7 @@ if [ ${TEST_OR_GENERATE} -eq 0 ]; then
   else  # This needs to become an elif and the else below needs to be renealed
     mkdir -p ${RUNDIR}/log
     echoit "Generating datadir template (using mysqld --initialize-insecure)..."
-    ./bin/mysqld --no-defaults --initialize-insecure --basedir=${PWD} --datadir=${RUNDIR}/data > ${WORKDIR}/mysqld_initalize.txt 2>&1
+    ./bin/mysqld --no-defaults --initialize-insecure ${MYEXTRA} --basedir=${PWD} --datadir=${RUNDIR}/data > ${WORKDIR}/mysqld_initalize.txt 2>&1
   #else
   #  echo "Error: mysql_install_db not found in ${PWD}/scripts nor in ${PWD}/bin"
   #  exit 1
