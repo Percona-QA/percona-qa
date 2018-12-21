@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-MAKE_THREADS=1          # Number of build threads. There may be a bug for builds when setting this >1
+MAKE_THREADS=13         # Number of build threads. There may be a bug for builds when setting this >1
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
 USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download

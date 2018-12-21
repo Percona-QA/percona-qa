@@ -1323,7 +1323,7 @@ pquery_test(){
       # UPDATE: As an intial stopgap workaround, the timeout was increased to 90 seconds, and the timeout exit code is checked. Trials are saved when this
       #         happens and a special "SHUTDOWN_TIMEOUT_ISSUE empty file is saved in the trial's directory. pquery-results has been updated to scan for this file
       # ==========================================================================================================================================================
-      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 20 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
+      timeout --signal=9 90s ${BASEDIR}/bin/mysqladmin -uroot -S${RUNDIR}/${TRIAL}/socket.sock shutdown > /dev/null 2>&1  # Proper/clean shutdown attempt (up to 90 sec wait), necessary to get full Valgrind output in error log + see NOTE** above
       if [ $? -eq 137 ]; then
         echoit "mysqld failed to shutdown within 90 seconds for this trial, saving it (pquery-results.sh will show these trials seperately)..."
         touch ${RUNDIR}/${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE

@@ -1,11 +1,9 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-grep --binary-files=text -i "ERROR" */log/master.err | \
-  grep --binary-files=text -vi "Plugin keyring_vault reported.*not found" | \
+grep --binary-files=text -i "ERROR" */log/master.err */*/log/master.err 2>/dev/null | \
   grep --binary-files=text -vi "MYSQL_BIN_LOG::purge_logs was called with file.*not listed in the index" | \
   grep --binary-files=text -vi "User stopword table test/user_stopword does not exist" | \
-  grep --binary-files=text -vi "Encryption can't find master key, please check the keyring plugin is loaded" | \
   grep --binary-files=text -vi "Event Scheduler:.*Cannot execute statement in a READ ONLY transaction." | \
   grep --binary-files=text -vi "Event Scheduler:.*Table.*doesn't exist" | \
   grep --binary-files=text -vi "Event Scheduler:.*execution failed, failed to authenticate the user." | \
@@ -21,6 +19,12 @@ grep --binary-files=text -i "ERROR" */log/master.err | \
   grep --binary-files=text -vi "Out of sort memory, consider increasing server sort buffer size!" | \
   grep --binary-files=text -vi "Cannot save index statistics for table.*, index.*, stat name.*: Lock wait timeout" | \
   grep --binary-files=text -vi "Different lower_case_table_names settings for server ('1') and data dictionary ('0')." | \
+  grep --binary-files=text -vi "Group Replication plugin is not installed." | \
+  grep --binary-files=text -vi "Encryption can't find master key, please check the keyring plugin is loaded" | \
+  grep --binary-files=text -vi "Can't set undo tablespace number.*to be encrypted." | \
+  grep --binary-files=text -vi "Check keyring plugin fail, please check the keyring plugin is loaded." | \
+  grep --binary-files=text -vi "Plugin keyring_vault reported.*not found" | \
+  grep --binary-files=text -vi "Cannot save table statistics for table" | \
   #grep --binary-files=text -vi "" | \
   sed "s|master.err:.*\[ERROR\]|master.err:[ERROR]|" | \
   sed "s|master.err:.*\[Warning\]|master.err:[Warning]|" | \
