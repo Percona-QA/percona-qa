@@ -430,7 +430,7 @@ function async_rpl_test(){
           echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf.
           echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
           echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
-          echo "innodb_encrypt_tables=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          echo "innodb_encrypt_tables=OFF" >> ${PS_BASEDIR}/n${i}.cnf
           if [[ "$EXTRA_OPT" != "XB" ]]; then
             echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
           fi
@@ -461,6 +461,9 @@ function async_rpl_test(){
       for X in $(seq 0 ${PS_START_TIMEOUT}); do
         sleep 1
         if ${PS_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock ping > /dev/null 2>&1; then
+          if [[ "$ENCRYPTION" == 1 ]];then
+            ${PS_BASEDIR}/bin/mysql  -uroot -S/tmp/ps${i}.sock -e"SET GLOBAL innodb_encrypt_tables=ON;"  > /dev/null 2>&1
+          fi
           break
         fi
         if [ $X -eq ${PS_START_TIMEOUT} ]; then
@@ -594,7 +597,7 @@ function async_rpl_test(){
     local SOCKET=${2:-}
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLESPACE ${DATABASE_NAME}_gen_ts1 ADD DATAFILE '${DATABASE_NAME}_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
     ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE ${DATABASE_NAME}_gen_ts1" 2>&1
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_sys_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE=innodb_system ENCRYPTION='Y'" 2>&1
+    ${PS_BASEDIR}/bin/mysql -uroot --socket=$SOCKET $DATABASE_NAME -e "CREATE TABLE ${DATABASE_NAME}_sys_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE=innodb_system" 2>&1
     local NUM_ROWS=$(shuf -i 50-100 -n 1)
     for i in `seq 1 $NUM_ROWS`; do
       local STRING=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
