@@ -256,14 +256,15 @@ btr0pcur.c line 241                                      ## https://bugs.mysql.c
 #trx0trx.cc line 1270                           ## Fixed ## https://bugs.mysql.com/bug.php?id=75782                                                 (# after MS 5.7.8 merged)
 #btr0btr.ic line 126                            ## Fixed ## https://bugs.mysql.com/bug.php?id=75784 (Apparent dup of MS #74577)                     (# after MS 5.7.6 merged)
 btr0cur.cc line 1240                                     ## https://bugs.mysql.com/bug.php?id=74747 (Apparently does not exist in 5.7.6)
-#fil0fil.cc line 6973                           ## Fixed ## https://bugs.mysql.com/bug.php?id=82386 (Could not reproduce the issue)
+#fil0fil.cc line 6973                                    ## https://bugs.mysql.com/bug.php?id=82386 (Can't repeat)
 fsp0fsp.cc line 2023                                     ## https://bugs.mysql.com/bug.php?id=74343 (testcase from bug #74876 triggers this assertion also)
 #ZN16QEP_shared_owner4keysEv                    ## Fixed ## https://bugs.mysql.com/bug.php?id=75938
 #Z14fill_variablesP3THDP10TABLE_LISTP4Item      ## Fixed ## https://bugs.mysql.com/bug.php?id=75940
-Z14ha_show_statusP3THDP10handlerton12ha_stat_type        ## https://jira.percona.com/browse/PS-4491 (also see dups below)
-ZN7rocksdb16ColumnFamilyData19InstallSuperVersionEPNS_19SuperVersionContextEPNS_17InstrumentedMutexERKNS_16MutableCFOptionsE  ## Likely duplicate of PS-4491 above also logged as PS-4478
-rocksdb..ColumnFamilyData..InstallSuperVersion           ## Likely duplicate of PS-4478/PS-4491
-manifest_filenames->empty                                ## Likely duplicate of PS-4491 above
+#Z14ha_show_statusP3THDP10handlerton12ha_stat_type       ## https://jira.percona.com/browse/PS-4491 (also see dups below) (Can't repeat)
+#ZN7myrocks21Rdb_drop_index_thread3runEv                 ## https://jira.percona.com/browse/PS-4491 (Can't repeat)
+#ZN7rocksdb16ColumnFamilyData19InstallSuperVersionEPNS_19SuperVersionContextEPNS_17InstrumentedMutexERKNS_16MutableCFOptionsE  ## Likely duplicate of PS-4491 above also logged as PS-4478  (Can't repeat)
+#rocksdb..ColumnFamilyData..InstallSuperVersion          ## Likely duplicate of PS-4478/PS-4491 (Can't repeat)
+# manifest_filenames->empty                              ## Likely duplicate of PS-4491 above (Can't repeat)
 #job_context->logs_to_free.empty                         ## Likely dup or consequence of PS-4491 above (on shutdown). Check report and add new testcase if other bug
 #Z18create_ref_for_keyP4JOINP8JOIN_TABP7Key_usey ## Fixed ## https://bugs.mysql.com/bug.php?id=75944 (Marked dup of 74559)                          (# after MS 5.7.7 merged)
 #t1->result_range                               ## Fixed ## https://bugs.mysql.com/bug.php?id=75946                                                 (# after MS 5.7.7 merged)
@@ -305,7 +306,7 @@ handler0alter.cc line 5817                               ## https://bugs.mysql.c
 Geometry::is_valid_geotype(gt)                           ## https://bugs.mysql.com/bug.php?id=92868
 
 ## =========== MS 5.7.7 RC ===========
-#Z15ha_commit_transP3THDbb                      ## Fixed ## https://bugs.mysql.com/bug.php?id=77520 (Could not reproduce the issue with latest build)
+#Z15ha_commit_transP3THDbb                               ## https://bugs.mysql.com/bug.php?id=77520 (Can't repeat the issue with latest build)
 #trx0trx.cc line 1290                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77521                                     (# after MS 5.7.9 merged)
 #Z27fill_schema_user_privilegesP3THDP10TABLE_LISTP4Item   ## Fixed ## https://bugs.mysql.com/bug.php?id=77522
 #Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## Fixed ## https://bugs.mysql.com/bug.php?id=77522 (ref above)
@@ -585,7 +586,7 @@ fil0fil.cc line 5594                                                            
 #fil0fil.cc line 5594                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74422 MS
 #fil0fil.cc line 5649                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=74422 PS (with oldPS)
 #fil0fil.cc line 5663                                                                   ## https://bugs.mysql.com/bug.php?id=74422 PS
-#fil0fil.cc line 5779                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=82263 (Could not reproduce the issue)
+#fil0fil.cc line 5779                                                                   ## https://bugs.mysql.com/bug.php?id=82263 (Can't repeat)
 fsp0fsp.cc line 1287                                                                    ## https://bugs.mysql.com/bug.php?id=77164 PS
 fsp0fsp.cc line 1319                                                                    ## https://bugs.mysql.com/bug.php?id=77164 MS
 fsp0fsp.cc line 1861                                                                    ## https://bugs.mysql.com/bug.php?id=74343 MS
@@ -971,7 +972,6 @@ Z30dict_table_stats_latch_destroyP12dict_table_t                                
 #ZN7handler8ha_checkEP3THDP15st_ha_check_opt                                   ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1433197
 #ZN7myrocks15Rdb_transaction15start_bulk_loadEPNS_10ha_rocksdbE                ## Fixed ## https://jira.percona.com/browse/PS-4046
 ZN7myrocks19rdb_handle_io_errorEN7rocksdb6StatusENS_17RDB_IO_ERROR_TYPEE                ## https://github.com/facebook/mysql-5.6/issues/778 (previouly MYR-196)
-ZN7myrocks21Rdb_drop_index_thread3runEv                                                 ## https://jira.percona.com/browse/PS-4491
 ZN7MDL_map6removeEP8MDL_lock                                                            ## https://jira.percona.com/browse/PS-866
 #ZN7set_var5checkEP3THD                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1417028 (dup of 1387951)
 #ZN7ha_heap9write_rowEPh                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1731343
@@ -1003,7 +1003,7 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13Bounded_queueIhhE4pushEPh                                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=74008 (Fixed in 5.5.45, 5.6.26, 5.7.8, 8.0)
 #ZN13Bounded_queueIPhS0_10Sort_paramE4pushES0_                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=74008 (Fixed in 5.5.45, 5.6.26, 5.7.8, 8.0)
 #ZN13st_join_table7cleanupEv                                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74628
-#ZN13st_select_lex5printEP3THDP6String15enum_query_type                        ## Fixed ## https://bugs.mysql.com/bug.php?id=78335 (Could not reproduce the issue)
+#ZN13st_select_lex5printEP3THDP6String15enum_query_type                                 ## https://bugs.mysql.com/bug.php?id=78335 (Can't repeat)
 #ZN13Item_func_div10decimal_opEP10my_decimal                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
 ZN13MYSQL_BIN_LOG13new_file_implEbP28Format_description_log_event                       ## https://bugs.mysql.com/bug.php?id=90190
@@ -1026,7 +1026,7 @@ Z17mysql_lock_tablesP3THDPP5TABLEjj                                             
 #ZN20Field_iterator_table13end_of_fieldsEv                                      # Fixed ## https://bugs.mysql.com/bug.php?id=75707
 #ZN21Sql_cmd_handler_close7executeEP3THD                                        # Fixed ## https://bugs.mysql.com/bug.php?id=75707 (duplicated by 75721)
 #ZN23Gcalc_operation_reducer10end_coupleEPNS_13active_threadES1_PKN10Gcalc_heap4InfoE ## Fixed ## https://bugs.mysql.com/bug.php?id=77580
-#ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Fixed ## https://bugs.mysql.com/bug.php?id=78201 (Could not reproduce the issue with 5.6.41, Fixed in 5.7)
+#ZN23Gcalc_operation_reducer17get_result_threadEPNS_9res_pointEP21Gcalc_result_receiveri ## Fixed ## https://bugs.mysql.com/bug.php?id=78201 (Can't repeat the issue with 5.6.41, Fixed in 5.7)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=82967 (old PS #1622992)
 #ZN24subselect_hash_sj_engine7cleanupEv                                        ## Fixed ## https://jira.percona.com/browse/PS-3958
 ZN24subselect_hash_sj_engine7cleanupEv                                                  ## https://jira.percona.com/browse/PS-4840
