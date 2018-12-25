@@ -35,6 +35,13 @@ if [ $USE_CLANG -eq 1 -a $USE_AFL -eq 1 ]; then
   exit 1
 fi
 
+#Check for gcc version, more than 4.9 required
+GCC_VER=$(gcc -dumpversion | cut -d. -f1-2)
+if (( $(echo "$GCC_VER < 4.9" |bc -l) )); then
+  echo "ERR: The gcc version on the machine is $GCC_VER. Minimum gcc version required for build is 4.9. Please upgrade the gcc version."
+  exit 1
+fi
+
 # Check RocksDB storage engine.
 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
 # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/

@@ -462,6 +462,11 @@ function start_ps_downgrade_main(){
   echoit "Downgrade testing with mysqlddump and reload.."
   $PS_UPPER_BASEDIR/bin/mysqldump --set-gtid-purged=OFF  --triggers --routines --socket=$WORKDIR/ps_upper.sock -uroot --databases `$PS_UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 
+  #Remove data dir if it exists before PS initialization
+  if [ -d ${MYSQL_VARDIR}/ps_lower_down ]; then
+     echo "Removing data dir before PS initialization"
+     rm -fr ${MYSQL_VARDIR}/ps_lower_down
+  fi
   psdatadir="${MYSQL_VARDIR}/ps_lower_down"
   PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
@@ -487,6 +492,9 @@ function ps_downgrade_datacheck(){
   #Stop mysqld processes for lower and upper version
   ${PS_LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_lower_down.sock shutdown
   ${PS_UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/ps_upper.sock  shutdown
+
+  #Clean data dir
+  rm -fr ${MYSQL_VARDIR}/*
 }
 
 function non_partition_test(){
