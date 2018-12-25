@@ -52,3 +52,23 @@ export Upper_PS_dir="$HOME/upgrade/percona-server-8.0.13-2-linux-x86_64"
   run $Scriptdir/ps-upgrade-test_v1.sh -w $Workdir -l $Lower_PS_dir -u $Upper_PS_dir -t replication_test_mts
   [ "$status" -eq 0 ]
 }
+
+@test "Running upgrade for replication without gtid" {
+  run $Scriptdir/ps-upgrade-test_v1.sh -w $Workdir -l $Lower_PS_dir -u $Upper_PS_dir -t replication_test
+  [ "$status" -eq 0 ]
+}
+
+@test "Running upgrade for replication with encryption and gtid" {
+  run $Scriptdir/ps-upgrade-test_v1.sh -w $Workdir -l $Lower_PS_dir -u $Upper_PS_dir -t replication_test_gtid -e -k file
+  [ "$status" -eq 0 ]
+}
+
+@test "Running upgrade for replication with encryption and mts" {
+  run $Scriptdir/ps-upgrade-test_v1.sh -w $Workdir -l $Lower_PS_dir -u $Upper_PS_dir -t replication_test_mts -e -k file
+  [ "$status" -eq 0 ]
+}
+
+@test "Running upgrade for replication with encryption and without gtid" {
+  run $Scriptdir/ps-upgrade-test_v1.sh -w $Workdir -l $Lower_PS_dir -u $Upper_PS_dir -t replication_test -e -k file
+  [ "$status" -eq 0 ]
+}

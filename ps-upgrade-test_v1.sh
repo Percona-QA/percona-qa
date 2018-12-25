@@ -439,6 +439,7 @@ function start_ps_upper_main(){
   echoit "Upgrading mysqld with higher version"
   generate_cnf "${PS_UPPER_BASEDIR}" "$psdatadir" "$PORT" "ps_upper"
   ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_upper.cnf --basedir=${PS_UPPER_BASEDIR} --datadir=$psdatadir --port=$PORT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/ps_upper.err 2>&1 &
+  sleep 20
   check_conn "${PS_UPPER_BASEDIR}" "ps_upper"
 
   $PS_UPPER_BASEDIR/bin/mysql_upgrade -S $WORKDIR/ps_upper.sock -u root 2>&1 | tee $WORKDIR/logs/mysql_upgrade.log
@@ -708,9 +709,15 @@ function startup_check(){
 
 function replication_test(){
   RPL_OPTION="${1:-}"
+
+  declare SLAVE_ENCRYPT_OPTIONS=""
   rm -rf ${MYSQL_VARDIR}/ps_master/
   ps_master_datadir="${MYSQL_VARDIR}/ps_master"
   PORT_MASTER=$[50000 + ( $RANDOM % ( 9999 ) ) ]
+
+  rm -rf ${MYSQL_VARDIR}/ps_slave
+  mkdir ${MYSQL_VARDIR}/ps_slave
+  ps_slave_datadir="${MYSQL_VARDIR}/ps_slave"
 
   echo "[mysqld]" > ${WORKDIR}/ps_master.cnf
   echo "datadir=$ps_master_datadir" >> $WORKDIR/ps_master.cnf
@@ -733,7 +740,40 @@ function replication_test(){
   echo "socket=$WORKDIR/ps_master.sock" >> $WORKDIR/ps_master.cnf
   echo "log-output=none" >> $WORKDIR/ps_master.cnf
 
-  ${LOWER_MID} --datadir=$ps_master_datadir  > $WORKDIR/logs/ps_master.err 2>&1 || exit 1;
+  if [[ "$ENCRYPTION" == 1 ]];then
+    echo "encrypt_binlog" >> $WORKDIR/ps_master.cnf
+    echo "master_verify_checksum=on" >> $WORKDIR/ps_master.cnf
+    echo "binlog_checksum=crc32" >> $WORKDIR/ps_master.cnf
+    echo "innodb_temp_tablespace_encrypt=ON" >> $WORKDIR/ps_master.cnf
+    echo "encrypt-tmp-files=ON" >> $WORKDIR/ps_master.cnf
+    echo "innodb_encrypt_tables=ON" >> $WORKDIR/ps_master.cnf
+    if check_for_version $MYSQL_VERSION "5.7.23" ; then
+      echo "innodb_sys_tablespace_encrypt=ON" >> $WORKDIR/ps_master.cnf
+    fi
+    if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+      echo "early-plugin-load=keyring_file.so" >> $WORKDIR/ps_master.cnf
+      echo "keyring_file_data=$ps_master_datadir/keyring" >> $WORKDIR/ps_master.cnf
+      if check_for_version $MYSQL_VERSION "5.7.23" ; then
+        INIT_OPT="--early-plugin-load=keyring_file.so --keyring_file_data=$ps_master_datadir/keyring --innodb_sys_tablespace_encrypt=ON"
+      fi
+
+      #Set slave encryption options for keyring file
+      SLAVE_ENCRYPT_OPTIONS="--encrypt_binlog=ON --master_verify_checksum=ON --binlog_checksum=crc32 --innodb_temp_tablespace_encrypt=ON --encrypt-tmp-files=ON --innodb_encrypt_tables=ON --early-plugin-load=keyring_file.so --keyring_file_data=$ps_slave_datadir/keyring --innodb_sys_tablespace_encrypt=ON"
+
+    elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+      echo "early-plugin-load=keyring_vault.so" >> $WORKDIR/ps_master.cnf
+      echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> $WORKDIR/ps_master.cnf
+      if check_for_version $MYSQL_VERSION "5.7.23" ; then
+        INIT_OPT="--early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+      fi
+
+      #Set slave encryption options for keyring vault
+      SLAVE_ENCRYPT_OPTIONS="--encrypt_binlog=ON --master_verify_checksum=ON --binlog_checksum=crc32 --innodb_temp_tablespace_encrypt=ON --encrypt-tmp-files=ON --innodb_encrypt_tables=ON --early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+    fi
+  fi
+
+  echoit "Initialize and start PS master"
+  ${LOWER_MID} --datadir=$ps_master_datadir $INIT_OPT > $WORKDIR/logs/ps_master.err 2>&1 || exit 1;
   ${PS_LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_LOWER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 &
 
   for X in $(seq 0 ${PS_START_TIMEOUT}); do
@@ -753,9 +793,6 @@ function replication_test(){
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
   sleep 10
-  rm -rf ${MYSQL_VARDIR}/ps_slave
-  mkdir ${MYSQL_VARDIR}/ps_slave
-  ps_slave_datadir="${MYSQL_VARDIR}/ps_slave"
   cp -r $ps_master_datadir/* ${MYSQL_VARDIR}/ps_slave
   rm -rf ${MYSQL_VARDIR}/ps_slave/auto.cnf
 
@@ -764,15 +801,15 @@ function replication_test(){
 
   startup_check $WORKDIR/ps_master.sock
 
-  #Start slave
+  echoit "Start slave"
   PORT_SLAVE=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
   if [ "$RPL_OPTION" == "gtid" ]; then
-    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   elif [ "$RPL_OPTION" == "mts" ]; then
-    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   else
-    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_LOWER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   fi
 
   startup_check $WORKDIR/ps_slave.sock
@@ -780,7 +817,13 @@ function replication_test(){
   if [ "$RPL_OPTION" == "gtid" -o "$RPL_OPTION" == "mts" ]; then
     echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='rpl_user',MASTER_PASSWORD='rpl_pass',MASTER_AUTO_POSITION=1;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
   else
-    echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='rpl_user',MASTER_PASSWORD='rpl_pass',MASTER_LOG_FILE='mysql-bin.000001',MASTER_LOG_POS=4;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+    BIN_FILE=`${PS_LOWER_BASEDIR}/bin/mysql -u root -S $WORKDIR/ps_master.sock -e "show master status\G" | grep File | awk '{print $2}'`
+    BIN_POSITION=`${PS_LOWER_BASEDIR}/bin/mysql -u root -S $WORKDIR/ps_master.sock -e "show master status\G" | grep Position | awk '{print $2}'`
+    if [ -z "$BIN_FILE" -o -z "$BIN_POSITION" ]; then
+      echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='rpl_user',MASTER_PASSWORD='rpl_pass',MASTER_LOG_FILE='mysql-bin.000002',MASTER_LOG_POS=154;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+    else
+      echo "CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_PORT=$PORT_MASTER,MASTER_USER='rpl_user',MASTER_PASSWORD='rpl_pass',MASTER_LOG_FILE='$BIN_FILE',MASTER_LOG_POS=$BIN_POSITION;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
+    fi
   fi
   echo "START SLAVE;" | $PS_LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/ps_slave.sock -u root || true
 
@@ -789,8 +832,7 @@ function replication_test(){
 
   #Check replication status
   SLAVE_IO_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_IO_Running | awk '{ print $2 }'`
-  SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
-  ${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" >$WORKDIR/log_status
+  SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep -m 1 "Slave_SQL_Running" | awk '{ print $2 }'`
 
   if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
     echoit "Error : Replication is not running, please check.."
@@ -799,15 +841,16 @@ function replication_test(){
   echoit "Replication status : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
 
   #Upgrade PS $PS_LOWER_VERSION slave to $PS_UPPER_VERSION for replication test
+  echoit "Upgrade PS slave"
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
 
   if [ "$RPL_OPTION" == "gtid" ]; then
-    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none --skip-slave-start > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none --skip-slave-start ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   elif [ "$RPL_OPTION" == "mts" ]; then
-    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   else
-    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   fi
 
   startup_check $WORKDIR/ps_slave.sock
@@ -816,12 +859,12 @@ function replication_test(){
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_slave.sock -u root shutdown
 
-  if [ "$RPL_OPTION" == "gtid" -o "$RPL_OPTION" == "mts" ]; then
-    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+  if [ "$RPL_OPTION" == "gtid" ]; then
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   elif [ "$RPL_OPTION" == "mts" ]; then
-    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --relay-log-info-repository='TABLE' --master-info-repository='TABLE' --slave-parallel-workers=2 --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   else
-    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none > $WORKDIR/logs/ps_slave.err 2>&1 &
+    ${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_slave_datadir --port=$PORT_SLAVE --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=102 --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_slave.err --socket=$WORKDIR/ps_slave.sock --log-output=none ${SLAVE_ENCRYPT_OPTIONS} > $WORKDIR/logs/ps_slave.err 2>&1 &
   fi
 
   startup_check $WORKDIR/ps_slave.sock
@@ -830,6 +873,7 @@ function replication_test(){
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_master.sock prepare  2>&1 | tee $WORKDIR/logs/rpl_sysbench_prepare.txt
 
   #Upgrade PS $PS_LOWER_VERSION master
+  echoit "Upgrade PS master"
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
@@ -845,12 +889,12 @@ function replication_test(){
 
   startup_check $WORKDIR/ps_master.sock
 
-  echo "Waiting for slave to connect to the master"
-  sleep 180
+  echoit "Waiting for slave to connect to the master"
+  sleep 120
 
   #Check replication status
   SLAVE_IO_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_IO_Running | awk '{ print $2 }'`
-  SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep Slave_SQL_Running | awk '{ print $2 }'`
+  SLAVE_SQL_STATUS=`${PS_LOWER_BASEDIR}/bin/mysql -uroot -S${WORKDIR}/ps_slave.sock -Bse "show slave status\G" | grep -m 1 "Slave_SQL_Running" | awk '{ print $2 }'`
 
   if [ -z "$SLAVE_IO_STATUS" -o -z "$SLAVE_SQL_STATUS" ] ; then
     echoit "Error : Replication is not running, please check.."
@@ -883,6 +927,9 @@ for i in "${TC_ARRAY[@]}"; do
     replication_test_mts )
     replication_test "mts"
     ;;
+    replication_test )
+    replication_test
+    ;;
     all )
     non_partition_test "$WORKDIR/ps_lower.sock"
     partition_test "$WORKDIR/ps_lower.sock"
@@ -890,6 +937,7 @@ for i in "${TC_ARRAY[@]}"; do
     innodb_options_test "$WORKDIR/ps_lower.sock"
     replication_test "gtid"
     replication_test "mts"
+    replication_test
     ;;
   esac
 done
