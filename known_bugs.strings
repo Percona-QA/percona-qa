@@ -53,6 +53,7 @@ handler..get_ha_share_ptr                                ## https://jira.percona
 m_output_buf->m_curr_offset <= m_output_buf->m_total_size ## https://jira.percona.com/browse/PS-5241
 m_protocol->type                                         ## https://jira.percona.com/browse/PS-5232
 MDL_checker..is_read_locked.m_thd, .object               ## https://jira.percona.com/browse/PS-5208
+myrocks..Rdb_index_merge..add                            ## https://jira.percona.com/browse/PS-5242
 MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error         ## https://bugs.mysql.com/bug.php?id=86256
 safe_mutex_lock                                          ## https://bugs.mysql.com/bug.php?id=93726
 srv_shutdown_state <= SRV_SHUTDOWN_FLUSH_PHASE           ## https://bugs.mysql.com/bug.php?id=93716
