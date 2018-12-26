@@ -50,6 +50,7 @@ dd..sdi..store                                           ## https://jira.percona
 Gtid_set..ensure_sidno                                   ## https://bugs.mysql.com/bug.php?id=90946 (Assertion is from release build)
 handler..get_ha_share_ptr                                ## https://jira.percona.com/browse/PS-5206
 #is_storage_available.tuple - packed_tuple, 0   ## Fixed ## https://jira.percona.com/browse/PS-4971
+m_output_buf->m_curr_offset <= m_output_buf->m_total_size ## https://jira.percona.com/browse/PS-5241
 m_protocol->type                                         ## https://jira.percona.com/browse/PS-5232
 MDL_checker..is_read_locked.m_thd, .object               ## https://jira.percona.com/browse/PS-5208
 MYSQL_BIN_LOG..handle_binlog_flush_or_sync_error         ## https://bugs.mysql.com/bug.php?id=86256
