@@ -29,12 +29,14 @@ usage () {
   echo "  -s, --sst-method=[rsync|xtrabackup-v2] Specify SST method for cluster data transfer"
   echo "  -e, --with-encryption             Run the script with encryption features"
   echo "  -c, --enable-checksum             Run pt-table-checksum to check slave sync status"
+  echo "  -g, --gtid-consistency-check      Check GTID consistency between PXC nodes"
 }
+
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:l:t:s:ech --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,sst-method:,with-encryption,help \
+  go_out="$(getopt --options=w:b:k:l:t:s:ecgh --longoptions=workdir:,build-number:,binlog-format:,keyring-plugin:,testcase:,sst-method:,with-encryption,gtid-consistency-check,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -99,6 +101,10 @@ do
     -c | --enable-checksum )
     shift
     export ENABLE_CHECKSUM=1
+    ;;
+    -g | --gtid-consistency-check )
+    shift
+    export GTID_CONSISTENCY_CHECK=1
     ;;
     -h | --help )
     usage
@@ -652,18 +658,20 @@ function async_rpl_test(){
 	PXC_NODE3_UUID=$(${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc3.sock -Bse "show global variables like 'gtid_executed'" | awk '{print $2}'  | cut -d":" -f1)
 
     if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
-	  if [[ "$PS_UUID" != "$PXC_NODE1_UUID" ]];then
-	    echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node1 UUID. Terminating."
-		exit 1
-	  fi
-	  	  if [[ "$PS_UUID" != "$PXC_NODE2_UUID" ]];then
-	    echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node2 UUID. Terminating."
-		exit 1
-	  fi
-	  if [[ "$PS_UUID" != "$PXC_NODE3_UUID" ]];then
-	    echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node3 UUID. Terminating."
-		exit 1
-	  fi
+      if [[ $GTID_CONSISTENCY_CHECK -eq 1 ]]; then
+        if [[ "$PS_UUID" != "$PXC_NODE1_UUID" ]];then
+          echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node1 UUID. Terminating."
+      	exit 1
+        fi
+        if [[ "$PS_UUID" != "$PXC_NODE2_UUID" ]];then
+          echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node2 UUID. Terminating."
+      	exit 1
+        fi
+        if [[ "$PS_UUID" != "$PXC_NODE3_UUID" ]];then
+          echoit "ERROR! GTID consistency failed. PS master UUID is not matching with PXC node3 UUID. Terminating."
+      	exit 1
+        fi
+      fi 
 	fi
 
     if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
