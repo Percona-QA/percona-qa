@@ -1,1 +1,1 @@
-tar -zhcf bug.tar.gz *
+tar -zhcf myarchive.tar.gz *
