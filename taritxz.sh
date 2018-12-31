@@ -1,1 +1,1 @@
-tar -Jhcf bug.tar.xz *
+tar -Jhcf myarchive.tar.xz *
