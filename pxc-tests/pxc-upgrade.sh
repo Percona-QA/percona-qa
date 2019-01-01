@@ -206,7 +206,7 @@ else
     LOWER_BASEDIR=`readlink -e ${LOWER_BASE}* | grep -v ".tar" | head -n1`
     export PATH="$LOWER_BASEDIR/bin:$PATH"
   else
-    echoit "ERROR! Could not find $LOWER_BASE binary"
+    echo "ERROR! Could not find $LOWER_BASE binary"
     exit 1
   fi
 fi
@@ -219,7 +219,7 @@ else
     UPPER_BASEDIR=`readlink -e ${UPPER_BASE}* | grep -v ".tar" | head -n1`
     export PATH="$UPPER_BASEDIR/bin:$PATH"
   else
-    echoit "ERROR! Could not find $UPPER_BASE binary"
+    echo "ERROR! Could not find $UPPER_BASE binary"
     exit 1
   fi
 fi	
