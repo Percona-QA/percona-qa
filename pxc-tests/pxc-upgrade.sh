@@ -1,7 +1,55 @@
 #!/bin/bash
 # Created by Raghavendra Prabhu
 # Updated by Ramesh Sivaraman, Percona LLC
-# This script will test the upgrade between PXC-5.6 and PXC-5.7
+# This will help us to test PXC upgrade
+
+# Bash internal configuration
+#
+set -o nounset    # no undefined variables
+
+# Global variables
+declare WORKDIR=""
+declare ROOT_FS=""
+declare BUILD_NUMBER=""
+declare LOWER_BASEDIR=""
+declare UPPER_BASEDIR=""
+declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
+declare MYSQLD_START_TIMEOUT=180
+declare SDURATION=""
+declare TSIZE=""
+declare NUMT=""
+declare TCOUNT=""
+declare AUTOINC=off
+declare DIR=0
+declare STEST=oltp
+declare SST_METHOD="rsync"
+declare USE_PROXYSQL=0
+declare LPATH=""
+declare EXTSTATUS
+declare SYSB_VAR_OPTIONS=""
+declare PROXYSQL_BIN=""
+declare TEST_TYPE=""
+declare SYSBENCH_OPTIONS=""
+declare MYSQL_VARDIR=""
+declare SDIR=""
+declare SRESULTS=""
+declare ADDR="127.0.0.1"
+declare RPORT=$(( RANDOM%21 + 10 ))
+declare RBASE1=""
+declare RADDR1=""
+declare LADDR1=""
+declare RBASE2=""
+declare RADDR2=""
+declare LADDR2=""
+declare RBASE3=""
+declare RADDR3=""
+declare LADDR3=""
+declare SUSER=root
+declare SPASS=""
+declare node1=""
+declare node2=""
+declare node3=""
+declare DEBUG=""
 
 # Dispay script usage details
 usage () {
@@ -9,14 +57,16 @@ usage () {
   echo "  pxc56to57.sh  --workdir=PATH"
   echo ""
   echo "Additional options:"
-  echo "  -w, --workdir=PATH                     Specify work directory"
-  echo "  -b, --build-number=NUMBER              Specify work build directory"
+  echo "  -w, --workdir=PATH        Specify work directory"
+  echo "  -b, --build-number=NUMBER Specify work build directory"
+  echo "  -l, --lower-base          Specify PXC lower base directory"
+  echo "  -u, --upper-base          Specify PXC upper base directory"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:k:s:ech --longoptions=workdir:,build-number:,help \
+  go_out="$(getopt --options=w:b:l:u:h --longoptions=workdir:,build-number:,lower-base:,upper-base:,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -32,7 +82,7 @@ do
   case "$arg" in
     -- ) shift; break;;
     -w | --workdir )
-    export WORKDIR="$2"
+    WORKDIR="$2"
     if [[ ! -d "$WORKDIR" ]]; then
       echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
       exit 1
@@ -40,7 +90,15 @@ do
     shift 2
     ;;
     -b | --build-number )
-    export BUILD_NUMBER="$2"
+    BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    -l | --lower-base )
+    LOWER_BASE="$2"
+    shift 2
+    ;;
+    -u | --upper-base )
+    UPPER_BASE="$2"
     shift 2
     ;;
     -h | --help )
@@ -50,19 +108,15 @@ do
   esac
 done
 
-ulimit -c unlimited
-export MTR_MAX_SAVE_CORE=5
-
 echo "Killing existing mysqld"
 ps -ef | grep 'node[0-9].sock' | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 # generic variables
 if [[ -z "$WORKDIR" ]]; then
-  export WORKDIR=${PWD}
+  WORKDIR=${PWD}
 fi
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+
 ROOT_FS=$WORKDIR
-MYSQLD_START_TIMEOUT=180
 
 # Table for sysbench oltp rw test
 STABLE="test.sbtest1"
@@ -73,29 +127,11 @@ if [ ! -d ${ROOT_FS}/test_db ]; then
   popd
 fi
 
-
-if [ -d ${ROOT_FS}/nocache ]; then
-  pushd ${ROOT_FS}
-  cd nocache
-  git pull || true
-  popd
-else
-  pushd ${ROOT_FS}
-  git clone https://github.com/Feh/nocache
-  popd
-fi
-export PATH="$PATH:${ROOT_FS}/nocache"
-if [[ ! -e $(which nocache 2> /dev/null) ]] ;then
-  NOCACHE=$(which nocache)
-else
-  NOCACHE=""
-fi
-
 function create_emp_db()
 {
-  DB_NAME=$1
-  SE_NAME=$2
-  SQL_FILE=$3
+  local DB_NAME=$1
+  local SE_NAME=$2
+  local SQL_FILE=$3
   pushd ${ROOT_FS}/test_db
   cat ${ROOT_FS}/test_db/$SQL_FILE \
    | sed -e "s|DROP DATABASE IF EXISTS employees|DROP DATABASE IF EXISTS ${DB_NAME}|" \
@@ -103,13 +139,13 @@ function create_emp_db()
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
    > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-  $MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+  $LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
   popd
 }
 
 # Parameter of parameterized build
 if [ -z ${BUILD_NUMBER} ]; then
-  BUILD_NUMBER=1001
+  BUILD_NUMBER=100
 fi
 if [ -z $SDURATION ]; then
   SDURATION=30
@@ -139,6 +175,11 @@ if [ -z $USE_PROXYSQL ]; then
   USE_PROXYSQL=0
 fi
 
+#Cleanup
+if [ -d $WORKDIR/$BUILD_NUMBER ]; then
+  rm -r $WORKDIR/$BUILD_NUMBER
+fi
+
 # This parameter selects on which nodes the sysbench run will take place
 if [ $USE_PROXYSQL -eq 1 ]; then
   SYSB_VAR_OPTIONS="--mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=3306"
@@ -152,6 +193,37 @@ elif [ $DIR -eq 3 ]; then
   SYSB_VAR_OPTIONS="--mysql-user=root --mysql-socket=/tmp/node3.socket"
 fi
 
+LOWER_BASEDIR=`readlink -e ${LOWER_BASE}* | grep -v ".tar" | head -n1`
+UPPER_BASEDIR=`readlink -e ${UPPER_BASE}* | grep -v ".tar" | head -n1`
+LOWER_TAR=`readlink -e ${LOWER_BASE}* | grep ".tar" | head -n1`
+UPPER_TAR=`readlink -e ${UPPER_BASE}* | grep ".tar" | head -n1`
+
+if [ ! -z $LOWER_BASEDIR ]; then
+  export PATH="$LOWER_BASEDIR/bin:$PATH"
+else
+  if [ ! -z $LOWER_TAR ];then
+    tar -xzf $LOWER_TAR
+    LOWER_BASEDIR=`readlink -e ${LOWER_BASE}* | grep -v ".tar" | head -n1`
+    export PATH="$LOWER_BASEDIR/bin:$PATH"
+  else
+    echoit "ERROR! Could not find $LOWER_BASE binary"
+    exit 1
+  fi
+fi
+
+if [ ! -z $UPPER_BASEDIR ]; then
+  export PATH="$UPPER_BASEDIR/bin:$PATH"
+else
+  if [ ! -z $UPPER_TAR ];then
+    tar -xzf $UPPER_TAR
+    UPPER_BASEDIR=`readlink -e ${UPPER_BASE}* | grep -v ".tar" | head -n1`
+    export PATH="$UPPER_BASEDIR/bin:$PATH"
+  else
+    echoit "ERROR! Could not find $UPPER_BASE binary"
+    exit 1
+  fi
+fi	
+
 cd $WORKDIR
 
 if [ $USE_PROXYSQL -eq 1 ]; then
@@ -162,43 +234,13 @@ if [ $USE_PROXYSQL -eq 1 ]; then
   fi
 fi
 
-if [[ $SST_METHOD == xtrabackup ]]; then
+if [[ ${SST_METHOD} == "xtrabackup" ]]; then
   SST_METHOD="xtrabackup-v2"
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
-  $NOCACHE tar -xf $TAR
-  BBASE="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
+  tar -xf $TAR
+  BBASE="$(tar tf $TAR | head -1 | tr -d '/')"
   export PATH="$ROOT_FS/$BBASE/bin:$PATH"
 fi
-
-count=$(ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | wc -l)
-if [[ $count -gt 1 ]]; then
-  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | tail -n +2`; do
-     rm -rf $dirs
-  done
-fi
-find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.7*' -exec rm -rf {} \+
-
-count=$(ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | wc -l)
-if [[ $count -gt 1 ]]; then
-  for dirs in `ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | tail -n +2`; do
-    rm -rf $dirs
-  done
-fi
-find . -maxdepth 1 -type d -name 'Percona-XtraDB-Cluster-5.6*' -exec rm -rf {} \+
-
-echo "Removing older directories"
-find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
-
-echo "Removing their symlinks"
-find . -maxdepth 1 -type l -mtime +10 -delete
-
-TAR=`ls -1ct Percona-XtraDB-Cluster-5.6*.tar.gz | head -n1`
-BASE1="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
-$NOCACHE tar -xf $TAR
-
-TAR=`ls -1ct Percona-XtraDB-Cluster-5.7*.tar.gz | head -n1`
-BASE2="$($NOCACHE tar tf $TAR | head -1 | tr -d '/')"
-$NOCACHE tar -xf $TAR
 
 sysbench_cmd(){
   TEST_TYPE="$1"
@@ -221,9 +263,6 @@ sysbench_cmd(){
 # User settings
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 mkdir -p $WORKDIR/logs
-
-MYSQL_BASEDIR1="${ROOT_FS}/$BASE1"
-MYSQL_BASEDIR2="${ROOT_FS}/$BASE2"
 export MYSQL_VARDIR="$WORKDIR/mysqldir"
 mkdir -p $MYSQL_VARDIR
 
@@ -233,10 +272,8 @@ SRESULTS="$WORKDIR/sresults"
 mkdir -p $SRESULTS
 
 echo "Workdir: $WORKDIR"
-echo "Basedirs: $MYSQL_BASEDIR1 $MYSQL_BASEDIR2"
+echo "Basedirs: $LOWER_BASEDIR $UPPER_BASEDIR"
 
-ADDR="127.0.0.1"
-RPORT=$(( RANDOM%21 + 10 ))
 RBASE1="$(( RPORT*1000 ))"
 echo "Setting RBASE to $RBASE1"
 RADDR1="$ADDR:$(( RBASE1 + 7 ))"
@@ -250,9 +287,6 @@ RBASE3="$(( RBASE2 + 100 ))"
 RADDR3="$ADDR:$(( RBASE3 + 7 ))"
 LADDR3="$ADDR:$(( RBASE3 + 8 ))"
 
-SUSER=root
-SPASS=
-
 node1="${MYSQL_VARDIR}/node1"
 rm -rf $node1;mkdir -p $node1
 node2="${MYSQL_VARDIR}/node2"
@@ -261,12 +295,6 @@ node3="${MYSQL_VARDIR}/node3"
 rm -rf $node3;mkdir -p $node3
 
 EXTSTATUS=0
-
-if [[ $MEM -eq 1 ]]; then
-  MEMOPT="--mem"
-else
-  MEMOPT=""
-fi
 
 archives() {
   tar czf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz ./${BUILD_NUMBER}/logs || true
@@ -288,7 +316,7 @@ else
 fi
 
 check_script(){
-  MPID=$1
+  local MPID=$1
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
 }
 
@@ -456,36 +484,36 @@ proxysql_start(){
   $ROOT_FS/$PROXYSQL_BIN --initial -f -c $SCRIPT_PWD/../proxysql.cnf > /dev/null 2>&1 &
   check_script $?
   sleep 10
-  ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'proxysql'@'localhost' IDENTIFIED BY 'proxysql'"
-  ${MYSQL_BASEDIR1}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'monitor'@'localhost' IDENTIFIED BY 'monitor'"
+  ${LOWER_BASEDIR}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'proxysql'@'localhost' IDENTIFIED BY 'proxysql'"
+  ${LOWER_BASEDIR}/bin/mysql -uroot -S/tmp/node1.socket -e"GRANT ALL ON *.* TO 'monitor'@'localhost' IDENTIFIED BY 'monitor'"
   check_script $?
-  echo  "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', $RBASE1, 20),(1, '127.0.0.1', $RBASE2, 20),(0, '127.0.0.1', $RBASE3, 20)" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo  "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', $RBASE1, 20),(1, '127.0.0.1', $RBASE2, 20),(0, '127.0.0.1', $RBASE3, 20)" | ${LOWER_BASEDIR}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
   check_script $?
-  echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)" | ${LOWER_BASEDIR}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
   check_script $?
-  echo "INSERT INTO mysql_query_rules (active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;" | ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "INSERT INTO mysql_query_rules (active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)" | ${LOWER_BASEDIR}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
+  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;" | ${LOWER_BASEDIR}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
   check_script $?
   sleep 10
 }
 
 get_connection_pool(){
   echo -e "ProxySQL connection pool status\n"
-  ${MYSQL_BASEDIR1}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e "select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
+  ${LOWER_BASEDIR}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e "select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
 }
 
 #
 # Install cluster from previous version
 #
 echo -e "\n\n#### Installing cluster from previous version\n"
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 --force > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
-pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${MYSQL_BASEDIR1}"
+${LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${LOWER_BASEDIR} --datadir=$node1 --force > $WORKDIR/logs/node1-pre.err 2>&1 || exit 1;
+pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${LOWER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-pre.err" "${LOWER_BASEDIR}"
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node2 --force > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
-pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${MYSQL_BASEDIR1}"
+${LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${LOWER_BASEDIR} --datadir=$node2 --force > $WORKDIR/logs/node2-pre.err 2>&1 || exit 1;
+pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${LOWER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-pre.err" "${LOWER_BASEDIR}"
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node3 --force > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
-pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-pre.err" "${MYSQL_BASEDIR1}"
+${LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${LOWER_BASEDIR} --datadir=$node3 --force > $WORKDIR/logs/node3-pre.err 2>&1 || exit 1;
+pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${LOWER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-pre.err" "${LOWER_BASEDIR}"
 
 # Start proxysql
 if [ $USE_PROXYSQL -eq 1 ]; then
@@ -508,11 +536,11 @@ if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
 fi
 
 echo "Loading sakila test database on node1"
-$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/sakila.sql
+$LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/sakila.sql
 check_script $?
 
 echo "Loading world test database on node1"
-$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/world.sql
+$LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/world.sql
 check_script $?
 
 echo "Loading employees database with innodb engine.."
@@ -530,19 +558,19 @@ if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
 echo -e "\n\n#### Show node2 status before upgrade\n"
-show_node_status 2 $MYSQL_BASEDIR1 0
+show_node_status 2 $LOWER_BASEDIR 0
 echo "Running upgrade on node2"
-pxc_upgrade_node 2 "5.7" "$node2" "$RBASE2" "$WORKDIR/logs/node2-upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_upgrade_node 2 "5.7" "$node2" "$RBASE2" "$WORKDIR/logs/node2-upgrade.err" "${UPPER_BASEDIR}"
 echo "Starting node2 after upgrade"
-pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2" "$RBASE2" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_start_node 2 "5.7" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR2" "$RBASE2" "${UPPER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-after_upgrade.err" "${UPPER_BASEDIR}"
 
 echo -e "\n\n#### Showing nodes status after node2 upgrade and before sysbench\n"
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-show_node_status 1 $MYSQL_BASEDIR1 0
-show_node_status 2 $MYSQL_BASEDIR2 0
-show_node_status 3 $MYSQL_BASEDIR1 0
+show_node_status 1 $LOWER_BASEDIR 0
+show_node_status 2 $UPPER_BASEDIR 0
+show_node_status 3 $LOWER_BASEDIR 0
 
 echo -e "\n\n#### Sysbench OLTP RW run after node2 upgrade\n"
 sysbench_run node2upgrade
@@ -551,9 +579,9 @@ echo -e "\n\n#### Showing nodes status after node2 upgrade and after sysbench\n"
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-show_node_status 1 $MYSQL_BASEDIR1 0
-show_node_status 2 $MYSQL_BASEDIR2 0
-show_node_status 3 $MYSQL_BASEDIR1 0
+show_node_status 1 $LOWER_BASEDIR 0
+show_node_status 2 $UPPER_BASEDIR 0
+show_node_status 3 $LOWER_BASEDIR 0
 #
 # End node2 upgrade and check
 #
@@ -564,17 +592,17 @@ sleep 10
 # Upgrading node3 to the new version
 #
 echo "Running upgrade on node3"
-pxc_upgrade_node 3 "5.7" "$node3" "$RBASE3" "$WORKDIR/logs/node3-upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_upgrade_node 3 "5.7" "$node3" "$RBASE3" "$WORKDIR/logs/node3-upgrade.err" "${UPPER_BASEDIR}"
 echo "Starting node3 after upgrade"
-pxc_start_node 3 "5.7" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://$LADDR3" "$RBASE3" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-after_upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_start_node 3 "5.7" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://$LADDR3" "$RBASE3" "${UPPER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-after_upgrade.err" "${UPPER_BASEDIR}"
 
 echo -e "\n\n#### Showing nodes status after node3 upgrade and before sysbench\n"
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-show_node_status 1 $MYSQL_BASEDIR1 1
-show_node_status 2 $MYSQL_BASEDIR2 1
-show_node_status 3 $MYSQL_BASEDIR2 1
+show_node_status 1 $LOWER_BASEDIR 1
+show_node_status 2 $UPPER_BASEDIR 1
+show_node_status 3 $UPPER_BASEDIR 1
 
 echo -e "\n\n#### Sysbench OLTP RW run after node3 upgrade\n"
 sysbench_run node3upgrade
@@ -583,9 +611,9 @@ echo -e "\n\n#### Showing nodes status after node3 upgrade and after sysbench ru
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-show_node_status 1 $MYSQL_BASEDIR1 1
-show_node_status 2 $MYSQL_BASEDIR2 1
-show_node_status 3 $MYSQL_BASEDIR2 1
+show_node_status 1 $LOWER_BASEDIR 1
+show_node_status 2 $UPPER_BASEDIR 1
+show_node_status 3 $UPPER_BASEDIR 1
 #
 # End node3 upgrade and check
 #
@@ -596,17 +624,17 @@ sleep 10
 # Upgrading node1 to the new version
 #
 echo "Running upgrade on node1"
-pxc_upgrade_node 1 "5.7" "$node1" "$RBASE1" "$WORKDIR/logs/node1-upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_upgrade_node 1 "5.7" "$node1" "$RBASE1" "$WORKDIR/logs/node1-upgrade.err" "${UPPER_BASEDIR}"
 echo "Starting node1 after upgrade"
-pxc_start_node 1 "5.7" "$node1" "gcomm://$LADDR2,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR1" "$RBASE1" "${MYSQL_BASEDIR2}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-after_upgrade.err" "${MYSQL_BASEDIR2}"
+pxc_start_node 1 "5.7" "$node1" "gcomm://$LADDR2,gcomm://$LADDR3" "gmcast.listen_addr=tcp://$LADDR1" "$RBASE1" "${UPPER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-after_upgrade.err" "${UPPER_BASEDIR}"
 
 echo -e "\n\n#### Showing nodes status after node1 upgrade and before sysbench\n"
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-show_node_status 1 $MYSQL_BASEDIR2 1
-show_node_status 2 $MYSQL_BASEDIR2 1
-show_node_status 3 $MYSQL_BASEDIR2 1
+show_node_status 1 $UPPER_BASEDIR 1
+show_node_status 2 $UPPER_BASEDIR 1
+show_node_status 3 $UPPER_BASEDIR 1
 
 echo -e "\n\n#### Sysbench OLTP RW run after node1 upgrade\n"
 sysbench_run node1upgrade
@@ -615,9 +643,9 @@ echo -e "\n\n#### Showing nodes status after node1 upgrade and after sysbench\n"
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-show_node_status 1 $MYSQL_BASEDIR2 1
-show_node_status 2 $MYSQL_BASEDIR2 1
-show_node_status 3 $MYSQL_BASEDIR2 1
+show_node_status 1 $UPPER_BASEDIR 1
+show_node_status 2 $UPPER_BASEDIR 1
+show_node_status 3 $UPPER_BASEDIR 1
 #
 # End node1 upgrade and check
 #
@@ -629,46 +657,46 @@ sleep 10
 #
 echo -e "\n\n#### Backup before downgrade test\n"
 #Workaround for issue 1676401
-#$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -e "set global show_compatibility_56=1";
-$MYSQL_BASEDIR2/bin/mysqldump --skip-lock-tables --set-gtid-purged=OFF --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$MYSQL_BASEDIR2/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
+#$UPPER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -uroot -e "set global show_compatibility_56=1";
+$UPPER_BASEDIR/bin/mysqldump --skip-lock-tables --set-gtid-purged=OFF --triggers --routines --socket=/tmp/node1.socket -uroot --databases `$UPPER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"` > $WORKDIR/dbdump.sql 2>&1
 check_script $?
 
 #
 # Downgrade testing
 #
 echo -e "\n\n#### Downgrade test\n"
-$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
-$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
-$MYSQL_BASEDIR2/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /dev/null 2>&1
+$UPPER_BASEDIR/bin/mysqladmin  --socket=/tmp/node1.socket -u root shutdown  > /dev/null 2>&1
+$UPPER_BASEDIR/bin/mysqladmin  --socket=/tmp/node2.socket -u root shutdown  > /dev/null 2>&1
+$UPPER_BASEDIR/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /dev/null 2>&1
 
 rm -Rf $node1/* $node2/* $node3/*
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node1 --force > $WORKDIR/logs/node1-downgrade.err 2>&1 || exit 1;
-pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-downgrade.err" "${MYSQL_BASEDIR1}"
+${LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${LOWER_BASEDIR} --datadir=$node1 --force > $WORKDIR/logs/node1-downgrade.err 2>&1 || exit 1;
+pxc_start_node 1 "5.6" "$node1" "gcomm://" "gmcast.listen_addr=tcp://${LADDR1}" "$RBASE1" "${LOWER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node1-downgrade.err" "${LOWER_BASEDIR}"
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node2 --force > $WORKDIR/logs/node2-downgrade.err 2>&1 || exit 1;
-pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-downgrade.err" "${MYSQL_BASEDIR1}"
+${LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${LOWER_BASEDIR} --datadir=$node2 --force > $WORKDIR/logs/node2-downgrade.err 2>&1 || exit 1;
+pxc_start_node 2 "5.6" "$node2" "gcomm://$LADDR1,gcomm://$LADDR3" "gmcast.listen_addr=tcp://${LADDR2}" "$RBASE2" "${LOWER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node2-downgrade.err" "${LOWER_BASEDIR}"
 
-${MYSQL_BASEDIR1}/scripts/mysql_install_db --no-defaults --basedir=${MYSQL_BASEDIR1} --datadir=$node3 --force > $WORKDIR/logs/node3-downgrade.err 2>&1 || exit 1;
-pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${MYSQL_BASEDIR1}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-downgrade.err" "${MYSQL_BASEDIR1}"
+${LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${LOWER_BASEDIR} --datadir=$node3 --force > $WORKDIR/logs/node3-downgrade.err 2>&1 || exit 1;
+pxc_start_node 3 "5.6" "$node3" "gcomm://$LADDR1,gcomm://$LADDR2" "gmcast.listen_addr=tcp://${LADDR3}" "$RBASE3" "${LOWER_BASEDIR}/lib/libgalera_smm.so" "$WORKDIR/logs/node3-downgrade.err" "${LOWER_BASEDIR}"
 
 # Import database
-${MYSQL_BASEDIR1}/bin/mysql --socket=/tmp/node1.socket -uroot < $WORKDIR/dbdump.sql 2>&1
+${LOWER_BASEDIR}/bin/mysql --socket=/tmp/node1.socket -uroot < $WORKDIR/dbdump.sql 2>&1
 
-CHECK_DBS=`$MYSQL_BASEDIR1/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
+CHECK_DBS=`$LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
 
 echo "Checking table status..."
-${MYSQL_BASEDIR1}/bin/mysqlcheck -uroot --socket=/tmp/node1.socket --check-upgrade --databases $CHECK_DBS 2>&1
+${LOWER_BASEDIR}/bin/mysqlcheck -uroot --socket=/tmp/node1.socket --check-upgrade --databases $CHECK_DBS 2>&1
 check_script $?
 
 echo -e "\n\n#### Showing nodes status after cluster downgrade\n"
-show_node_status 1 $MYSQL_BASEDIR1 1
-show_node_status 2 $MYSQL_BASEDIR1 1
-show_node_status 3 $MYSQL_BASEDIR1 1
+show_node_status 1 $LOWER_BASEDIR 1
+show_node_status 2 $LOWER_BASEDIR 1
+show_node_status 3 $LOWER_BASEDIR 1
 
-$MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node1.socket -u root shutdown > /dev/null 2>&1
-$MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node2.socket -u root shutdown > /dev/null 2>&1
-$MYSQL_BASEDIR1/bin/mysqladmin --socket=/tmp/node3.socket -u root shutdown > /dev/null 2>&1
+$LOWER_BASEDIR/bin/mysqladmin --socket=/tmp/node1.socket -u root shutdown > /dev/null 2>&1
+$LOWER_BASEDIR/bin/mysqladmin --socket=/tmp/node2.socket -u root shutdown > /dev/null 2>&1
+$LOWER_BASEDIR/bin/mysqladmin --socket=/tmp/node3.socket -u root shutdown > /dev/null 2>&1
 if [ $USE_PROXYSQL -eq 1 ]; then
   killall -9 proxysql > /dev/null 2>&1 || true
 fi
