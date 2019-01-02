@@ -502,6 +502,50 @@ get_connection_pool(){
   ${LOWER_BASEDIR}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e "select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
 }
 
+function create_regular_tbl(){
+  #
+  # Sysbench run on previous version on node1
+  #
+  ## Prepare/setup
+  echo -e "\n\n#### Sysbench prepare run on previous version\n"
+  
+  sysbench_cmd load_data test
+  sysbench $SYSBENCH_OPTIONS $SYSB_VAR_OPTIONS prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+  #check_script $?
+  
+  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+     echo "Sysbench prepare failed"
+     exit 1
+  fi
+  
+  echo "Loading sakila test database on node1"
+  $LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/sakila.sql
+  check_script $?
+  
+  echo "Loading world test database on node1"
+  $LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/world.sql
+  check_script $?
+  
+  echo "Loading employees database with innodb engine.."
+  create_emp_db employee_1 innodb employees.sql
+  check_script $?
+}
+
+function create_partition_tbl(){
+  echo "Loading employees partitioned database with innodb engine.."
+  create_emp_db employee_2 innodb employees_partitioned.sql
+  check_script $?
+}
+
+function test_row_format_tbl(){
+  ROW_FORMAT=(DEFAULT DYNAMIC COMPRESSED REDUNDANT COMPACT)
+  $LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root -e "drop database if exists test_row_format;create database test_row_format;"
+  for i in `seq 1 5`;do
+    $LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root -e "CREATE TABLE test_row_format.sbtest$i (id int(11) NOT NULL AUTO_INCREMENT,k int(11) NOT NULL DEFAULT '0',c char(120) NOT NULL DEFAULT '',pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ROW_FORMAT=${ROW_FORMAT[$i-1]};"
+  done
+  sysbench /usr/share/sysbench/oltp_insert.lua --mysql-db=test_row_format --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/node1.socket --threads=5 --tables=5 --table-size=1000 --time=10 run > $WORKDIR/logs/sysbench_test_row_format.log 2>&1
+}
+
 #
 # Install cluster from previous version
 #
@@ -520,36 +564,9 @@ if [ $USE_PROXYSQL -eq 1 ]; then
   proxysql_start
 fi
 
-#
-# Sysbench run on previous version on node1
-#
-## Prepare/setup
-echo -e "\n\n#### Sysbench prepare run on previous version\n"
-
-sysbench_cmd load_data test
-sysbench $SYSBENCH_OPTIONS $SYSB_VAR_OPTIONS prepare 2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
-#check_script $?
-
-if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-   echo "Sysbench prepare failed"
-   exit 1
-fi
-
-echo "Loading sakila test database on node1"
-$LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/sakila.sql
-check_script $?
-
-echo "Loading world test database on node1"
-$LOWER_BASEDIR/bin/mysql --socket=/tmp/node1.socket -u root < ${SCRIPT_PWD}/../sample_db/world.sql
-check_script $?
-
-echo "Loading employees database with innodb engine.."
-create_emp_db employee_1 innodb employees.sql
-check_script $?
-
-echo "Loading employees partitioned database with innodb engine.."
-create_emp_db employee_2 innodb employees_partitioned.sql
-check_script $?
+create_regular_tbl
+create_partition_tbl
+test_row_format_tbl
 
 #
 # Upgrading node2 to the new version
