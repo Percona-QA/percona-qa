@@ -61,12 +61,13 @@ usage () {
   echo "  -b, --build-number=NUMBER Specify work build directory"
   echo "  -l, --lower-base          Specify PXC lower base directory"
   echo "  -u, --upper-base          Specify PXC upper base directory"
+  echo "  -o, --mysql-extra-options Specify Mysql extra options used in innodb_options_test"
 }
 
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=w:b:l:u:h --longoptions=workdir:,build-number:,lower-base:,upper-base:,help \
+  go_out="$(getopt --options=w:b:l:u:o:h --longoptions=workdir:,build-number:,lower-base:,upper-base:,mysql-extra-options:,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- "$go_out"
@@ -101,6 +102,10 @@ do
     UPPER_BASE="$2"
     shift 2
     ;;
+    -o | --mysql-extra-options )
+    MYSQL_EXTRA_OPTIONS="$2"
+    shift 2
+    ;;
     -h | --help )
     usage
     exit 0
@@ -114,6 +119,10 @@ ps -ef | grep 'node[0-9].sock' | grep -v grep | awk '{print $2}' | xargs kill -9
 # generic variables
 if [[ -z "$WORKDIR" ]]; then
   WORKDIR=${PWD}
+fi
+
+if [[ -z "${MYSQL_EXTRA_OPTIONS:-}" ]]; then
+  MYSQL_EXTRA_OPTIONS="--innodb_file_per_table=ON"
 fi
 
 ROOT_FS=$WORKDIR
@@ -371,7 +380,7 @@ pxc_start_node(){
     --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
-    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 > ${FUN_LOG_ERR} 2>&1 &
+    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} --wsrep_slave_threads=8 ${MYSQL_EXTRA_OPTIONS} > ${FUN_LOG_ERR} 2>&1 &
 
   for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
     sleep 1
@@ -409,7 +418,7 @@ pxc_upgrade_node(){
   sleep 10
 
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR} for upgrade"
-  ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
+  ${FUN_BASE_DIR}/bin/mysqld --no-defaults  --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
     --loose-debug-sync-timeout=600 \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
@@ -421,7 +430,7 @@ pxc_upgrade_node(){
     --secure-file-priv= --loose-innodb-status-file=1 \
     --log-error=${FUN_LOG_ERR} \
     --socket=/tmp/node${FUN_NODE_NR}.socket --log-output=none \
-    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} > ${FUN_LOG_ERR} 2>&1 &
+    --port=${FUN_RBASE} --server-id=${FUN_NODE_NR} ${MYSQL_EXTRA_OPTIONS} > ${FUN_LOG_ERR} 2>&1 &
 
   for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
     sleep 1
@@ -546,6 +555,20 @@ function test_row_format_tbl(){
   sysbench /usr/share/sysbench/oltp_insert.lua --mysql-db=test_row_format --mysql-user=root --db-driver=mysql --mysql-socket=/tmp/node1.socket --threads=5 --tables=5 --table-size=1000 --time=10 run > $WORKDIR/logs/sysbench_test_row_format.log 2>&1
 }
 
+function innodb_options_test(){
+  if [[ "${MYSQL_EXTRA_OPTIONS}" != *"--innodb_file_per_table=OFF"* ]]; then
+     echo "Creating a table outside data directory"
+     ${LOWER_BASEDIR}/bin/mysql -uroot --socket=/tmp/node1.socket --force -e "CREATE TABLE test.sbtest1copy (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) DATA DIRECTORY = '$WORKDIR' ENGINE=InnoDB;"
+     if [ $? -ne 0 ]; then
+        echo "ERR: The table could not be created"
+        exit 1
+     else
+        echo "The table was created successfully"
+     fi
+     ${LOWER_BASEDIR}/bin/mysql -uroot --socket=/tmp/node1.socket --force -e "insert into test.sbtest1copy select * from test.sbtest1;"
+  fi
+}
+
 #
 # Install cluster from previous version
 #
@@ -567,6 +590,7 @@ fi
 create_regular_tbl
 create_partition_tbl
 test_row_format_tbl
+innodb_options_test
 
 #
 # Upgrading node2 to the new version
