@@ -10,6 +10,7 @@ CONFIG_EXTRA=""
 RS_ARBITER=0
 CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
+PBMDIR=""
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -19,8 +20,8 @@ fi
 # Check if we have a functional getopt(1)
 if ! getopt --test
 then
-    go_out="$(getopt --options=mrsahe:b:tc: \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,bindir:,mongodExtra:,mongosExtra:,configExtra:,encrypt,cipherMode: \
+    go_out="$(getopt --options=mrsahe:b:tc:p \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,mongodExtra:,mongosExtra:,configExtra:,encrypt,cipherMode:,pbmDir: \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -57,12 +58,13 @@ do
     echo -e "-s, --sCluster\t\t\t run sharding cluster (2 replica sets with 3 nodes each)"
     echo -e "-a, --arbiter\t\t\t instead of 3 nodes in replica set add 2 nodes and 1 arbiter"
     echo -e "-e<se>, --storageEngine=<se>\t specify storage engine for data nodes (wiredTiger, rocksdb, mmapv1)"
-    echo -e "-b<path>, --bindir<path>\t specify binary directory if running from some other location (this should end with /bin)"
+    echo -e "-b<path>, --binDir<path>\t specify binary directory if running from some other location (this should end with /bin)"
     echo -e "--mongodExtra=\"...\"\t\t specify extra options to pass to mongod"
     echo -e "--mongosExtra=\"...\"\t\t specify extra options to pass to mongos"
     echo -e "--configExtra=\"...\"\t\t specify extra options to pass to config server"
     echo -e "-t, --encrypt\t\t\t enable data at rest encryption (wiredTiger only)"
     echo -e "-c<mode>, --cipherMode=<mode>\t specify cipher mode for encryption (AES256-CBC or AES256-GCM)"
+    echo -e "-p<path>, --pbmDir<path>\t if specified enables Percona Backup for MongoDB (starts agents and coordinator)"
     echo -e "-h, --help\t\t\t this help"
     exit 0
     ;;
@@ -95,9 +97,14 @@ do
     CIPHER_MODE="$1"
     shift
     ;;
-  -b | --bindir )
+  -b | --binDir )
     shift
     BINDIR="$1"
+    shift
+    ;;
+  -p | --pbmDir )
+    shift
+    PBMDIR="$1"
     shift
     ;;
   esac
@@ -125,6 +132,17 @@ elif [ ! -x "${BINDIR}/mongo" ]; then
   exit 1
 fi
 
+if [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbmctl" ]; then
+  echo "${PBMDIR}/pbmctl doesn't exists or is not executable!"
+  exit 1
+elif [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm-agent" ]; then
+  echo "${PBMDIR}/pbm-agent doesn't exists or is not executable!"
+  exit 1
+elif [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm-coordinator" ]; then
+  echo "${PBMDIR}/pbm-coordinator doesn't exists or is not executable!"
+  exit 1
+fi
+
 if [ -d ${NODESDIR} ]; then
   echo "${NODESDIR} already exists"
   exit 1
@@ -134,6 +152,34 @@ fi
 
 VERSION_FULL=$(${BINDIR}/mongod --version|head -n1|sed 's/db version v//')
 VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
+
+start_pbm_coordinator(){
+  if [ ! -z "${PBMDIR}" ]; then
+    mkdir -p "${NODESDIR}/pbm-coordinator"
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "echo \"Starting pbm-coordinator on port 10000\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdouterr.out 2>&1 &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+
+    # create a symlink to pbmctl
+    ln -s ${PBMDIR}/pbmctl ${NODESDIR}/pbmctl
+  fi
+}
+
+start_pbm_agent(){
+  local FUN_NDIR="$1"
+  local FUN_NPORT="$2"
+
+  if [ ! -z "${PBMDIR}" ]; then
+    mkdir -p "${FUN_NDIR}/pbm-agent/backup"
+    echo "#!/usr/bin/env bash" > ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "echo \"Starting pbm-agent for mongod on port ${FUN_NPORT}\"" >> ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --mongodb-port=${FUN_NPORT} --backup-dir=${FUN_NDIR}/pbm-agent/backup --server-address=127.0.0.1:10000 --log-file=${FUN_NDIR}/pbm-agent/pbm-agent.log --pid-file=${FUN_NDIR}/pbm-agent/pbm-agent.pid 1>${FUN_NDIR}/pbm-agent/stdouterr.out 2>&1 &" >> ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
+    chmod +x ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
+    ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
+  fi
+}
 
 start_mongod(){
   local NDIR="$1"
@@ -226,15 +272,31 @@ start_replicaset(){
   chmod +x ${RSDIR}/stop_rs.sh
   chmod +x ${RSDIR}/cl_primary.sh
   ${RSDIR}/init_rs.sh
+
+  # start PBM agents for replica set nodes
+  for i in 1 2 3; do
+    if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
+      start_pbm_agent "${RSDIR}/node${i}" "$(($RSBASEPORT + ${i} - 1))"
+    fi
+  done
 }
+
+# start PBM coordinator if PBM directory specified
+start_pbm_coordinator
 
 if [ "${LAYOUT}" == "single" ]; then
   mkdir -p "${NODESDIR}"
   start_mongod "${NODESDIR}" "nors" "27017" "${STORAGE_ENGINE}" "${MONGOD_EXTRA}"
+
+  if [[ "${MONGOD_EXTRA}" == *"replSet"* ]]; then
+    ${BINDIR}/mongo localhost:27017 --quiet --eval 'rs.initiate()'
+    start_pbm_agent "${NODESDIR}" "27017"
+  fi
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
   mkdir -p "${NODESDIR}"
+  # start replica set
   start_replicaset "${NODESDIR}" "rs1" "27017" "${MONGOD_EXTRA}"
 fi
 
@@ -263,10 +325,12 @@ if [ "${LAYOUT}" == "sh" ]; then
     sleep 15
     ${BINDIR}/mongo localhost:${CFGPORT} --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
   fi
+  start_pbm_agent "${NODESDIR}/${CFGRSNAME}" "${CFGPORT}"
 
   # setup 2 data replica sets
   start_replicaset "${NODESDIR}/${RS1NAME}" "${RS1NAME}" "${RS1PORT}" "--shardsvr ${MONGOD_EXTRA}"
   start_replicaset "${NODESDIR}/${RS2NAME}" "${RS2NAME}" "${RS2PORT}" "--shardsvr ${MONGOD_EXTRA}"
+
   # create managing scripts
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "echo \"=== Starting sharding server: ${SHNAME} on port ${SHPORT} ===\"" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
@@ -302,5 +366,8 @@ if [ "${LAYOUT}" == "sh" ]; then
   ${BINDIR}/mongo localhost:${SHPORT} --quiet --eval "sh.addShard(\"${RS2NAME}/localhost:${RS2PORT}\")"
   echo -e "\n>>> Enable sharding on specific database with: sh.enableSharding(\"<database>\") <<<"
   echo -e ">>> Shard a collection with: sh.shardCollection(\"<database>.<collection>\", { <key> : <direction> } ) <<<\n"
+
+  # start a PBM agent on the mongos node (currently required)
+  start_pbm_agent "${NODESDIR}/${SHNAME}" "${SHPORT}"
 fi
 
