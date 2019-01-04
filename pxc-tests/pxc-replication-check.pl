@@ -103,7 +103,7 @@ sub dbconnect {
   my $host=shift(@_);
   my @host_port = split(':', $host);
   $dsn="DBI:mysql:database=$database;host=$host_port[0];port=$host_port[1]"; # host appended
-  return(DBI->connect($dsn, $user, $password, { 'RaiseError' => 1, 'AutoCommit' => 1 }));
+  return(DBI->connect($dsn, $user, $password, { 'RaiseError' => 0, 'PrintError' => 1, 'AutoCommit' => 1 }));
 }
 
 # check to make sure node is in GTID mode and synced
