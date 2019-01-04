@@ -1,33 +1,34 @@
 #!/usr/bin/perl
-
-use strict;
-use warnings;
-use Getopt::Std;
-use DBI;
-
 # PXC GTID replication consistency checker
-
-# david.bennett@percona.com - 2015-03-25
+# Created by David Bennett, Percona LLC
+# Updated by Ramesh Sivaraman, Percona LLC
 
 # This script is designed to monitor IST replication state between
 # PXC wsrep nodes for various SQL instructions.  An example of a
 # bug this will test is for is lp1421360.  For reliable results,
 # make sure there is no other traffic on the test cluster
 
+use strict;
+use warnings;
+use Getopt::Std;
+use DBI;
+
+
+
 my $VERSION='1.1';
 
 ### default config section, this can all be specified on command line ###
 
 # first node in array is donor
-my @nodes=('localhost');
-my $user='root';
-my $password='password';
+my @nodes=('127.0.0.1:3306');
+my $user='sysbench_user';
+my $password='test';
 my $database='test';
 my $waitforIST=1;  # seconds
 my $input='';
 my $dsn;
 
-# this is the default SQL instructions that will be read 
+# this is the default SQL instructions that will be read
 my $data=<<'_EOD_';
 
 CREATE TABLE IF NOT EXISTS `my_test_table` (`id` INT PRIMARY KEY AUTO_INCREMENT, `value` CHAR(32)) ENGINE=InnoDB;
@@ -94,18 +95,20 @@ _EOD_
 
 # connect to a host
 #
-# parameter: {host address}
+# parameter: {host address:port}
 #
 # returns:  {db handle}
 #
 sub dbconnect {
   my $host=shift(@_);
-  return(DBI->connect($dsn.$host, $user, $password,{ 'RaiseError' => 1, 'AutoCommit' => 1 }));
+  my @host_port = split(':', $host);
+  $dsn="DBI:mysql:database=$database;host=$host_port[0];port=$host_port[1]"; # host appended
+  return(DBI->connect($dsn, $user, $password, { 'RaiseError' => 1, 'AutoCommit' => 1 }));
 }
 
 # check to make sure node is in GTID mode and synced
 #
-# parameters: {host address}
+# parameters: {host address:port}
 #
 # returns: 2 on success, !2 on failure
 #
@@ -170,7 +173,7 @@ sub get_last_transaction {
 # parameters: {db handle}
 #
 # returns (glgtn ref): { 'local' => {#}, 'cluster' => {#}, 'wsrep_last_committed' => {#} }
-# 
+#
 sub get_latest_gtid_transaction_numbers {
   my $ret={'local'=>0,'cluster'=>0,'wsrep_last_committed'=>0};
   my $dbh=shift(@_);
@@ -193,9 +196,9 @@ sub get_latest_gtid_transaction_numbers {
       }
     }
   }
-  # get wsrep_last_committed  
+  # get wsrep_last_committed
   $sth=$dbh->prepare("SELECT VARIABLE_VALUE FROM ".
-     "INFORMATION_SCHEMA.SESSION_STATUS WHERE " .
+     "performance_schema.session_status WHERE " .
      "VARIABLE_NAME = 'wsrep_last_committed'");
   $sth->execute();
   if (my $row=$sth->fetchrow_hashref()) {
@@ -210,7 +213,7 @@ sub get_latest_gtid_transaction_numbers {
 # parameters: {host addr}, {glgtn ref before}, {glgtn ref after},
 #             {'joinerMode'=>0|1}}
 #
-# returns: number of errors reported 
+# returns: number of errors reported
 #
 sub report_replication_consistency {
   my $errs=0;
@@ -248,7 +251,7 @@ sub report_replication_consistency {
 }
 
 # get master status postion
-# 
+#
 # parameters: {db handle}
 #
 sub get_master_status_position {
@@ -278,16 +281,16 @@ replication and the WSREP syncronization status to insure that everything
 that is written to the binary log is replicated to the WSREP cluster.
 
 Note: In order for this script to run properly,  you must have a cluster
-setup and fully Synced with GTID mode on.  
+setup and fully Synced with GTID mode on.
 
 Options:
 -h,--help\tPrints this help message and exits.
 -i\t\tThe input file to read SQL instructions from.
 \t\tBy default, the script reads from embedded \$data
 \t\t(value - can be used for standard input)
--n\t\tThe node IP address to communicate with.  If multiple
+-n\t\tThe node IP address/port (127.0.0.1:3306) to communicate with.  If multiple
 \t\tnodes are specified separated by commas, the secondary
-\t\tnodes will be checked as IST joiners. (default: localhost)
+\t\tnodes will be checked as IST joiners. (default: 127.0.0.1:3306)
 -u\t\tMySQL user account to use (default: root)
 -p\t\tMySQL password to use (default: password)
 -d\t\tMySQL database to use (default: test)
@@ -355,7 +358,7 @@ if (defined $options{i}) {
 
 # construct DSN
 
-$dsn="DBI:mysql:database=$database;host="; # host appended
+#$dsn="DBI:mysql:database=$database;port=$port;host="; # host appended
 
 # check all nodes are in GTID mode and Synced
 
@@ -393,7 +396,7 @@ for (split /^/, $data) {
     # record replication position after
     $masterPosition=get_master_status_position($dbhDonor);
     my $refDonorAfter=get_latest_gtid_transaction_numbers($dbhDonor);
-    if ($masterPosition > $lastMasterPosition) {    
+    if ($masterPosition > $lastMasterPosition) {
       # report findings
       $totalErrors += report_replication_consistency($hostDonor, $refDonorBefore, $refDonorAfter);
       # check joiners
@@ -426,4 +429,3 @@ if ($totalErrors) {
 }
 
 1;
-
