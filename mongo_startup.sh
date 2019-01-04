@@ -157,7 +157,7 @@ start_pbm_coordinator(){
   if [ ! -z "${PBMDIR}" ]; then
     mkdir -p "${NODESDIR}/pbm-coordinator"
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "echo \"Starting pbm-coordinator on port 10000\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdouterr.out 2>&1 &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
@@ -168,16 +168,17 @@ start_pbm_coordinator(){
 }
 
 start_pbm_agent(){
-  local FUN_NDIR="$1"
-  local FUN_NPORT="$2"
+  local NDIR="$1"
+  local RS="$2"
+  local NPORT="$3"
 
   if [ ! -z "${PBMDIR}" ]; then
-    mkdir -p "${FUN_NDIR}/pbm-agent/backup"
-    echo "#!/usr/bin/env bash" > ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "echo \"Starting pbm-agent for mongod on port ${FUN_NPORT}\"" >> ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --mongodb-port=${FUN_NPORT} --backup-dir=${FUN_NDIR}/pbm-agent/backup --server-address=127.0.0.1:10000 --log-file=${FUN_NDIR}/pbm-agent/pbm-agent.log --pid-file=${FUN_NDIR}/pbm-agent/pbm-agent.pid 1>${FUN_NDIR}/pbm-agent/stdouterr.out 2>&1 &" >> ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
-    chmod +x ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
-    ${FUN_NDIR}/pbm-agent/start_pbm_agent.sh
+    mkdir -p "${NDIR}/pbm-agent/backup"
+    echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS}  \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --mongodb-port=${NPORT} --backup-dir=${NDIR}/pbm-agent/backup --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid 1>${NDIR}/pbm-agent/stdouterr.out 2>&1 &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
+    ${NDIR}/pbm-agent/start_pbm_agent.sh
   fi
 }
 
@@ -265,8 +266,12 @@ start_replicaset(){
     echo "${cmd}" >> ${RSDIR}/start_rs.sh
   done
   echo "#!/usr/bin/env bash" > ${RSDIR}/cl_primary.sh
-  echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/cl_primary.sh
-  echo "${BINDIR}/mongo \${PRIMARY} \$@" >> ${RSDIR}/cl_primary.sh
+  if [ "${VERSION_MAJOR}" = "3.2" ]; then
+    echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/cl_primary.sh
+    echo "${BINDIR}/mongo \${PRIMARY} \$@" >> ${RSDIR}/cl_primary.sh
+  else
+    echo "${BINDIR}/mongo \"mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}\" \$@" >> ${RSDIR}/cl_primary.sh
+  fi
   chmod +x ${RSDIR}/init_rs.sh
   chmod +x ${RSDIR}/start_rs.sh
   chmod +x ${RSDIR}/stop_rs.sh
@@ -276,7 +281,7 @@ start_replicaset(){
   # start PBM agents for replica set nodes
   for i in 1 2 3; do
     if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-      start_pbm_agent "${RSDIR}/node${i}" "$(($RSBASEPORT + ${i} - 1))"
+      start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))"
     fi
   done
 }
@@ -290,7 +295,7 @@ if [ "${LAYOUT}" == "single" ]; then
 
   if [[ "${MONGOD_EXTRA}" == *"replSet"* ]]; then
     ${BINDIR}/mongo localhost:27017 --quiet --eval 'rs.initiate()'
-    start_pbm_agent "${NODESDIR}" "27017"
+    start_pbm_agent "${NODESDIR}" "rs1" "27017"
   fi
 fi
 
@@ -325,7 +330,7 @@ if [ "${LAYOUT}" == "sh" ]; then
     sleep 15
     ${BINDIR}/mongo localhost:${CFGPORT} --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
   fi
-  start_pbm_agent "${NODESDIR}/${CFGRSNAME}" "${CFGPORT}"
+  start_pbm_agent "${NODESDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}"
 
   # setup 2 data replica sets
   start_replicaset "${NODESDIR}/${RS1NAME}" "${RS1NAME}" "${RS1PORT}" "--shardsvr ${MONGOD_EXTRA}"
@@ -368,6 +373,6 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo -e ">>> Shard a collection with: sh.shardCollection(\"<database>.<collection>\", { <key> : <direction> } ) <<<\n"
 
   # start a PBM agent on the mongos node (currently required)
-  start_pbm_agent "${NODESDIR}/${SHNAME}" "${SHPORT}"
+  start_pbm_agent "${NODESDIR}/${SHNAME}" "nors" "${SHPORT}"
 fi
 
