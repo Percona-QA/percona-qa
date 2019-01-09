@@ -416,7 +416,9 @@ if [ "${LAYOUT}" == "sh" ]; then
   chmod +x ${NODESDIR}/stop_all.sh
   # start mongos
   ${NODESDIR}/${SHNAME}/start_mongos.sh
-  ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
+  if [ ! -z "${AUTH}" ]; then
+    ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
+  fi
   # add Shards to the Cluster
   echo "Adding shards to the cluster..."
   sleep 20
