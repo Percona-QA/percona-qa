@@ -226,6 +226,7 @@ start_mongod(){
     EXTRA="${EXTRA} --wiredTigerCacheSizeGB 1"
     if [ "${ENCRYPTION}" = "keyfile" ]; then
       openssl rand -base64 32 > ${NDIR}/mongodb-keyfile
+      chmod 600 ${NDIR}/mongodb-keyfile
       EXTRA="${EXTRA} --enableEncryption --encryptionKeyFile ${NDIR}/mongodb-keyfile --encryptionCipherMode ${CIPHER_MODE}"
     fi
   elif [ "${SE}" == "rocksdb" ]; then
