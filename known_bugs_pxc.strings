@@ -104,7 +104,7 @@ info->type == READ_CACHE .. info->type == WRITE_CACHE                           
 write_bytes > 0                                                                          ## https://jira.percona.com/browse/PXC-2247
 trx0trx.cc line 1498                                                                     ## https://jira.percona.com/browse/PXC-2248
 .connection->waiting                                                                     ## https://jira.percona.com/browse/PXC-2250
-
+ZN13MYSQL_BIN_LOG18purge_logs_by_sizeEb                                                  ## https://jira.percona.com/browse/PXC-2349
 ## =========== First frame from error log based ===========
 #Z20wsrep_provider_checkP7sys_varP3THDP7set_var                                  # Fixed ## https://jira.percona.com/browse/PXC-437
 #Z21wsrep_sst_auth_updateP7sys_varP3THD13enum_var_type                           # Fixed  ## https://jira.percona.com/browse/PXC-438
