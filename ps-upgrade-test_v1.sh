@@ -471,7 +471,7 @@ function start_mysql_downgrade_main(){
   PORT1=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 
   generate_cnf "${LOWER_BASEDIR}" "$mysqldatadir" "$PORT1" "mysql_lower_down"
-  ${LOWER_MID} --datadir=$mysqldatadir ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/mysql_lower_down.err 2>&1 || exit 1;
+  ${LOWER_MID} --datadir=$mysqldatadir $INIT_OPT ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/mysql_lower_down.err 2>&1 || exit 1;
   ${LOWER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/mysql_lower_down.cnf ${MYSQL_EXTRA_OPTIONS} > $WORKDIR/logs/mysql_lower_down.err 2>&1 &
   check_conn "${LOWER_BASEDIR}" "mysql_lower_down"
   if [ -f $WORKDIR/test/sbtest1copy.ibd ]; then
