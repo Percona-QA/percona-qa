@@ -365,7 +365,6 @@ pxc_start_node(){
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
-    --loose-debug-sync-timeout=600 \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
     --wsrep-provider=${FUN_WSREP_PROVIDER} \
     --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
@@ -373,7 +372,6 @@ pxc_start_node(){
     --wsrep_provider_options=${FUN_WSREP_PROVIDER_OPTIONS} \
     --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
     --core-file --log_bin --binlog_format=ROW \
@@ -422,10 +420,8 @@ pxc_upgrade_node(){
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR} for upgrade"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults  --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
-    --loose-debug-sync-timeout=600 \
     --innodb_file_per_table --innodb_autoinc_lock_mode=2 \
     --wsrep-provider='none' --innodb_flush_method=O_DIRECT \
-    --query_cache_type=0 --query_cache_size=0 \
     --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
     --core-file --log_bin --binlog_format=ROW \
@@ -613,14 +609,14 @@ test_row_format_tbl
 if [ $USE_PROXYSQL -eq 1 ]; then
   get_connection_pool
 fi
-MYSQL_VERSION=$(${LOWER_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+MYSQL_VERSION=$(${UPPER_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 GMCAST_ADDR1=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node1.socket -u root -Bse"select @@wsrep_node_address,@@port + 8" | xargs | sed 's/ /:/g')
 GMCAST_ADDR2=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node2.socket -u root -Bse"select @@wsrep_node_address,@@port + 8" | xargs | sed 's/ /:/g')
 GMCAST_ADDR3=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node3.socket -u root -Bse"select @@wsrep_node_address,@@port + 8" | xargs | sed 's/ /:/g')
 echo -e "\n\n#### Show node2 status before upgrade\n"
 show_node_status 2 $LOWER_BASEDIR 0
-LADDR=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node2.socket -u root -e "select @@wsrep_cluster_address")
-RBASE=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node2.socket -u root -e "select @@port")
+LADDR=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node2.socket -u root -Bse "select @@wsrep_cluster_address")
+RBASE=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node2.socket -u root -Bse "select @@port")
 echo "Running upgrade on node2"
 pxc_upgrade_node 2 "$MYSQL_VERSION" "${MYSQL_VARDIR}/node2" "$RBASE" "$WORKDIR/logs/node2-upgrade.err" "${UPPER_BASEDIR}"
 echo "Starting node2 after upgrade"
@@ -653,8 +649,8 @@ sleep 10
 #
 # Upgrading node3 to the new version
 #
-LADDR=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node3.socket -u root -e "select @@wsrep_cluster_address")
-RBASE=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node3.socket -u root -e "select @@port")
+LADDR=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node3.socket -u root -Bse "select @@wsrep_cluster_address")
+RBASE=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node3.socket -u root -Bse "select @@port")
 echo "Running upgrade on node3"
 pxc_upgrade_node 3 "$MYSQL_VERSION" "${MYSQL_VARDIR}/node3" "$RBASE" "$WORKDIR/logs/node3-upgrade.err" "${UPPER_BASEDIR}"
 echo "Starting node3 after upgrade"
@@ -687,8 +683,8 @@ sleep 10
 #
 # Upgrading node1 to the new version
 #
-LADDR=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node1.socket -u root -e "select @@wsrep_cluster_address")
-RBASE=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node1.socket -u root -e "select @@port")
+LADDR=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node1.socket -u root -Bse "select @@wsrep_cluster_address")
+RBASE=$(${LOWER_BASEDIR}/bin/mysql -S /tmp/node1.socket -u root -Bse "select @@port")
 echo "Running upgrade on node1"
 pxc_upgrade_node 1 "$MYSQL_VERSION" "${MYSQL_VARDIR}/node1" "$RBASE" "$WORKDIR/logs/node1-upgrade.err" "${UPPER_BASEDIR}"
 echo "Starting node1 after upgrade"
