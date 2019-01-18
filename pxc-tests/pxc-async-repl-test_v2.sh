@@ -160,6 +160,35 @@ if [[ -z ${TCOUNT} ]]; then
   TCOUNT=16
 fi
 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 rm -rf $WORKDIR/*
 mkdir -p $WORKDIR/logs
@@ -237,6 +266,7 @@ else
   fi
 fi
 PXC_BASEDIR="${ROOT_FS}/$PXCBASE"
+declare MYSQL_VERSION=$(${PXC_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 
 #Check Percona Toolkit binary tar ball
 PT_TAR=`ls -1td ?ercona-?oolkit* 2>/dev/null | grep ".tar" | head -n1`
@@ -286,9 +316,9 @@ sysbench_run(){
 }
 
 #mysql install db check
-if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]]; then
+if check_for_version $MYSQL_VERSION "5.7.0" ; then
   MID="${PXC_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PXC_BASEDIR}"
-elif [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]]; then
+else
   MID="${PXC_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PXC_BASEDIR}"
 fi
 
@@ -302,7 +332,7 @@ check_cmd(){
 #Setting PXC strict mode for running PT table checksum.
 set_pxc_strict_mode(){
   MODE=$1
-  if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]]; then
+  if check_for_version $MYSQL_VERSION "5.7.0" ; then
     $PXC_BASEDIR/bin/mysql --socket=/tmp/pxc1.sock -u root -e "set global pxc_strict_mode=$MODE"
   fi
 }
@@ -324,7 +354,7 @@ function async_rpl_test(){
       echoit "Starting PXC node${i}"
 	  node="${WORKDIR}/node${i}"
 	  rm -rf $node
-      if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
       fi
 	  
@@ -435,7 +465,7 @@ function async_rpl_test(){
       echoit "Starting independent PS node${i}.."
 	  node="${WORKDIR}/psnode${i}"
 	  rm -rf $node
-      if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
       fi
 	  
@@ -1036,7 +1066,7 @@ function async_rpl_test(){
   	  elif [[ "$i" == "pxc_master_slave_shuffle_test" ]]; then
   	    pxc_master_slave_shuffle_test
   	  elif [[ "$i" == "pxc_msr_test" ]]; then
-        if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]]; then
+        if check_for_version $MYSQL_VERSION "5.7.0" ; then
           pxc_msr_test
         fi
       elif [[ "$i" == "pxc_mtr_test" ]]; then
@@ -1048,7 +1078,7 @@ function async_rpl_test(){
     node1_slave_test
     node2_slave_test
     pxc_master_slave_shuffle_test
-    if [[ "$(${PXC_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.6" ]]; then
+    if check_for_version $MYSQL_VERSION "5.7.0" ; then
       pxc_msr_test
     fi
     pxc_mtr_test
