@@ -120,8 +120,24 @@ check_for_version()
   fi
 }
 
+# Setting xtrabackup SST method
+if [[ $SST_METHOD == "xtrabackup-v2" ]];then
+  PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
+  if [ ! -z $PXB_BASE ];then
+    export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
+  else
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-8.0.4/binary/tarball/percona-xtrabackup-8.0.4-Linux-x86_64.libgcrypt20.tar.gz
+    else
+      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.13/binary/tarball/percona-xtrabackup-2.4.13-Linux-x86_64.libgcrypt20.tar.gz
+    fi
+    tar -xzf percona-xtrabackup*.tar.gz
+    PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
+    export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
+  fi
+fi
+
 SKIP_RQG_AND_BUILD_EXTRACT=0
-sst_method="rsync"
 NODES=2
 PXC_START_TIMEOUT=300
 
@@ -214,10 +230,9 @@ echo "[mysqld]" > my-template.cnf
 echo "basedir=${PXCBASEDIR}" >> my-template.cnf
 echo "innodb_file_per_table" >> my-template.cnf
 echo "innodb_autoinc_lock_mode=2" >> my-template.cnf
-echo "innodb_locks_unsafe_for_binlog=1" >> my-template.cnf
 echo "wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so" >> my-template.cnf
 echo "wsrep_node_incoming_address=$ADDR" >> my-template.cnf
-echo "wsrep_sst_method=xtrabackup-v2" >> my-template.cnf
+echo "wsrep_sst_method=$SST_METHOD" >> my-template.cnf
 echo "wsrep_sst_auth=$SUSER:$SPASS" >> my-template.cnf
 echo "wsrep_node_address=$ADDR" >> my-template.cnf
 echo "core-file" >> my-template.cnf
@@ -247,23 +262,6 @@ if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
     sudo ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.6
   fi
 fi
-
-# Setting xtrabackup SST method
-if [[ $sst_method == "xtrabackup" ]];then
-  PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
-  if [ ! -z $PXB_BASE ];then
-    export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
-  else
-    if check_for_version $MYSQL_VERSION "8.0.0" ; then
-      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-8.0.4/binary/tarball/percona-xtrabackup-8.0.4-Linux-x86_64.libgcrypt20.tar.gz
-    else
-      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.13/binary/tarball/percona-xtrabackup-2.4.13-Linux-x86_64.libgcrypt20.tar.gz
-    tar -xzf percona-xtrabackup*.tar.gz
-    PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
-    export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
-  fi
-fi
-
 
 # Setting seeddb creation configuration
 KEY_RING_CHECK=0
@@ -412,8 +410,8 @@ sst_encryption_run(){
   wait ${SYSBENCH_PID} 2>/dev/null
   TEST_TIME=$((`date '+%s'` - TEST_START_TIME))
 
-  TABLE_ROW_COUNT_NODE1=`${PXCBASEDIR}/bin/mysql -uroot --socket=/tmp/n1.sock -e"select count(1) from test.sbtest11"`
-  TABLE_ROW_COUNT_NODE2=`${PXCBASEDIR}/bin/mysql -uroot --socket=/tmp/n2.sock -e"select count(1) from test.sbtest11"`
+  TABLE_ROW_COUNT_NODE1=`${PXCBASEDIR}/bin/mysql -uroot --socket=/tmp/n1.sock -Bse"select count(1) from test.sbtest11"`
+  TABLE_ROW_COUNT_NODE2=`${PXCBASEDIR}/bin/mysql -uroot --socket=/tmp/n2.sock -Bse"select count(1) from test.sbtest11"`
 
   if  [[ ( -z $TABLE_ROW_COUNT_NODE1 ) &&  (  -z $TABLE_ROW_COUNT_NODE2 ) ]] ;then
     TABLE_ROW_COUNT_NODE1=1;
@@ -450,9 +448,11 @@ test_result(){
   printf "%-82s\n" | tr " " "="
 }
 
-echoit "Starting SST test using mysqldump"
-sst_encryption_run mysqldump_sst
-test_result "mysqldump SST"
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
+  echoit "Starting SST test using mysqldump"
+  sst_encryption_run mysqldump_sst
+  test_result "mysqldump SST"
+fi
 echoit "Starting SST test using xtrabackup with encryption key"
 sst_encryption_run xtrabackup_encrypt
 test_result "xtrabackup SST (encryption key)"
@@ -474,4 +474,3 @@ sst_encryption_run xtrabackup_tkey shuffle_test
 test_result "xtrabackup SST with different key and certificate files"
 
 exit 0
-
