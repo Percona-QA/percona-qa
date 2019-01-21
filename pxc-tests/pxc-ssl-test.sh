@@ -402,14 +402,12 @@ sst_encryption_run(){
 
   echoit "Initiated sysbench read write run ..."
   sysbench_run oltp
-  sysbench $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run > ${WORKDIR}/logs/sysbench_rw_run.log 2>&1 &
+  sysbench $SYSBENCH_OPTIONS --mysql-socket=/tmp/n1.sock run > ${WORKDIR}/logs/sysbench_rw_run.log 2>&1
   SYSBENCH_PID="$!"
-
-  sleep 100
   kill -9 $SYSBENCH_PID
   wait ${SYSBENCH_PID} 2>/dev/null
   TEST_TIME=$((`date '+%s'` - TEST_START_TIME))
-
+  sleep 10
   TABLE_ROW_COUNT_NODE1=`${PXCBASEDIR}/bin/mysql -uroot --socket=/tmp/n1.sock -Bse"select count(1) from test.sbtest11"`
   TABLE_ROW_COUNT_NODE2=`${PXCBASEDIR}/bin/mysql -uroot --socket=/tmp/n2.sock -Bse"select count(1) from test.sbtest11"`
 
