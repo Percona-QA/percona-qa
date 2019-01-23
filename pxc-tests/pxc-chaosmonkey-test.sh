@@ -3,9 +3,149 @@
 # This script is for PXC ChaosMonkey Style testing
 # Need to execute this script from PXC basedir
 
-BUILD=$(pwd)
+# Dispay script usage details
+usage () {
+  echo "Usage:"
+  echo "./pxc-ssl-test.sh  --workdir=PATH"
+  echo ""
+  echo "Additional options:"
+  echo "  -w, --workdir=PATH                     Specify work directory"
+  echo "  -b, --build-number=NUMBER              Specify work build directory"
+  echo "  -s, --sst-method=[rsync|xtrabackup-v2] Specify SST method for cluster data transfer"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=w:b:s:h --longoptions=workdir:,build-number:,sst-method:,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
+  exit 1
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    -w | --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    -b | --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    -s | --sst-method )
+    export SST_METHOD="$2"
+    shift 2
+    if [[ "$SST_METHOD" != "rsync" ]] && [[ "$SST_METHOD" != "xtrabackup-v2" ]] ; then
+      echo "ERROR: Invalid --sst-method passed:"
+      echo "  Please choose any of these sst-method options: 'rsync' or 'xtrabackup-v2'"
+      exit 1
+    fi
+    ;;
+    -h | --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
+
+
+# generic variables
+if [[ -z "$WORKDIR" ]]; then
+  export WORKDIR=${PWD}
+fi
+ROOT_FS=$WORKDIR
+if [[ -z "$SST_METHOD" ]]; then
+  export SST_METHOD="xtrabackup-v2"
+fi
+
+cd $ROOT_FS
+WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+mkdir -p $WORKDIR/logs
+
+rm -rf ${WORKDIR}/pxc_chaosmonkey_testing.log &> /dev/null
+echoit(){
+  echo "[$(date +'%T')] $1"
+  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/pxc_chaosmonkey_testing.log; fi
+}
+
+#Check PXC binary tar ball
+PXC_TAR=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep ".tar" | head -n1`
+if [[ ! -z $PXC_TAR ]];then
+  tar -xzf $PXC_TAR
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+else
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PXCBASE ]] ; then
+    echoit "ERROR! Could not find PXC base directory."
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+  fi
+fi
+PXCBASEDIR="${ROOT_FS}/$PXCBASE"
+
+# Setting xtrabackup SST method
+if [[ $SST_METHOD == "xtrabackup-v2" ]];then
+  PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
+  if [ ! -z $PXB_BASE ];then
+    export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
+  else
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-8.0.4/binary/tarball/percona-xtrabackup-8.0.4-Linux-x86_64.libgcrypt20.tar.gz
+    else
+      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.13/binary/tarball/percona-xtrabackup-2.4.13-Linux-x86_64.libgcrypt20.tar.gz
+    fi
+    tar -xzf percona-xtrabackup*.tar.gz
+    PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
+    export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
+  fi
+fi
+
+declare MYSQL_VERSION=$(${PXCBASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
 SKIP_RQG_AND_BUILD_EXTRACT=0
-sst_method="rsync"
 NODES=7
 PXC_START_TIMEOUT=300
 
@@ -37,33 +177,26 @@ sysbench_run(){
   fi
 }
 
-rm -rf ${BUILD}/pxc_chaosmonkey_testing.log &> /dev/null
-echoit(){
-  echo "[$(date +'%T')] $1"
-  if [ "${BUILD}" != "" ]; then echo "[$(date +'%T')] $1" >> ${BUILD}/pxc_chaosmonkey_testing.log; fi
-}
-
-if [ ! -r ${BUILD}/bin/mysqld ]; then
+if [ ! -r ${PXCBASEDIR}/bin/mysqld ]; then
   echoit "Please execute the script from PXC basedir"
   exit 1
 fi
 
 echoit "Starting $NODES node cluster for ChaosMonkey testing"
 # Creating default my.cnf file
-echo "[mysqld]" > my.cnf
-echo "basedir=${BUILD}" >> my.cnf
-echo "innodb_file_per_table" >> my.cnf
-echo "innodb_autoinc_lock_mode=2" >> my.cnf
-echo "innodb_locks_unsafe_for_binlog=1" >> my.cnf
-echo "wsrep-provider=${BUILD}/lib/libgalera_smm.so" >> my.cnf
-echo "wsrep_node_incoming_address=$ADDR" >> my.cnf
-echo "wsrep_sst_method=rsync" >> my.cnf
-echo "wsrep_sst_auth=$SUSER:$SPASS" >> my.cnf
-echo "wsrep_node_address=$ADDR" >> my.cnf
-echo "core-file" >> my.cnf
-echo "log-output=none" >> my.cnf
-echo "server-id=1" >> my.cnf
-echo "wsrep_slave_threads=2" >> my.cnf
+echo "[mysqld]" > $WORKDIR/my.cnf
+echo "basedir=${PXCBASEDIR}" >> $WORKDIR/my.cnf
+echo "innodb_file_per_table" >> $WORKDIR/my.cnf
+echo "innodb_autoinc_lock_mode=2" >> $WORKDIR/my.cnf
+echo "wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so" >> $WORKDIR/my.cnf
+echo "wsrep_node_incoming_address=$ADDR" >> $WORKDIR/my.cnf
+echo "wsrep_sst_method=$SST_METHOD" >> $WORKDIR/my.cnf
+echo "wsrep_sst_auth=$SUSER:$SPASS" >> $WORKDIR/my.cnf
+echo "wsrep_node_address=$ADDR" >> $WORKDIR/my.cnf
+echo "core-file" >> $WORKDIR/my.cnf
+echo "log-output=none" >> $WORKDIR/my.cnf
+echo "server-id=1" >> $WORKDIR/my.cnf
+echo "wsrep_slave_threads=2" >> $WORKDIR/my.cnf
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
@@ -85,27 +218,24 @@ fi
 if [[ $sst_method == "xtrabackup" ]];then
   PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
   if [ ! -z $PXB_BASE ];then
-    export PATH="$BUILD/$PXB_BASE/bin:$PATH"
+    export PATH="$PXCBASEDIR/$PXB_BASE/bin:$PATH"
   else
     wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/*zip*/archive.zip
     unzip archive.zip
     tar -xzf archive/TARGET/*.tar.gz
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
-    export PATH="$BUILD/$PXB_BASE/bin:$PATH"
+    export PATH="$PXCBASEDIR/$PXB_BASE/bin:$PATH"
   fi
 fi
 
 # Setting seeddb creation configuration
 KEY_RING_CHECK=0
-if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  MID="${BUILD}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BUILD}"
+if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+  MID="${PXCBASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PXCBASEDIR}"
   KEY_RING_CHECK=1
-elif [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-  MID="${BUILD}/scripts/mysql_install_db --no-defaults --basedir=${BUILD}"
+else
+  MID="${PXCBASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PXCBASEDIR}"
 fi
-
-# Creating logs dir to save sysbench run log.
-mkdir -p ${BUILD}/logs
 
 MPID_ARRAY=()
 function start_multi_node(){
@@ -113,17 +243,17 @@ function start_multi_node(){
     RBASE1="$(( RBASE + ( 100 * $i ) ))"
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
-    node="${BUILD}/node$i"
-    keyring_node="${BUILD}/keyring_node$i"
+    node="${WORKDIR}/node$i"
+    keyring_node="${WORKDIR}/keyring_node$i"
 
-    if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
+    if [ "$(${PXCBASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
       mkdir -p $node $keyring_node
       if  [ ! "$(ls -A $node)" ]; then
-        ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
+        ${MID} --datadir=$node  > ${WORKDIR}/logs/startup_node$i.err 2>&1 || exit 1;
       fi
     fi
     if [ ! -d $node ]; then
-      ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
+      ${MID} --datadir=$node  > ${WORKDIR}/logs/startup_node$i.err 2>&1 || exit 1;
     fi
     if [ $KEY_RING_CHECK -eq 1 ]; then
       KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node/keyring"
@@ -134,7 +264,7 @@ function start_multi_node(){
       WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
     fi
 
-    ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
+    ${PXCBASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/my.cnf \
       --datadir=$node $WSREP_CLUSTER_ADD \
       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
       --log-error=$node/node$i.err $KEY_RING_OPTIONS \
@@ -142,7 +272,7 @@ function start_multi_node(){
     MPID_ARRAY+=("$!")
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
-      if ${BUILD}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
+      if ${PXCBASEDIR}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
         echoit "Started PXC node$i. Socket : $node/socket.sock"
         break
       fi
@@ -153,17 +283,17 @@ function start_multi_node(){
 start_multi_node
 # PXC cluster size info
 echoit "Checking wsrep cluster size status.."
-${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+${PXCBASEDIR}/bin/mysql -uroot --socket=${WORKDIR}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 
-${BUILD}/bin/mysql  -uroot --socket=${BUILD}/node1/socket.sock -e"drop database if exists test;create database test"
+${PXCBASEDIR}/bin/mysql  -uroot --socket=${WORKDIR}/node1/socket.sock -e"drop database if exists test;create database test"
 #sysbench data load
 echoit "Running sysbench load data..."
 sysbench_run load_data test
-sysbench $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock prepare > ${BUILD}/logs/sysbench_load.log 2>&1
+sysbench $SYSBENCH_OPTIONS --mysql-socket=${WORKDIR}/node1/socket.sock prepare > ${WORKDIR}/logs/sysbench_load.log 2>&1
 #sysbench OLTP run
 echoit "Initiated sysbench read write run ..."
 sysbench_run oltp test
-sysbench $SYSBENCH_OPTIONS --mysql-socket=${BUILD}/node1/socket.sock run > ${BUILD}/logs/sysbench_rw_run.log 2>&1 &
+sysbench $SYSBENCH_OPTIONS --mysql-socket=${WORKDIR}/node1/socket.sock run > ${WORKDIR}/logs/sysbench_rw_run.log 2>&1 &
 SYSBENCH_PID="$!"
 
 function recovery_test(){
@@ -182,22 +312,22 @@ function recovery_test(){
   sleep 30
 
   if [ $KEY_RING_CHECK -eq 1 ]; then
-    KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${BUILD}/keyring_node$NUM/keyring"
+    KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${WORKDIR}/keyring_node$NUM/keyring"
   fi
   # Restarting forcefully killed PXC node.
   echoit "Restarting forcefully killed PXC node."
   RBASE1="$(( RBASE + ( 100 * $NUM ) ))"
   LADDR1="$ADDR:$(( RBASE1 + 8 ))"
-  ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
-     --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
+  ${PXCBASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/my.cnf \
+     --datadir=${WORKDIR}/node$NUM $WSREP_CLUSTER_ADD \
      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-     --log-error=${BUILD}/node$NUM/node$NUM.err $KEY_RING_OPTIONS \
-     --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 > ${BUILD}/node$NUM/node$NUM.err 2>&1 &
+     --log-error=${WORKDIR}/node$NUM/node$NUM.err $KEY_RING_OPTIONS \
+     --socket=${WORKDIR}/node$NUM/socket.sock --port=$RBASE1 > ${WORKDIR}/node$NUM/node$NUM.err 2>&1 &
   MPID_ARRAY+=("$!")
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock ping > /dev/null 2>&1; then
+    if ${PXCBASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node$NUM/socket.sock ping > /dev/null 2>&1; then
       echoit "Started forcefully killed node"
       break
     fi
@@ -205,7 +335,7 @@ function recovery_test(){
 
   # PXC cluster size info
   echoit "Checking wsrep cluster size status.."
-  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+  ${PXCBASEDIR}/bin/mysql -uroot --socket=${WORKDIR}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 }
 
 function multi_recovery_test(){
@@ -223,22 +353,22 @@ function multi_recovery_test(){
   for j in `seq 0 2`;do
     let NUM=${rand_nodes[$j]}+1
     if [ $KEY_RING_CHECK -eq 1 ]; then
-      KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${BUILD}/keyring_node$NUM/keyring"
+      KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${WORKDIR}/keyring_node$NUM/keyring"
     fi
     # Restarting forcefully killed PXC node.
     echoit "Restarting forcefully killed PXC node."
     RBASE1="$(( RBASE + ( 100 * $NUM ) ))"
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
-    ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
-     --datadir=${BUILD}/node$NUM $WSREP_CLUSTER_ADD \
+    ${PXCBASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/my.cnf \
+     --datadir=${WORKDIR}/node$NUM $WSREP_CLUSTER_ADD \
      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-     --log-error=${BUILD}/node$NUM/node$NUM.err $KEY_RING_OPTIONS \
-     --socket=${BUILD}/node$NUM/socket.sock --port=$RBASE1 > ${BUILD}/node$NUM/node$NUM.err 2>&1 &
+     --log-error=${WORKDIR}/node$NUM/node$NUM.err $KEY_RING_OPTIONS \
+     --socket=${WORKDIR}/node$NUM/socket.sock --port=$RBASE1 > ${WORKDIR}/node$NUM/node$NUM.err 2>&1 &
     MPID_ARRAY+=("$!")
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
-      if ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock ping > /dev/null 2>&1; then
+      if ${PXCBASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node$NUM/socket.sock ping > /dev/null 2>&1; then
         echoit "Started forcefully killed node"
         break
       fi
@@ -246,7 +376,7 @@ function multi_recovery_test(){
 
     # PXC cluster size info
     echoit "Checking wsrep cluster size status.."
-    ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+    ${PXCBASEDIR}/bin/mysql -uroot --socket=${WORKDIR}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
   done
 }
 
@@ -255,14 +385,14 @@ function node_joining(){
   RBASE1="$(( RBASE + ( 100 * $i ) ))"
   LADDR1="$ADDR:$(( RBASE1 + 8 ))"
   WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
-  node="${BUILD}/node$i"
-  keyring_node="${BUILD}/keyring_node$i"
+  node="${WORKDIR}/node$i"
+  keyring_node="${WORKDIR}/keyring_node$i"
 
-  if [ "$(${BUILD}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
+  if [ "$(${PXCBASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
     mkdir -p $node $keyring_node
   fi
   if [ ! -d $node ]; then
-    ${MID} --datadir=$node  > ${BUILD}/logs/startup_node$i.err 2>&1 || exit 1;
+    ${MID} --datadir=$node  > ${WORKDIR}/logs/startup_node$i.err 2>&1 || exit 1;
   fi
   if [ $KEY_RING_CHECK -eq 1 ]; then
     KEY_RING_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=$keyring_node/keyring"
@@ -275,15 +405,15 @@ function node_joining(){
 
   # Adding PXC node.
   echoit "Adding PXC node."
-  ${BUILD}/bin/mysqld --defaults-file=${BUILD}/my.cnf \
-     --datadir=${BUILD}/node$i $WSREP_CLUSTER_ADD \
+  ${PXCBASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/my.cnf \
+     --datadir=${WORKDIR}/node$i $WSREP_CLUSTER_ADD \
      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
      --log-error=$node/node$i.err $KEY_RING_OPTIONS \
      --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BUILD}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
+    if ${PXCBASEDIR}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
       echoit "Started PXC node$i. Socket : $node/socket.sock"
       break
     fi
@@ -291,7 +421,7 @@ function node_joining(){
 
   # PXC cluster size info
   echoit "Checking wsrep cluster size status.."
-  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+  ${PXCBASEDIR}/bin/mysql -uroot --socket=${WORKDIR}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 }
 
 function node_leaving(){
@@ -302,15 +432,15 @@ function node_leaving(){
   done
   # Shutting down random PXC node
   echoit "Shutting PXC node$NUM"
-  ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$NUM/socket.sock shutdown
-  echoit "Server on socket ${BUILD}/node$NUM/socket.sock with datadir ${BUILD}/node$NUM halted"
+  ${PXCBASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node$NUM/socket.sock shutdown
+  echoit "Server on socket ${WORKDIR}/node$NUM/socket.sock with datadir ${WORKDIR}/node$NUM halted"
 
   let NUM=$NUM-1
   MPID_ARRAY=(${MPID_ARRAY[@]:0:$NUM} ${MPID_ARRAY[@]:$(($NUM + 1))})
 
   # PXC cluster size info
   echoit "Checking wsrep cluster size status.."
-  ${BUILD}/bin/mysql -uroot --socket=${BUILD}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
+  ${PXCBASEDIR}/bin/mysql -uroot --socket=${WORKDIR}/node1/socket.sock -e "show status like 'wsrep_cluster_size'";
 }
 
 echoit "** Starting multi node recovery test"
@@ -330,7 +460,7 @@ wait ${SYSBENCH_PID} 2>/dev/null
 echoit "Shutting down PXC nodes"
 let NODES=$NODES+1
 for i in `seq 1 $NODES`;do
-  ${BUILD}/bin/mysqladmin -uroot -S${BUILD}/node$i/socket.sock shutdown &> /dev/null
-  echoit "Server on socket ${BUILD}/node$i/socket.sock with datadir ${BUILD}/node$i halted"
+  ${PXCBASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node$i/socket.sock shutdown &> /dev/null
+  echoit "Server on socket ${WORKDIR}/node$i/socket.sock with datadir ${WORKDIR}/node$i halted"
 done
 

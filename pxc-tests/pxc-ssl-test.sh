@@ -268,7 +268,7 @@ KEY_RING_CHECK=0
 if check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PXCBASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PXCBASEDIR}"
   KEY_RING_CHECK=1
-elif [ "$(${PXCBASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+else
   MID="${PXCBASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PXCBASEDIR}"
 fi
 
