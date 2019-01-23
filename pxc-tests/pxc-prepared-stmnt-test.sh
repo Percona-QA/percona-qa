@@ -265,7 +265,7 @@ check_script(){
 }
 
 #Initiate PXC prepared statement
-${PXCBASEDIR}/bin/mysql  -uroot -S/tmp/node1.sock -e"source $SCRIPT_PWD/prepared_statements.sql" 2>/dev/null 2>&1 &
+${PXCBASEDIR}/bin/mysql  -uroot -S/tmp/node1.sock -e"source $SCRIPT_PWD/../prepared_statements.sql" 2>/dev/null 2>&1 &
 sleep 60
 echo "Starting single node recovery test"
 kill -9 ${MPID_ARRAY[2]}
