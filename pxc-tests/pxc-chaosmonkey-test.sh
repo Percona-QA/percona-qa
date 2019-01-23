@@ -6,7 +6,7 @@
 # Dispay script usage details
 usage () {
   echo "Usage:"
-  echo "./pxc-ssl-test.sh  --workdir=PATH"
+  echo "./pxc-chaosmonkey-test.sh --workdir=PATH"
   echo ""
   echo "Additional options:"
   echo "  -w, --workdir=PATH                     Specify work directory"
@@ -68,6 +68,9 @@ fi
 ROOT_FS=$WORKDIR
 if [[ -z "$SST_METHOD" ]]; then
   export SST_METHOD="xtrabackup-v2"
+fi
+if [[ -z ${BUILD_NUMBER} ]]; then
+  BUILD_NUMBER=1001
 fi
 
 cd $ROOT_FS

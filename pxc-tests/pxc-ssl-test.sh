@@ -68,6 +68,9 @@ ROOT_FS=$WORKDIR
 if [[ -z "$SST_METHOD" ]]; then
   export SST_METHOD="xtrabackup-v2"
 fi
+if [[ -z ${BUILD_NUMBER} ]]; then
+  BUILD_NUMBER=1001
+fi
 
 cd $ROOT_FS
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
