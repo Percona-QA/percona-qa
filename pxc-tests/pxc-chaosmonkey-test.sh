@@ -249,7 +249,7 @@ function start_multi_node(){
     node="${WORKDIR}/node$i"
     keyring_node="${WORKDIR}/keyring_node$i"
 
-    if [ "$(${PXCBASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1 )" != "5.7" ]; then
+    if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
       mkdir -p $node $keyring_node
       if  [ ! "$(ls -A $node)" ]; then
         ${MID} --datadir=$node  > ${WORKDIR}/logs/startup_node$i.err 2>&1 || exit 1;

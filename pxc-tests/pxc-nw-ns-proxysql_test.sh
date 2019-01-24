@@ -2,14 +2,113 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # pxc proxysql testing with network namespace
 
+# Dispay script usage details
+usage () {
+  echo "Usage:"
+  echo "./pxc-nw-ns-proxysql_test.sh  --workdir=PATH"
+  echo ""
+  echo "Additional options:"
+  echo "  -w, --workdir=PATH                     Specify work directory"
+  echo "  -b, --build-number=NUMBER              Specify work build directory"
+  echo "  -s, --sst-method=[rsync|xtrabackup-v2] Specify SST method for cluster data transfer"
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=w:b:s:h --longoptions=workdir:,build-number:,sst-method:,help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+if [[ $go_out == " --" ]];then
+  usage
+  exit 1
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    -w | --workdir )
+    export WORKDIR="$2"
+    if [[ ! -d "$WORKDIR" ]]; then
+      echo "ERROR: Workdir ($WORKDIR) directory does not exist. Terminating!"
+      exit 1
+    fi
+    shift 2
+    ;;
+    -b | --build-number )
+    export BUILD_NUMBER="$2"
+    shift 2
+    ;;
+    -s | --sst-method )
+    export SST_METHOD="$2"
+    shift 2
+    if [[ "$SST_METHOD" != "rsync" ]] && [[ "$SST_METHOD" != "xtrabackup-v2" ]] ; then
+      echo "ERROR: Invalid --sst-method passed:"
+      echo "  Please choose any of these sst-method options: 'rsync' or 'xtrabackup-v2'"
+      exit 1
+    fi
+    ;;
+    -h | --help )
+    usage
+    exit 0
+    ;;
+  esac
+done
+
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+# generic variables
+if [[ -z "$WORKDIR" ]]; then
+  export WORKDIR=${PWD}
+fi
+ROOT_FS=$WORKDIR
+if [[ -z "$SST_METHOD" ]]; then
+  export SST_METHOD="xtrabackup-v2"
+fi
+if [[ -z ${BUILD_NUMBER} ]]; then
+  BUILD_NUMBER=1001
+fi
+
 # User Configurable Variables
 SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
-WORKDIR=$1
-ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 LPATH="/usr/share/doc/sysbench/tests/db"
 PXC_START_TIMEOUT=200
+cd $ROOT_FS
+WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+mkdir -p $WORKDIR/logs
 
 # Check sudo privilleges for creating network namespace
 if ! sudo -l | grep ALL ; then
@@ -62,9 +161,6 @@ destroy_nw_ns(){
 }
 
 # For local run - User Configurable Variables
-if [ -z ${BUILD_NUMBER} ]; then
-  BUILD_NUMBER=1001
-fi
 if [ -z ${SDURATION} ]; then
   SDURATION=60
 fi
@@ -91,31 +187,28 @@ cleanup(){
 trap cleanup EXIT KILL
 cd $ROOT_FS
 
-PXC_TAR=`ls -1td ?ercona-?tra??-?luster* | grep ".tar" | head -n1`
-
-if [ ! -z $PXC_TAR ];then
+#Check PXC binary tar ball
+PXC_TAR=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep ".tar" | head -n1`
+if [[ ! -z $PXC_TAR ]];then
   tar -xzf $PXC_TAR
-  PXCBASE=`ls -1td ?ercona-?tra??-?luster* | grep -v ".tar" | head -n1`
-  #Checking proxysql binary
-  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
-  if [ ! -z $PROXYSQL_BIN ];then
-    cp $PROXYSQL_BIN $PXCBASE/bin/
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+else
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PXCBASE ]] ; then
+    echoit "ERROR! Could not find PXC base directory."
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
   fi
-  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
 fi
+PXCBASEDIR="${ROOT_FS}/$PXCBASE"
+declare MYSQL_VERSION=$(${PXC_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 
-PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
-
-if [ ! -z $PS_TAR ];then
-  tar -xzf $PS_TAR
-  PS_BASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PS_BASE/bin:$PATH"
-fi
-PSBASE="$ROOT_FS/$PS_BASE"
-if [ ! -e $ROOT_FS/garbd ];then
-  wget http://jenkins.percona.com/job/pxc56.buildandtest.galera3/Btype=release,label_exp=centos6-64/lastSuccessfulBuild/artifact/garbd
-  cp garbd $ROOT_FS/$PXCBASE/bin/
-  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+#Checking proxysql binary
+PROXYSQL_BIN=`ls -1t proxysql | head -n1`
+if [ ! -z $PROXYSQL_BIN ];then
+  cp $PROXYSQL_BIN $PXCBASE/bin/
 fi
 
 if [ ! -d ${ROOT_FS}/test_db ]; then
@@ -134,7 +227,7 @@ function create_emp_db()
    | sed -e "s|USE employees|USE ${DB_NAME}|" \
    | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
    > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-   $PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
+   $PXCBASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
    popd
 }
 
@@ -149,16 +242,13 @@ check_script(){
   MPID=$1
   if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
 }
-
-WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
-BASEDIR="${ROOT_FS}/$PXCBASE"
 mkdir -p $WORKDIR  $WORKDIR/logs
 
 pxc_startup(){
-  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-    MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-  elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-    MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
+  if check_for_version $MYSQL_VERSION "5.7.0" ; then
+    MID="${PXCBASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PXCBASEDIR}"
+  else
+    MID="$PXCBASEDIR/scripts/mysql_install_db --no-defaults --basedir=$PXCBASEDIR"
   fi
 
   node1="${WORKDIR}/node1"
@@ -166,40 +256,40 @@ pxc_startup(){
   node3="${WORKDIR}/node3"
   node4="${WORKDIR}/node4"
 
-  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+  if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
     mkdir -p $node1
   fi
   ${MID} --datadir=$node1  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
 
-  sudo ip netns exec pxc_ns1 ${BASEDIR}/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=${BASEDIR} --datadir=$node1 --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node1.err --socket=/tmp/node1.sock  --user=ramesh --wsrep_cluster_name=cluster1 &
+  sudo ip netns exec pxc_ns1 $PXCBASEDIR/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=$PXCBASEDIR --datadir=$node1 --wsrep-provider=$PXCBASEDIR/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node1.err --socket=/tmp/node1.sock  --user=ramesh --wsrep_cluster_name=cluster1 &
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node1.sock ping > /dev/null 2>&1; then
+    if $PXCBASEDIR/bin/mysqladmin -uroot -S/tmp/node1.sock ping > /dev/null 2>&1; then
       break
     fi
   done
 
   ${MID} --datadir=$node2  > ${WORKDIR}/startup_node2.err 2>&1 || exit 1;
 
-  sudo ip netns exec pxc_ns2 ${BASEDIR}/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=${BASEDIR} --datadir=$node2 --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node2.err --socket=/tmp/node2.sock --user=ramesh --wsrep_cluster_address="gcomm://10.200.10.2"  --wsrep_cluster_name=cluster1 &
+  sudo ip netns exec pxc_ns2 $PXCBASEDIR/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=$PXCBASEDIR --datadir=$node2 --wsrep-provider=$PXCBASEDIR/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node2.err --socket=/tmp/node2.sock --user=ramesh --wsrep_cluster_address="gcomm://10.200.10.3"  --wsrep_cluster_name=cluster1 &
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node2.sock ping > /dev/null 2>&1; then
+    if $PXCBASEDIR/bin/mysqladmin -uroot -S/tmp/node2.sock ping > /dev/null 2>&1; then
       break
     fi
   done
 
   ${MID} --datadir=$node3  > ${WORKDIR}/startup_node3.err 2>&1 || exit 1;
 
-  sudo ip netns exec pxc_ns3 ${BASEDIR}/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=${BASEDIR} --datadir=$node3 --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node3.err --socket=/tmp/node3.sock --user=ramesh --wsrep_cluster_address="gcomm://10.200.10.2"  --wsrep_cluster_name=cluster1 &
+  sudo ip netns exec pxc_ns3 $PXCBASEDIR/bin/mysqld --defaults-file=${SCRIPT_PWD}/pxc_node.cnf --basedir=$PXCBASEDIR --datadir=$node3 --wsrep-provider=$PXCBASEDIR/lib/libgalera_smm.so --log-error=${WORKDIR}/logs/node3.err --socket=/tmp/node3.sock --user=ramesh --wsrep_cluster_address="gcomm://10.200.10.4"  --wsrep_cluster_name=cluster1 &
 
 
   for X in $(seq 0 ${PXC_START_TIMEOUT}); do
     sleep 1
-    if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node3.sock ping > /dev/null 2>&1; then
-      ${BASEDIR}/bin/mysql -uroot -S/tmp/node1.sock -e "create database if not exists test" > /dev/null 2>&1
+    if $PXCBASEDIR/bin/mysqladmin -uroot -S/tmp/node3.sock ping > /dev/null 2>&1; then
+      $PXCBASEDIR/bin/mysql -uroot -S/tmp/node1.sock -e "create database if not exists test" > /dev/null 2>&1
       sleep 2
       break
     fi
@@ -213,13 +303,13 @@ proxysql_startup(){
   $PROXYSQL --initial -f -c $SCRIPT_PWD/proxysql.cnf > /dev/null 2>&1 &
   check_script $?
   sleep 10
-  sudo ip netns exec pxc_ns1 ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
+  sudo ip netns exec pxc_ns1 $PXCBASEDIR/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
   check_script $?
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '10.200.10.2', 3306, 20),(0, '10.200.10.3', 3306, 20),(0, '10.200.10.4', 3306, 20)"
+  $PXCBASEDIR/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '10.200.10.2', 3306, 20),(0, '10.200.10.3', 3306, 20),(0, '10.200.10.4', 3306, 20)"
   check_script $?
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)"
+  $PXCBASEDIR/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)"
   check_script $?
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;"
+  $PXCBASEDIR/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;"
   check_script $?
   sleep 10
 }
@@ -230,7 +320,7 @@ check_script $?
 
 get_connection_pool(){
   echo -e "ProxySQL connection pool status\n"
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e "select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
+  $PXCBASEDIR/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e "select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
 
 }
 #Sysbench data load
@@ -242,13 +332,13 @@ check_script $?
 get_connection_pool
 
 echo "Loading sakila test database"
-#$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila.sql
-$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
+#$PXCBASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila.sql
+$PXCBASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
 check_script $?
 get_connection_pool
 
 echo "Loading world test database"
-$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/world.sql
+$PXCBASEDIR/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/world.sql
 check_script $?
 get_connection_pool
 
@@ -282,7 +372,7 @@ done
 
 echo -e "Shutting down node3 to check proxysql connection pooling status"
 #Shutdown PXC node1
-$BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
+$PXCBASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
 
 #Sysbench run
 echo -e "Sysbench readonly run...\n"
@@ -303,8 +393,8 @@ done
 
 echo -e "Shutting down remaining PXC nodes\n"
 #Shutdown remaining PXC nodes
-$BASEDIR/bin/mysqladmin  --socket=/tmp/node2.sock -u root shutdown
-$BASEDIR/bin/mysqladmin  --socket=/tmp/node3.sock -u root shutdown
+$PXCBASEDIR/bin/mysqladmin  --socket=/tmp/node2.sock -u root shutdown
+$PXCBASEDIR/bin/mysqladmin  --socket=/tmp/node3.sock -u root shutdown
 
 destroy_nw_ns
 

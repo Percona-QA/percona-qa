@@ -46,7 +46,7 @@ declare DEBUG=""
 # Dispay script usage details
 usage () {
   echo "Usage:"
-  echo "  pxc56to57.sh  --workdir=PATH"
+  echo "  pxc-upgrade  --workdir=PATH"
   echo ""
   echo "Additional options:"
   echo "  -w, --workdir=PATH        Specify work directory"
