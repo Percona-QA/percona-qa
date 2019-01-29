@@ -30,6 +30,9 @@ usage () {
   echo "Usage: [ options ]"
   echo "Options:"
   echo " --setup                        This will setup and configure a PMM server"
+  echo " --dev                          When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.x version is used"
+  echo " --dev-fb                       This will install specified feature build (must be used with --setup and --dev options)" 
+  echo " --link-client                  Pass URL to download pmm-client"
   echo " --addclient=ps,2               Add Percona (ps), MySQL (ms), MariaDB (md), Percona XtraDB Cluster (pxc), and/or mongodb (mo) pmm-clients to the currently live PMM server (as setup by --setup)"
   echo "                                You can add multiple client instances simultaneously. eg : --addclient=ps,2  --addclient=ms,2 --addclient=md,2 --addclient=mo,2 --addclient=pxc,3"
   echo " --download                     This will help us to download pmm client binary tar balls"
@@ -49,14 +52,13 @@ usage () {
   echo " --mongo-with-rocksdb           This will start mongodb with rocksdb engine"
   echo " --replcount                    You can configure multiple mongodb replica sets with this oprion"
   echo " --with-replica                 This will configure mongodb replica setup"
-  echo " --with-shrading                This will configure mongodb shrading setup"
+  echo " --with-sharding                This will configure mongodb sharding setup"
   echo " --add-docker-client            Add docker pmm-clients with percona server to the currently live PMM server"
   echo " --list                         List all client information as obtained from pmm-admin"
   echo " --wipe-clients                 This will stop all client instances and remove all clients from pmm-admin"
   echo " --wipe-docker-clients          This will stop all docker client instances and remove all clients from docker container"
   echo " --wipe-server                  This will stop pmm-server container and remove all pmm containers"
   echo " --wipe                         This will wipe all pmm configuration"
-  echo " --dev                          When this option is specified, PMM framework will use the latest PMM development version. Otherwise, the latest 1.0.x version is used"
   echo " --pmm-server-username          User name to access the PMM Server web interface"
   echo " --pmm-server-password          Password to access the PMM Server web interface"
   echo " --pmm-server-memory            Set METRICS_MEMORY option to PMM server"
@@ -69,7 +71,7 @@ usage () {
   echo " --disable-ssl                  Disable ssl mode on exporter"
   echo " --create-pgsql-user            Set this option if a Dedicated PGSQl User creation is required username: psql and no password"
   echo " --upgrade-server               When this option is specified, PMM Server will be updated to the last version"
-  echo " --upgrade-client          		  When this option is specified, PMM client will be updated to the last version"
+  echo " --upgrade-client               When this option is specified, PMM client will be updated to the last version"
   echo " --query-source                 Set query source (perfschema or slowlog)"
   echo " --compare-query-count          This will help us to compare the query count between PMM client instance and PMM QAN/Metrics page"
 }
@@ -77,7 +79,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-shrading,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,dev-fb:,link-client:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-sharding,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -100,17 +102,21 @@ do
     shift
     with_replica=1
     ;;
-	--replcount )
-	REPLCOUNT=$2
-	shift 2
+    --replcount )
+    REPLCOUNT=$2
+    shift 2
     ;;
-    --with-shrading )
+    --with-sharding )
     shift
-    with_shrading=1
+    with_sharding=1
     ;;
     --download )
     shift
     download_link=1
+    ;;
+    --link-client )
+    link_client="$2"
+    shift 2
     ;;
     --pmm-server )
     pmm_server="$2"
@@ -124,6 +130,10 @@ do
     --pmm-server-version )
     pmm_server_version="$2"
     PMM_VERSION=$pmm_server_version
+    shift 2
+    ;;
+    --dev-fb )
+    DEV_FB="$2"
     shift 2
     ;;
     --pmm-server-memory )
@@ -319,7 +329,7 @@ if [[ -z "$create_pgsql_user" ]]; then
   create_pgsql_user=0
 fi
 
-if [[ "$with_shrading" == "1" ]];then
+if [[ "$with_sharding" == "1" ]];then
   with_replica=1
 fi
 if [[ -z "$pmm_server_username" ]];then
@@ -458,7 +468,6 @@ setup(){
         PMM_VERSION=$(lynx --dump https://hub.docker.com/r/perconalab/pmm-server/tags/ | grep '[0-9].[0-9].[0-9]' | sed 's|   ||' | head -n1)
         echo "PMM VERSION IS $PMM_VERSION"
       fi
-
     #PMM sanity check
       if ! pgrep docker > /dev/null ; then
         echo "ERROR! docker service is not running. Terminating"
@@ -473,29 +482,33 @@ setup(){
         exit 1
       fi
     fi
-
-    if [[ "$pmm_server" == "aws" ]];then
+   if [[ "$pmm_server" == "aws" ]];then
 	    aws ec2 describe-instance-status --instance-ids  $INSTANCE_ID | grep "Code" | sed 's/[^0-9]//g'
     fi
     echo "Initiating PMM configuration"
-    if [ -z $dev ]; then
-      sudo docker create -v /opt/prometheus/data -v /var/lib/grafana -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
+    if [ ! -z $DEV_FB ]; then
+     sudo docker create -v /opt/prometheus/data  -v /var/lib/grafana -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data perconalab/pmm-server-fb:$DEV_FB /bin/true 2>/dev/null
+      sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server-fb:$DEV_FB 2>/dev/null
     else
-      sudo docker create -v /opt/prometheus/data  -v /var/lib/grafana -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data perconalab/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
-    fi
-    if [ -z $dev ]; then
-      if [ "$IS_SSL" == "Yes" ];then
-        sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+      if [ -z $dev ]; then
+        sudo docker create -v /opt/prometheus/data -v /var/lib/grafana -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data percona/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
       else
-       sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        sudo docker create -v /opt/prometheus/data  -v /var/lib/grafana -v /opt/consul-data -v /var/lib/mysql -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" --name pmm-data perconalab/pmm-server:$PMM_VERSION /bin/true 2>/dev/null
       fi
-    else
-      if [ "$IS_SSL" == "Yes" ];then
-       sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+      if [ -z $dev ]; then
+        if [ "$IS_SSL" == "Yes" ];then
+          sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY  -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        else
+          sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always percona/pmm-server:$PMM_VERSION 2>/dev/null
+        fi
       else
-       sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
-      fi
-    fi
+        if [ "$IS_SSL" == "Yes" ];then
+          sudo docker run -d -p $PMM_PORT:443 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+        else
+          sudo docker run -d -p $PMM_PORT:80 -p 8500:8500 $DOCKER_CONTAINER_MEMORY $PMM_METRICS_MEMORY -e SERVER_USER="$pmm_server_username" -e SERVER_PASSWORD="$pmm_server_password" -e ORCHESTRATOR_USER=$OUSER -e ORCHESTRATOR_PASSWORD=$OPASS --volumes-from pmm-data --name pmm-server --restart always perconalab/pmm-server:$PMM_VERSION 2>/dev/null
+        fi
+     fi
+   fi
   elif [[ "$pmm_server" == "ami" ]] ; then
     if [[ ! -e $(which aws 2> /dev/null) ]] ;then
       echo "ERROR! AWS client program is currently not installed. Please install awscli. Terminating"
@@ -571,8 +584,11 @@ setup(){
       popd > /dev/null
     else
       if [ ! -z $dev ]; then
-        PMM_CLIENT_TARBALL_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client" |awk '{print $2}'| grep "tar.gz" | head -n1)
-        #PMM_CLIENT_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client-$PMM_VERSION" |awk '{print $2}'| head -n1)
+        if [  -z $link_client]; then
+         PMM_CLIENT_TARBALL_URL=$(lynx --listonly --dump https://www.percona.com/downloads/TESTING/pmm/ | grep  "pmm-client" |awk '{print $2}'| grep "tar.gz" | head -n1)
+        else
+          PMM_CLIENT_TARBALL_URL=$link_client
+        fi
         #echo "PMM client URL $PMM_CLIENT_URL"
         echo "PMM client tarball $PMM_CLIENT_TARBALL_URL"
         wget $PMM_CLIENT_TARBALL_URL
@@ -894,13 +910,13 @@ add_clients(){
       if [[ "$with_replica" == "1" ]]; then
         for k in `seq 1  ${REPLCOUNT}`;do
 	        n=$(( $k - 1 ))
-		      echo "Configuring replcaset"
+		      echo "Configuring replicaset"
           sudo $BASEDIR/bin/mongo --quiet --port ${PSMDB_PORTS[$n]} --eval "var replSet='r${k}'" "/tmp/config_replset.js"
           sleep 5
 	      done
 	    fi
 
-      if [[ "$with_shrading" == "1" ]]; then
+      if [[ "$with_sharding" == "1" ]]; then
     	  #config
         CONFIG_MONGOD_PORT=$(( (RANDOM%21 + 10) * 1001 ))
         CONFIG_MONGOS_PORT=$(( (RANDOM%21 + 10) * 1001 ))
@@ -908,7 +924,7 @@ add_clients(){
           PORT=$(( $CONFIG_MONGOD_PORT + $m - 1 ))
           mkdir -p $BASEDIR/data/confdb${m}
           $BASEDIR/bin/mongod --profile 2 --slowms 1 --fork --logpath $BASEDIR/data/confdb${m}/config_mongo.log --dbpath=$BASEDIR/data/confdb${m} --port $PORT --configsvr --replSet config &
-          sleep 10
+          sleep 15
           if [ $disable_ssl -eq 1 ]; then
             sudo pmm-admin add mongodb --cluster mongodb_cluster  --uri localhost:$PORT mongodb_inst_config_rpl${m} --disable-ssl
             check_disable_ssl mongodb_inst_rpl${k}_${j}
@@ -918,7 +934,7 @@ add_clients(){
           MONGOS_STARTUP_CMD="localhost:$PORT,$MONGOS_STARTUP_CMD"
         done
 
-        echo "Configuring replcaset"
+        echo "Configuring replicaset"
         $BASEDIR/bin/mongo --quiet --port ${CONFIG_MONGOD_PORT} --eval "var replSet='config'" "/tmp/config_replset.js"
         sleep 20
 
@@ -1321,7 +1337,7 @@ upgrade_client(){
 
 sysbench_prepare(){
   if [[ ! -e $(which mysql 2> /dev/null) ]] ;then
-    MYSQL_CLIENT=$(find . -name mysql | head -n1)
+    MYSQL_CLIENT=$(find . -type f -name mysql | head -n1)
   else
     MYSQL_CLIENT=$(which mysql)
   fi
@@ -1344,7 +1360,7 @@ sysbench_run(){
   for i in $(sudo pmm-admin list | grep "mysql:metrics[ \t].*_NODE-" | awk -F[\(\)] '{print $2}'  | sort -r) ; do
     DB_NAME=$(echo ${i}  | awk -F[\/\.] '{print $3}')
 	DB_NAME="${DB_NAME}_${storage_engine}"
-    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=10000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --mysql-storage-engine=$storage_engine --threads=16 --time=1200 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
+    sysbench /usr/share/sysbench/oltp_read_write.lua --table-size=10000 --tables=16 --mysql-db=${DB_NAME} --mysql-user=root  --mysql-storage-engine=$storage_engine --threads=16 --time=3600 --events=1870000000 --db-driver=mysql --db-ps-mode=disable --mysql-socket=${i} run  > $WORKDIR/logs/sysbench_run_${DB_NAME}.txt 2>&1 &
     check_script $? "Failed to run sysbench oltp"
   done
 }
