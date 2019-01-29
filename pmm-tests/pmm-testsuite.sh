@@ -10,7 +10,7 @@ function pmm_framework_setup() {
 }
 
 function pmm_framework_add_clients() {
-  ${DIRNAME}/pmm-framework.sh --addclient=$1,$2 --download
+  ${DIRNAME}/pmm-framework.sh --addclient=$1,$2 --${1}-version=$3 --download
 }
 
 function pmm_wipe_all() {
@@ -182,7 +182,7 @@ echo "Wipe clients"
 pmm_wipe_clients
 
 echo "Adding clients"
-pmm_framework_add_clients $instance_t $instance_c
+pmm_framework_add_clients $instance_t $instance_c $version
 
 if [[ $instance_t != "mo" ]] ; then
   echo "Running linux metrics tests"
