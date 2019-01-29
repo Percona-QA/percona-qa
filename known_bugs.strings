@@ -440,6 +440,7 @@ ha_innodb.cc line 3521                           ##DONOTREMOVE## https://jira.pe
 ha_innodb.cc line 3539                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.38
 ha_innodb.cc line 3540                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
 ha_innodb.cc line 3545                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
+ha_innodb.cc line 3557                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.43
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
@@ -470,6 +471,7 @@ ha_innodb.cc line 19339                          ##DONOTREMOVE## OOM: Sig6 due t
 ha_innodb.cc line 19411                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.33)
 ha_innodb.cc line 19384                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.35)
 ha_innodb.cc line 19475                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.38)
+ha_innodb.cc line 19475                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.43); logged upstream: https://bugs.mysql.com/bug.php?id=94096
 
 ## =========== Special: set global innodb_saved_page_number_debug=x ===========
 # Mailed Umesh on 14 Aug 2017 to re-open bug 74481 as one testcase still crashes ref [13 Aug 23:29] Roel Van de Paar
@@ -521,6 +523,7 @@ ha_innodb.cc line 2128                           ## https://bugs.mysql.com/bug.p
 #ha_innodb.cc line 2085                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 #ha_innodb.cc line 2102                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 #ha_innodb.cc line 2110                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.36, alike to 78732)
+ha_innodb.cc line 2139                           ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.43, alike to 78732)
 #ha_innodb.cc line 1588                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) PS (old LP #1384616)
 #ha_innodb.cc line 1869                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) MS (old LP #1384616)
 #ha_innodb.cc line 1870                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) MS (old LP #1384616)
@@ -582,6 +585,7 @@ dict0dict.ic line 787                                                           
 dict0dict.cc line 23[2-4][0-9]                                                          ## https://bugs.mysql.com/bug.php?id=85060
 dict0load.c line 1066                                                                   ## https://bugs.mysql.com/bug.php?id=88794
 fsp0fsp.ic line 172                                                                     ## https://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
+fil0fil.cc line 470                                                                     ## https://bugs.mysql.com/bug.php?id=94100
 fil0fil.cc line 2099                                                                    ## https://bugs.mysql.com/bug.php?id=87573, PS 5.7.19
 fil0fil.cc line 2074                                                                    ## https://bugs.mysql.com/bug.php?id=87573, MS 5.7.19
 fil0fil.cc line 3412                                                                    ## https://bugs.mysql.com/bug.php?id=74873, older build
@@ -764,6 +768,7 @@ flags2 . 16                                                                     
 #Failing assertion: purge_sys->state == PURGE_STATE_RUN                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1368552
 field_pos < field_count                                                                 ## https://jira.percona.com/browse/TDB-69
 #fixed == 1                                                                    ## Fixed ## https://jira.percona.com/browse/PS-2090
+fixed == 1                                                                              ## https://jira.percona.com/browse/PS-5381
 #from->len == to->len                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=76477
 from->len == to->len                                                                    ## https://bugs.mysql.com/bug.php?id=84827 (Ref also 76477) (Still present in MS 5.6.35)
 #from->m_byte_count == 0                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=76090 (Fixed in 5.6.25)
@@ -873,6 +878,7 @@ this_type .= Json_dom..J_ERROR                                  ## Still present
 .no_data.nbytes                                                                         ## https://bugs.mysql.com/bug.php?id=86471
 #transactional_table .* .changed .* thd->transaction.stmt.cannot_safely_rollback ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1382745
 #transactional_table .. .changed .. thd->transaction.stmt.cannot_safely_rollback ## Fixed ## https://jira.percona.com/browse/PS-3613
+transactional_table .. .changed .. thd->transaction.stmt.cannot_safely_rollback           ## https://jira.percona.com/browse/PS-5384
 transactional_table .. .changed .. thd->transaction.stmt.modified_non_trans_table       ## https://jira.percona.com/browse/PS-3695
 unknown error code 47                                                                   ## https://bugs.mysql.com/bug.php?id=74343, both build
 #void Protocol::end_statement ## This assertion is a generic assertion indicative of many causes. It should not be filtered. (Was: https://bugs.mysql.com/bug.php?id=74411, RQG)
@@ -909,6 +915,7 @@ Z10open_tableP3THDP10TABLE_LISTP18Open_table_context                            
 #Z12find_sys_varP3THDPKcj                                                      ## Fixed ## https://jira.percona.com/browse/PS-3255 # Need new testcase
 Z12setup_tablesP3THDP23Name_resolution_contextP4ListI10TABLE_LISTEPS4_PS7_b             ## https://jira.percona.com/browse/PS-885
 Z12make_sortkeyP10Sort_paramPhS1_                                                       ## https://bugs.mysql.com/bug.php?id=74260
+Z16create_tmp_fieldP3THDP5TABLEP4ItemNS3_4TypeEPPS4_PP5FieldSA_bbbb                     ## https://jira.percona.com/browse/PS-5378
 ZN8Table_idaSERKS_                                                                      ## https://bugs.mysql.com/bug.php?id=84829 (Won't fix)
 #ZN8Protocol24send_result_set_metadataEP4ListI4ItemEj                          ## Fixed ## https://bugs.mysql.com/bug.php?id=77832 (Fixed in 5.5.57, 5.6.28, 5.7.10, 5.8.0)
 #Z22store_token_identifierP18PSI_digest_storagejjPKc                           ## Fixed ## https://bugs.mysql.com/bug.php?id=77832 (Fixed in 5.5.57, 5.6.28, 5.7.10, 5.8.0)
