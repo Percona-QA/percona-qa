@@ -52,6 +52,35 @@ if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then
   exit 1
 fi
 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
 # Output function
 echoit(){
   echo "[$(date +'%T')] [$SAVED] $1"
@@ -76,6 +105,8 @@ else
   fi
 fi
 
+#Store MySQL version string
+MYSQL_VERSION=$(${BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 # JEMALLOC for PS/TokuDB
 PSORNOT1=$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)
 PSORNOT2=$(${BIN} --version | grep -oi '5.7.[0-9]\+-[0-9]' | cut -f2 -d'-' | head -n1); if [ "${PSORNOT2}" == "" ]; then PSORNOT2=0; fi
@@ -322,9 +353,9 @@ pxc_startup(){
   RPORT=$(( (RANDOM%21 + 10)*1000 ))
   SUSER=root
   SPASS=
-  if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+  if check_for_version $MYSQL_VERSION "5.7.0" ; then
     MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-  elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+  else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
 
@@ -367,7 +398,7 @@ pxc_startup(){
     fi
     if [ "$1" == "startup" ]; then
       node="${WORKDIR}/node${i}.template"
-      if [[ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
       fi
       WSREP_PROVIDER_OPT=""
@@ -609,7 +640,7 @@ pquery_test(){
   echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
   ISSTARTED=0
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '8\.[0]' | head -n1)" == "8.0" ]; then
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
       mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log  # Cannot create /data/test, /data/mysql in 8.0
     else
       mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
@@ -696,7 +727,7 @@ pquery_test(){
     MPID="$!"
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Starting Secondary mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log2/master.err"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '8\.[0]' | head -n1)" == "8.0" ]; then
+      if check_for_version $MYSQL_VERSION "8.0.0" ; then
         mkdir -p ${RUNDIR}/${TRIAL}/data2 ${RUNDIR}/${TRIAL}/tmp2 ${RUNDIR}/${TRIAL}/log2  # Cannot create /data/test, /data/mysql in 8.0
       else
         mkdir -p ${RUNDIR}/${TRIAL}/data2/test ${RUNDIR}/${TRIAL}/data2/mysql ${RUNDIR}/${TRIAL}/tmp2 ${RUNDIR}/${TRIAL}/log2
@@ -1644,7 +1675,7 @@ if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO
   INIT_OPT="--no-defaults --force ${MYINIT}"
   START_OPT="--core"
 elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
-  echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
+  echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the script will now try and continue as-is, but this may fail."
 fi
 
 if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
