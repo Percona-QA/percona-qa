@@ -412,8 +412,8 @@ sudo_check(){
 if [[ -z "${ps_version}" ]]; then ps_version="5.7"; fi
 if [[ -z "${pxc_version}" ]]; then pxc_version="5.7"; fi
 if [[ -z "${ms_version}" ]]; then ms_version="8.0"; fi
-if [[ -z "${md_version}" ]]; then md_version="10.2"; fi
-if [[ -z "${mo_version}" ]]; then mo_version="3.6"; fi
+if [[ -z "${md_version}" ]]; then md_version="10.3"; fi
+if [[ -z "${mo_version}" ]]; then mo_version="4.0"; fi
 if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
 if [[ -z "${ova_memory}" ]]; then ova_memory="2048";fi
 if [[ -z "${pgsql_version}" ]]; then pgsql_version="10.6";fi
