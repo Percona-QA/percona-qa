@@ -155,11 +155,11 @@ function run_pmm_slow_log_rotation_check() {
 }
 # Additional functions
 function run_create_table() {
-  bash ${DIRNAME}/create_table.sh $1 $2
+  bash ${DIRNAME}/create_table.sh $1 $2 $3
 }
 
 function run_populate_table() {
-  bash ${DIRNAME}/populate_table.sh $1 $2 $3
+  bash ${DIRNAME}/populate_table.sh $1 $2 $3 $4
 }
 
 # Setting up the PMM using pmm_framework_setup() here
@@ -228,10 +228,10 @@ run_external_exporters_tests
 
 if [[ $stress == "1" && $table_c != "0" && -z $table_size ]] ; then
   echo "WARN: Running stress tests; creating empty tables"
-  run_create_table $instance_t $table_c
+  run_create_table $instance_t $table_c $version
 elif [[ $stress == "1" && $table_c != "0" && $table_size != "0" ]] ; then
   echo "WARN: Running stress tests; creating tables and inserting using sysbench"
-  run_populate_table $instance_t $table_c $table_size
+  run_populate_table $instance_t $table_c $table_size $version
 else
   echo "Skipping stress test!"
 fi
