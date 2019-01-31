@@ -38,6 +38,7 @@ usage () {
   echo " --download                     This will help us to download pmm client binary tar balls"
   echo " --pmm-server-version           Pass PMM version"
   echo " --pmm-port                     Pass port for PMM docker"
+  echo " --package-name                 Name of the Server package installed"
   echo " --ps-version                   Pass Percona Server version info"
   echo " --ms-version                   Pass MySQL Server version info"
   echo " --pgsql-version                Pass Postgre SQL server version Info"
@@ -79,7 +80,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,dev-fb:,link-client:,pmm-port:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-sharding,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,dev-fb:,link-client:,pmm-port:,package-name:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-sharding,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,delete-package,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -142,6 +143,10 @@ do
     ;;
     --pmm-port )
     PMM_PORT="$2"
+    shift 2
+    ;;
+    --package-name )
+    package_name="$2"
     shift 2
     ;;
     --pmm-docker-memory )
@@ -215,6 +220,10 @@ do
     --wipe-clients )
     shift
     wipe_clients=1
+    ;;
+    --delete-package )
+    shift
+    delete_package=1
     ;;
     --disable-ssl )
     shift
@@ -696,7 +705,7 @@ get_basedir(){
       if [ -z $BASEDIR ]; then
         BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
-          tar -xvf $BASE_TAR
+          tar -xvf $BASE_TAR >/dev/null
           if [[ "${PRODUCT_NAME}" == "postgresql" ]]; then
             BASEDIR=$(ls -1td pgsql 2>/dev/null | grep -v ".tar" | head -n1)
           else
@@ -720,7 +729,7 @@ get_basedir(){
     if [ -z $BASEDIR ]; then
       BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
       if [ ! -z $BASE_TAR ];then
-        tar -xvf $BASE_TAR
+        tar -xvf $BASE_TAR >/dev/null
         if [[ "${PRODUCT_NAME}" == "postgresql" ]]; then
             BASEDIR=$(ls -1td pgsql 2>/dev/null | grep -v ".tar" | head -n1)
         else
@@ -814,6 +823,37 @@ check_disable_ssl(){
   else
     echo "Could not disable_ssl Please check again"
     exit 1;
+  fi
+}
+
+remove_packages(){
+  if [[ "${package_name}" == "ps" ]]; then
+    BASEDIR=$(ls -1td [Pp]ercona-[Ss]erver-${ps_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td [Pp]ercona-[Ss]erver-${ps_version}* 2>/dev/null | grep ".tar" | head -n1)
+  elif [[ "${package_name}" == "psmyr" ]]; then
+    BASEDIR=$(ls -1td [Pp]ercona-[Ss]erver-${ps_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td [Pp]ercona-[Ss]erver-${ps_version}* 2>/dev/null | grep ".tar" | head -n1)
+  elif [[ "${package_name}" == "ms" ]]; then
+    BASEDIR=$(ls -1td mysql-${ms_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td mysql-${ms_version}* 2>/dev/null | grep ".tar" | head -n1)
+  elif [[ "${package_name}" == "pgsql" ]]; then
+    BASEDIR=$(ls -1td postgresql-${pgsql_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td postgresql-${pgsql_version}* 2>/dev/null | grep ".tar" | head -n1)
+  elif [[ "${package_name}" == "md" ]]; then
+    BASEDIR=$(ls -1td mariadb-${md_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td mariadb-${md_version}* 2>/dev/null | grep ".tar" | head -n1)
+  elif [[ "${package_name}" == "pxc" ]]; then
+    BASEDIR=$(ls -1td Percona-XtraDB-Cluster-${pxc_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td Percona-XtraDB-Cluster-${pxc_version}* 2>/dev/null | grep ".tar" | head -n1)
+  elif [[ "${package_name}" == "mo" ]]; then
+    BASEDIR=$(ls -1td percona-server-mongodb-${mo_version}* 2>/dev/null | grep -v ".tar" | head -n1)
+    BASETAR=$(ls -1td percona-server-mongodb-${mo_version}* 2>/dev/null | grep ".tar" | head -n1)
+  fi
+  if [[ ! -z $BASEDIR ]]; then
+    sudo rm -rf $BASEDIR;
+  fi
+  if [[ ! -z $BASETAR ]]; then
+    sudo rm -rf $BASETAR;
   fi
 }
 
@@ -1367,6 +1407,10 @@ sysbench_run(){
 
 if [ ! -z $wipe_clients ]; then
   clean_clients
+fi
+
+if [ ! -z $delete_package ]; then
+  remove_packages
 fi
 
 if [ ! -z $wipe_docker_clients ]; then
