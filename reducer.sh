@@ -377,6 +377,36 @@ SPECIAL_MYEXTRA_OPTIONS=
 # SE Removal approach; 1) If the engine is referred to by .so reference in MYEXTRA, reducer.sh uses it, but reducer.sh ensure the engine .so file exists
 #                      2) Any reference to the engine is removed from MYEXTRA and stored in two variables TOKUDB/ROCKSDB to allow more control/testcase reducability
 #                      3) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
+
+MYSQL_VERSION=$(${BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
 TOKUDB=
 ROCKSDB=
 if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
@@ -1684,15 +1714,15 @@ init_workdir_and_files(){
       stop_mysqld_or_pxc
     elif [[ $PXC_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+      if check_for_version $MYSQL_VERSION "5.7.0" ; then
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
-      elif [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+      else
         MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --force ${MYINIT} --basedir=${BASEDIR}"
       fi
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node1 $node2 $node3
       fi
       ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
