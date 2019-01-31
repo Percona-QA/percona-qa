@@ -25,6 +25,10 @@ function  pmm_wipe_server() {
   ${DIRNAME}/pmm-framework.sh --wipe-server
 }
 
+function pmm_remove_packages() {
+  ${DIRNAME}/pmm-framework.sh --delete-package --package-name=$1 --${1}-version=$2
+}
+
 # functions for some env setup
 
 function setup_local_consul_exporter() {
@@ -272,3 +276,6 @@ run_pmm_summary
 
 echo "Wipe clients"
 pmm_wipe_clients
+
+echo "Deleting Installed Packages"
+pmm_remove_packages $instance_t $version
