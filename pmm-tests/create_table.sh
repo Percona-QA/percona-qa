@@ -1,20 +1,25 @@
 #!/bin/bash
 CLIENT_NAME=$1
 TABLE_COUNT=$2
+VERSION=$3
 WORKDIR="${PWD}"
 MYSQL_USER=root
 
 
 if [[ "${CLIENT_NAME}" == "ps" ]]; then
-  BASEDIR=$(ls -1td ?ercona-?erver-5.* | grep -v ".tar" | head -n1)
+  BASEDIR=$(ls -1td [Pp]ercona-[Ss]erver-${VERSION}* | grep -v ".tar" | head -n1)
   BASEDIR="$WORKDIR/$BASEDIR"
 
 elif [[ "${CLIENT_NAME}" == "ms" ]]; then
-  BASEDIR=$(ls -1td mysql-5.* | grep -v ".tar" | head -n1)
+  BASEDIR=$(ls -1td mysql-${VERSION}* | grep -v ".tar" | head -n1)
   BASEDIR="$WORKDIR/$BASEDIR"
 
 elif [[ "${CLIENT_NAME}" == "pxc" ]]; then
-  BASEDIR=$(ls -1td Percona-XtraDB-Cluster-5.* | grep -v ".tar" | head -n1)
+  BASEDIR=$(ls -1td Percona-XtraDB-Cluster-${VERSION}* | grep -v ".tar" | head -n1)
+  BASEDIR="$WORKDIR/$BASEDIR"
+
+elif [[ "${CLIENT_NAME}" == "md" ]]; then
+  BASEDIR=$(ls -1td mariadb-${VERSION}* | grep -v ".tar" | head -n1)
   BASEDIR="$WORKDIR/$BASEDIR"
 fi
 
