@@ -696,7 +696,7 @@ get_basedir(){
       if [ -z $BASEDIR ]; then
         BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
         if [ ! -z $BASE_TAR ];then
-          tar -xzf $BASE_TAR
+          tar -xvf $BASE_TAR
           if [[ "${PRODUCT_NAME}" == "postgresql" ]]; then
             BASEDIR=$(ls -1td pgsql 2>/dev/null | grep -v ".tar" | head -n1)
           else
@@ -720,7 +720,7 @@ get_basedir(){
     if [ -z $BASEDIR ]; then
       BASE_TAR=$(ls -1td $SERVER_STRING 2>/dev/null | grep ".tar" | head -n1)
       if [ ! -z $BASE_TAR ];then
-        tar -xzf $BASE_TAR
+        tar -xvf $BASE_TAR
         if [[ "${PRODUCT_NAME}" == "postgresql" ]]; then
             BASEDIR=$(ls -1td pgsql 2>/dev/null | grep -v ".tar" | head -n1)
         else
