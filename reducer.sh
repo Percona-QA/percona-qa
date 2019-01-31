@@ -1928,6 +1928,24 @@ start_mysqld_or_valgrind_or_pxc(){
 }
 
 start_pxc_main(){
+  # Creating default my.cnf file
+  rm -rf ${WORKD}/my.cnf
+  echo "[mysqld]" > ${WORKD}/my.cnf
+  echo "basedir=${BASEDIR}" >> ${WORKD}/my.cnf
+  echo "wsrep-debug=ON" >> ${WORKD}/my.cnf
+  echo "innodb_file_per_table" >> ${WORKD}/my.cnf
+  echo "innodb_autoinc_lock_mode=2" >> ${WORKD}/my.cnf
+  if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+    echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKD}/my.cnf
+  fi
+  echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
+  echo "wsrep_sst_method=rsync" >> ${WORKD}/my.cnf
+  echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
+  echo "wsrep_sst_method=rsync" >> ${WORKD}/my.cnf
+  echo "core-file" >> ${WORKD}/my.cnf
+  echo "log-output=none" >> ${WORKD}/my.cnf
+  echo "wsrep_slave_threads=2" >> ${WORKD}/my.cnf
+
   ADDR="127.0.0.1"
   RPORT=$(( RANDOM%21 + 10 ))
   RBASE1="$(( RPORT*1000 ))"
@@ -1945,21 +1963,16 @@ start_pxc_main(){
   SUSER=root
   SPASS=
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${BASEDIR} --datadir=$node1 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+  ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.1 \
+    --datadir=$node1 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema  $MYEXTRA  \
     --wsrep_cluster_address=gcomm:// \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPTIONS" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --wsrep_node_address=$ADDR  \
     --log-error=$node1/error.log \
-    --socket=$node1/node1_socket.sock --log-output=none \
-    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/error.log 2>&1 &
+    --socket=$node1/node1_socket.sock \
+    --port=$RBASE1 --server-id=1 > $node1/error.log 2>&1 &
 
   echo_out "Waiting for node-1 to start ....."
   MPID="$!"
@@ -1977,21 +1990,16 @@ start_pxc_main(){
   done
   sleep 10
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${BASEDIR} --datadir=$node2 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+  ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.2 \
+    --datadir=$node2 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema $MYEXTRA  \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2;$WSREP_PROVIDER_OPTIONS" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --wsrep_node_address=$ADDR \
     --log-error=$node2/error.log \
-    --socket=$node2/node2_socket.sock --log-output=none \
-    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/error.log 2>&1 &
+    --socket=$node2/node2_socket.sock \
+    --port=$RBASE2 --server-id=2 > $node2/error.log 2>&1 &
 
   echo_out "Waiting for node-2 to start ....."
   MPID="$!"
@@ -2009,21 +2017,16 @@ start_pxc_main(){
   done
   sleep 10
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${BASEDIR} --datadir=$node3 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+  ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.3 \
+    --datadir=$node3 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema $MYEXTRA  \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3;$WSREP_PROVIDER_OPTIONS" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --wsrep_node_address=$ADDR  \
     --log-error=$node3/error.log \
-    --socket=$node3/node3_socket.sock --log-output=none \
-    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/error.log 2>&1 &
+    --socket=$node3/node3_socket.sock \
+    --port=$RBASE3 --server-id=3  > $node3/error.log 2>&1 &
 
   # ensure that node-3 has started and has joined the group post SST
   echo_out "Waiting for node-3 to start ....."
