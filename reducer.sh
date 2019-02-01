@@ -1928,6 +1928,8 @@ start_mysqld_or_valgrind_or_pxc(){
 }
 
 start_pxc_main(){
+  SUSER=root
+  SPASS=
   # Creating default my.cnf file
   rm -rf ${WORKD}/my.cnf
   echo "[mysqld]" > ${WORKD}/my.cnf
@@ -1939,9 +1941,8 @@ start_pxc_main(){
     echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKD}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
-  echo "wsrep_sst_method=rsync" >> ${WORKD}/my.cnf
+  echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKD}/my.cnf
   echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
-  echo "wsrep_sst_method=rsync" >> ${WORKD}/my.cnf
   echo "core-file" >> ${WORKD}/my.cnf
   echo "log-output=none" >> ${WORKD}/my.cnf
   echo "wsrep_slave_threads=2" >> ${WORKD}/my.cnf
@@ -1959,9 +1960,6 @@ start_pxc_main(){
   RBASE3="$(( RBASE1 + 200 ))"
   RADDR3="$ADDR:$(( RBASE3 + 7 ))"
   LADDR3="$ADDR:$(( RBASE3 + 8 ))"
-
-  SUSER=root
-  SPASS=
 
   ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.1 \
     --datadir=$node1 \
