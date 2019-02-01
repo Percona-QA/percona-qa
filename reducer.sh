@@ -2043,12 +2043,12 @@ start_pxc_main(){
 
   CLUSTER_UP=0
   if $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
   fi
 }
 
