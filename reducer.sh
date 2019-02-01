@@ -607,12 +607,12 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack"
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
-    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   fi
   if [ $GRP_RPL_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining Group Replication nodes are terminated and removed"
-    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   fi
   echo_out "[Abort] Ensuring any remaining processes are terminated"
@@ -1518,13 +1518,13 @@ init_workdir_and_files(){
     fi
   fi
   if [ $PXC_MOD -eq 1 ]; then
-    echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
-    echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
-    echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
+    echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node1/node1_socket.sock"
+    echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node2/node2_socket.sock"
+    echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node3/node3_socket.sock"
   elif [ $GRP_RPL_MOD -eq 1 ]; then
-    echo_out "[Init] Group Replication Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
-    echo_out "[Init] Group Replication Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
-    echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
+    echo_out "[Init] Group Replication Node #1 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node1/node1_socket.sock"
+    echo_out "[Init] Group Replication Node #2 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node2/node2_socket.sock"
+    echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node3/node3_socket.sock"
   else
     echo_out "[Init] Server: ${BIN} (as $MYUSER)"
     if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
@@ -1974,8 +1974,8 @@ start_pxc_main(){
 
   echo_out "Waiting for node-1 to start ....."
   MPID="$!"
-  while true ; do
-    sleep 10
+  for X in $(seq 1 120); do
+    sleep 1
     if grep -E --binary-files=text -qi "Synchronized with group, ready for connections" $node1/error.log ; then
      break
     fi
@@ -1986,7 +1986,6 @@ start_pxc_main(){
       exit 1
     fi
   done
-  sleep 10
 
   ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.2 \
     --datadir=$node2 \
@@ -2001,8 +2000,8 @@ start_pxc_main(){
 
   echo_out "Waiting for node-2 to start ....."
   MPID="$!"
-  while true ; do
-    sleep 10
+  for X in $(seq 1 120); do
+    sleep 1
     if grep -E --binary-files=text -qi "Synchronized with group, ready for connections" $node2/error.log ; then
      break
     fi
@@ -2013,7 +2012,6 @@ start_pxc_main(){
       exit 1
     fi
   done
-  sleep 10
 
   ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.3 \
     --datadir=$node3 \
@@ -2029,8 +2027,8 @@ start_pxc_main(){
   # ensure that node-3 has started and has joined the group post SST
   echo_out "Waiting for node-3 to start ....."
   MPID="$!"
-  while true ; do
-    sleep 10
+  for X in $(seq 1 120); do
+    sleep 1
     if grep -E --binary-files=text -qi "Synchronized with group, ready for connections" $node3/error.log ; then
      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
      break
@@ -2581,7 +2579,7 @@ cleanup_and_save(){
     fi
   else
     if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-      (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+      (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
     cp -f $WORKT $WORKF
@@ -2949,7 +2947,7 @@ stop_mysqld_or_pxc(){
   SHUTDOWN_TIME_START=$(date +'%s')
   MODE0_MIN_SHUTDOWN_TIME=$[ $TIMEOUT_CHECK + 10 ]
   if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
     if [ ${FORCE_KILL} -eq 1 -a ${MODE} -ne 0 ]; then  # In MODE=0 we may be checking for shutdown hang issues, so do not kill mysqld
