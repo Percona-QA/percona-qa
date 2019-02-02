@@ -217,6 +217,7 @@ rocksdb..PessimisticTransactionDB..UnLock                 ## https://jira.percon
 opt_event_scheduler == Events..EVENTS_ON .. opt_event_scheduler == Events..EVENTS_OFF ## https://bugs.mysql.com/bug.php?id=93719
 #table2 == NULL                                           ## https://bugs.mysql.com/bug.php?id=93720  # HAVE STRONG SUSPICION THERE ARE MORE BUGS HIDING BEHIND THIS STRING, SO LEAVING IT FILTERED. SOME MAY BE HARD TO REDUCE. START MULTIPLE REDUCERS FOR EACH OCCURENCE.
 #TEXT=.false.$                                            ## https://bugs.mysql.com/bug.php?id=93720  # IDEM AS ABOVE. ALSO ALREADY FILTERED ELSEWHERE
+Item_func_in..cleanup                                     ## https://bugs.mysql.com/bug.php?id=94176
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again

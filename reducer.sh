@@ -4274,25 +4274,26 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 151 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 152 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
     elif [ $TRIAL -eq 153 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 154 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 155 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 156 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 157 ]; then sed "s/;[ \t]\+#/;#/" $WORKF > $WORKT  # Remove any spaces/tabs before #EOL comments if present
-    elif [ $TRIAL -eq 158 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT  # Attempt to remove #EOL comments
-    elif [ $TRIAL -eq 159 ]; then sed "s/#[^#]\+$/;/" $WORKF > $WORKT  # Another attempt at removing #EOL comments
-    elif [ $TRIAL -eq 160 ]; then sed "s/#[^#]\+$/#/" $WORKF > $WORKT  # If previous attempts do not work, attempt shorter comments
-    elif [ $TRIAL -eq 161 ]; then sed -e 's/[ \t]\+$//' $WORKF > $WORKT  # Remove spaces at end of line
-    elif [ $TRIAL -eq 162 ]; then NOSKIP=1; sed -e 's|\([^;]\)$|\1;|' $WORKF > $WORKT  # Add ';' on lines that do not have it
-    elif [ $TRIAL -eq 163 ]; then NOSKIP=1; sed -e 's|#;|;#|' $WORKF > $WORKT  # Ref line above/below for combination effect
-    elif [ $TRIAL -eq 164 ]; then sed -e 's/;[ \t]*;/;/g' $WORKF > $WORKT  # Remove empty statements if possible
-    elif [ $TRIAL -eq 165 ]; then sed -e 's/[ \t]\+/ /g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 166 ]; then sed -e 's/  / /' $WORKF > $WORKT
+    elif [ $TRIAL -eq 154 ]; then sed -e "s/;#;/;/" $WORKF > $WORKT
+    elif [ $TRIAL -eq 155 ]; then sed "s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 156 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 158 ]; then sed "s/;[ \t]\+#/;#/" $WORKF > $WORKT  # Remove any spaces/tabs before #EOL comments if present
+    elif [ $TRIAL -eq 159 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT  # Attempt to remove #EOL comments
+    elif [ $TRIAL -eq 160 ]; then sed "s/#[^#]\+$/;/" $WORKF > $WORKT  # Another attempt at removing #EOL comments
+    elif [ $TRIAL -eq 161 ]; then sed "s/#[^#]\+$/#/" $WORKF > $WORKT  # If previous attempts do not work, attempt shorter comments
+    elif [ $TRIAL -eq 162 ]; then sed -e 's/[ \t]\+$//' $WORKF > $WORKT  # Remove spaces at end of line
+    elif [ $TRIAL -eq 163 ]; then NOSKIP=1; sed -e 's|\([^;]\)$|\1;|' $WORKF > $WORKT  # Add ';' on lines that do not have it
+    elif [ $TRIAL -eq 164 ]; then NOSKIP=1; sed -e 's|#;|;#|' $WORKF > $WORKT  # Ref line above/below for combination effect
+    elif [ $TRIAL -eq 165 ]; then sed -e 's/;[ \t]*;/;/g' $WORKF > $WORKT  # Remove empty statements if possible
+    elif [ $TRIAL -eq 166 ]; then sed -e 's/[ \t]\+/ /g' $WORKF > $WORKT
     elif [ $TRIAL -eq 167 ]; then sed -e 's/  / /' $WORKF > $WORKT
     elif [ $TRIAL -eq 168 ]; then sed -e 's/  / /' $WORKF > $WORKT
-    elif [ $TRIAL -eq 169 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
-    elif [ $TRIAL -eq 170 ]; then grep -E --binary-files=text -v "^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 171 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 172 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 169 ]; then sed -e 's/  / /' $WORKF > $WORKT
+    elif [ $TRIAL -eq 170 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
+    elif [ $TRIAL -eq 171 ]; then grep -E --binary-files=text -v "^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 172 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 173 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
