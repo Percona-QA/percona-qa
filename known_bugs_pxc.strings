@@ -3,6 +3,7 @@
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 thd->debug_binlog_xid_last.is_null                                                       ## https://jira.percona.com/browse/PXC-2386
 thd->wsrep_safe_to_abort == true                                                         ## https://jira.percona.com/browse/PXC-2385
+xid_seqno >= trx_sys_cur_xid_seqno                                                       ## https://jira.percona.com/browse/PXC-2390
 ## =========== Line number based ===========
 #ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
 ha_innodb.cc line 19502                                                                  ## https://jira.percona.com/browse/PXC-915
