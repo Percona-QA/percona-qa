@@ -130,9 +130,19 @@ if [[ $SST_METHOD == "xtrabackup-v2" ]];then
     export PATH="$ROOT_FS/$PXB_BASE/bin:$PATH"
   else
     if check_for_version $MYSQL_VERSION "8.0.0" ; then
-      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-8.0.4/binary/tarball/percona-xtrabackup-8.0.4-Linux-x86_64.libgcrypt20.tar.gz
+      if [ -f /usr/bin/yum ]; then
+        wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-8.0.4/binary/tarball/percona-xtrabackup-8.0.4-Linux-x86_64.libgcrypt145.tar.gz
+      fi
+      if [ -f /usr/bin/apt-get ]; then
+        wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-8.0.4/binary/tarball/percona-xtrabackup-8.0.4-Linux-x86_64.libgcrypt20.tar.gz
+      fi
     else
-      wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.13/binary/tarball/percona-xtrabackup-2.4.13-Linux-x86_64.libgcrypt20.tar.gz
+      if [ -f /usr/bin/yum ]; then
+        wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.13/binary/tarball/percona-xtrabackup-2.4.13-Linux-x86_64.libgcrypt145.tar.gz
+      fi
+      if [ -f /usr/bin/apt-get ]; then
+        wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.13/binary/tarball/percona-xtrabackup-2.4.13-Linux-x86_64.libgcrypt20.tar.gz
+      fi
     fi
     tar -xzf percona-xtrabackup*.tar.gz
     PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
@@ -288,6 +298,7 @@ start_pxc_node(){
       sleep 1
       if ${PXCBASEDIR}/bin/mysqladmin -uroot -S/tmp/n${i}.sock ping > /dev/null 2>&1; then
         echoit "Started PXC node${i}. Socket : /tmp/n${i}.sock"
+        sleep 5
         break
       fi
     done
