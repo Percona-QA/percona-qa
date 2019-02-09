@@ -165,7 +165,7 @@ echo -e "      echo -e \"\${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock sh
 echo -e "    fi" >> ./start_pxc
 
 echo -e "    echo -e \"if [ -d \$node.PREV ]; then rm -Rf \$node.PREV.older; mv \$node.PREV \$node.PREV.older; fi;mv \$node \$node.PREV\" >> ./wipe"  >> ./start_pxc
-echo -e "    echo -e \"\$BUILD/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"node\$i> \\\"\" > \${BUILD}/\$i\\_node_cli "  >> ./start_pxc
+echo -e "    echo -e \"\$BUILD/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"node\$i:\\u@\\h> \\\"\" > \${BUILD}/\$i\\_node_cli "  >> ./start_pxc
 echo -e "    chmod +x  \${BUILD}/\$i\\_node_cli  "  >> ./start_pxc
 
 echo -e "  done\n" >> ./start_pxc
