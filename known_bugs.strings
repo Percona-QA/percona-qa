@@ -63,6 +63,8 @@ std.._Hashtable<std..string, std..pair<std..string const, unsigned long>, std..a
 std.._Hashtable<std..string, std..pair<std..string const, std..list<ACL_USER., Acl_cache_allocator<ACL_USER.> > >, Acl_cache_allocator<std..pair<std..string const, std..list<ACL_USER., Acl_cache_allocator<ACL_USER.> > > >, std..__detail.._Select1st, std..equal_to<std..string>, std..hash<std..string>, std..__detail.._Mod_range_hashing, std..__detail.._Default_ranged_hash, std..__detail.._Prime_rehash_policy, std..__detail.._Hashtable                                                        ## https://jira.percona.com/browse/PS-5160
 thread_ids.empty                                         ## https://jira.percona.com/browse/PS-4975
 plugin_lock                                              ## https://jira.percona.com/browse/PS-3817
+Z13ha_commit_lowP3THDbb                                  ## https://jira.percona.com/browse/PS-3817
+Z21ha_default_handlertonP3THD                            ## https://jira.percona.com/browse/PS-3817
 #PFS_column_row..make_row                       ## Fixed ## https://jira.percona.com/browse/PS-4977
 #strlen.db_name                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=83114
 #maybe_null                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=83115
@@ -189,6 +191,7 @@ innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_activ
 #len <= dtype_get_len.type. + prtype_get_compression_extra.dtype_get_prtype.type.. .. ..dtype_get_mtype.type.. == 5 .. .dtype_get_mtype.type.. == 16 .. .dtype_get_mtype.type.. == 14. .. .strcmp.index->name, .FTS_INDEX_TABLE_IND..  ## Fixed ## https://jira.percona.com/browse/PS-4932
 #len <= col->len .. ..col->mtype. == 5 .. .col->mtype. == 16 .. .col->mtype. == 14. .. ...col->mtype. == 15 .. .col->mtype. == 16. .. len == 2 . 2 . sizeof.double.. .. ..col->mtype == 1 .. col->mtype == 4 .. col->mtype == 12. .. .col->len == 0 .. len <= col->len + prtype_get_compression_extra.col->prtype...       ## Fixed ## https://jira.percona.com/browse/PS-5025
 #TEXT=..table_name.$                             ## Fixed ## https://jira.percona.com/browse/PS-4979
+TEXT=..table_name.$                                       ## https://jira.percona.com/browse/PS-5410
 ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 sync0types.h line 1051                                    ## https://jira.percona.com/browse/PS-4988
@@ -349,6 +352,7 @@ ZN7SEL_ARG9store_minEjPPhj                               ## https://bugs.mysql.c
 #ha_innopart.cc line 3526                       ## Fixed ## https://bugs.mysql.com/bug.php?id=78728
 
 ## =========== MS 5.7 GA ===========
+dict0stats_bg.cc                                         ## https://bugs.mysql.com/bug.php?id=89759
 .xid->is_null                                            ## https://bugs.mysql.com/bug.php?id=80694
 # row0quiesce.cc line 724                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90154 (Old bug #80669. Fixed in 5.7.11)
 ut0ut.cc line 921                                        ## https://bugs.mysql.com/bug.php?id=80695 PS
