@@ -313,6 +313,8 @@
 # apt != apt-get  # For example, to list application you need: sudo apt list <package_name> and list is not a valid option for apt-get
   sudo apt-cache policy <package_name>  # Can be used to find out what repo a package comes from etc.
   apt-cache search <package name>       # Search
+# Display space used by subdirs, handy to find out what is using space. Note that the sort is not perfect
+  ls -l | grep "^d" | awk '{print $9}' | xargs -I{} du -sh ./{} | sort -n | more
   
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax

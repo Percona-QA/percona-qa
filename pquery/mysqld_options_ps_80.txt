@@ -1547,8 +1547,6 @@
 --innodb-read-io-threads=1125899906842624
 --innodb-read-only=1
 --innodb-read-only=0
---innodb-redo-log-encrypt=1
---innodb-redo-log-encrypt=0
 --innodb-replication-delay=0
 --innodb-replication-delay=1
 --innodb-replication-delay=2
@@ -2682,7 +2680,7 @@
 --performance-schema-digests-size=2047
 --performance-schema-digests-size=-1125899906842624
 --performance-schema-digests-size=1125899906842624
---performance-schema-error-size=4498
+--performance-schema-error-size=4499
 --performance-schema-error-size=0
 --performance-schema-error-size=1
 --performance-schema-error-size=2

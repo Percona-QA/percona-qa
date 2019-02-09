@@ -1,5 +1,7 @@
 #PostgreSQL source code installation instructions.
 
+Or use percona-qa/build_postgresql_debug.sh
+
 1) Download source code.
    The source code can be found from following locations;
    https://www.postgresql.org/ftp/source/
@@ -7,9 +9,9 @@
 
 2) Steps to build debug binary;
 
-   ./configure --enable-debug --prefix=/pgsql/base
-   gmake
-   gmake install
+   ./configure --enable-debug --prefix=/pgsql/base  # change prefix to the path where you want to build PostgreSQL to 
+   gmake  # or make 
+   gmake install  # not an actual install, only a "install" (i.e. copy) into the target directory (i.e. the one specified in prefix) 
    
    This will install postgres binary files under /pgsql/base.
 
