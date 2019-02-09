@@ -10,7 +10,7 @@ COPYDIR=/sda
 STATIC_PQUERY_BIN=/home/roel/percona-qa/pquery/pquery2-ps8  # Leave empty to use a random binary, i.e. percona-qa/pquery/pquery*
 MYINIT=
 #MYINIT="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"    # Variables to add to MID (MySQL init) (changes INIT_OPT in pquery-run.sh)
-MYEXTRA="--plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=RocksDB=ha_rocksdb.so"
+MYEXTRA="--plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=RocksDB=ha_rocksdb.so --expand_fast_index_creation=ON"
 #MYEXTRA="--early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON"  # Variables to add to pquery run
 EARLYCOPY=0  # Make a copy to the COPYDIR before starting reducer. Not strictly required, but handy if your machine may power off and you were using /dev/shm as WORKDIR
 
