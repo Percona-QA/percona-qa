@@ -1636,7 +1636,7 @@ elif [[ ${GRP_RPL} -eq 1 ]]; then
     echoit "Group Replication Cluster run: 'NO'"
   fi
 fi
-echo "[$(date +'%T')] ${ONGOING}" >> ~/ongoing.pquery-runs.txt
+echo "[$(date +'%D %T')] ${ONGOING}" >> ~/ongoing.pquery-runs.txt
 ONGOING=
 
 if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
