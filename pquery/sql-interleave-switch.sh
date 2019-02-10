@@ -62,19 +62,19 @@ while [ ${COUNT} -lt `wc -l <${INPUT_FILE}` ]; do
   # Insert chunk from input file (1 or more lines)
   # head -nx | tail -ny version takes about 11 minutes on high-end machine for main.sql. awk version is much slower at 27+ minutes. Still to try; sed
   # awk "NR>=${COUNT}&&NR<=$[ ${COUNT} + ${CHUNK_SIZE} - 1 ]" ${INPUT_FILE} >> ${OUTPUT_FILE}
-  head -n$[ ${COUNT} + ${CHUNK_SIZE} - 1 ] ${INPUT_FILE} | tail -n${CHUNK_SIZE} | grep -v "^[ \t]*$" >> ${OUTPUT_FILE}
+  head -n$[ ${COUNT} + ${CHUNK_SIZE} - 1 ] ${INPUT_FILE} | tail -n${CHUNK_SIZE} | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE}
   # Insert random SQL_OPTION
   RANDOM=$(date +%s%N | cut -b14-19)
   case $[$RANDOM % ${RANDOM_NUMBER_OF_OPTIONS} + 1] in
-    1) echo -e "${SQL_OPTION_1}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    2) echo -e "${SQL_OPTION_2}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    3) echo -e "${SQL_OPTION_3}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    4) echo -e "${SQL_OPTION_4}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    5) echo -e "${SQL_OPTION_5}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    6) echo -e "${SQL_OPTION_6}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    7) echo -e "${SQL_OPTION_7}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    8) echo -e "${SQL_OPTION_8}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
-    9) echo -e "${SQL_OPTION_9}" | grep -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    1) echo -e "${SQL_OPTION_1}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    2) echo -e "${SQL_OPTION_2}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    3) echo -e "${SQL_OPTION_3}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    4) echo -e "${SQL_OPTION_4}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    5) echo -e "${SQL_OPTION_5}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    6) echo -e "${SQL_OPTION_6}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    7) echo -e "${SQL_OPTION_7}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    8) echo -e "${SQL_OPTION_8}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
+    9) echo -e "${SQL_OPTION_9}" | grep -E --binary-files=text -v "^[ \t]*$" >> ${OUTPUT_FILE} ;;
     *) echo 'Assert: Something went wrong. Did you set RANDOM_NUMBER_OF_OPTIONS to correct number of random options etc.?'; exit 1 ;;
   esac
   COUNT=$[ ${COUNT} + ${CHUNK_SIZE} ]

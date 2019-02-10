@@ -219,6 +219,7 @@ opt_event_scheduler == Events..EVENTS_ON .. opt_event_scheduler == Events..EVENT
 #TEXT=.false.$                                            ## https://bugs.mysql.com/bug.php?id=93720  # IDEM AS ABOVE. ALSO ALREADY FILTERED ELSEWHERE
 Item_func_in..cleanup                                     ## https://bugs.mysql.com/bug.php?id=94176
 #void destroy<in_vector>                                  ## This is likely https://bugs.mysql.com/bug.php?id=94176 but on PS
+get_schema_tables_result                                  ## https://jira.percona.com/browse/PS-5414
 
 ## =========== PS8/MS8, need better tetcases
 #mp->count > 0 .. my_thread_equal.my_thread_self          ## Seen in run 13013717 (PS 8.0.12) but testcase does not reduce at all, need good testcase. Try and reduce when seen again
@@ -965,7 +966,7 @@ Z21join_read_const_tableP13st_join_tableP11st_position                          
 Z23well_formed_copy_ncharsPK15charset_info_stPcjS1_PKcjjPS4_S5_S5_                      ## https://bugs.mysql.com/bug.php?id=83798 (new bug, seems unrelated to 1417372)
 Z23well_formed_copy_ncharsPK15charset_info_stPcmS1_PKcmmPS4_S5_S5_                      ## https://bugs.mysql.com/bug.php?id=85065
 ZN23Gcalc_operation_reducer11free_resultEPNS_9res_pointE                                ## https://bugs.mysql.com/bug.php?id=84834 (duplicated by 85070)
-Z24get_schema_tables_resultP4JOIN23enum_                                                ## Another i-s-temp-tables bug (based on crashing query) (see comment)
+#Z24get_schema_tables_resultP4JOIN23enum_                                      ## Fixed?## Another i-s-temp-tables bug (based on crashing query) (see comment)
 #Z24ha_initialize_handlertonP13st_plugin_int                                   ## Fixed ## https://jira.percona.com/browse/MYR-195
 Z24plugin_foreach_with_maskP3THDPFcS0_PP13st_plugin_intPvEijS4_                         ## https://jira.percona.com/browse/PS-1088 (also listed elsewhere)
 #ZN25table_events_waits_common8make_rowEbP10PFS_threadPV16PFS_events_waits     ## Fixed ## https://bugs.mysql.com/bug.php?id=88799
