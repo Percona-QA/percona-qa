@@ -311,7 +311,7 @@ function pxc_start(){
     echo "wsrep_node_address=127.0.0.1" >> ${WORKDIR}/n${i}.cnf
     echo "innodb_file_per_table" >> ${WORKDIR}/n${i}.cnf
     echo "innodb_autoinc_lock_mode=2" >> ${WORKDIR}/n${i}.cnf
-    echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKDIR}/n${i}.cnf
+    #echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKDIR}/n${i}.cnf
     echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKDIR}/n${i}.cnf
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKDIR}/n${i}.cnf
     echo "wsrep_sst_method=$SST_METHOD" >> ${WORKDIR}/n${i}.cnf
