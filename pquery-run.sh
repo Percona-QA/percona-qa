@@ -1613,25 +1613,31 @@ fi
 rm -Rf ${WORKDIR} ${RUNDIR}
 mkdir ${WORKDIR} ${WORKDIR}/log ${RUNDIR}
 WORKDIRACTIVE=1
+ONGOING=
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
 if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} "
+  ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} "
+  echoit "${ONGOING}"
 elif [[ ${PXC} -eq 1 ]]; then
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
+  ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
+  echoit "${ONGOING}"
   if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
     echoit "PXC Cluster run: 'YES'"
   else
     echoit "PXC Cluster run: 'NO'"
   fi
 elif [[ ${GRP_RPL} -eq 1 ]]; then
-  echoit "Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
+  ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
+  echoit "${ONGOING}"
   if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
     echoit "Group Replication Cluster run: 'YES'"
   else
     echoit "Group Replication Cluster run: 'NO'"
   fi
 fi
+echo "[$(date +'%D %T')] ${ONGOING}" >> ~/ongoing.pquery-runs.txt
+ONGOING=
 
 if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
   echoit "PXB Base: ${PXB_BASEDIR}"

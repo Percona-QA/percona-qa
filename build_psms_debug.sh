@@ -101,7 +101,7 @@ fi
 # viossl.c:422:44: error: dereferencing pointer to incomplete type 'SSL_COMP {aka struct ssl_comp_st}'
 # This hacks sets -DWITH_SSL=bundled of =system | Ref https://bugs.mysql.com/?id=90506 (5.7.23 will have fix)
 SSL="-DWITH_SSL=system"
-if [ $SSL_MYSQL57_HACK -eq 1 ]; then
+if [ $SSL_MYSQL57_HACK -eq 1 -a $FB -ne 1 ]; then
   SSL="-DWITH_SSL=bundled"
 fi
 
