@@ -1,6 +1,7 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== PXC-8.0 bugs ===========
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
+p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 thd->debug_binlog_xid_last.is_null                                                       ## https://jira.percona.com/browse/PXC-2386
