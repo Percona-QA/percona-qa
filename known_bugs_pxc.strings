@@ -7,6 +7,7 @@ m_attachable_trx->get_prev_attachable_trx                                       
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
+Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 thd->debug_binlog_xid_last.is_null                                                       ## https://jira.percona.com/browse/PXC-2386
 thd->wsrep_safe_to_abort == true                                                         ## https://jira.percona.com/browse/PXC-2385
