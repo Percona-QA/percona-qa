@@ -1,5 +1,6 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== PXC-8.0 bugs ===========
+handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
