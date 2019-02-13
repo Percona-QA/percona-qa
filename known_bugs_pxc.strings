@@ -32,6 +32,7 @@ ZN24subselect_hash_sj_engine7cleanupEv                                          
 #row0log.cc line 2059                                                            # Non-reproducible  ## https://jira.percona.com/browse/PXC-576
 #length < = share->normalized_path.length                                        # Fixed ## https://jira.percona.com/browse/PXC-578
 #obj_seqno > last_left_                                                          # Non-reproducible  ## https://jira.percona.com/browse/PXC-569
+obj_seqno > last_left_                                                                   ## https://jira.percona.com/browse/PXC-2408
 #process_.idx..state_ == Process..S_IDLE                                         # Non-reproducible  ## https://jira.percona.com/browse/PXC-567
 #.memb_num > 0 .. my_idx >= 0                                                    # Fixed ## https://jira.percona.com/browse/PXC-570
 #lock_get_wait(other_lock)                                                       # Fixed ## https://jira.percona.com/browse/PXC-561
