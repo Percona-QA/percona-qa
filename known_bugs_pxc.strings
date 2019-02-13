@@ -1,5 +1,6 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== PXC-8.0 bugs ===========
+dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 log.writer_thread_alive.load..                                                           ## https://jira.percona.com/browse/PXC-2410
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
