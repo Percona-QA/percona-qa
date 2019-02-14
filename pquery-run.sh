@@ -426,10 +426,10 @@ pxc_startup(){
       --wsrep_cluster_address=$WSREP_CLUSTER \
       --wsrep_node_incoming_address=$ADDR \
       --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
-      --wsrep_node_address=$ADDR --log-error=$node/node${i}.err \
+      --wsrep_node_address=$ADDR --log-error=$node/node${i}.err --log-error-verbosity=3 \
       --socket=$node/node${i}_socket.sock --port=$RBASE1 > $node/node${i}.err 2>&1 &
     if [ "$1" != "startup" ]; then    
-      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err --socket=${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock --port=$RBASE1 > ${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err --log-error-verbosity=3 --socket=${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock --port=$RBASE1 > ${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     fi
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
