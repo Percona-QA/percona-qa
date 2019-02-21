@@ -91,6 +91,7 @@ Z11plugin_lockP3THDPPP13st_plugin_int                                           
 Z26log_online_follow_redo_logv                                                           ## https://jira.percona.com/browse/PXC-777
 ZN2gu12MutexWithPFSC2E19wsrep_pfs_instr_tag                                              ## https://jira.percona.com/browse/PXC-778
 fil0fil.cc line 2099                                                                     ## https://jira.percona.com/browse/PXC-779
+fil0fil.cc line 589                                                                      ## https://jira.percona.com/browse/PXC-780
 fil0fil.cc line 632                                                                      ## https://jira.percona.com/browse/PXC-780
 lock0lock.cc line 5884                                                                   ## https://jira.percona.com/browse/PXC-781
 ...flags . MYSQL_START_TRANS_OPT_READ_ONLY                                               ## https://jira.percona.com/browse/PXC-787
