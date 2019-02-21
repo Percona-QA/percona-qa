@@ -453,7 +453,7 @@ function async_rpl_test(){
       done
 	  if [[ $i -eq 1 ]];then
 	    WSREP_CLUSTER="gcomm://$LADDR1"
-        ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/pxc${i}.sock -e"alter user root@localhost identified with  mysql_native_password by '';"
+        ${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc${i}.sock -e"alter user root@localhost identified with  mysql_native_password by '';"
       fi
 	done
   }
@@ -521,7 +521,7 @@ function async_rpl_test(){
         if ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock ping > /dev/null 2>&1; then
 	      if [[ $i -eq 1 ]];then
             sleep 2
-            ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock -e"alter user root@localhost identified with  mysql_native_password by '';"
+            ${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"alter user root@localhost identified with  mysql_native_password by '';"
           fi
           break
         fi
