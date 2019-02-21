@@ -136,6 +136,7 @@ ZN13MYSQL_BIN_LOG18purge_logs_by_sizeEb                                         
 #Z31wsrep_sst_receive_address_checkP7sys_varP3THDP7set_var                       # Fixed ## https://jira.percona.com/browse/PXC-440
 #ZN19Table_cache_manager10free_tableEP3THD26enum_tdc_remove_table_typeP11TABLE_SHARE # Fixed ## https://jira.percona.com/browse/PXC-458
 #Z17wsrep_show_statusP3THDP17st_mysql_show_varPc                                 # Fixed  ## https://jira.percona.com/browse/PXC-668
+Z17get_table_def_keyPK10TABLE_LISTPPKc                                                    ## https://jira.percona.com/browse/PXC-2429
 ZN2gu11from_stringIiEET_RKSsPFRSt8ios_baseS5_E                                            ## https://github.com/codership/galera/issues/416 PXC-619
 ZN2gu11from_stringIiEET_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFRSt8ios_baseSB_E ## https://github.com/codership/galera/issues/416 PXC-619
 #ZN25PFS_status_variable_cache8manifestEP3THDPK17st_mysql_show_varP17system_status_varPKcbb # Non-reproducible  ## https://jira.percona.com/browse/PXC-629
