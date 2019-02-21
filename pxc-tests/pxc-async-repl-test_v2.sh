@@ -302,15 +302,15 @@ sysbench_run(){
   DB="$2"
   if [[ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]]; then
     if [[ "$TEST_TYPE" == "load_data" ]];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
     elif [[ "$TEST_TYPE" == "oltp" ]];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
     fi
   elif [[ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]]; then
     if [[ "$TEST_TYPE" == "load_data" ]];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --db-driver=mysql"
     elif [[ "$TEST_TYPE" == "oltp" ]];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -453,7 +453,6 @@ function async_rpl_test(){
       done
 	  if [[ $i -eq 1 ]];then
 	    WSREP_CLUSTER="gcomm://$LADDR1"
-        ${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc${i}.sock -e"alter user root@localhost identified with  mysql_native_password by '';"
       fi
 	done
   }
@@ -519,10 +518,6 @@ function async_rpl_test(){
       for X in $(seq 0 ${PXC_START_TIMEOUT}); do
         sleep 1
         if ${PXC_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock ping > /dev/null 2>&1; then
-	      if [[ $i -eq 1 ]];then
-            sleep 2
-            ${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/ps${i}.sock -e"alter user root@localhost identified with  mysql_native_password by '';"
-          fi
           break
         fi
 	    if [[ $X -eq ${PXC_START_TIMEOUT} ]]; then
@@ -603,6 +598,11 @@ function async_rpl_test(){
     done
   }
 
+  function create_test_user(){
+    local SOCKET=${1:-}
+    ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+  }
+  
   function async_sysbench_rw_run(){
     MASTER_DB=$1
 	SLAVE_DB=$2
@@ -644,6 +644,7 @@ function async_rpl_test(){
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_slave;create database sbtest_ps_slave;"
 	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists sbtest_pxc_master;create database sbtest_pxc_master;"
+    create_test_user "/tmp/pxc1.sock"
 	async_sysbench_load sbtest_pxc_master "/tmp/pxc1.sock"
 	async_sysbench_load sbtest_ps_slave "/tmp/ps1.sock"
 
@@ -680,6 +681,7 @@ function async_rpl_test(){
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists sbtest_pxc_slave;create database sbtest_pxc_slave;"
 	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_master;create database sbtest_ps_master;"
+    create_test_user "/tmp/ps1.sock"
 	async_sysbench_load sbtest_pxc_slave "/tmp/pxc1.sock"
 	async_sysbench_load sbtest_ps_master "/tmp/ps1.sock"
 
@@ -740,6 +742,7 @@ function async_rpl_test(){
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -e "drop database if exists sbtest_pxc_slave;create database sbtest_pxc_slave;"
 	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_master;create database sbtest_ps_master;"
+    create_test_user "/tmp/ps1.sock"
 	async_sysbench_load sbtest_ps_master "/tmp/ps1.sock"
 	async_sysbench_load sbtest_pxc_slave "/tmp/pxc2.sock"
 
@@ -780,6 +783,7 @@ function async_rpl_test(){
 
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -e "drop database if exists sbtest_pxc_db;create database sbtest_pxc_db;"
 	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_db;create database sbtest_ps_db;"
+    create_test_user "/tmp/pxc1.sock"
 	async_sysbench_load sbtest_ps_db "/tmp/ps1.sock"
 	async_sysbench_load sbtest_pxc_db "/tmp/pxc2.sock"
 
@@ -879,6 +883,9 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists msr_db_master2;create database msr_db_master2;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists msr_db_master3;create database msr_db_master3;"
 	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists msr_db_slave;create database msr_db_slave;"
+    create_test_user "/tmp/ps1.sock"
+    create_test_user "/tmp/ps2.sock"
+    create_test_user "/tmp/ps3.sock"
     sleep 5
     # Sysbench dataload for MSR test
 	async_sysbench_load msr_db_master1 "/tmp/ps1.sock"
@@ -966,7 +973,7 @@ function async_rpl_test(){
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists mtr_db_ps3;create database mtr_db_ps3;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists mtr_db_ps4;create database mtr_db_ps4;"
     ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists mtr_db_ps5;create database mtr_db_ps5;"
-
+    create_test_user "/tmp/ps2.sock"
     sleep 5
     # Sysbench dataload for MTR test
 	echoit "Sysbench dataload for MTR test"
