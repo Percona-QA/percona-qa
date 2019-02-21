@@ -373,7 +373,9 @@ function async_rpl_test(){
       echo "wsrep_node_address=127.0.0.1" >> ${PXC_BASEDIR}/n${i}.cnf
       echo "innodb_file_per_table" >> ${PXC_BASEDIR}/n${i}.cnf
       echo "innodb_autoinc_lock_mode=2" >> ${PXC_BASEDIR}/n${i}.cnf
-      echo "innodb_locks_unsafe_for_binlog=1" >> ${PXC_BASEDIR}/n${i}.cnf
+      if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+         echo "innodb_locks_unsafe_for_binlog=1" >> ${PXC_BASEDIR}/n${i}.cnf
+      fi
       echo "wsrep-provider=${PXC_BASEDIR}/lib/libgalera_smm.so" >> ${PXC_BASEDIR}/n${i}.cnf
       echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${PXC_BASEDIR}/n${i}.cnf
       echo "wsrep_sst_method=$SST_METHOD" >> ${PXC_BASEDIR}/n${i}.cnf
