@@ -174,6 +174,7 @@ VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
 start_pbm_coordinator(){
   if [ ! -z "${PBMDIR}" ]; then
     mkdir -p "${NODESDIR}/pbm-coordinator"
+    mkdir -p "${NODESDIR}/backup"
 
     # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
@@ -219,12 +220,12 @@ start_pbm_agent(){
   fi
 
   if [ ! -z "${PBMDIR}" ]; then
-    mkdir -p "${NDIR}/pbm-agent/backup"
+    mkdir -p "${NDIR}/pbm-agent"
     # Create storages config for node agent
     echo "local-filesystem:" > ${NDIR}/pbm-agent/storages-config.yaml
     echo "  type: filesystem" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "  filesystem:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    path: ${NDIR}/pbm-agent/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
 
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
