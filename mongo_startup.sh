@@ -189,6 +189,16 @@ start_pbm_coordinator(){
 
     # create a symlink to pbmctl
     ln -s ${PBMDIR}/pbmctl ${NODESDIR}/pbmctl
+
+    # create startup/stop scripts for the whole PBM setup
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/start_pbm.sh
+    echo "${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh" >> ${NODESDIR}/start_pbm.sh
+    echo "sleep 5" >> ${NODESDIR}/start_pbm.sh
+    chmod +x ${NODESDIR}/start_pbm.sh
+
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/stop_pbm.sh
+    echo "killall pbm-agent pbm-coordinator" >> ${NODESDIR}/stop_pbm.sh
+    chmod +x ${NODESDIR}/stop_pbm.sh
   fi
 }
 
@@ -221,6 +231,7 @@ start_pbm_agent(){
     echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${PBMDIR}/pbm-agent --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${NODESDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
 
     # Create stop script for the agent on the node
