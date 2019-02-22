@@ -174,11 +174,17 @@ VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
 start_pbm_coordinator(){
   if [ ! -z "${PBMDIR}" ]; then
     mkdir -p "${NODESDIR}/pbm-coordinator"
+
+    # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+
+    # Create stop script for the pbm-coordinator
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
+    echo "killall pbm-coordinator" >> ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
 
     # create a symlink to pbmctl
     ln -s ${PBMDIR}/pbmctl ${NODESDIR}/pbmctl
@@ -215,6 +221,10 @@ start_pbm_agent(){
     echo "${PBMDIR}/pbm-agent --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
+
+    # Create stop script for the agent on the node
+    echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/stop_pbm_agent.sh
+    echo "kill $(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
   fi
 }
 
