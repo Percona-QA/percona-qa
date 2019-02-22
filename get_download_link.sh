@@ -97,9 +97,7 @@ if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; t
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.3"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.0"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
-  VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
-fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then VERSION="4.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "postgresql" ]]; then
   VERSION=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-.*-x64-.*.tar.gz"|head -n1|grep -oP "[0-9]+\.[0-9]+(\.[0-9]+)?")
 fi
