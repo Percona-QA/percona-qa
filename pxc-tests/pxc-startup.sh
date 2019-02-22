@@ -138,7 +138,10 @@ echo -e "      --wsrep-provider=\${BUILD}/lib/libgalera_smm.so \\" >> ./start_px
 echo -e "      --wsrep_cluster_address=\$WSREP_CLUSTER \\" >> ./start_pxc
 echo -e "      --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
 echo -e "      --wsrep_provider_options=gmcast.listen_addr=tcp://\$LADDR1 \\" >> ./start_pxc
-echo -e "      --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
+echo -e "      --wsrep_sst_method=rsync \\" >> ./start_pxc
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+  echo -e "      --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
+fi
 echo -e "      --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo -e "      --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo -e "      --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc

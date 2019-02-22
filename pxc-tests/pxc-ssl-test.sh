@@ -245,8 +245,10 @@ echo "innodb_file_per_table" >> my-template.cnf
 echo "innodb_autoinc_lock_mode=2" >> my-template.cnf
 echo "wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so" >> my-template.cnf
 echo "wsrep_node_incoming_address=$ADDR" >> my-template.cnf
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+  echo "wsrep_sst_auth=$SUSER:$SPASS" >> my-template.cnf
+fi
 echo "wsrep_sst_method=$SST_METHOD" >> my-template.cnf
-echo "wsrep_sst_auth=$SUSER:$SPASS" >> my-template.cnf
 echo "wsrep_node_address=$ADDR" >> my-template.cnf
 echo "core-file" >> my-template.cnf
 echo "log-output=none" >> my-template.cnf

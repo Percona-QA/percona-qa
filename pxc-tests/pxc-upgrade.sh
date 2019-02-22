@@ -351,6 +351,9 @@ show_node_status(){
   fi
 }
 
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+  declare PXC_MYEXTRA="--wsrep_sst_auth=$SUSER:$SPASS"
+fi
 pxc_start_node(){
   local FUN_NODE_NR=$1
   local FUN_NODE_VER=$2
@@ -370,7 +373,7 @@ pxc_start_node(){
     --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=${FUN_WSREP_PROVIDER_OPTIONS} \
-    --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_sst_method=$SST_METHOD $PXC_MYEXTRA \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \

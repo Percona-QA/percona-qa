@@ -194,7 +194,9 @@ echo "innodb_autoinc_lock_mode=2" >> $WORKDIR/my.cnf
 echo "wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so" >> $WORKDIR/my.cnf
 echo "wsrep_node_incoming_address=$ADDR" >> $WORKDIR/my.cnf
 echo "wsrep_sst_method=$SST_METHOD" >> $WORKDIR/my.cnf
-echo "wsrep_sst_auth=$SUSER:$SPASS" >> $WORKDIR/my.cnf
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+  echo "wsrep_sst_auth=$SUSER:$SPASS" >> $WORKDIR/my.cnf
+fi
 echo "wsrep_node_address=$ADDR" >> $WORKDIR/my.cnf
 echo "core-file" >> $WORKDIR/my.cnf
 echo "log-output=none" >> $WORKDIR/my.cnf
