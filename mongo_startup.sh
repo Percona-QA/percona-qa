@@ -187,8 +187,9 @@ start_pbm_coordinator(){
     echo "killall pbm-coordinator" >> ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
 
-    # create a symlink to pbmctl
+    # create symlinks to PBM binaries
     ln -s ${PBMDIR}/pbmctl ${NODESDIR}/pbmctl
+    ln -s ${PBMDIR}/pbm-coordinator ${NODESDIR}/pbm-coordinator
 
     # create startup/stop scripts for the whole PBM setup
     echo "#!/usr/bin/env bash" > ${NODESDIR}/start_pbm.sh
@@ -238,6 +239,9 @@ start_pbm_agent(){
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/stop_pbm_agent.sh
     echo "kill \$(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/stop_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/stop_pbm_agent.sh
+
+    # create a symlink for pbm-agent binary
+    ln -s ${PBMDIR}/pbm-agent ${NDIR}/pbm-agent/pbm-agent
   fi
 }
 
