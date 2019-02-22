@@ -225,7 +225,7 @@ start_pbm_agent(){
 
     # Create stop script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/stop_pbm_agent.sh
-    echo "kill $(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/stop_pbm_agent.sh
+    echo "kill \$(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/stop_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/stop_pbm_agent.sh
   fi
 }
