@@ -185,6 +185,7 @@ start_pbm_coordinator(){
     # Create stop script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
     echo "killall pbm-coordinator" >> ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
+    chmod +x ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
 
     # create a symlink to pbmctl
     ln -s ${PBMDIR}/pbmctl ${NODESDIR}/pbmctl
@@ -224,7 +225,8 @@ start_pbm_agent(){
 
     # Create stop script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/stop_pbm_agent.sh
-    echo "kill $(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "kill $(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/stop_pbm_agent.sh
+    chmod +x ${NDIR}/pbm-agent/stop_pbm_agent.sh
   fi
 }
 
