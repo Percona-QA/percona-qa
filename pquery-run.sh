@@ -341,10 +341,10 @@ if [[ $PXC -eq 1 ]];then
   echo "innodb_autoinc_lock_mode=2" >> ${BASEDIR}/my.cnf
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
+    echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
   echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
   echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
