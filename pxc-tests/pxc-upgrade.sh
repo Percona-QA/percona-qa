@@ -737,8 +737,7 @@ $UPPER_BASEDIR/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /d
 MYSQL_VERSION=$(${LOWER_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 rm -Rf ${MYSQL_VARDIR}/node* 
 
-for i in `seq 1 3`;do
-  rm -Rf ${MYSQL_VARDIR}/node* 
+for i in `seq 1 3`;do 
   RBASE="$(( RPORT + ( 100 * $i ) ))"
   LADDR1="127.0.0.1:$(( RBASE + 8 ))"
   if [ $i -eq 1 ];then
