@@ -42,6 +42,7 @@ declare SUSER=root
 declare SPASS=""
 declare node=""
 declare DEBUG=""
+declare PXC_MYEXTRA=""
 
 # Dispay script usage details
 usage () {
@@ -352,7 +353,7 @@ show_node_status(){
 }
 
 if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
-  declare PXC_MYEXTRA="--wsrep_sst_auth=$SUSER:$SPASS"
+  PXC_MYEXTRA="--wsrep_sst_auth=$SUSER:$SPASS"
 fi
 pxc_start_node(){
   local FUN_NODE_NR=$1
