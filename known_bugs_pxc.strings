@@ -18,6 +18,7 @@ xid_seqno >= trx_sys_cur_xid_seqno                                              
 #ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
 ha_innodb.cc line 19502                                                                  ## https://jira.percona.com/browse/PXC-915
 ## =========== Assertion based ===========
+bytes_read == data_written - checksum_length .. bytes_read == data_written - checksum_length - 1 ## https://jira.percona.com/browse/PXC-2131
 galera..ReplicatorSMM..param_set                                                         ## https://jira.percona.com/browse/PXC-2137
 #.provider_resumed                                                               # Fixed ## https://jira.percona.com/browse/PXC-461
 #.strcmp.table_list->get_db_name                                                 # Fixed ## https://jira.percona.com/browse/PXC-453
