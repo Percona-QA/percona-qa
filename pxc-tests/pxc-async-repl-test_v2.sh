@@ -600,7 +600,12 @@ function async_rpl_test(){
 
   function create_test_user(){
     local SOCKET=${1:-}
-    ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+    if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+    else
+      ${PXC_BASEDIR}/bin/mysql -uroot --socket=$SOCKET -e "CREATE USER test_user@'%' identified by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+    fi
+
   }
   
   function async_sysbench_rw_run(){
