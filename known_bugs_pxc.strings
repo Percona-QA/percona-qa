@@ -29,6 +29,7 @@ cache_el.i.->used_tables.is_empty                                               
 #mdl_ticket->m_duration == MDL_TRANSACTION .. duration .= MDL_TRANSACTION        # Fixed ## https://jira.percona.com/browse/PXC-463
 pool_.size                                                                               ## https://jira.percona.com/browse/PXC-749 (previously PXC-454)
 #thd->wsrep_exec_mode == LOCAL_STATE                                             # Fixed ## https://jira.percona.com/browse/PXC-451
+trx_map_.size                                                                            ## https://jira.percona.com/browse/PXC-2436
 trx->state                                                                               ## https://jira.percona.com/browse/PXC-678
 #hton == innodb_hton_pt                                                          # Non-reproducible  ## https://jira.percona.com/browse/PXC-581
 err_key < ha_alter_info->key_count                                                       ## http://bugs.mysql.com/bug.php?id=82321
