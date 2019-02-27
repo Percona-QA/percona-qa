@@ -857,6 +857,19 @@ remove_packages(){
   fi
 }
 
+install_pgsql_plugin(){
+  yum install -y gcc readline-devel zlib-devel
+  wget https://ftp.postgresql.org/pub/source/v10.6/postgresql-10.6.tar.gz
+  tar -xf postgresql-10.6.tar.gz
+  cd postgresql-10.6
+  ./configure
+  make
+  sudo make install
+  cd contrib/
+  make
+  make install
+}
+
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
