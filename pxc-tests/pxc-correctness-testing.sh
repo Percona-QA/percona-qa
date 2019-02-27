@@ -202,7 +202,7 @@ if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
   echoit "Setting up vault server"
   mkdir $WORKDIR/vault
   rm -rf $WORKDIR/vault/*
-  killall vault
+  ps -ef | grep vault | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   echoit "********************************************************************************************"
   ${SCRIPT_PWD}/../vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
   echoit "********************************************************************************************"
@@ -237,7 +237,7 @@ archives() {
   $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
   $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
   $BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
-  killall vault
+  ps -ef | grep vault | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   rm -rf $WORKDIR
 }
 
