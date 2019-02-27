@@ -345,7 +345,6 @@ if [[ $PXC -eq 1 ]];then
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
   echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
@@ -421,6 +420,9 @@ pxc_startup(){
     else
       VALGRIND_CMD=""
     fi
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      PXC_MYEXTRA="$PXC_MYEXTRA --log-error-verbosity=3"
+    fi
     mkdir -p $tmpdir/tmp${i}
     $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf \
       $STARTUP_OPTION --datadir=$node \
@@ -428,10 +430,10 @@ pxc_startup(){
       --wsrep_cluster_address=$WSREP_CLUSTER \
       --wsrep_node_incoming_address=$ADDR \
       --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
-      --wsrep_node_address=$ADDR --log-error=$node/node${i}.err --log-error-verbosity=3 \
+      --wsrep_node_address=$ADDR --log-error=$node/node${i}.err \
       --socket=$node/node${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > $node/node${i}.err 2>&1 &
     if [ "$1" != "startup" ]; then    
-      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err --log-error-verbosity=3 --socket=${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > ${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err --socket=${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > ${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     fi
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
