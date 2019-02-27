@@ -6,7 +6,9 @@ log.writer_thread_alive.load..                                                  
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
+page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
+row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
