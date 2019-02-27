@@ -252,15 +252,15 @@ sysbench_run(){
   DB="$2"
   if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=root  --num-threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --max-time=$SDURATION --report-interval=1 --max-requests=1870000000 --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --num-threads=$NUMT --db-driver=mysql"
     fi
   elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=root  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$TSIZE --tables=$TCOUNT --mysql-db=$DB --mysql-user=test_user --mysql-password=test  --threads=$NUMT --time=$SDURATION --report-interval=1 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -383,6 +383,11 @@ function pxc_start(){
     if [[ $i -eq 1 ]];then
       WSREP_CLUSTER="gcomm://$LADDR1"
       export NODE1_PORT=$RBASE1
+      if check_for_version $MYSQL_VERSION "5.7.0" ; then
+        ${BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "CREATE USER IF NOT EXISTS test_user@'%' identified with mysql_native_password by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+      else
+        ${BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "CREATE USER test_user@'%' identified by 'test';GRANT ALL ON *.* TO test_user@'%'" 2>&1
+      fi
       $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists pxc_test;create database pxc_test;drop database if exists percona;create database percona;"
       # Create DSNs table to run pt-table-checksum
       $BASEDIR/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop table if exists percona.dsns;create table percona.dsns(id int,parent_id int,dsn varchar(100), primary key(id));"
