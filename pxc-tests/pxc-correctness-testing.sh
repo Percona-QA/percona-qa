@@ -191,7 +191,7 @@ if [ ! -z $PT_TAR ];then
   PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
   export PATH="$ROOT_FS/$PTBASE/bin:$PATH"
 else
-  wget https://www.percona.com/downloads/percona-toolkit/2.2.19/tarball/percona-toolkit-2.2.19.tar.gz
+  wget https://www.percona.com/downloads/percona-toolkit/3.0.13/binary/tarball/percona-toolkit-3.0.13_x86_64.tar.gz
   PT_TAR=`ls -1td ?ercona-?oolkit* | grep ".tar" | head -n1`
   tar -xzf $PT_TAR
   PTBASE=`ls -1td ?ercona-?oolkit* | grep -v ".tar" | head -n1`
