@@ -857,19 +857,6 @@ remove_packages(){
   fi
 }
 
-install_pgsql_plugin(){
-  yum install -y gcc readline-devel zlib-devel
-  wget https://ftp.postgresql.org/pub/source/v10.6/postgresql-10.6.tar.gz
-  tar -xf postgresql-10.6.tar.gz
-  cd postgresql-10.6
-  ./configure
-  make
-  sudo make install
-  cd contrib/
-  make
-  make install
-}
-
 #Percona Server configuration.
 add_clients(){
   mkdir -p $WORKDIR/logs
@@ -1043,10 +1030,21 @@ add_clients(){
         sudo_check ${PGSQL_USER}
         sudo chown -R ${PGSQL_USER} ${BASEDIR}/${NODE_NAME}_${j}/data
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
-        sudo -H -u ${PGSQL_USER} bash -c "./initdb -D ${BASEDIR}/${NODE_NAME}_${j}/data --username=postgres" > /dev/null 2>&1;
-        sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
+	sudo -H -u ${PGSQL_USER} bash -c "./initdb -D ${BASEDIR}/${NODE_NAME}_${j}/data --username=postgres" > /dev/null 2>&1;
+        if [ 1 -eq 1 ]; then
+          echo "Enabling pg_stat_statements Plugin in configuration file";
+          sudo -H -u ${PGSQL_USER} bash -c "sed -i \"s/.*shared_preload_libraries.*/shared_preload_libraries = 'pg_stat_statements'/\" ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
+          sudo -H -u ${PGSQL_USER} bash -c "echo \"adding some extra steps\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
+          sudo -H -u ${PGSQL_USER} bash -c "echo \"pg_stat_statements.max = 10000\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
+          sudo -H -u ${PGSQL_USER} bash -c "echo \"pg_stat_statements.track = all\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
+        fi
+	sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
         sudo -H -u ${PGSQL_USER} bash -c "./createdb psql --username=postgres"
-        if [ $disable_ssl -eq 1 ]; then
+        if [ 1 -eq 1 ]; then
+          sudo -H -u nobody bash -c "/home/pgsql/bin/psql -U postgres -d psql -c 'CREATE EXTENSION pg_stat_statements;'"
+          sudo -H -u nobody bash -c "/home/pgsql/bin/psql -U postgres -d psql -c "SELECT * FROM pg_available_extensions where name = 'pg_stat_statements';""
+        fi
+	if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add postgresql --user postgres --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
           check_disable_ssl PGSQL-${NODE_NAME}-${j}
         else
