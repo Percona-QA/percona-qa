@@ -152,9 +152,9 @@ if [ ${PXC} -eq 1 ]; then
     echoit "Note: As this is a PXC=1 run, and QUERIES_PER_THREAD was set to only ${QUERIES_PER_THREAD}, this script is setting the queries per thread to the required minimum of 2147483647 for this run."
     QUERIES_PER_THREAD=2147483647  # Max int
   fi
-  if [ ${PQUERY_RUN_TIMEOUT} -lt 120 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
+  if [ ${PQUERY_RUN_TIMEOUT} -lt 60 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
     echoit "Note: As this is a PXC=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
-    PQUERY_RUN_TIMEOUT=120
+    PQUERY_RUN_TIMEOUT=60
   fi
   ADD_RANDOM_OPTIONS=0
   ADD_RANDOM_TOKUDB_OPTIONS=0
@@ -344,7 +344,7 @@ if [[ $PXC -eq 1 ]];then
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
+  echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
