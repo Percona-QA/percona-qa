@@ -20,6 +20,7 @@ ADDR="127.0.0.1"
 download_link=0
 disable_ssl=0
 create_pgsql_user=0
+enable_pgsql_plugin=0
 
 mkdir -p $WORKDIR/logs
 # User configurable variables
@@ -71,6 +72,7 @@ usage () {
   echo " --ova-memory                   Pass memory(memorysize in MB) for OVA virtual box"
   echo " --disable-ssl                  Disable ssl mode on exporter"
   echo " --create-pgsql-user            Set this option if a Dedicated PGSQl User creation is required username: psql and no password"
+  echo " --enable-pgsql-plugin          Set this option if you want pg_stat_statements plugin enabled"
   echo " --upgrade-server               When this option is specified, PMM Server will be updated to the last version"
   echo " --upgrade-client               When this option is specified, PMM client will be updated to the last version"
   echo " --query-source                 Set query source (perfschema or slowlog)"
@@ -80,7 +82,7 @@ usage () {
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,dev-fb:,link-client:,pmm-port:,package-name:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-sharding,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,delete-package,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
+  go_out="$(getopt --options=u: --longoptions=addclient:,replcount:,pmm-server:,ami-image:,key-name:,ova-image:,ova-memory:,pmm-server-version:,dev-fb:,link-client:,pmm-port:,package-name:,pmm-server-memory:,pmm-docker-memory:,pmm-server-username:,pmm-server-password:,query-source:,setup,with-replica,with-sharding,download,ps-version:,ms-version:,pgsql-version:,md-version:,pxc-version:,mysqld-startup-options:,mo-version:,mongo-with-rocksdb,add-docker-client,list,wipe-clients,delete-package,wipe-docker-clients,wipe-server,disable-ssl,create-pgsql-user,enable-pgsql-plugin,upgrade-server,upgrade-client,wipe,dev,with-proxysql,sysbench-data-load,sysbench-oltp-run,storage-engine:,compare-query-count,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -232,6 +234,10 @@ do
     --create-pgsql-user )
     shift
     create_pgsql_user=1
+    ;;
+    --enable-pgsql-plugin )
+    shift
+    enable_pgsql_plugin=1
     ;;
     --wipe-docker-clients )
     shift
@@ -1031,18 +1037,18 @@ add_clients(){
         sudo chown -R ${PGSQL_USER} ${BASEDIR}/${NODE_NAME}_${j}/data
         echo "Starting PGSQL server at port ${PGSQL_PORT}"
 	sudo -H -u ${PGSQL_USER} bash -c "./initdb -D ${BASEDIR}/${NODE_NAME}_${j}/data --username=postgres" > /dev/null 2>&1;
-        if [ 1 -eq 1 ]; then
+        if [ $enable_pgsql_plugin -eq 1 ]; then
           echo "Enabling pg_stat_statements Plugin in configuration file";
-          sudo -H -u ${PGSQL_USER} bash -c "sed -i \"s/.*shared_preload_libraries.*/shared_preload_libraries = 'pg_stat_statements'/\" ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
-          sudo -H -u ${PGSQL_USER} bash -c "echo \"adding some extra steps\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
-          sudo -H -u ${PGSQL_USER} bash -c "echo \"pg_stat_statements.max = 10000\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
-          sudo -H -u ${PGSQL_USER} bash -c "echo \"pg_stat_statements.track = all\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf"
+          sudo -H -u ${PGSQL_USER} bash -c "sed -i \"s/.*shared_preload_libraries.*/shared_preload_libraries = 'pg_stat_statements'/\" ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf" > /dev/null 2>&1;
+          sudo -H -u ${PGSQL_USER} bash -c "echo \"pg_stat_statements.max = 10000\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf" > /dev/null 2>&1;
+          sudo -H -u ${PGSQL_USER} bash -c "echo \"pg_stat_statements.track = all\" >> ${BASEDIR}/${NODE_NAME}_${j}/data/postgresql.conf" > /dev/null 2>&1;
         fi
+	cd ${BASEDIR}/bin
 	sudo -H -u ${PGSQL_USER} bash -c "./pg_ctl -D ${BASEDIR}/${NODE_NAME}_${j}/data -l ${BASEDIR}/${NODE_NAME}_${j}/data/logfile -o '-F -p ${PGSQL_PORT}' start" > /dev/null 2>&1;
         sudo -H -u ${PGSQL_USER} bash -c "./createdb psql --username=postgres"
-        if [ 1 -eq 1 ]; then
-          sudo -H -u nobody bash -c "/home/pgsql/bin/psql -U postgres -d psql -c 'CREATE EXTENSION pg_stat_statements;'"
-          sudo -H -u nobody bash -c "/home/pgsql/bin/psql -U postgres -d psql -c "SELECT * FROM pg_available_extensions where name = 'pg_stat_statements';""
+        if [ $enable_pgsql_plugin -eq 1 ]; then
+          sudo -H -u nobody bash -c "/home/pgsql/bin/psql -U postgres -d psql -c 'CREATE EXTENSION pg_stat_statements;'" > /dev/null 2>&1;
+          sudo -H -u nobody bash -c "/home/pgsql/bin/psql -U postgres -d psql -c "SELECT * FROM pg_available_extensions where name = 'pg_stat_statements';"" > /dev/null 2>&1;
         fi
 	if [ $disable_ssl -eq 1 ]; then
           sudo pmm-admin add postgresql --user postgres --host localhost --port ${PGSQL_PORT} --disable-ssl PGSQL-${NODE_NAME}-${j}
