@@ -431,7 +431,7 @@ if [[ -z "${md_version}" ]]; then md_version="10.3"; fi
 if [[ -z "${mo_version}" ]]; then mo_version="4.0"; fi
 if [[ -z "${REPLCOUNT}" ]]; then REPLCOUNT="1"; fi
 if [[ -z "${ova_memory}" ]]; then ova_memory="2048";fi
-if [[ -z "${pgsql_version}" ]]; then pgsql_version="10.6";fi
+if [[ -z "${pgsql_version}" ]]; then pgsql_version="10.7";fi
 
 if [[ -z "$query_source" ]];then
   query_source=perfschema
