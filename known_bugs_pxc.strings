@@ -4,6 +4,7 @@ autoinc > 0                                                                     
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
+key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
 log.writer_thread_alive.load..                                                           ## https://jira.percona.com/browse/PXC-2410
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
