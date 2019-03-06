@@ -17,6 +17,8 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
+__null .= dynamic_cast<Target>.arg                          ## https://bugs.mysql.com/bug.php?id=94581
+void destroy<Table_trigger_dispatcher>                      ## https://jira.percona.com/browse/PS-5460
 #Item_func_internal_get_comment_or_error..val_str ## Fixed ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
 adjust_fk_parents                              ## Fixed ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build (Fixed in 8.0.14, remark as such when released)
 #.trx->declared_to_be_inside_innodb             ## Fixed ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
@@ -92,7 +94,7 @@ val <= 4294967295u                                       ## https://bugs.mysql.c
 #TEXT=.length == 3.$                            ## Fixed ## https://bugs.mysql.com/bug.php?id=88270
 TEXT=.new_table \.= nullptr.$                            ## https://bugs.mysql.com/bug.php?id=88271
 #new_value >= 0                                 ## Fixed ## https://bugs.mysql.com/bug.php?id=88272
-#has_error == thd->get_stmt_da                  ## Fixed ## https://bugs.mysql.com/bug.php?id=88273
+has_error == thd->get_stmt_da                            ## https://bugs.mysql.com/bug.php?id=88273
 #.table->in_use->is_error                       ## Fixed ## https://bugs.mysql.com/bug.php?id=88274
 #next_insert_id == 0                            ## Fixed ## https://bugs.mysql.com/bug.php?id=88276
 #thd->is_system_thread                          ## Fixed ## https://bugs.mysql.com/bug.php?id=88277
@@ -641,6 +643,7 @@ ha_innodb.cc line 18962                                                         
 #ut0ut.cc line 935                                                          ## Outdated ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 936                                                          ## Outdated ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc:670                                                                            ## https://bugs.mysql.com/bug.php?id=92487, MS8, related to large innodb-buffer-pool-size
+ut0ut.cc.632                                                                            ## https://bugs.mysql.com/bug.php?id=94579
 ut0ut.cc.722                                                                            ## https://bugs.mysql.com/bug.php?id=92487, PS8, related to large innodb-buffer-pool-size
 ut0ut.cc line 958                                                                       ## PS 5.7.20     --innodb-buffer-pool-size=-1125899906842624 (or similar)
 mem0dbg.c line 684                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
