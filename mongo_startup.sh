@@ -213,7 +213,7 @@ start_pbm_agent(){
   local MAUTH=""
   local MREPLICASET=""
   if [ ! -z "${AUTH}" ]; then
-    MAUTH="--mongodb-user=\${MONGO_USER} --mongodb-password=\${MONGO_PASS}"
+    MAUTH="--mongodb-username=\${MONGO_USER} --mongodb-password=\${MONGO_PASS}"
   fi
   if [ "${RS}" != "nors" ]; then
     MREPLICASET="--mongodb-replicaset=${RS}"
