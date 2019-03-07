@@ -174,14 +174,33 @@ VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
 start_pbm_coordinator(){
   if [ ! -z "${PBMDIR}" ]; then
     mkdir -p "${NODESDIR}/pbm-coordinator"
+    mkdir -p "${NODESDIR}/backup"
+
+    # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdouterr.out 2>&1 &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
 
-    # create a symlink to pbmctl
+    # Create stop script for the pbm-coordinator
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
+    echo "killall pbm-coordinator" >> ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
+    chmod +x ${NODESDIR}/pbm-coordinator/stop_pbm_coordinator.sh
+
+    # create symlinks to PBM binaries
     ln -s ${PBMDIR}/pbmctl ${NODESDIR}/pbmctl
+    ln -s ${PBMDIR}/pbm-coordinator ${NODESDIR}/pbm-coordinator
+
+    # create startup/stop scripts for the whole PBM setup
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/start_pbm.sh
+    echo "${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh" >> ${NODESDIR}/start_pbm.sh
+    echo "sleep 5" >> ${NODESDIR}/start_pbm.sh
+    chmod +x ${NODESDIR}/start_pbm.sh
+
+    echo "#!/usr/bin/env bash" > ${NODESDIR}/stop_pbm.sh
+    echo "killall pbm-agent pbm-coordinator" >> ${NODESDIR}/stop_pbm.sh
+    chmod +x ${NODESDIR}/stop_pbm.sh
   fi
 }
 
@@ -194,20 +213,36 @@ start_pbm_agent(){
   local MAUTH=""
   local MREPLICASET=""
   if [ ! -z "${AUTH}" ]; then
-    MAUTH="--mongodb-user=\${MONGO_USER} --mongodb-password=\${MONGO_PASS}"
+    MAUTH="--mongodb-username=\${MONGO_USER} --mongodb-password=\${MONGO_PASS}"
   fi
   if [ "${RS}" != "nors" ]; then
-    MREPLICASET="--replicaset=${RS}"
+    MREPLICASET="--mongodb-replicaset=${RS}"
   fi
 
   if [ ! -z "${PBMDIR}" ]; then
-    mkdir -p "${NDIR}/pbm-agent/backup"
+    mkdir -p "${NDIR}/pbm-agent"
+    # Create storages config for node agent
+    echo "local-filesystem:" > ${NDIR}/pbm-agent/storages-config.yaml
+    echo "  type: filesystem" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "  filesystem:" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
+
+    # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${NODESDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --mongodb-host=localhost --mongodb-port=${NPORT} --backup-dir=${NDIR}/pbm-agent/backup --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdouterr.out 2>&1 &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${NODESDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
+
+    # Create stop script for the agent on the node
+    echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/stop_pbm_agent.sh
+    echo "kill \$(cat ${NDIR}/pbm-agent/pbm-agent.pid)" >> ${NDIR}/pbm-agent/stop_pbm_agent.sh
+    chmod +x ${NDIR}/pbm-agent/stop_pbm_agent.sh
+
+    # create a symlink for pbm-agent binary
+    ln -s ${PBMDIR}/pbm-agent ${NDIR}/pbm-agent/pbm-agent
   fi
 }
 

@@ -205,6 +205,11 @@ pxc_startup(){
   echo "Starting PXC node1"
   ${MID} --datadir=$node1  > ${WORKDIR}/logs/node1.err 2>&1
 
+  if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+    STARTUP_OPTIONS="--max-connections=2048 --innodb_autoinc_lock_mode=2  --wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --wsrep_slave_threads=3 --log-output=none"
+  else
+    STARTUP_OPTIONS="--max-connections=2048 --innodb_autoinc_lock_mode=2  --wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=$SST_METHOD --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --wsrep_slave_threads=3 --log-output=none"
+  fi
   STARTUP_OPTIONS="--max-connections=2048 --innodb_autoinc_lock_mode=2  --wsrep-provider=${PXCBASEDIR}/lib/libgalera_smm.so --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --wsrep_slave_threads=3 --log-output=none"
 
   CMD="${PXCBASEDIR}/bin/mysqld --no-defaults $STARTUP_OPTIONS --basedir=${PXCBASEDIR} --datadir=$node1 --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2,gcomm://$LADDR3 --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 --log-error=${WORKDIR}/logs/node1.err --socket=/tmp/node1.sock --port=$RBASE1 --server-id=1"

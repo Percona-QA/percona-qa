@@ -53,7 +53,7 @@ do
     -k | --with-keyring-plugin )
     shift
     export KEYRING_PLUGIN=1
-	;;
+        ;;
     -x | --xb-version )
     export XB_VERSION="$2"
     shift 2
@@ -64,6 +64,35 @@ do
     ;;
   esac
 done
+
+#Format version string (thanks to wsrep_sst_xtrabackup-v2)
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2)
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
 
 set +e
 echo "Killing existing mysqld"
@@ -81,6 +110,8 @@ sleep 5
 if [[ -z ${WORKDIR:-} ]]; then
   export WORKDIR=${PWD}
 fi
+ROOT_FS=$WORKDIR
+
 if [[ -z ${XB_VERSION:-} ]]; then
   export XB_VERSION=2.4
 fi
@@ -121,39 +152,51 @@ rm -f ${WORKDIR}/**/*core*
 echo "Removing older directories"
 find . -maxdepth 1 -type d -mtime +10 -exec rm -rf {} \+
 
-echo "Removing their symlinks"
-#find . -maxdepth 1 -type l -mtime +10 -delete+
-
-TAR=`ls -1ct Percona-XtraDB-Cluster*.tar.gz | head -n1`
-BASE="$(basename $TAR .tar.gz)"
-tar -xf $TAR
-
-TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
-#BBASE="$(basename $TAR .tar.gz)"
-tar -xf $TAR
-
-for ver in {20..0};do
-    BBASE="percona-xtrabackup-${XB_VERSION}.${ver}-Linux-$(uname -m)"
-    if [[ -d $BBASE ]];then
-        XB_VERSION=2.4.$ver
-        break
-    fi
-done
-
-if [[ $ver -eq 0 ]];then
-        echo "FATAL: No suitable Xtrabackup artifact found"
-        exit 2
+#Check PXC binary tar ball
+PXC_TAR=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep ".tar" | head -n1`
+if [[ ! -z $PXC_TAR ]];then
+  tar -xzf $PXC_TAR
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+else
+  PXCBASE=`ls -1td ?ercona-?tra??-?luster* 2>/dev/null | grep -v ".tar" | head -n1`
+  if [[ -z $PXCBASE ]] ; then
+    echoit "ERROR! Could not find PXC base directory."
+    exit 1
+  else
+    export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+  fi
 fi
-
 
 BUILD_WIPE=$[ ${BUILD_NUMBER} - 5 ]
 if [ -d ${BUILD_WIPE} ]; then rm -Rf ${BUILD_WIPE}; fi
-
 mkdir ${BUILD_NUMBER}
 export ROOT_FS="$WORKDIR/${BUILD_NUMBER}"
+MYSQL_BASEDIR="${ROOT_FS}/$PXCBASE"
+declare MYSQL_VERSION=$(${MYSQL_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 
-mv $BASE $ROOT_FS/
-mv $BBASE $ROOT_FS/
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+  #Check PXB binary tar ball
+  PXB_TAR=`ls -1td ?ercona-?trabackup* 2>/dev/null | grep ".tar" | head -n1`
+  if [[ ! -z $PXB_TAR ]];then
+    tar -xzf $PXB_TAR
+    PXBBASE=`ls -1td ?ercona-?trabackup* 2>/dev/null | grep -v ".tar" | head -n1`
+    export PATH="$ROOT_FS/$PXBBASE/bin:$PATH"
+  else
+    PXBBASE=`ls -1td ?ercona-?trabackup* 2>/dev/null | grep -v ".tar" | head -n1`
+    if [[ -z $PXBBASE ]] ; then
+      echoit "ERROR! Could not find PXB base directory."
+      exit 1
+    else
+      export PATH="$ROOT_FS/$PXBBASE/bin:$PATH"
+    fi
+  fi
+fi
+
+mv $PXCBASE $ROOT_FS/
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+  mv $PXBBASE $ROOT_FS/
+fi
 [ -e "qpress" ] && mv qpress $ROOT_FS/
 
 rm -rf /tmp/blog1 /tmp/blog2 || true
@@ -169,14 +212,7 @@ cd ${BUILD_NUMBER}
 
 mkdir -p $ROOT_FS/tmp
 
-export PATH="$ROOT_FS/$BBASE/bin:$ROOT_FS:$PATH"
-
-MYSQL_BASEDIR="${ROOT_FS}/$BASE"
-if [ "$(${MYSQL_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-  export XB_TESTDIR="${SCRIPT_PWD}/percona-xtradb-cluster-tests/sst"
-elif [ "$(${MYSQL_BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-  export XB_TESTDIR="${MYSQL_BASEDIR}/percona-xtradb-cluster-tests"
-fi
+export XB_TESTDIR="${MYSQL_BASEDIR}/percona-xtradb-cluster-tests/sst"
 
 #export XB_TESTDIR="$ROOT_FS/$BBASE/share/percona-xtrabackup-test/"
 #export XB_TESTDIR="${SCRIPT_PWD}/percona-xtradb-cluster-tests/sst"
@@ -195,7 +231,7 @@ echo "PATH $PATH"
 echo "XB_TESTDIR $XB_TESTDIR"
 
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst.sh
+    ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst.sh
 else
@@ -247,7 +283,7 @@ for tn in `seq 1 $NUMTESTS`; do
     fi
     set +e
     if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-        bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced-v2.sh
+        ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced-v2.sh
     elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
         ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced-v2.sh
     else
@@ -288,7 +324,7 @@ for tn in `seq 1 $NUMTESTS`; do
     else
         export PING_ATTEMPTS=100
     fi
-    if [[ "$t" == *"encrypt"* ]];then 
+    if [[ "$t" == *"encrypt"* ]];then
         if [[ ! -z ${EXTRA_ENCRIPTION_OPTIONS:-} ]];then
           echo "This run will initiate with keyring-file plugin/data-at-rest encryption options"
           export KEYRING_ENCRIPTION_OPTIONS="$EXTRA_ENCRIPTION_OPTIONS"
@@ -296,7 +332,7 @@ for tn in `seq 1 $NUMTESTS`; do
     fi
     set +e
     if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-        bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced.sh
+        ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced.sh
     elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
         ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst_advanced.sh
     else
@@ -323,7 +359,7 @@ echo "Running test for SST special dirs with encrypt=1"
 t="SST special dirs with encrypt=1"
 set +e
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
+    ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 else
@@ -342,7 +378,7 @@ export CONF=bug1098566-1
 t="SST special dirs with encrypt=2 with $CONF"
 set +e
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
+    ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 else
@@ -362,7 +398,7 @@ export CONF=bug1098566-2
 t="SST special dirs with encrypt=3 with $CONF"
 set +e
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
+    ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 else
@@ -382,7 +418,7 @@ export CONF=bug1098566-3
 t="SST special dirs with encrypt=1 and inno-backup opts with $CONF"
 set +e
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh -c galera55 -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
+    ./run.sh -c galera55 -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g -c galera55 -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 else
@@ -402,7 +438,7 @@ export CONF=bug1394836
 t="SST special dirs with undo-log-directory with $CONF"
 set +e
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh -c galera55 -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
+    ./run.sh -c galera55 -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g -c galera55 -d $MYSQL_BASEDIR -t t/xb_galera_sst_dirs.sh
 else
@@ -425,7 +461,7 @@ fi
 t="Encrypted replication and encrypted SST"
 set +e
 if [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '2' ]];then
-    bash -x ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_encrypted.sh
+    ./run.sh  -d $MYSQL_BASEDIR -t t/xb_galera_sst_encrypted.sh
 elif [[ -n ${SST_DEBUG:-} && $SST_DEBUG == '30' ]];then
     ./run.sh -g  -d $MYSQL_BASEDIR -t t/xb_galera_sst_encrypted.sh
 else

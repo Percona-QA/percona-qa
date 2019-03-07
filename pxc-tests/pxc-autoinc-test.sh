@@ -276,9 +276,11 @@ function pxc_start(){
       echo "wsrep_node_address=127.0.0.1" >> ${WORKDIR}/n${i}.cnf
       echo "innodb_file_per_table" >> ${WORKDIR}/n${i}.cnf
       echo "innodb_autoinc_lock_mode=2" >> ${WORKDIR}/n${i}.cnf
-      echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKDIR}/n${i}.cnf
       echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKDIR}/n${i}.cnf
-      echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKDIR}/n${i}.cnf
+      if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+        echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKDIR}/n${i}.cnf
+        echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKDIR}/n${i}.cnf
+      fi
       echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKDIR}/n${i}.cnf
       echo "log-bin=mysql-bin" >> ${WORKDIR}/n${i}.cnf
       echo "master-info-repository=TABLE" >> ${WORKDIR}/n${i}.cnf

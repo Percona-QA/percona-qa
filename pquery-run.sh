@@ -152,9 +152,9 @@ if [ ${PXC} -eq 1 ]; then
     echoit "Note: As this is a PXC=1 run, and QUERIES_PER_THREAD was set to only ${QUERIES_PER_THREAD}, this script is setting the queries per thread to the required minimum of 2147483647 for this run."
     QUERIES_PER_THREAD=2147483647  # Max int
   fi
-  if [ ${PQUERY_RUN_TIMEOUT} -lt 120 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
+  if [ ${PQUERY_RUN_TIMEOUT} -lt 60 ]; then  # Starting up a cluster takes more time, so don't rotate too quickly
     echoit "Note: As this is a PXC=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
-    PQUERY_RUN_TIMEOUT=120
+    PQUERY_RUN_TIMEOUT=60
   fi
   ADD_RANDOM_OPTIONS=0
   ADD_RANDOM_TOKUDB_OPTIONS=0
@@ -341,11 +341,10 @@ if [[ $PXC -eq 1 ]];then
   echo "innodb_autoinc_lock_mode=2" >> ${BASEDIR}/my.cnf
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
+    echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
+  echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
@@ -389,6 +388,7 @@ pxc_startup(){
   }
   if [ "$1" != "startup" ]; then
     echo "echo '=== Starting PXC cluster for recovery...'" > ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i 's|safe_to_bootstrap:.*$|safe_to_bootstrap: 1|' ${WORKDIR}/${TRIAL}/node1/grastate.dat" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
   fi
   for i in `seq 1 3`;do
     RBASE1="$(( RPORT + ( 100 * $i ) ))"
@@ -407,8 +407,10 @@ pxc_startup(){
         mkdir -p $node
       fi
       WSREP_PROVIDER_OPT=""
+      tmpdir=${WORKDIR}
     else
       node="${RUNDIR}/${TRIAL}/node${i}"
+      tmpdir="${RUNDIR}/${TRIAL}"
     fi
     if [ "$1" == "startup" ]; then
       ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
@@ -418,7 +420,10 @@ pxc_startup(){
     else
       VALGRIND_CMD=""
     fi
-
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      PXC_MYEXTRA="$PXC_MYEXTRA --log-error-verbosity=3"
+    fi
+    mkdir -p $tmpdir/tmp${i}
     $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf \
       $STARTUP_OPTION --datadir=$node \
       --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA \
@@ -426,9 +431,9 @@ pxc_startup(){
       --wsrep_node_incoming_address=$ADDR \
       --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
       --wsrep_node_address=$ADDR --log-error=$node/node${i}.err \
-      --socket=$node/node${i}_socket.sock --port=$RBASE1 > $node/node${i}.err 2>&1 &
+      --socket=$node/node${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > $node/node${i}.err 2>&1 &
     if [ "$1" != "startup" ]; then    
-      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/node${i}.err --socket=${WORKDIR}/${TRIAL}/node${i}/node${i}_socket.sock --port=$RBASE1 > ${WORKDIR}/${TRIAL}/node${i}/node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err --socket=${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > ${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     fi
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
@@ -440,7 +445,7 @@ pxc_startup(){
     if [ "$1" != "startup" ]; then
       echo "for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
       echo "  sleep 1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-      echo "  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node${i}/node${i}_socket.sock ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+      echo "  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
       echo "    break" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
       echo "  fi" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
       echo "done" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
@@ -451,6 +456,10 @@ pxc_startup(){
     fi
   done
   if [ "$1" != "startup" ]; then
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/recovery_n3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/recovery_n2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node1/recovery_n1_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "chmod +x ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     chmod +x ${RUNDIR}/${TRIAL}/start_pxc_recovery
   fi
   if [ "$1" == "startup" ]; then
@@ -1297,14 +1306,15 @@ pquery_test(){
         fi
         if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
           if [ $X -ge $CRASH_RECOVERY_KILL_BEFORE_END_SEC ]; then
-             if [ $PXC -eq 1 ]; then
-               ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $RANDOMD | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1
-             else
-               kill -9 ${MPID} >/dev/null 2>&1;
-             fi 
-             sleep 2
-             echoit "killed for crash testing"
-             break
+            if [ $PXC -eq 1 ]; then
+              ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $RANDOMD | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1
+            else
+              kill -9 ${MPID} >/dev/null 2>&1;
+            fi 
+            sleep 2
+            echoit "killed for crash testing"
+            CRASH_CHECK=1
+            break
           fi
         fi
         # Initiate Percona Xtrabackup
@@ -1574,6 +1584,11 @@ pquery_test(){
         savetrial
         TRIAL_SAVED=1
         PXB_CHECK=0
+      elif [[ ${CRASH_CHECK} -eq 1 ]]; then
+        echoit "Saving this trial for backup restore analysis"
+        savetrial
+        TRIAL_SAVED=1
+        CRASH_CHECK=0
       else
         if [ ${SAVE_SQL} -eq 1 ]; then
           if [ ${VALGRIND_RUN} -eq 1 ]; then

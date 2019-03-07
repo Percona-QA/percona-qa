@@ -42,6 +42,7 @@ declare SUSER=root
 declare SPASS=""
 declare node=""
 declare DEBUG=""
+declare PXC_MYEXTRA=""
 
 # Dispay script usage details
 usage () {
@@ -351,6 +352,9 @@ show_node_status(){
   fi
 }
 
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+  PXC_MYEXTRA="--wsrep_sst_auth=$SUSER:$SPASS"
+fi
 pxc_start_node(){
   local FUN_NODE_NR=$1
   local FUN_NODE_VER=$2
@@ -370,7 +374,7 @@ pxc_start_node(){
     --wsrep_cluster_address=${FUN_CLUSTER_ADDRESS} \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options=${FUN_WSREP_PROVIDER_OPTIONS} \
-    --wsrep_sst_method=$SST_METHOD --wsrep_sst_auth=$SUSER:$SPASS \
+    --wsrep_sst_method=$SST_METHOD $PXC_MYEXTRA \
     --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
     --innodb_flush_log_at_trx_commit=0 \
     --innodb_log_file_size=500M \
@@ -734,8 +738,7 @@ $UPPER_BASEDIR/bin/mysqladmin  --socket=/tmp/node3.socket -u root shutdown  > /d
 MYSQL_VERSION=$(${LOWER_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 rm -Rf ${MYSQL_VARDIR}/node* 
 
-for i in `seq 1 3`;do
-  rm -Rf ${MYSQL_VARDIR}/node* 
+for i in `seq 1 3`;do 
   RBASE="$(( RPORT + ( 100 * $i ) ))"
   LADDR1="127.0.0.1:$(( RBASE + 8 ))"
   if [ $i -eq 1 ];then

@@ -95,11 +95,10 @@ fi
 
 if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; then VERSION="5.7"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "pxb" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.3"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.0"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then
-  VERSION=$(wget -qO- https://www.mongodb.com/download-center\#community | grep -o -P "Current Stable Release \(.{3,10}\)" | grep -o -P "\(.{3,10}\)" | sed 's/(//' | sed 's/)//')
-fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then VERSION="4.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "postgresql" ]]; then
   VERSION=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-.*-x64-.*.tar.gz"|head -n1|grep -oP "[0-9]+\.[0-9]+(\.[0-9]+)?")
 fi
@@ -214,18 +213,18 @@ get_link(){
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
         #LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+-Linux-${BUILD_ARCH}\.tar\.gz"|head -n1)
-        VERSION=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+"|head -n1|grep -oE "[0-9]+\.[0-9]+\.[0-9]+$")
-        TARBALL="percona-xtrabackup-${VERSION}-Linux-${BUILD_ARCH}.${OPT}.tar.gz"
-        if [[ ! -z ${TARBALL} ]]; then LINK="https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-${VERSION}/binary/tarball/${TARBALL}"; fi
+        VERSION_FULL=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/binary/|grep -oiE "Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+"|head -n1|grep -oE "[0-9]+\.[0-9]+\.[0-9]+$")
+        TARBALL="percona-xtrabackup-${VERSION_FULL}-Linux-${BUILD_ARCH}.${OPT}.tar.gz"
+        if [[ ! -z ${TARBALL} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/Percona-XtraBackup-${VERSION_FULL}/binary/tarball/${TARBALL}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/source/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/XtraBackup/LATEST/source/tarball/${LINK}"; fi
+        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/source/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
+        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
       if [[ ${SOURCE} = 0 ]]; then
-        LINK="https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-${VERSION_FULL}/binary/tarball/percona-xtrabackup-${VERSION_FULL}-Linux-${BUILD_ARCH}.tar.gz"
+        LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/Percona-XtraBackup-${VERSION_FULL}/binary/tarball/percona-xtrabackup-${VERSION_FULL}-Linux-${BUILD_ARCH}.${OPT}.tar.gz"
       else
-        LINK="https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-${VERSION_FULL}/source/tarball/percona-xtrabackup-${VERSION_FULL}.tar.gz"
+        LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/Percona-XtraBackup-${VERSION_FULL}/source/tarball/percona-xtrabackup-${VERSION_FULL}.tar.gz"
       fi
     fi
 

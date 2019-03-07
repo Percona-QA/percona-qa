@@ -85,8 +85,8 @@ fi
 
 #Check MS/PS pquery binary
 #PQUERY_BIN="`grep 'pquery Binary' ./pquery-run.log | sed 's|^.*pquery Binary[: \t]*||' | head -n1`"    # < swap back to this one once old runs are gone (upd: maybe not. Issues.)
-if [ -r *pquery*.conf ]; then
-  SEARCH_STR_BIN="*pquery*.conf"
+if [ -r *pquery*.conf* ]; then
+  SEARCH_STR_BIN="*pquery*.conf*"
 else
   SEARCH_STR_BIN="*pquery*.sh"  # For backward compatibility. Remove October 2017 or later.
 fi
