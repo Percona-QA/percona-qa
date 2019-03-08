@@ -3,6 +3,7 @@
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
+dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
