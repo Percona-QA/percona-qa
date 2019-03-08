@@ -17,6 +17,7 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
+join->best_read < double.1.79769313486231570815e            ## https://jira.percona.com/browse/PS-5464
 __null .= dynamic_cast<Target>.arg                          ## https://bugs.mysql.com/bug.php?id=94581
 void destroy<Table_trigger_dispatcher>                      ## https://jira.percona.com/browse/PS-5460
 #Item_func_internal_get_comment_or_error..val_str ## Fixed ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
