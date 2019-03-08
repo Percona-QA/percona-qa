@@ -8,6 +8,7 @@ handler..ha_table_flags                                                         
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
 log.writer_thread_alive.load..                                                           ## https://jira.percona.com/browse/PXC-2410
+log_sys .= nullptr                                                                       ## https://jira.percona.com/browse/PXC-2467
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450
