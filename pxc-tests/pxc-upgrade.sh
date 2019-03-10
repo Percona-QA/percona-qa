@@ -229,26 +229,20 @@ UPPER_BASEDIR=`readlink -e ${UPPER_BASE}* | grep -v ".tar" | head -n1`
 LOWER_TAR=`readlink -e ${LOWER_BASE}* | grep ".tar" | head -n1`
 UPPER_TAR=`readlink -e ${UPPER_BASE}* | grep ".tar" | head -n1`
 
-if [ ! -z $LOWER_BASEDIR ]; then
-  export PATH="$LOWER_BASEDIR/bin:$PATH"
-else
+if [ -z $LOWER_BASEDIR ]; then
   if [ ! -z $LOWER_TAR ];then
     tar -xzf $LOWER_TAR
     LOWER_BASEDIR=`readlink -e ${LOWER_BASE}* | grep -v ".tar" | head -n1`
-    export PATH="$LOWER_BASEDIR/bin:$PATH"
   else
     echo "ERROR! Could not find $LOWER_BASE binary"
     exit 1
   fi
 fi
 
-if [ ! -z $UPPER_BASEDIR ]; then
-  export PATH="$UPPER_BASEDIR/bin:$PATH"
-else
+if [ -z $UPPER_BASEDIR ]; then
   if [ ! -z $UPPER_TAR ];then
     tar -xzf $UPPER_TAR
     UPPER_BASEDIR=`readlink -e ${UPPER_BASE}* | grep -v ".tar" | head -n1`
-    export PATH="$UPPER_BASEDIR/bin:$PATH"
   else
     echo "ERROR! Could not find $UPPER_BASE binary"
     exit 1
@@ -270,7 +264,6 @@ if [[ ${SST_METHOD} == "xtrabackup" ]]; then
   TAR=`ls -1ct percona-xtrabackup*.tar.gz | head -n1`
   tar -xf $TAR
   BBASE="$(tar tf $TAR | head -1 | tr -d '/')"
-  export PATH="$ROOT_FS/$BBASE/bin:$PATH"
 fi
 
 sysbench_cmd(){
@@ -352,9 +345,6 @@ show_node_status(){
   fi
 }
 
-if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
-  PXC_MYEXTRA="--wsrep_sst_auth=$SUSER:$SPASS"
-fi
 pxc_start_node(){
   local FUN_NODE_NR=$1
   local FUN_NODE_VER=$2
@@ -365,7 +355,13 @@ pxc_start_node(){
   local FUN_WSREP_PROVIDER=$7
   local FUN_LOG_ERR=$8
   local FUN_BASE_DIR=$9
-
+  
+  MYSQL_VERSION=$(${FUN_BASE_DIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+  if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+    PXC_MYEXTRA="--wsrep_sst_auth=$SUSER:$SPASS"
+  else
+    PXC_MYEXTRA=""
+  fi 
   echo "Starting PXC-${FUN_NODE_VER} node${FUN_NODE_NR}"
   ${FUN_BASE_DIR}/bin/mysqld --no-defaults --defaults-group-suffix=.${FUN_NODE_NR} \
     --basedir=${FUN_BASE_DIR} --datadir=${FUN_NODE_PATH} \
@@ -541,14 +537,14 @@ function create_regular_tbl(){
   check_script $?
   
   echo "Loading employees database with innodb engine.."
-  create_emp_db employee_1 innodb employees.sql
-  check_script $?
+  #create_emp_db employee_1 innodb employees.sql
+  #check_script $?
 }
 
 function create_partition_tbl(){
   echo "Loading employees partitioned database with innodb engine.."
-  create_emp_db employee_2 innodb employees_partitioned.sql
-  check_script $?
+  #create_emp_db employee_2 innodb employees_partitioned.sql
+  #check_script $?
 }
 
 function test_row_format_tbl(){
