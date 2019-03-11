@@ -2,15 +2,18 @@
 ## =========== PXC-8.0 bugs ===========
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
+buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
 log.writer_thread_alive.load..                                                           ## https://jira.percona.com/browse/PXC-2410
+log_sys .= nullptr                                                                       ## https://jira.percona.com/browse/PXC-2467
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450
+OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
