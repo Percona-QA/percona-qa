@@ -2,6 +2,7 @@
 ## =========== PXC-8.0 bugs ===========
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
+buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
