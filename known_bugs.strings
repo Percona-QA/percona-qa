@@ -17,6 +17,7 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
+ins_ctx->aux_index_id == fts_select_index.ins_ctx->charset, word->text.f_str, word->text.f_len.  ## https://bugs.mysql.com/bug.php?id=94626
 join->best_read < double.1.79769313486231570815e            ## https://jira.percona.com/browse/PS-5464
 __null .= dynamic_cast<Target>.arg                          ## https://bugs.mysql.com/bug.php?id=94581
 void destroy<Table_trigger_dispatcher>                      ## https://jira.percona.com/browse/PS-5460
