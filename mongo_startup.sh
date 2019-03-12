@@ -173,13 +173,13 @@ VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
 
 start_pbm_coordinator(){
   if [ ! -z "${PBMDIR}" ]; then
-    mkdir -p "${NODESDIR}/pbm-coordinator"
+    mkdir -p "${NODESDIR}/pbm-coordinator/workdir"
     mkdir -p "${NODESDIR}/backup"
 
     # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
 
@@ -233,8 +233,8 @@ start_pbm_agent(){
     echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    credentials:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      access-key-id: ${MINIO_KEY_ID}" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      secret-access-key: ${MINIO_SECRET_KEY}" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${NDIR}/pbm-agent/storages-config.yaml
 
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
