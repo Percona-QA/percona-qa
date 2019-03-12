@@ -233,8 +233,8 @@ start_pbm_agent(){
     echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    credentials:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      access-key-id: @@access-key-id@@" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      secret-access-key: @@secret-access-key@@" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "      access-key-id: \"@@access-key-id@@\"" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "      secret-access-key: \"@@secret-access-key@@\"" >> ${NDIR}/pbm-agent/storages-config.yaml
 
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
