@@ -226,6 +226,15 @@ start_pbm_agent(){
     echo "  type: filesystem" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "  filesystem:" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "s3-us-west:" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "  type: s3" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "  s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "    region: us-west" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "    credentials:" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "      access-key-id: @@access-key-id@@" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "      secret-access-key: @@secret-access-key@@" >> ${NDIR}/pbm-agent/storages-config.yaml
 
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
