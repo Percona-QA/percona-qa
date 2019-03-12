@@ -2,6 +2,8 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # This script will test following replication features in Percona XtraDB Cluster.
 # Master-Slave replication test
+# Master change from one pxc node to another test
+# Master-Slave-Slave replication test
 # Master-Master replication test
 # Master-Slave shuffle replication test
 # Multi Source replication test
@@ -19,6 +21,8 @@ usage () {
   echo "  -k, --keyring-plugin=[file|vault] Specify which keyring plugin to use(default keyring-file)"
   echo "  -t, --testcase=<testcases|all>    Run only following comma-separated list of testcases"
   echo "                                      node1_master_test"
+  echo "                                      node2_becomes_master"
+  echo "                                      node1_as_master_and_slave"
   echo "                                      node1_slave_test"
   echo "                                      node2_slave_test"
   echo "                                      pxc_master_slave_shuffle_test"
@@ -133,7 +137,8 @@ SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 ROOT_FS=$WORKDIR
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
-PXC_START_TIMEOUT=200
+# On a slow machine PXC_START_TIMEOUT should be large so that the pxc nodes are able to come up without script timeout
+PXC_START_TIMEOUT=1000
 cd $WORKDIR
 # For local run - User Configurable Variables
 if [[ -z ${BUILD_NUMBER} ]]; then
@@ -616,13 +621,13 @@ function async_rpl_test(){
     #OLTP RW run on master
 	echoit "OLTP RW run on master (Database: $MASTER_DB)"
     sysbench_run oltp $MASTER_DB
-    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$MASTER_SOCKET run  > $WORKDIR/logs/sysbench_master_rw.log 2>&1 &
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$MASTER_SOCKET run  >> $WORKDIR/logs/sysbench_master_rw.log 2>&1 &
     #check_cmd $? "Failed to execute sysbench oltp read/write run on master ($MASTER_SOCKET)"
 
 	#OLTP RW run on slave
 	echoit "OLTP RW run on slave (Database: $SLAVE_DB)"
     sysbench_run oltp $SLAVE_DB
-    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SLAVE_SOCKET run  > $WORKDIR/logs/sysbench_slave_rw.log 2>&1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SLAVE_SOCKET run  >> $WORKDIR/logs/sysbench_slave_rw.log 2>&1
     #check_cmd $? "Failed to execute sysbench oltp read/write run on slave($SLAVE_SOCKET)"
   }
 
@@ -631,12 +636,50 @@ function async_rpl_test(){
     SOCKET=$2
     echoit "Sysbench Run: Prepare stage (Database: $DATABASE_NAME)"
     sysbench_run load_data $DATABASE_NAME
-    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  > $WORKDIR/logs/sysbench_prepare.txt 2>&1
+    $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  >> $WORKDIR/logs/sysbench_prepare.txt 2>&1
 	check_cmd $?
   }
 
   function node1_master_test(){
     echoit "******************** $MYEXTRA_CHECK PXC node-1 as master ************************"
+	#PXC/PS server initialization
+	echoit "PXC/PS server initialization"
+	pxc_start
+    ps_start
+
+	invoke_slave "/tmp/pxc1.sock" "/tmp/ps1.sock" ";START SLAVE;"
+
+    echoit "Checking slave startup"
+	slave_startup_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
+
+    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_slave;create database sbtest_ps_slave;"
+	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists sbtest_pxc_master;create database sbtest_pxc_master;"
+    create_test_user "/tmp/pxc1.sock"
+	async_sysbench_load sbtest_pxc_master "/tmp/pxc1.sock"
+	async_sysbench_load sbtest_ps_slave "/tmp/ps1.sock"
+
+	async_sysbench_rw_run sbtest_pxc_master sbtest_ps_slave "/tmp/pxc1.sock" "/tmp/ps1.sock"
+
+	sleep 5
+    echoit "Checking slave sync status"
+    slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
+    if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
+      sleep 10
+	  echoit "PXC node-1 as master: Checksum result."
+	  run_pt_table_checksum "sbtest_pxc_master" "$WORKDIR/logs/node1_master_checksum.log"
+    else
+      echoit "PXC node-1 as master: replication looks good."
+    fi
+	#Shutdown PXC/PS servers
+	echoit "Shutdown PXC/PS servers"
+	$PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+  }
+
+   function node2_becomes_master(){
+    echoit "********************$MYEXTRA_CHECK PXC(node2) becomes master of slave from node1 ************************"
 	#PXC/PS server initialization
 	echoit "PXC/PS server initialization"
 	pxc_start
@@ -664,12 +707,111 @@ function async_rpl_test(){
     else
       echoit "PXC node-1 as master: replication looks good."
     fi
+    echoit "Stop slave"
+    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "STOP SLAVE;"
+    if [ "$?" -ne 0 ]; then
+        echoit "Slave could not be stopped"
+    else
+        echoit "Slave stopped successfully"
+    fi
+
+    echoit "**************************************************************************************"
+    echoit "Change the master of slave from PXC node1 to PXC node2"
+	invoke_slave "/tmp/pxc2.sock" "/tmp/ps1.sock" ";START SLAVE;"
+
+    echoit "Checking slave startup"
+	slave_startup_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
+
+    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_slave;create database sbtest_ps_slave;"
+	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc2.sock -e "drop database if exists sbtest_pxc_master;create database sbtest_pxc_master;"
+    create_test_user "/tmp/pxc2.sock"
+	async_sysbench_load sbtest_pxc_master "/tmp/pxc2.sock"
+	async_sysbench_load sbtest_ps_slave "/tmp/ps1.sock"
+
+	async_sysbench_rw_run sbtest_pxc_master sbtest_ps_slave "/tmp/pxc2.sock" "/tmp/ps1.sock"
+	sleep 5
+    echoit "Checking slave sync status"
+    slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
+    if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
+      sleep 10
+	  echoit "PXC node-2 as master: Checksum result."
+	  run_pt_table_checksum "sbtest_pxc_master" "$WORKDIR/logs/node1_master_checksum.log"
+    else
+      echoit "PXC node-2 as master: replication looks good."
+    fi
+
 	#Shutdown PXC/PS servers
 	echoit "Shutdown PXC/PS servers"
 	$PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
     $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+  }
+
+   function node1_as_master_and_slave(){
+    echoit "********************$MYEXTRA_CHECK PXC(node1) becomes both master and slave ************************"
+	#PXC/PS server initialization
+	echoit "PXC/PS server initialization"
+	pxc_start
+    ps_start "2"
+
+    echoit "Create ps2 as master of pxc1"
+    invoke_slave "/tmp/ps2.sock" "/tmp/pxc1.sock" ";START SLAVE;"
+
+    echoit "Checking slave startup for pxc1"
+    slave_startup_check "/tmp/pxc1.sock" "$WORKDIR/logs/slave_status_pxc1.log" "$WORKDIR/logs/pxcnode1.err"
+
+    echoit "Create ps1 as slave of pxc1"
+	invoke_slave "/tmp/pxc1.sock" "/tmp/ps1.sock" ";START SLAVE;"
+
+    echoit "Checking slave startup for ps1"
+	slave_startup_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
+
+    echoit "Creating data on ps2, pxc1 and ps1"
+	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists sbtest_ps2_master;create database sbtest_ps2_master;"
+	${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/pxc1.sock -e "drop database if exists sbtest_pxc_master;create database sbtest_pxc_master;"
+    ${PXC_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_ps_slave;create database sbtest_ps_slave;"
+    create_test_user "/tmp/ps2.sock"
+	async_sysbench_load sbtest_ps2_master "/tmp/ps2.sock"
+    sleep 5
+	async_sysbench_load sbtest_pxc_master "/tmp/pxc1.sock"
+    sleep 5
+	async_sysbench_load sbtest_ps_slave "/tmp/ps1.sock"
+    sleep 5
+
+    echoit "Running a load on ps2 as master and pxc1 as slave"
+    async_sysbench_rw_run sbtest_ps2_master sbtest_pxc_master "/tmp/ps2.sock" "/tmp/pxc1.sock"
+    sleep 5
+    echoit "Checking slave sync status for pxc1 node"
+    slave_sync_check "/tmp/pxc1.sock" "$WORKDIR/logs/slave_status_pxcnode1.log" "$WORKDIR/logs/pxcnode1.err"
+    if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
+      sleep 10
+	  echoit "PS node2 as master: Checksum result."
+	  run_pt_table_checksum "sbtest_ps2_master" "$WORKDIR/logs/node2_master_checksum.log"
+    else
+      echoit "PS node2 as master: replication looks good."
+    fi
+
+    echoit "Running a load on pxc1 as master and ps1 as slave"
+	async_sysbench_rw_run sbtest_pxc_master sbtest_ps_slave "/tmp/pxc1.sock" "/tmp/ps1.sock"
+	sleep 5
+    echoit "Checking slave sync status for ps1 node"
+    slave_sync_check "/tmp/ps1.sock" "$WORKDIR/logs/slave_status_psnode1.log" "$WORKDIR/logs/psnode1.err"
+    if [[ $ENABLE_CHECKSUM -eq 1 ]]; then
+      sleep 10
+	  echoit "PXC node1 as master: Checksum result."
+	  run_pt_table_checksum "sbtest_pxc_master" "$WORKDIR/logs/node1_master_checksum.log"
+    else
+      echoit "PXC node1 as master: replication looks good."
+    fi
+
+	#Shutdown PXC/PS servers
+	echoit "Shutdown PXC/PS servers"
+	$PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc1.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc2.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/pxc3.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+    $PXC_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   }
 
   function node1_slave_test(){
@@ -825,7 +967,8 @@ function async_rpl_test(){
           WSREP_STATE=$(${PXC_BASEDIR}/bin/mysql -uroot -S/tmp/pxc2.sock -Bse"show status like 'wsrep_local_state'" | awk '{print $2}')
           echoit "WSREP: Synchronized with group, ready for connections"
           let COUNTER=COUNTER+1
-          if [[ $COUNTER -eq 50 ]];then
+          # On a slow machine, the COUNTER value should be large, otherwise the test will fail early before WSREP_STATE becomes 4
+          if [[ $COUNTER -eq 800 ]];then
             echoit "WARNING! WSREP: Node is not synchronized with group. Checking slave status"
             break
           fi
@@ -1078,6 +1221,10 @@ function async_rpl_test(){
     for i in "${TC_ARRAY[@]}"; do
       if [[ "$i" == "node1_master_test" ]]; then
   	    node1_master_test
+      elif [[ "$i" == "node2_becomes_master" ]]; then
+        node2_becomes_master
+      elif [[ "$i" == "node1_as_master_and_slave" ]]; then
+        node1_as_master_and_slave
   	  elif [[ "$i" == "node1_slave_test" ]]; then
   	    node1_slave_test
   	  elif [[ "$i" == "node2_slave_test" ]]; then
@@ -1094,6 +1241,8 @@ function async_rpl_test(){
     done
   else
     node1_master_test
+    node2_becomes_master
+    node1_as_master_and_slave
     node1_slave_test
     node2_slave_test
     pxc_master_slave_shuffle_test
