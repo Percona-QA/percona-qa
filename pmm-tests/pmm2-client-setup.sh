@@ -5,18 +5,16 @@ function jsonval {
     echo ${temp##*|}
 }
 
-version=$1
-server_url=$2
+if [ "$#" -lt 3 ]; then
+    echo "Illegal number of parameters, make sure to pass atleast server_ip, pmm_server and mysql_user"
+    exit 1;
+fi
+
+server_url=$1
+pmm_server=$2
 mysql_user=$3
 mysql_password=$4
 
-rm -rf ~/$version/
-mkdir ~/$version/
-export PATH=$PATH:~/$version/
-cd ~/$version
-wget "https://github.com/Percona-Lab/pmm-submodules/releases/download/v${version}/pmm-client.tgz"
-tar zxvf pmm-client.tgz
-chmod +x *
 
 node_name=node$((1 + RANDOM % 100))
 json=`curl -d '{"address": "'$server_url'", "custom_labels": {"custom_label": "for_node"}, "node_name": "'$node_name'"}' http://${server_url}/v1/inventory/Nodes/AddGeneric`
@@ -29,7 +27,7 @@ agent_id=`jsonval`
 echo $agent_id
 echo $node_id
 
-./pmm-agent --address=127.0.0.1:443 --insecure-tls --id=$agent_id & > /dev/null
+./pmm-agent --address=$pmm_server --insecure-tls --id=$agent_id & > /dev/null 2>&1
 
 sleep 10
 
