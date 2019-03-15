@@ -8,7 +8,7 @@ function jsonval {
 display_usage() { 
 	echo "Please make sure to pass atleast pmm_server, mysql_server, mysql_user"
 	echo "1) pmm_server    ------------------localhost:80"
-	echo "2) mysql_server  ------------------localhost:3036"
+	echo "2) mysql_server  ------------------localhost:3306"
 	echo "3) mysql_user    ------------------root"
 	echo "4) mysql_password------------------secret"
 }
@@ -37,7 +37,7 @@ mysql_password=$4
 
 if [ -z "$mysql_server_port" ]
 then
-      mysql_server_port='3036'
+      mysql_server_port='3306'
 fi
 
 node_name=node$((1 + RANDOM % 100))
@@ -45,7 +45,7 @@ json=`curl -d '{"address": "'$pmm_server:$pmm_server_port'", "custom_labels": {"
 prop='node_id'
 node_id=`jsonval`
 
-json=`curl -d '{"custom_labels": {"custom_label2": "for_pmm-agent"}, "node_id": "'$node_id'"}' http://${pmm_server}:${pmm_server_port}/v1/inventory/Agents/AddPMMAgent`
+json=`curl -d '{"custom_labels": {"custom_label2": "for_pmm-agent"}, "runs_on_node_id": "'$node_id'"}' http://${pmm_server}:${pmm_server_port}/v1/inventory/Agents/AddPMMAgent`
 prop='agent_id'
 agent_id=`jsonval`
 echo $agent_id
@@ -56,7 +56,7 @@ echo $node_id
 sleep 10
 
 service_name=mysql-$((1 + RANDOM % 100))
-json=`curl -d '{"address": "'${mysql_server}'", "port": '${mysql_server_port}', "custom_labels": {"custom_label3": "for_service"}, "node_id": "'$node_id'", "service_name": "'$service_name'"}' \
+json=`curl -d '{"address": "'${mysql_server}'", "port": '${mysql_server_port}', "custom_labels": {"custom_label3": "for_service"}, "runs_on_node_id": "'$node_id'", "service_name": "'$service_name'"}' \
  http://${pmm_server}:${pmm_server_port}/v1/inventory/Services/AddMySQL`
 prop='service_id'
 service_id=`jsonval`
