@@ -56,7 +56,7 @@ pmm-agent --address=$pmm_server:443 --insecure-tls --id=$agent_id & > /dev/null 
 sleep 10
 
 service_name=mysql-$((1 + RANDOM % 100))
-json=`curl -d '{"address": "'${mysql_server}'", "port": '${mysql_server_port}', "custom_labels": {"custom_label3": "for_service"}, "runs_on_node_id": "'$node_id'", "service_name": "'$service_name'"}' \
+json=`curl -d '{"address": "'${mysql_server}'", "port": '${mysql_server_port}', "custom_labels": {"custom_label3": "for_service"}, "node_id": "'$node_id'", "service_name": "'$service_name'"}' \
  http://${pmm_server}:${pmm_server_port}/v1/inventory/Services/AddMySQL`
 prop='service_id'
 service_id=`jsonval`
