@@ -5,43 +5,65 @@ function jsonval {
     echo ${temp##*|}
 }
 
-version=$1
-server_url=$2
+display_usage() { 
+	echo "Please make sure to pass atleast pmm_server, mysql_server, mysql_user"
+	echo "1) pmm_server    ------------------localhost:80"
+	echo "2) mysql_server  ------------------localhost:3306"
+	echo "3) mysql_user    ------------------root"
+	echo "4) mysql_password------------------secret"
+}
+
+# check whether user had supplied -h or --help . If yes display usage 
+if [[ ( $# == "--help") ||  $# == "-h" ]] 
+then 
+	display_usage
+	exit 0
+fi
+if [ "$#" -lt 3 ]; then
+    display_usage
+    exit 1;
+fi
+
+STR=$1
+IFS=’:’ read -ra pmm_serer_with_port <<< "$STR" 
+MSTR=$2
+IFS=’:’ read -ra mysql_server_with_port <<< "$MSTR"
+pmm_server=${pmm_serer_with_port[0]}
+pmm_server_port=${pmm_serer_with_port[1]}
+mysql_server=${mysql_server_with_port[0]}
+mysql_server_port=${mysql_server_with_port[1]}
 mysql_user=$3
 mysql_password=$4
 
-rm -rf ~/$version/
-mkdir ~/$version/
-export PATH=$PATH:~/$version/
-cd ~/$version
-wget "https://github.com/Percona-Lab/pmm-submodules/releases/download/v${version}/pmm-client.tgz"
-tar zxvf pmm-client.tgz
-chmod +x *
+if [ -z "$mysql_server_port" ]
+then
+      mysql_server_port='3306'
+fi
 
 node_name=node$((1 + RANDOM % 100))
-json=`curl -d '{"address": "'$server_url'", "custom_labels": {"custom_label": "for_node"}, "node_name": "'$node_name'"}' http://${server_url}/v1/inventory/Nodes/AddGeneric`
+json=`curl -d '{"address": "'$pmm_server:$pmm_server_port'", "custom_labels": {"custom_label": "for_node"}, "node_name": "'$node_name'"}' http://${pmm_server}:${pmm_server_port}/v1/inventory/Nodes/AddGeneric`
 prop='node_id'
 node_id=`jsonval`
 
-json=`curl -d '{"custom_labels": {"custom_label2": "for_pmm-agent"}, "node_id": "'$node_id'"}' http://${server_url}/v1/inventory/Agents/AddPMMAgent`
+json=`curl -d '{"custom_labels": {"custom_label2": "for_pmm-agent"}, "runs_on_node_id": "'$node_id'"}' http://${pmm_server}:${pmm_server_port}/v1/inventory/Agents/AddPMMAgent`
 prop='agent_id'
 agent_id=`jsonval`
 echo $agent_id
 echo $node_id
 
-./pmm-agent --address=127.0.0.1:443 --insecure-tls --id=$agent_id & > /dev/null
+pmm-agent --address=$pmm_server:443 --insecure-tls --id=$agent_id & > /dev/null 2>&1
 
 sleep 10
 
 service_name=mysql-$((1 + RANDOM % 100))
-json=`curl -d '{"address": "'$server_url'", "port": 3306, "custom_labels": {"custom_label3": "for_service"}, "node_id": "'$node_id'", "service_name": "'$service_name'"}' \
- http://${server_url}/v1/inventory/Services/AddMySQL`
+json=`curl -d '{"address": "'${mysql_server}'", "port": '${mysql_server_port}', "custom_labels": {"custom_label3": "for_service"}, "node_id": "'$node_id'", "service_name": "'$service_name'"}' \
+ http://${pmm_server}:${pmm_server_port}/v1/inventory/Services/AddMySQL`
 prop='service_id'
 service_id=`jsonval`
 echo $service_id
 
 json=`curl -d '{"custom_labels": {"custom_label4": "for_exporter"}, "runs_on_node_id": "'$node_id'", "service_id": "'$service_id'", "username": "root", "'$mysql_user'": "'$mysql_password'"}' \
-http://${server_url}/v1/inventory/Agents/AddMySQLdExporter`
+http://${pmm_server}:${pmm_server_port}/v1/inventory/Agents/AddMySQLdExporter`
 prop='runs_on_node_id'
 runs_on_node_id=`jsonval`
 echo $runs_on_node_id
