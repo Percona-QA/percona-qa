@@ -145,7 +145,7 @@ fi
 echo -e "      --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
 echo -e "      --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
 echo -e "      --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
-echo -e "      --log-error=\$node/node\$i.err \\" >> ./start_pxc
+echo -e "      --log-error=\$node/node\$i.err --log-error-verbosity=3 \\" >> ./start_pxc
 echo -e "      --socket=\$node/socket.sock --log-output=none \\" >> ./start_pxc
 echo -e "      --port=\$RBASE1 --server-id=1\$i --wsrep_slave_threads=2 > \$node/node\$i.err 2>&1 &\n" >> ./start_pxc
 
