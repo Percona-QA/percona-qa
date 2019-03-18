@@ -357,6 +357,7 @@ ZN7SEL_ARG9store_minEjPPhj                               ## https://bugs.mysql.c
 #ha_innopart.cc line 3526                       ## Fixed ## https://bugs.mysql.com/bug.php?id=78728
 
 ## =========== MS 5.7 GA ===========
+table->has_instant_cols..                                ## https://jira.percona.com/browse/PS-5483
 dict0stats_bg.cc                                         ## https://bugs.mysql.com/bug.php?id=89759
 .xid->is_null                                            ## https://bugs.mysql.com/bug.php?id=80694
 # row0quiesce.cc line 724                       ## Fixed ## https://bugs.mysql.com/bug.php?id=90154 (Old bug #80669. Fixed in 5.7.11)
