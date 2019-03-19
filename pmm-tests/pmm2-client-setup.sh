@@ -62,7 +62,7 @@ prop='service_id'
 service_id=`jsonval`
 echo $service_id
 
-json=`curl -d '{"custom_labels": {"custom_label4": "for_exporter"}, "pmm_agent_id": "'$agent_id'", "service_id": "'$service_id'", "username": "root", "'$mysql_user'": "'$mysql_password'"}' \
+json=`curl -d '{"custom_labels": {"custom_label4": "for_exporter"}, "pmm_agent_id": "'$agent_id'", "service_id": "'$service_id'", "username": "'$mysql_user'", "password": "'$mysql_password'"}' \
 http://${pmm_server}:${pmm_server_port}/v1/inventory/Agents/AddMySQLdExporter`
 prop='runs_on_node_id'
 runs_on_node_id=`jsonval`
