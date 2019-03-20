@@ -82,7 +82,7 @@ then
 	service_id=`jsonval`
 	echo $service_id
 
-	json=`curl -d '{"custom_labels": {"custom_label4": "for_exporter"}, "pmm_agent_id": "'$agent_id'", "service_id": "'$service_id'", "username": "'$db_user'", "password" "'$db_password'"}' \
+	json=`curl -d '{"custom_labels": {"custom_label4": "for_exporter"}, "pmm_agent_id": "'$agent_id'", "service_id": "'$service_id'", "username": "'$db_user'", "password": "'$db_password'"}' \
 	http://${pmm_server}:${pmm_server_port}/v1/inventory/Agents/AddMongoDBExporter`
 	prop='runs_on_node_id'
 	runs_on_node_id=`jsonval`
