@@ -5,6 +5,7 @@ autoinc > 0                                                                     
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
+error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
