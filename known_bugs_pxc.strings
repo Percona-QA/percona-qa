@@ -1,10 +1,13 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== PXC-8.0 bugs ===========
+.atomic .. .error .= 2 .. error .= 155                                                   ## https://jira.percona.com/browse/PXC-2488
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
+conn_map_.size                                                                           ## https://jira.percona.com/browse/PXC-2487
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
+error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
@@ -13,16 +16,19 @@ log_sys .= nullptr                                                              
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450
+m_progress .= nullptr                                                                    ## https://jira.percona.com/browse/PXC-2481
 OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
 rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
+sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
 thd->debug_binlog_xid_last.is_null                                                       ## https://jira.percona.com/browse/PXC-2386
+thd->wsrep_exec_mode == LOCAL_STATE                                                      ## https://jira.percona.com/browse/PXC-2486
 thd->wsrep_safe_to_abort == true                                                         ## https://jira.percona.com/browse/PXC-2385
 void boost..throw_exception<asio..system_error>                                          ## https://jira.percona.com/browse/PXC-2392
 ZN5boost15throw_exceptionIN4asio12system_errorEEEvRKT_                                   ## https://jira.percona.com/browse/PXC-2392
