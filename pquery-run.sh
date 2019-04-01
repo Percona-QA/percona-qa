@@ -331,8 +331,6 @@ check_cmd(){
   if [ ${CMD_PID} -ne 0 ]; then echo -e "\nERROR: $ERROR_MSG. Terminating!"; exit 1; fi
 }
 
---
-
 if [[ $PXC -eq 1 ]];then
   # Creating default my.cnf file
   rm -rf ${BASEDIR}/my.cnf
