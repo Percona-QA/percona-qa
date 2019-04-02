@@ -26,6 +26,7 @@ PFS_instr_class..is_shared_exclusive                                            
 rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
+set_and_validate_user_attributes                                                         ## https://jira.percona.com/browse/PXC-2500
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
