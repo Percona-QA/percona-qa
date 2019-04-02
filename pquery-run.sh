@@ -361,8 +361,8 @@ if [[ $PXC -eq 1 ]];then
     echo "innodb_temp_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
     echo "encrypt-tmp-files=ON" >> ${BASEDIR}/my.cnf
     echo "innodb_redo_log_encrypt=1" >> ${BASEDIR}/my.cnf
-    echo "innodb_undo_log_encrypt=1" >> ${BASEDIR}/my.cnf
-    echo "innodb_undo_tablespaces=2" >> ${BASEDIR}/my.cnf
+    #echo "innodb_undo_log_encrypt=1" >> ${BASEDIR}/my.cnf
+    #echo "innodb_undo_tablespaces=2" >> ${BASEDIR}/my.cnf
     if [[ $WITH_KEYRING_VAULT -ne 1 ]];then
       echo "early-plugin-load=keyring_file.so" >> ${BASEDIR}/my.cnf
       echo "keyring_file_data=keyring" >> ${BASEDIR}/my.cnf
@@ -380,7 +380,6 @@ pxc_startup(){
   else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-
   pxc_startup_chk(){
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
@@ -442,15 +441,15 @@ pxc_startup(){
     PXC_PORTS+=("$RBASE1")
     PXC_LADDRS+=("$LADDR1")
     cp ${BASEDIR}/my.cnf ${DATADIR}/n${i}.cnf
-    echo "server-id=10${i}" >> ${DATADIR}/n${i}.cnf
-    echo "wsrep_node_incoming_address=$ADDR" >> ${DATADIR}/n${i}.cnf
-    echo "wsrep_node_address=$ADDR" >> ${DATADIR}/n${i}.cnf
-    echo "log-error=$node/node${i}.err" >> ${DATADIR}/n${i}.cnf
-    echo "port=$RBASE1" >> ${DATADIR}/n${i}.cnf
-    echo "datadir=$node" >> ${DATADIR}/n${i}.cnf
-    echo "wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" >> ${DATADIR}/n${i}.cnf
-    echo "socket=$node/node${i}_socket.sock" >> ${DATADIR}/n${i}.cnf
-    echo "tmpdir=$DATADIR/tmp${i}" >> ${DATADIR}/n${i}.cnf
+    sed -i "2i server-id=10${i}" ${DATADIR}/n${i}.cnf
+    sed -i "2i wsrep_node_incoming_address=$ADDR" ${DATADIR}/n${i}.cnf
+    sed -i "2i wsrep_node_address=$ADDR" ${DATADIR}/n${i}.cnf
+    sed -i "2i log-error=$node/node${i}.err" ${DATADIR}/n${i}.cnf
+    sed -i "2i port=$RBASE1" ${DATADIR}/n${i}.cnf
+    sed -i "2i datadir=$node" ${DATADIR}/n${i}.cnf
+    sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
+    sed -i "2i socket=$node/node${i}_socket.sock" ${DATADIR}/n${i}.cnf
+    sed -i "2i tmpdir=$DATADIR/tmp${i}" ${DATADIR}/n${i}.cnf
 
     if [ "$IS_STARTUP" == "startup" ]; then
       ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
@@ -475,9 +474,9 @@ pxc_startup(){
   else
     VALGRIND_CMD=""
   fi
-  echo "wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" >> ${DATADIR}/n1.cnf
-  echo "wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" >> ${DATADIR}/n2.cnf
-  echo "wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[3]},${PXC_LADDRS[3]}" >> ${DATADIR}/n3.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n1.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n2.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[3]},${PXC_LADDRS[3]}" ${DATADIR}/n3.cnf
   get_error_socket_file 1
   $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
   pxc_startup_status 1
@@ -1699,6 +1698,27 @@ elif [[ ${PXC} -eq 1 ]]; then
     echoit "PXC Cluster run: 'YES'"
   else
     echoit "PXC Cluster run: 'NO'"
+  fi
+  if [ ${ENCRYPTION_RUN} -eq 1 ]; then
+    echoit "PXC Encryption run: 'YES'"
+  else
+    echoit "PXC Encryption run: 'NO'"
+  fi
+  if [[ "$ENCRYPTION_RUN" == 1 ]];then
+    rm -rf ${WORKDIR}/certs
+    mkdir -p ${WORKDIR}/certs
+    pushd ${WORKDIR}/certs
+    openssl genrsa 2048 > ca-key.pem
+    openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
+    openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'
+    openssl rsa -in server-key.pem -out server-key.pem
+    openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem
+    popd
+    echo "[sst]" >> ${BASEDIR}/my.cnf
+    echo "encrypt = 4" >> ${BASEDIR}/my.cnf
+    echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${BASEDIR}/my.cnf
+    echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${BASEDIR}/my.cnf
+    echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${BASEDIR}/my.cnf
   fi
 elif [[ ${GRP_RPL} -eq 1 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
