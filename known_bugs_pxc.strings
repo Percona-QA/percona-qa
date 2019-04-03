@@ -1,6 +1,7 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== PXC-8.0 bugs ===========
 .atomic .. .error .= 2 .. error .= 155                                                   ## https://jira.percona.com/browse/PXC-2488
+.ht->flags . .1 << 14                                                                    ## https://jira.percona.com/browse/PXC-2498
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
@@ -8,6 +9,7 @@ conn_map_.size                                                                  
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
 error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
+find_sys_var_ex                                                                          ## https://jira.percona.com/browse/PXC-2499
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
@@ -24,6 +26,7 @@ PFS_instr_class..is_shared_exclusive                                            
 rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
+set_and_validate_user_attributes                                                         ## https://jira.percona.com/browse/PXC-2500
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443

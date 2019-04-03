@@ -342,14 +342,35 @@ if [[ $PXC -eq 1 ]];then
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
+  else
+    echo "log-error-verbosity=3" >> ${BASEDIR}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
   echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
+  if [[ "$ENCRYPTION_RUN" == 1 ]];then
+    echo "log_bin=binlog" >> ${BASEDIR}/my.cnf
+    echo "binlog_format=ROW" >> ${BASEDIR}/my.cnf
+    echo "gtid_mode=ON" >> ${BASEDIR}/my.cnf
+    echo "enforce_gtid_consistency=ON" >> ${BASEDIR}/my.cnf
+    echo "master_verify_checksum=on" >> ${BASEDIR}/my.cnf
+    echo "binlog_checksum=CRC32" >> ${BASEDIR}/my.cnf
+    echo "binlog-encryption" >> ${BASEDIR}/my.cnf
+    echo "innodb_temp_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
+    echo "encrypt-tmp-files=ON" >> ${BASEDIR}/my.cnf
+    echo "innodb_redo_log_encrypt=1" >> ${BASEDIR}/my.cnf
+    #echo "innodb_undo_log_encrypt=1" >> ${BASEDIR}/my.cnf
+    #echo "innodb_undo_tablespaces=2" >> ${BASEDIR}/my.cnf
+    if [[ $WITH_KEYRING_VAULT -ne 1 ]];then
+      echo "early-plugin-load=keyring_file.so" >> ${BASEDIR}/my.cnf
+      echo "keyring_file_data=keyring" >> ${BASEDIR}/my.cnf
+    fi
+  fi
 fi
 pxc_startup(){
+  IS_STARTUP=$1
   ADDR="127.0.0.1"
   RPORT=$(( (RANDOM%21 + 10)*1000 ))
   SUSER=root
@@ -359,7 +380,6 @@ pxc_startup(){
   else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-
   pxc_startup_chk(){
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
@@ -386,83 +406,120 @@ pxc_startup(){
       fi
     fi
   }
-  if [ "$1" != "startup" ]; then
+  if [ "$IS_STARTUP" != "startup" ]; then
     echo "echo '=== Starting PXC cluster for recovery...'" > ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "sed -i 's|safe_to_bootstrap:.*$|safe_to_bootstrap: 1|' ${WORKDIR}/${TRIAL}/node1/grastate.dat" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
   fi
+  pxc_startup_status(){
+    NR=$1
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+      sleep 1
+      if ${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping > /dev/null 2>&1; then
+        break
+      fi
+      pxc_startup_chk ${ERR_FILE}
+    done
+  }
+  unset PXC_PORTS
+  unset PXC_LADDRS
+  PXC_PORTS=""
+  PXC_LADDRS=""
   for i in `seq 1 3`;do
-    RBASE1="$(( RPORT + ( 100 * $i ) ))"
-    LADDR1="127.0.0.1:$(( RBASE1 + 8 ))"
-	if [ $i -eq 1 ];then
-	  WSREP_CLUSTER="gcomm://"
-	else
-      WSREP_CLUSTER="$WSREP_CLUSTER,gcomm://$LADDR1"
-	fi
-    if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
-      MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf"
-    fi
-    if [ "$1" == "startup" ]; then
+    if [ "$IS_STARTUP" == "startup" ]; then
       node="${WORKDIR}/node${i}.template"
       if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node
       fi
-      WSREP_PROVIDER_OPT=""
-      tmpdir=${WORKDIR}
+      DATADIR=${WORKDIR}
     else
       node="${RUNDIR}/${TRIAL}/node${i}"
-      tmpdir="${RUNDIR}/${TRIAL}"
+      DATADIR="${RUNDIR}/${TRIAL}"
     fi
-    if [ "$1" == "startup" ]; then
+    mkdir -p $DATADIR/tmp${i}
+    RBASE1="$(( RPORT + ( 100 * $i ) ))"
+    LADDR1="127.0.0.1:$(( RBASE1 + 8 ))"
+    PXC_PORTS+=("$RBASE1")
+    PXC_LADDRS+=("$LADDR1")
+    cp ${BASEDIR}/my.cnf ${DATADIR}/n${i}.cnf
+    sed -i "2i server-id=10${i}" ${DATADIR}/n${i}.cnf
+    sed -i "2i wsrep_node_incoming_address=$ADDR" ${DATADIR}/n${i}.cnf
+    sed -i "2i wsrep_node_address=$ADDR" ${DATADIR}/n${i}.cnf
+    sed -i "2i log-error=$node/node${i}.err" ${DATADIR}/n${i}.cnf
+    sed -i "2i port=$RBASE1" ${DATADIR}/n${i}.cnf
+    sed -i "2i datadir=$node" ${DATADIR}/n${i}.cnf
+    sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
+    sed -i "2i socket=$node/node${i}_socket.sock" ${DATADIR}/n${i}.cnf
+    sed -i "2i tmpdir=$DATADIR/tmp${i}" ${DATADIR}/n${i}.cnf
+
+    if [ "$IS_STARTUP" == "startup" ]; then
       ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
     fi
-    if [ ${VALGRIND_RUN} -eq 1 ]; then
-      VALGRIND_CMD="${VALGRIND_CMD}"
-    else
-      VALGRIND_CMD=""
-    fi
-    if check_for_version $MYSQL_VERSION "8.0.0" ; then
-      PXC_MYEXTRA="$PXC_MYEXTRA --log-error-verbosity=3"
-    fi
-    mkdir -p $tmpdir/tmp${i}
-    $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf \
-      $STARTUP_OPTION --datadir=$node \
-      --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA \
-      --wsrep_cluster_address=$WSREP_CLUSTER \
-      --wsrep_node_incoming_address=$ADDR \
-      --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT" \
-      --wsrep_node_address=$ADDR --log-error=$node/node${i}.err \
-      --socket=$node/node${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > $node/node${i}.err 2>&1 &
-    if [ "$1" != "startup" ]; then    
-      echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${BASEDIR}/my.cnf $STARTUP_OPTION --datadir=${WORKDIR}/${TRIAL}/node${i} --server-id=10${i} $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep_cluster_address=$WSREP_CLUSTER --wsrep_node_incoming_address=$ADDR --wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\" --wsrep_node_address=$ADDR --log-error=${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err --socket=${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock --port=$RBASE1 --tmpdir=$tmpdir/tmp${i} > ${WORKDIR}/${TRIAL}/node${i}/recovery_node${i}.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    fi
-    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-      sleep 1
-      if ${BASEDIR}/bin/mysqladmin -uroot -S$node/node${i}_socket.sock ping > /dev/null 2>&1; then
-        break
-      fi
-      pxc_startup_chk $node/node${i}.err
-    done
-    if [ "$1" != "startup" ]; then
-      echo "for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-      echo "  sleep 1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-      echo "  if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node${i}/recovery_n${i}_socket.sock ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-      echo "    break" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-      echo "  fi" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-      echo "done" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    fi
-
-	if [[ $i -eq 1 ]];then
-	  WSREP_CLUSTER="gcomm://$LADDR1"
-    fi
   done
-  if [ "$1" != "startup" ]; then
-    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/recovery_n3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/recovery_n2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node1/recovery_n1_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+  get_error_socket_file(){
+    NR=$1
+    if [ "$IS_STARTUP" == "startup" ]; then
+      ERR_FILE="${WORKDIR}/node${NR}.template/node${NR}.err"
+      SOCKET="${WORKDIR}/node${NR}.template/node${NR}_socket.sock"
+    else
+      ERR_FILE="${RUNDIR}/${TRIAL}/node${NR}/node${NR}.err"
+      SOCKET="${RUNDIR}/${TRIAL}/node${NR}/node${NR}_socket.sock"
+    fi
+  }
+  if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
+    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf"
+  fi
+
+  if [ ${VALGRIND_RUN} -eq 1 ]; then
+    VALGRIND_CMD="${VALGRIND_CMD}"
+  else
+    VALGRIND_CMD=""
+  fi
+  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n1.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n2.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[3]},${PXC_LADDRS[3]}" ${DATADIR}/n3.cnf
+  get_error_socket_file 1
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
+  pxc_startup_status 1
+  get_error_socket_file 2
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n2.cnf \
+    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
+  pxc_startup_status 2
+  get_error_socket_file 3
+  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n3.cnf \
+    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
+  pxc_startup_status 3
+  
+  if [ "$IS_STARTUP" != "startup" ]; then
+    echo "RUNDIR=$RUNDIR"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "WORKDIR=$WORKDIR"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n1.cnf"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n2.cnf"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n3.cnf"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "startup_check(){ " >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+	echo "  SOCKET=\$1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "  for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "    sleep 1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "    if ${BASEDIR}/bin/mysqladmin -uroot -S\${SOCKET} ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "      break" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "    fi" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "  done" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery 
+    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${RUNDIR}/${TRIAL}/node1/node1.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+	echo "startup_check ${RUNDIR}/${TRIAL}/node1/node1_socket.sock" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n2.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node2/node2.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+	echo "startup_check ${RUNDIR}/${TRIAL}/node2/node2_socket.sock" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n3.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node3/node3.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+	echo "startup_check ${RUNDIR}/${TRIAL}/node3/node3_socket.sock" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery 
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "chmod +x ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     chmod +x ${RUNDIR}/${TRIAL}/start_pxc_recovery
+
   fi
-  if [ "$1" == "startup" ]; then
+  if [ "$IS_STARTUP" == "startup" ]; then
     ${BASEDIR}/bin/mysql -uroot -S$node/node${i}_socket.sock -e "create database if not exists test" > /dev/null 2>&1
   fi
 }
@@ -1354,7 +1411,7 @@ pquery_test(){
       sleep 2; sync
     elif [[ ${PXC} -eq 1 ]]; then
       echoit "3 Node PXC Cluster failed to start after ${PXC_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
-      (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+      (ps -ef | grep 'n[0-9].cnf' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     elif [[ ${GRP_RPL} -eq 1 ]]; then
       echoit "3 Node Group Replication Cluster failed to start after ${GRP_RPL_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
@@ -1485,7 +1542,7 @@ pquery_test(){
         fi
       fi
     fi
-    (ps -ef | grep 'node[0-9]_socket' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep 'n[0-9].cnf' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     (sleep 0.2; kill -9 ${PQPID} >/dev/null 2>&1; timeout -k5 -s9 5s wait ${PQPID} >/dev/null 2>&1) &  # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time)
     sleep 2; sync
   fi
@@ -1642,6 +1699,27 @@ elif [[ ${PXC} -eq 1 ]]; then
   else
     echoit "PXC Cluster run: 'NO'"
   fi
+  if [ ${ENCRYPTION_RUN} -eq 1 ]; then
+    echoit "PXC Encryption run: 'YES'"
+  else
+    echoit "PXC Encryption run: 'NO'"
+  fi
+  if [[ "$ENCRYPTION_RUN" == 1 ]];then
+    rm -rf ${WORKDIR}/certs
+    mkdir -p ${WORKDIR}/certs
+    pushd ${WORKDIR}/certs
+    openssl genrsa 2048 > ca-key.pem
+    openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
+    openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'
+    openssl rsa -in server-key.pem -out server-key.pem
+    openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem
+    popd
+    echo "[sst]" >> ${BASEDIR}/my.cnf
+    echo "encrypt = 4" >> ${BASEDIR}/my.cnf
+    echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${BASEDIR}/my.cnf
+    echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${BASEDIR}/my.cnf
+    echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${BASEDIR}/my.cnf
+  fi
 elif [[ ${GRP_RPL} -eq 1 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
   echoit "${ONGOING}"
@@ -1667,7 +1745,7 @@ if [[ $WITH_KEYRING_VAULT -eq 1 ]];then
     ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
   else
     ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
-    MYEXTRA="$MYEXTRA --early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf"
+    #MYEXTRA="$MYEXTRA --early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf"
   fi
 fi
 
