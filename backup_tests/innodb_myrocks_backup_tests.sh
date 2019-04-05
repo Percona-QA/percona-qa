@@ -34,7 +34,7 @@ initialize_db() {
         $qascripts startup.sh
     fi
 
-    ./all_no_cl ${MYSQLD_OPTIONS} >/dev/null 2>&1 
+    ./all_no_cl --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
     ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
         echo "ERR: Database could not be started in location ${mysqldir}. Please check the directory"
@@ -66,6 +66,7 @@ incremental_backup() {
     local RESTORE_PARAMS="$3"
     local MYSQLD_OPTIONS="$4"
 
+    log_date=$(date +"%d_%m_%Y_%M")
     echo "Taking full backup"
     if [ -d ${backup_dir} ]; then
         rm -r ${backup_dir}
@@ -76,12 +77,12 @@ incremental_backup() {
         mkdir ${logdir}
     fi
 
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_$(date +"%d_%m_%Y_%M")_log
+    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
-        echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_$(date +"%d_%m_%Y_%M")_log"
+        echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
     else
-        echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_$(date +"%d_%m_%Y_%M")_log"
+        echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
     fi
 
     echo "Adding data in database"
@@ -92,28 +93,38 @@ incremental_backup() {
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test_rocksdb --mysql-user=root --threads=50 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
     sleep 10
 
-    #~/pt-latest/bin/pt-table-checksum S=${mysqldir}/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format| awk '{print $4, $9}' | grep -E "ROWS|test"
-
     echo "Taking incremental backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_$(date +"%d_%m_%Y_%M")_log
+    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
-        echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc_backup_$(date +"%d_%m_%Y_%M")_log"
+        echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc_backup_${log_date}_log"
         exit 1
     else
-        echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_$(date +"%d_%m_%Y_%M")_log"
+        echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
     fi
 
     echo "Preparing full backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_$(date +"%d_%m_%Y_%M")_log
+    ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
+        exit 1
+    else
+        echo "Prepare of full backup was successful. Logs available at: ${logdir}/prepare_full_backup_${log_date}_log"
+    fi
 
     echo "Preparing incremental backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_$(date +"%d_%m_%Y_%M")_log
+    ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_${log_date}_log
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc_backup_${log_date}_log"
+        exit 1
+    else
+        echo "Prepare of incremental backup was successful. Logs available at: ${logdir}/prepare_inc_backup_${log_date}_log"
+    fi
 
     echo "Restart mysql server to stop all running queries"
     ${mysqldir}/bin/mysqladmin -uroot -S${mysqldir}/socket.sock shutdown
     sleep 2
     pushd $mysqldir >/dev/null 2>&1
-    ./start ${MYSQLD_OPTIONS} >/dev/null 2>&1
+    ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1
     ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
         echo "ERR: Database could not be started in location ${mysqldir}. Database logs: ${mysqldir}/log"
@@ -148,11 +159,17 @@ incremental_backup() {
     mv ${mysqldir}/data ${mysqldir}/data_orig_$(date +"%d_%m_%Y")
 
     echo "Restoring full backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --copy-back --target-dir=${backup_dir}/full --datadir=${datadir} ${RESTORE_PARAMS} 2>${logdir}/res_backup_$(date +"%d_%m_%Y_%M")_log
+    ${xtrabackup_dir}/xtrabackup --user=root --password='' --copy-back --target-dir=${backup_dir}/full --datadir=${datadir} ${RESTORE_PARAMS} 2>${logdir}/res_backup_${log_date}_log
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Restore of full backup failed. Please check the log at: ${logdir}/res_backup_${log_date}_log"
+        exit 1
+    else
+        echo "Restore of full backup was successful. Logs available at: ${logdir}/res_backup_${log_date}_log"
+    fi
 
     echo "Starting mysql server"
     pushd $mysqldir >/dev/null 2>&1
-    ./start ${MYSQLD_OPTIONS} >/dev/null 2>&1 
+    ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
     ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
         echo "ERR: Database could not be started in location ${mysqldir}. The restore was unsuccessful. Database logs: ${mysqldir}/log"
@@ -173,8 +190,10 @@ incremental_backup() {
         echo "ERR: The binlog could not be applied to the restored data"
     fi
 
+    sleep 5
     echo "Checking restored data"
     echo "Check the table status"
+    check_err=0
     for ((i=1; i<=${num_tables}; i++)); do
         for database in test test_rocksdb; do
             if ! table_status=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECK TABLE $database.sbtest$i"|cut -f4-); then
@@ -182,22 +201,28 @@ incremental_backup() {
                 # Check if database went down
                 if ! ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1; then
                     echo "ERR: The database has gone down due to corruption in table $database.sbtest$i"
+                    exit 1
                 fi
-                exit 1
+                check_err=1
             fi
 
             if [[ "$table_status" != "OK" ]]; then
                 echo "ERR: CHECK TABLE $database.sbtest$i query displayed the table status as '$table_status'"
-                exit 1
+                check_err=1
             fi
         done
     done
-    echo "All innodb and myrocks tables status: OK"
 
-    echo "Check the record count of each table in databases test and test_rocksdb"
+    if [[ "$check_err" -eq 0 ]]; then
+        echo "All innodb and myrocks tables status: OK"
+    else
+        echo "After restore, some tables may be corrupt, check table status is not OK"
+    fi
+
+    echo "Check the record count of tables in databases test and test_rocksdb"
     # Get record count for each table in databases test and test_rocksdb
     rc_err=0
-    chk_err=0
+    checksum_err=0
     for ((i=1; i<=${num_tables}; i++)); do
         rc_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test.sbtest$i;")
         if [[ "${rc_innodb_orig[$i]}" -ne "${rc_innodb_res[$i]}" ]]; then
@@ -214,7 +239,7 @@ incremental_backup() {
         #echo "rc_myrocks_res[$i]: ${rc_myrocks_res[$i]}"
     done
     if [[ "$rc_err" -eq 0 ]]; then
-        echo "The record count of all tables in databases test and test_rocksdb matched successfully with original data"
+        echo "Match record count of tables in databases test and test_rocksdb with original data: Pass"
     fi
 
     echo "Check the checksum of each table in databases test and test_rocksdb"
@@ -223,19 +248,40 @@ incremental_backup() {
         chk_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.sbtest$i;"|awk '{print $2}')
         if [[ "${chk_innodb_orig[$i]}" -ne "${chk_innodb_res[$i]}" ]]; then
             echo "ERR: The checksum of test.sbtest$i changed after restore. Checksum in original data: ${chk_innodb_orig[$i]}. Checksum in restored data: ${chk_innodb_res[$i]}."
-            chk_err=1;
+            checksum_err=1;
         fi
 
         chk_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
         if [[ "${chk_myrocks_orig[$i]}" -ne "${chk_myrocks_res[$i]}" ]]; then
             echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksumin restored data: ${chk_myrocks_res[$i]}."
-            chk_err=1;
+            checksum_err=1;
         fi
         #echo "chk_innodb_res[$i]: ${chk_innodb_res[$i]}"
         #echo "chk_myrocks_res[$i]: ${chk_myrocks_res[$i]}"
     done
-    if [[ "$chk_err" -eq 0 ]]; then
-        echo "The checksum of all tables in databases test and test_rocksdb matched successfully with original data"
+
+    if [[ "$checksum_err" -eq 0 ]]; then
+        echo "Match checksum of all tables in databases test and test_rocksdb with original data: Pass"
+    fi
+
+    echo "Check for gaps in primary sequence id of tables"
+    gap_found=0
+    for database in test test_rocksdb; do
+        for ((i=1; i<=${num_tables}; i++)); do
+            j=1
+            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT id FROM $database.sbtest$i ORDER BY id ASC" | while read line; do
+            if [[ "$line" != "$j" ]]; then
+                echo "ERR: Gap found in $database.sbtest$i. Expected sequence number for ID is: $j. Actual sequence number for ID is: $line."
+                gap_found=1
+                break
+            fi
+            let j++
+            done
+        done
+    done
+
+    if [[ "$gap_found" -eq 0 ]]; then
+        echo "No gaps found in primary sequence id of tables: Pass"
     fi
 }
 
@@ -363,10 +409,10 @@ change_row_format() {
         if [ "$?" -ne 0 ]; then
             break
         fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=COMPRESSED;"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=DYNAMIC;"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=COMPACT;"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=REDUNDANT;"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=COMPRESSED;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=DYNAMIC;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=COMPACT;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=REDUNDANT;" >/dev/null 2>&1
     done ) &
 
     echo "Change the row format of a myrocks table"
@@ -376,9 +422,9 @@ change_row_format() {
         if [ "$?" -ne 0 ]; then
             break
         fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=COMPRESSED;"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=DYNAMIC;"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=FIXED;"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=COMPRESSED;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=DYNAMIC;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=FIXED;" >/dev/null 2>&1
     done ) &
 }
 
@@ -427,10 +473,6 @@ test_chg_storage_eng() {
 
     echo "Test: Backup and Restore during change in storage engine"
     
-    initialize_db
-
-    create_data
-
     change_storage_engine
 
     incremental_backup
@@ -440,10 +482,6 @@ test_add_drop_index() {
     # This test suite takes an incremental backup when an index is added and dropped
 
     echo "Test: Backup and Restore during add and drop index"
-
-    initialize_db
-
-    create_data
 
     add_drop_index
 
@@ -455,10 +493,6 @@ test_add_drop_tablespace() {
 
     echo "Test: Backup and Restore during add and drop tablespace"
 
-    initialize_db
-
-    create_data
-
     add_drop_tablespace
 
     incremental_backup "--lock-ddl"
@@ -468,10 +502,6 @@ test_change_compression() {
     # This test suite takes an incremental backup when the compression of a table is changed
 
     echo "Test: Backup and Restore during change in compression"
-
-    #initialize_db
-
-    #create_data
 
     change_compression
 
@@ -507,6 +537,7 @@ test_copy_data_across_engine() {
         echo "ERR: The checksum of tables after backup/restore changed. Checksum of innodb table test.sbtest1 before backup: $innodb_checksum. Checksum of myrocks table test_rocksdb.sbtestcopy after restore: $myrocks_checksum."
     else
         echo "Checksum of myrocks table test_rocksdb.sbtestcopy after restore: $myrocks_checksum"
+        echo "Match checksum of test.sbtest1 with test_rocksdb.sbtestcopy: Pass"
     fi
 }
 
@@ -526,7 +557,7 @@ test_add_data_across_engine() {
         echo "ERR: The row count of tables innodb_t and myrocks_t is different. Row count of innodb_t: $innodb_count. Row count of myrocks_t: $myrocks_count"
         exit 1
     else
-        echo "Row count of both tables innodb_t and myrocks_t is same after restore, the check passed"
+        echo "Row count of both tables innodb_t and myrocks_t is same after restore: Pass"
     fi
 
     echo "Check the checksum of tables innodb_t and myrocks_t after restore"
@@ -536,12 +567,25 @@ test_add_data_across_engine() {
         echo "ERR: The checksum of tables innodb_t and myrocks_t is different. Checksum of innodb_t: $innodb_checksum. Checksum of myrocks_t: $myrocks_checksum"
         exit 1
     else
-        echo "Checksum of both tables innodb_t and myrocks_t is same after restore, the check passed"
+        echo "Checksum of both tables innodb_t and myrocks_t is same after restore: Pass"
     fi
 }
 
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index; do
-for testsuite in test_inc_backup test_add_data_across_engine; do
+test_run_all_statements() {
+    # This test suite runs the statements for all previous tests simultaneously in background
+
+    change_storage_engine
+
+    add_drop_index
+
+    add_drop_tablespace
+
+    change_compression
+
+    incremental_backup "--lock-ddl"
+}
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine; do
+for testsuite in test_inc_backup test_run_all_statements; do
     $testsuite
     echo "###################################################################################"
 done
