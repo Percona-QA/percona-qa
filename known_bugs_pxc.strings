@@ -3,6 +3,7 @@
 .atomic .. .error .= 2 .. error .= 155                                                   ## https://jira.percona.com/browse/PXC-2488
 .ht->flags . .1 << 14                                                                    ## https://jira.percona.com/browse/PXC-2498
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
+ACL_HOST_AND_IP..has_wildcard                                                            ## https://jira.percona.com/browse/PXC-2508
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 conn_map_.size                                                                           ## https://jira.percona.com/browse/PXC-2487
@@ -27,6 +28,7 @@ rli->rows_query_ev == __null                                                    
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
 set_and_validate_user_attributes                                                         ## https://jira.percona.com/browse/PXC-2500
+t->s->tmp_table .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE          ## https://jira.percona.com/browse/PXC-2507
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
