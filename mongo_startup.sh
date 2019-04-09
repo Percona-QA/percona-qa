@@ -12,8 +12,11 @@ CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
 PBMDIR=""
 AUTH=""
+BACKUP_AUTH=""
 MONGO_USER="dba"
 MONGO_PASS="test1234"
+MONGO_BACKUP_USER="backupUser"
+MONGO_BACKUP_PASS="test1234"
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -114,6 +117,7 @@ do
   -x | --auth )
     shift
     AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"
+    BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"
     ;;
   esac
 done
@@ -160,7 +164,10 @@ fi
 
 echo "MONGO_USER=\"${MONGO_USER}\"" > ${NODESDIR}/COMMON
 echo "MONGO_PASS=\"${MONGO_PASS}\"" >> ${NODESDIR}/COMMON
+echo "MONGO_BACKUP_USER=\"${MONGO_BACKUP_USER}\"" >> ${NODESDIR}/COMMON
+echo "MONGO_BACKUP_PASS=\"${MONGO_BACKUP_PASS}\"" >> ${NODESDIR}/COMMON
 echo "AUTH=\"\"" >> ${NODESDIR}/COMMON
+echo "BACKUP_AUTH=\"\"" >> ${NODESDIR}/COMMON
 if [ ! -z "${AUTH}" ]; then
   openssl rand -base64 756 > ${NODESDIR}/keyFile
   chmod 400 ${NODESDIR}/keyFile
@@ -214,7 +221,7 @@ start_pbm_agent(){
   local MAUTH=""
   local MREPLICASET=""
   if [ ! -z "${AUTH}" ]; then
-    MAUTH="--mongodb-username=\${MONGO_USER} --mongodb-password=\${MONGO_PASS}"
+    MAUTH="--mongodb-username=\${MONGO_BACKUP_USER} --mongodb-password=\${MONGO_BACKUP_PASS}"
   fi
   if [ "${RS}" != "nors" ]; then
     MREPLICASET="--mongodb-replicaset=${RS}"
@@ -367,7 +374,9 @@ start_replicaset(){
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 10
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
+    ${BINDIR}/mongo ${AUTH} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
     sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
   fi
 
   # start PBM agents for replica set nodes
@@ -397,8 +406,10 @@ if [ "${LAYOUT}" == "single" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${NODESDIR}/stop.sh
     sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
     sleep 5
     ${NODESDIR}/start.sh
+    ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
 
   start_pbm_agent "${NODESDIR}" "rs1" "27017" "mongod"
@@ -470,6 +481,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   ${NODESDIR}/${SHNAME}/start_mongos.sh
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
+    ${BINDIR}/mongo ${AUTH} localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
   # add Shards to the Cluster
   echo "Adding shards to the cluster..."
