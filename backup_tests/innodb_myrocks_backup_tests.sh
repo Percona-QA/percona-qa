@@ -451,6 +451,35 @@ add_data_transaction() {
     done ) &
 }
 
+update_truncate_table() {
+    # This function updates data in tables and then truncates it
+
+    echo "Update an innodb table and then truncate it"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "SET @@SESSION.OPTIMIZER_SWITCH='firstmatch=ON';" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET c='Œ„´‰?Á¨ˆØ?”’';" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "OPTIMIZE TABLE test.sbtest1;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "TRUNCATE test.sbtest1;" >/dev/null 2>&1
+    done ) &
+
+    echo "Update a myrocks table and then truncate it"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test_rocksdb.sbtest2 SET c='Œ„´‰?Á¨ˆØ?”’';" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "OPTIMIZE TABLE test_rocksdb.sbtest2;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "TRUNCATE test_rocksdb.sbtest2;" >/dev/null 2>&1
+    done ) &
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -571,6 +600,16 @@ test_add_data_across_engine() {
     fi
 }
 
+test_update_truncate_table() {
+    # This test suite takes an incremental backup during update and truncate of tables
+
+    echo "Test: Backup and Restore during update and truncate of a table"
+
+    update_truncate_table
+
+    incremental_backup "--lock-ddl"
+}
+
 test_run_all_statements() {
     # This test suite runs the statements for all previous tests simultaneously in background
 
@@ -584,8 +623,8 @@ test_run_all_statements() {
 
     incremental_backup "--lock-ddl"
 }
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine; do
-for testsuite in test_inc_backup test_run_all_statements; do
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_run_all_statements; do
+for testsuite in test_update_truncate_table; do
     $testsuite
     echo "###################################################################################"
 done
