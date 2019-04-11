@@ -381,7 +381,8 @@ start_replicaset(){
 
   # start PBM agents for replica set nodes
   # for config server replica set this is done in another place after cluster user is added
-  if [ "${RSNAME}" != "config" ]; then
+  if [ ! -z "${PBMDIR}" -a "${RSNAME}" != "config" ]; then
+    sleep 5
     for i in 1 2 3; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
         start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "mongod"
@@ -493,12 +494,14 @@ if [ "${LAYOUT}" == "sh" ]; then
 
   # start a PBM agent on the config replica set node (needed here because auth is enabled through mongos)
   #start_pbm_agent "${NODESDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}" "mongod"
-  for i in 1 2 3; do
-    if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-      start_pbm_agent "${NODESDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))" "mongod"
-    fi
-  done
-  # start a PBM agent on the mongos node (currently required, but in the future it shouldn't be)
-  start_pbm_agent "${NODESDIR}/${SHNAME}" "nors" "${SHPORT}" "mongos"
+  if [ ! -z "${PBMDIR}" ]; then
+    for i in 1 2 3; do
+      if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
+        start_pbm_agent "${NODESDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))" "mongod"
+      fi
+    done
+    # start a PBM agent on the mongos node (currently required, but in the future it shouldn't be)
+    start_pbm_agent "${NODESDIR}/${SHNAME}" "nors" "${SHPORT}" "mongos"
+  fi
 fi
 
