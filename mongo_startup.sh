@@ -12,8 +12,11 @@ CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
 PBMDIR=""
 AUTH=""
+BACKUP_AUTH=""
 MONGO_USER="dba"
 MONGO_PASS="test1234"
+MONGO_BACKUP_USER="backupUser"
+MONGO_BACKUP_PASS="test1234"
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -68,6 +71,7 @@ do
     echo -e "-t, --encrypt\t\t\t enable data at rest encryption (wiredTiger only)"
     echo -e "-c<mode>, --cipherMode=<mode>\t specify cipher mode for encryption (AES256-CBC or AES256-GCM)"
     echo -e "-p<path>, --pbmDir=<path>\t if specified enables Percona Backup for MongoDB (starts agents and coordinator)"
+    echo -e "-x, --auth\t\t\t enable authentication"
     echo -e "-h, --help\t\t\t this help"
     exit 0
     ;;
@@ -113,6 +117,7 @@ do
   -x | --auth )
     shift
     AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"
+    BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"
     ;;
   esac
 done
@@ -159,7 +164,10 @@ fi
 
 echo "MONGO_USER=\"${MONGO_USER}\"" > ${NODESDIR}/COMMON
 echo "MONGO_PASS=\"${MONGO_PASS}\"" >> ${NODESDIR}/COMMON
+echo "MONGO_BACKUP_USER=\"${MONGO_BACKUP_USER}\"" >> ${NODESDIR}/COMMON
+echo "MONGO_BACKUP_PASS=\"${MONGO_BACKUP_PASS}\"" >> ${NODESDIR}/COMMON
 echo "AUTH=\"\"" >> ${NODESDIR}/COMMON
+echo "BACKUP_AUTH=\"\"" >> ${NODESDIR}/COMMON
 if [ ! -z "${AUTH}" ]; then
   openssl rand -base64 756 > ${NODESDIR}/keyFile
   chmod 400 ${NODESDIR}/keyFile
@@ -213,7 +221,7 @@ start_pbm_agent(){
   local MAUTH=""
   local MREPLICASET=""
   if [ ! -z "${AUTH}" ]; then
-    MAUTH="--mongodb-username=\${MONGO_USER} --mongodb-password=\${MONGO_PASS}"
+    MAUTH="--mongodb-username=\${MONGO_BACKUP_USER} --mongodb-password=\${MONGO_BACKUP_PASS}"
   fi
   if [ "${RS}" != "nors" ]; then
     MREPLICASET="--mongodb-replicaset=${RS}"
@@ -317,7 +325,11 @@ start_replicaset(){
   mkdir -p "${RSDIR}"
   echo "=== Starting replica set: ${RSNAME} ==="
   for i in 1 2 3; do
-    start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "${STORAGE_ENGINE}" "${EXTRA}"
+    if [ "${RSNAME}" != "config" ]; then
+      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "${STORAGE_ENGINE}" "${EXTRA}"
+    else
+      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "wiredTiger" "${EXTRA}"
+    fi
   done
   sleep 5
   echo "#!/usr/bin/env bash" > ${RSDIR}/init_rs.sh
@@ -358,18 +370,25 @@ start_replicaset(){
   chmod +x ${RSDIR}/cl_primary.sh
   ${RSDIR}/init_rs.sh
 
-  if [ ! -z "${AUTH}" ]; then
+  # for config server this is done via mongos
+  if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 10
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
+    ${BINDIR}/mongo ${AUTH} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
     sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
   fi
 
   # start PBM agents for replica set nodes
-  for i in 1 2 3; do
-    if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-      start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "mongod"
-    fi
-  done
+  # for config server replica set this is done in another place after cluster user is added
+  if [ ! -z "${PBMDIR}" -a "${RSNAME}" != "config" ]; then
+    sleep 5
+    for i in 1 2 3; do
+      if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
+        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "mongod"
+      fi
+    done
+fi
 }
 
 # start PBM coordinator if PBM directory specified
@@ -388,8 +407,10 @@ if [ "${LAYOUT}" == "single" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${NODESDIR}/stop.sh
     sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
     sleep 5
     ${NODESDIR}/start.sh
+    ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
 
   start_pbm_agent "${NODESDIR}" "rs1" "27017" "mongod"
@@ -416,15 +437,13 @@ if [ "${LAYOUT}" == "sh" ]; then
   mkdir -p "${NODESDIR}/${SHNAME}"
 
   echo "=== Configuring sharding cluster: ${SHNAME} ==="
-  # setup config replicaset (1 node)
-  echo "=== Starting config server replica set: ${CFGRSNAME} ==="
-  start_mongod "${NODESDIR}/${CFGRSNAME}" "config" "${CFGPORT}" "wiredTiger" "--configsvr ${CONFIG_EXTRA}"
-  echo "Initializing config server replica set: ${CFGRSNAME}"
-  ${BINDIR}/mongo localhost:${CFGPORT} --quiet --eval "rs.initiate({_id:\"${CFGRSNAME}\", members: [{_id:1, \"host\":\"localhost:${CFGPORT}\"}]})"
+  # setup config replicaset (3 node)
+  start_replicaset "${NODESDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}" "--configsvr ${CONFIG_EXTRA}"
+
   # this is needed in 3.6 for MongoRocks since it doesn't support FCV 3.6 and config servers control this in sharding setup
   if [ "${STORAGE_ENGINE}" = "rocksdb" -a "${VERSION_MAJOR}" = "3.6" ]; then
     sleep 15
-    ${BINDIR}/mongo localhost:${CFGPORT} --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
+    ${NODESDIR}/${CFGRSNAME}/cl_primary.sh --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
   fi
 
   # setup 2 data replica sets
@@ -434,7 +453,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   # create managing scripts
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "echo \"=== Starting sharding server: ${SHNAME} on port ${SHPORT} ===\"" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
-  echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/localhost:${CFGPORT} --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork "$MONGOS_EXTRA" >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
+  echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/localhost:${CFGPORT},localhost:$(($CFGPORT + 1)),localhost:$(($CFGPORT + 2)) --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork "$MONGOS_EXTRA" >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/cl_mongos.sh
   echo "source ${NODESDIR}/COMMON" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
   echo "${BINDIR}/mongo localhost:${SHPORT} \${AUTH} \$@" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
@@ -450,7 +469,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo "${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/start_all.sh
   echo "echo \"Starting sharding cluster on port: ${SHPORT}\"" >> ${NODESDIR}/start_all.sh
-  echo "${NODESDIR}/${CFGRSNAME}/start.sh" >> ${NODESDIR}/start_all.sh
+  echo "${NODESDIR}/${CFGRSNAME}/start_rs.sh" >> ${NODESDIR}/start_all.sh
   echo "${NODESDIR}/${RS1NAME}/start_rs.sh" >> ${NODESDIR}/start_all.sh
   echo "${NODESDIR}/${RS2NAME}/start_rs.sh" >> ${NODESDIR}/start_all.sh
   echo "${NODESDIR}/${SHNAME}/start_mongos.sh" >> ${NODESDIR}/start_all.sh
@@ -463,6 +482,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   ${NODESDIR}/${SHNAME}/start_mongos.sh
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
+    ${BINDIR}/mongo ${AUTH} localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
   # add Shards to the Cluster
   echo "Adding shards to the cluster..."
@@ -473,8 +493,15 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo -e ">>> Shard a collection with: sh.shardCollection(\"<database>.<collection>\", { <key> : <direction> } ) <<<\n"
 
   # start a PBM agent on the config replica set node (needed here because auth is enabled through mongos)
-  start_pbm_agent "${NODESDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}" "mongod"
-  # start a PBM agent on the mongos node (currently required, but in the future it shouldn't be)
-  start_pbm_agent "${NODESDIR}/${SHNAME}" "nors" "${SHPORT}" "mongos"
+  #start_pbm_agent "${NODESDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}" "mongod"
+  if [ ! -z "${PBMDIR}" ]; then
+    for i in 1 2 3; do
+      if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
+        start_pbm_agent "${NODESDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))" "mongod"
+      fi
+    done
+    # start a PBM agent on the mongos node (currently required, but in the future it shouldn't be)
+    start_pbm_agent "${NODESDIR}/${SHNAME}" "nors" "${SHPORT}" "mongos"
+  fi
 fi
 

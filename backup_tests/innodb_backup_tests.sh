@@ -2,7 +2,7 @@
 
 ########################################################################
 # Created By Manish Chawla, Percona LLC                                #
-# This script tests backup for innodb and myrocks tables               #
+# This script tests backup for innodb tables                           #
 # Assumption: PS8.0 and PXB8.0 are already installed                   #
 # Usage:                                                               #
 # 1. Set paths in this script:                                         #
@@ -25,13 +25,13 @@ num_tables=10
 table_size=1000
 
 initialize_db() {
-    # This function initializes and starts mysql database
+    # This function initializes, starts and creates the mysql database
     local MYSQLD_OPTIONS="$1"
 
     echo "Starting mysql database"
     pushd $mysqldir >/dev/null 2>&1
     if [ ! -f $mysqldir/all_no_cl ]; then
-        $qascripts startup.sh
+        $qascripts/startup.sh
     fi
 
     ./all_no_cl --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
@@ -42,9 +42,7 @@ initialize_db() {
         exit 1
     fi
     popd >/dev/null 2>&1
-}
 
-create_data() {
     echo "Creating innodb data in database"
     which sysbench >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
@@ -53,11 +51,22 @@ create_data() {
     fi
 
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
-    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare
+    if [[ "${MYSQLD_OPTIONS}" != *"encrypt"* ]]; then
+        # Create tables without encryption
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare
+    else
+        # Create encrypted tables: changed the oltp_common.lua script to include mysql-table-options="Encryption='Y'"
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --mysql-table-options="Encryption='Y'" prepare
+        if [ "$?" -ne 0 ]; then
+            for ((i=1; i<=${num_tables}; i++)); do
+                echo "Creating the table sbtest$i..."
+                ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test.sbtest$i (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y';"
+            done
 
-    echo "Creating rocksdb data in database"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test_rocksdb;"
-    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock prepare
+            echo "Adding data in tables..."
+            sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=30 run >/dev/null 2>&1 
+        fi
+    fi
 }
 
 incremental_backup() {
@@ -89,9 +98,7 @@ incremental_backup() {
     # Innodb data
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
 
-    # Rocksdb data
-    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test_rocksdb --mysql-user=root --threads=50 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
-    sleep 10
+    sleep 5
 
     echo "Taking incremental backup"
     ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
@@ -134,21 +141,17 @@ incremental_backup() {
     echo "The mysql server was restarted successfully"
     popd >/dev/null 2>&1
 
-    echo "Collecting current data of innodb and myrocks tables"
-    # Get record count for each table in databases test and test_rocksdb
+    echo "Collecting current data of innodb tables"
+    # Get record count for each table in database test
     for ((i=1; i<=${num_tables}; i++)); do
         rc_innodb_orig[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test.sbtest$i;")
-        rc_myrocks_orig[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test_rocksdb.sbtest$i;")
     #    echo "rc_innodb_orig[$i]: ${rc_innodb_orig[$i]}"
-    #    echo "rc_myrocks_orig[$i]: ${rc_myrocks_orig[$i]}"
     done
 
-    # Get checksum of each table in databases test and test_rocksdb
+    # Get checksum of each table in database test
     for ((i=1; i<=${num_tables}; i++)); do
         chk_innodb_orig[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.sbtest$i;"|awk '{print $2}')
-        chk_myrocks_orig[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
     #    echo "chk_innodb_orig[$i]: ${chk_innodb_orig[$i]}"
-    #    echo "chk_myrocks_orig[$i]: ${chk_myrocks_orig[$i]}"
     done
 
     echo "Stopping mysql server and moving data directory"
@@ -195,7 +198,7 @@ incremental_backup() {
     echo "Check the table status"
     check_err=0
     for ((i=1; i<=${num_tables}; i++)); do
-        for database in test test_rocksdb; do
+        for database in test; do
             if ! table_status=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECK TABLE $database.sbtest$i"|cut -f4-); then
                 echo "ERR: CHECK TABLE $database.sbtest$i query failed"
                 # Check if database went down
@@ -214,13 +217,13 @@ incremental_backup() {
     done
 
     if [[ "$check_err" -eq 0 ]]; then
-        echo "All innodb and myrocks tables status: OK"
+        echo "All innodb tables status: OK"
     else
         echo "After restore, some tables may be corrupt, check table status is not OK"
     fi
 
-    echo "Check the record count of tables in databases test and test_rocksdb"
-    # Get record count for each table in databases test and test_rocksdb
+    echo "Check the record count of tables in database test"
+    # Get record count for each table in database test
     rc_err=0
     checksum_err=0
     for ((i=1; i<=${num_tables}; i++)); do
@@ -230,20 +233,14 @@ incremental_backup() {
             rc_err=1
         fi
 
-        rc_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test_rocksdb.sbtest$i;")
-        if [[ "${rc_myrocks_orig[$i]}" -ne "${rc_myrocks_res[$i]}" ]]; then
-            echo "ERR: The record count of test_rocksdb.sbtest$i changed after restore. Record count in original data: ${rc_myrocks_orig[$i]}. Record count in restored data: ${rc_myrocks_res[$i]}."
-            rc_err=1
-        fi
         #echo "rc_innodb_res[$i]: ${rc_innodb_res[$i]}"
-        #echo "rc_myrocks_res[$i]: ${rc_myrocks_res[$i]}"
     done
     if [[ "$rc_err" -eq 0 ]]; then
-        echo "Match record count of tables in databases test and test_rocksdb with original data: Pass"
+        echo "Match record count of tables in database test with original data: Pass"
     fi
 
-    echo "Check the checksum of each table in databases test and test_rocksdb"
-    # Get checksum of each table in databases test and test_rocksdb
+    echo "Check the checksum of each table in database test"
+    # Get checksum of each table in database test
     for ((i=1; i<=${num_tables}; i++)); do
         chk_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.sbtest$i;"|awk '{print $2}')
         if [[ "${chk_innodb_orig[$i]}" -ne "${chk_innodb_res[$i]}" ]]; then
@@ -251,22 +248,16 @@ incremental_backup() {
             checksum_err=1;
         fi
 
-        chk_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
-        if [[ "${chk_myrocks_orig[$i]}" -ne "${chk_myrocks_res[$i]}" ]]; then
-            echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksumin restored data: ${chk_myrocks_res[$i]}."
-            checksum_err=1;
-        fi
         #echo "chk_innodb_res[$i]: ${chk_innodb_res[$i]}"
-        #echo "chk_myrocks_res[$i]: ${chk_myrocks_res[$i]}"
     done
 
     if [[ "$checksum_err" -eq 0 ]]; then
-        echo "Match checksum of all tables in databases test and test_rocksdb with original data: Pass"
+        echo "Match checksum of all tables in database test with original data: Pass"
     fi
 
     echo "Check for gaps in primary sequence id of tables"
     gap_found=0
-    for database in test test_rocksdb; do
+    for database in test; do
         for ((i=1; i<=${num_tables}; i++)); do
             j=1
             ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT id FROM $database.sbtest$i ORDER BY id ASC" | while read line; do
@@ -298,19 +289,6 @@ change_storage_engine() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "alter table test.sbtest1 ENGINE=MYISAM;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "alter table test.sbtest1 ENGINE=INNODB;" >/dev/null 2>&1
     done ) &
-
-    echo "Change the storage engine of test_rocksdb.sbtest1 to INNODB, ROCKSDB, MYISAM continuously"
-    ( for ((i=1; i<=10; i++)); do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "alter table test_rocksdb.sbtest1 ENGINE=INNODB;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "alter table test_rocksdb.sbtest1 ENGINE=ROCKSDB;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "alter table test_rocksdb.sbtest1 ENGINE=MYISAM;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "alter table test_rocksdb.sbtest1 ENGINE=ROCKSDB;" >/dev/null 2>&1
-    done ) &
 }
 
 add_drop_index() {
@@ -325,17 +303,6 @@ add_drop_index() {
         fi
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE INDEX kc on test.sbtest1 (k,c);" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test.sbtest1;" >/dev/null 2>&1
-    done ) &
-
-    echo "Add and drop an index in the test_rocksdb.sbtest1 table"
-    ( for ((i=1; i<=10; i++)); do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE INDEX kc on test_rocksdb.sbtest1 (k,c);" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test_rocksdb.sbtest1;" >/dev/null 2>&1
     done ) &
 }
 
@@ -355,17 +322,6 @@ add_drop_tablespace() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE test.sbtest1copy;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLESPACE ts1;" >/dev/null 2>&1
     done ) &
-
-    echo "Add a rocksdb table and drop the table"
-    ( for ((i=1; i<=10; i++)); do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test_rocksdb.sbrcopy$i Engine=ROCKSDB SELECT * from test.sbtest1;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE test_rocksdb.sbrcopy$i;" >/dev/null 2>&1
-    done ) &
 }
 
 change_compression() {
@@ -381,21 +337,6 @@ change_compression() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 compression='lz4';" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 compression='zlib';" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 compression='';" >/dev/null 2>&1
-    done ) &
-
-    echo "Change the compression of a myrocks table"
-    #${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "set global rocksdb_update_cf_options='cf1={compression=kZlibCompression;bottommost_compression=kZlibCompression};cf2={compression=kLZ4Compression;bottommost_compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression;bottommost_compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression;bottommost_compression=kNoCompression}';"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "set global rocksdb_update_cf_options='cf1={compression=kZlibCompression};cf2={compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression}';"
-    ( for ((i=1; i<=10; i++)); do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 comment = 'cfname=cf1';" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 comment = 'cfname=cf2';" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 comment = 'cfname=cf3';" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 comment = 'cfname=cf4';" >/dev/null 2>&1
     done ) &
 }
 
@@ -414,41 +355,6 @@ change_row_format() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=COMPACT;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ROW_FORMAT=REDUNDANT;" >/dev/null 2>&1
     done ) &
-
-    echo "Change the row format of a myrocks table"
-    ( for ((i=1; i<=10; i++)); do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=COMPRESSED;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=DYNAMIC;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest2 ROW_FORMAT=FIXED;" >/dev/null 2>&1
-    done ) &
-}
-
-add_data_transaction() {
-    # This function adds data in both innodb and myrocks table in a single transaction
-
-    echo "Create tables innodb_t for innodb data and myrocks_t for myrocks data"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test.innodb_t(id int(11) PRIMARY KEY AUTO_INCREMENT, k int(11), c char(120), pad char(60), KEY k_1(k), KEY kc(k,c)) ENGINE=InnoDB;"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test.myrocks_t(id int(11) PRIMARY KEY AUTO_INCREMENT, k int(11), c char(120), pad char(60), KEY k_1(k), KEY kc(k,c)) ENGINE=ROCKSDB;"
-
-    echo "Insert data in both innodb_t and myrocks_t tables in a single transaction"
-    a=1; b=11; c=101
-    ( while true; do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "START TRANSACTION;
-        INSERT INTO innodb_t(k, c, pad) VALUES($a, $b, $c);
-        INSERT INTO myrocks_t(k, c, pad) VALUES($a, $b, $c);
-        COMMIT;" test
-        let a++; let b++; let c++
-    done ) &
 }
 
 update_truncate_table() {
@@ -466,18 +372,6 @@ update_truncate_table() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "OPTIMIZE TABLE test.sbtest1;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "TRUNCATE test.sbtest1;" >/dev/null 2>&1
     done ) &
-
-    echo "Update a myrocks table and then truncate it"
-    ( for ((i=1; i<=10; i++)); do
-        # Check if database is up otherwise exit the loop
-        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
-        if [ "$?" -ne 0 ]; then
-            break
-        fi
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test_rocksdb.sbtest2 SET c='Œ„´‰?Á¨ˆØ?”’';" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "OPTIMIZE TABLE test_rocksdb.sbtest2;" >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "TRUNCATE test_rocksdb.sbtest2;" >/dev/null 2>&1
-    done ) &
 }
 
 ###################################################################################
@@ -491,8 +385,6 @@ test_inc_backup() {
     echo "Test: Incremental Backup and Restore"
 
     initialize_db
-
-    create_data
 
     incremental_backup
 }
@@ -547,59 +439,6 @@ test_change_row_format() {
     incremental_backup "--lock-ddl"
 }
 
-test_copy_data_across_engine() {
-    # This test suite copies a table from one storage engine to another and then takes an incremental backup
-
-    echo "Test: Backup and Restore after cross engine table copy"
-
-    innodb_checksum=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.sbtest1;"|awk '{print $2}')
-    echo "Checksum of innodb table test.sbtest1: $innodb_checksum"
-
-    echo "Copy the innodb table test.sbtest1 to myrocks table test_rocksdb.sbtestcopy"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test_rocksdb.sbtestcopy LIKE test_rocksdb.sbtest1;"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "INSERT INTO test_rocksdb.sbtestcopy SELECT * FROM test.sbtest1;"
-
-    incremental_backup
-
-    myrocks_checksum=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtestcopy;"|awk '{print $2}')
-    if [ "$innodb_checksum" -ne "$myrocks_checksum" ]; then
-        echo "ERR: The checksum of tables after backup/restore changed. Checksum of innodb table test.sbtest1 before backup: $innodb_checksum. Checksum of myrocks table test_rocksdb.sbtestcopy after restore: $myrocks_checksum."
-    else
-        echo "Checksum of myrocks table test_rocksdb.sbtestcopy after restore: $myrocks_checksum"
-        echo "Match checksum of test.sbtest1 with test_rocksdb.sbtestcopy: Pass"
-    fi
-}
-
-test_add_data_across_engine() {
-    # This test suite adds data in tables of innodb, rocksdb engines simultaneously
-
-    echo "Test: Backup and Restore when data is added in both innodb and myrocks tables simultaneously"
-
-    add_data_transaction
-
-    incremental_backup
-
-    echo "Check the row count of tables innodb_t and myrocks_t after restore"
-    innodb_count=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT count(*) FROM test.innodb_t;")
-    myrocks_count=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT count(*) FROM test.myrocks_t;")
-    if [ "$innodb_count" -ne "$myrocks_count" ]; then
-        echo "ERR: The row count of tables innodb_t and myrocks_t is different. Row count of innodb_t: $innodb_count. Row count of myrocks_t: $myrocks_count"
-        exit 1
-    else
-        echo "Row count of both tables innodb_t and myrocks_t is same after restore: Pass"
-    fi
-
-    echo "Check the checksum of tables innodb_t and myrocks_t after restore"
-    innodb_checksum=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.innodb_t;"|awk '{print $2}')
-    myrocks_checksum=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.myrocks_t;"|awk '{print $2}')
-    if [ "$innodb_checksum" -ne "$myrocks_checksum" ]; then
-        echo "ERR: The checksum of tables innodb_t and myrocks_t is different. Checksum of innodb_t: $innodb_checksum. Checksum of myrocks_t: $myrocks_checksum"
-        exit 1
-    else
-        echo "Checksum of both tables innodb_t and myrocks_t is same after restore: Pass"
-    fi
-}
-
 test_update_truncate_table() {
     # This test suite takes an incremental backup during update and truncate of tables
 
@@ -621,10 +460,31 @@ test_run_all_statements() {
 
     change_compression
 
+    change_row_format
+
+    update_truncate_table
+
     incremental_backup "--lock-ddl"
 }
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_run_all_statements; do
-for testsuite in test_update_truncate_table; do
+
+test_inc_backup_encryption() {
+    # This test suite takes an incremental backup when PS is running with encryption
+
+    echo "Test: Incremental Backup and Restore for PS with encryption"
+
+    # Note: Binlog cannot be applied to backup if it is encrypted
+
+    # For PS optimized build
+    #initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+
+    # For PS debug build
+    initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_online_alter_logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+
+    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_online_alter_logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+}
+
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_update_truncate_table test_run_all_statements; do
+for testsuite in test_inc_backup_encryption; do
     $testsuite
     echo "###################################################################################"
 done

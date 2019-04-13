@@ -1,8 +1,13 @@
 # ===== Known bugs  (https://jira.percona.com/browse/{MSE-nr}
 ## =========== PXC-8.0 bugs ===========
+..lock->trx->mutex.->is_owned..                                                          ## https://jira.percona.com/browse/PXC-2513
 .atomic .. .error .= 2 .. error .= 155                                                   ## https://jira.percona.com/browse/PXC-2488
 .ht->flags . .1 << 14                                                                    ## https://jira.percona.com/browse/PXC-2498
+.os_event_is_set.dblwr_shard->batch_completed.                                           ## https://jira.percona.com/browse/PXC-2510
+.srv_n_fil_crypt_threads_started                                                         ## https://jira.percona.com/browse/PXC-2514
 .thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
+ACL_HOST_AND_IP..has_wildcard                                                            ## https://jira.percona.com/browse/PXC-2508
+all .. .thd->slave_thread .. one_phase                                                   ## https://jira.percona.com/browse/PXC-2511
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 conn_map_.size                                                                           ## https://jira.percona.com/browse/PXC-2487
@@ -13,12 +18,14 @@ find_sys_var_ex                                                                 
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
+LatchMeta<LatchCounter>..get_id                                                          ## https://jira.percona.com/browse/PXC-2509
 log.writer_thread_alive.load..                                                           ## https://jira.percona.com/browse/PXC-2410
 log_sys .= nullptr                                                                       ## https://jira.percona.com/browse/PXC-2467
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450
 m_progress .= nullptr                                                                    ## https://jira.percona.com/browse/PXC-2481
+mutex .= NULL                                                                            ## https://jira.percona.com/browse/PXC-2515
 OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
@@ -27,9 +34,11 @@ rli->rows_query_ev == __null                                                    
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
 set_and_validate_user_attributes                                                         ## https://jira.percona.com/browse/PXC-2500
+t->s->tmp_table .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE          ## https://jira.percona.com/browse/PXC-2507
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
+table->n_rec_locks == 0                                                                  ## https://jira.percona.com/browse/PXC-2512
 thd->debug_binlog_xid_last.is_null                                                       ## https://jira.percona.com/browse/PXC-2386
 thd->wsrep_exec_mode == LOCAL_STATE                                                      ## https://jira.percona.com/browse/PXC-2486
 thd->wsrep_safe_to_abort == true                                                         ## https://jira.percona.com/browse/PXC-2385

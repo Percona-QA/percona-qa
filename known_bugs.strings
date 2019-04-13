@@ -41,6 +41,7 @@ adjust_fk_parents                              ## Fixed ## https://bugs.mysql.co
 head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640 (Fixed in 8.0.14, remark as such when released)
 #TEXT=.bin2decimal.$                            ## Fixed ## https://bugs.mysql.com/bug.php?id=90673
 all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
+w->frame_buffer                                          ## https://jira.percona.com/browse/PS-5564
 
 ## =========== PS/MS 8.0
 #.innodb_inited .. strlen.s_uuid. .= 0           ## Reproduced only with PS-8.0.13-debug release branch (release-8.0.13-3) ## https://jira.percona.com/browse/PS-5189
