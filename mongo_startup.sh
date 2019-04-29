@@ -500,8 +500,6 @@ if [ "${LAYOUT}" == "sh" ]; then
         start_pbm_agent "${NODESDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))" "mongod"
       fi
     done
-    # start a PBM agent on the mongos node (currently required, but in the future it shouldn't be)
-    start_pbm_agent "${NODESDIR}/${SHNAME}" "nors" "${SHPORT}" "mongos"
   fi
 fi
 
