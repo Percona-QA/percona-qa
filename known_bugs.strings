@@ -488,6 +488,8 @@ ha_innodb.cc line 19411                          ##DONOTREMOVE## OOM: ^IDEM (PS 
 ha_innodb.cc line 19384                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.35)
 ha_innodb.cc line 19475                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.38)
 ha_innodb.cc line 19475                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.43); logged upstream: https://bugs.mysql.com/bug.php?id=94096
+ha_innodb.cc line 19542                          ##DONOTREMOVE## OOM: ^IDEM (PS 5.6.44); logged upstream: https://bugs.mysql.com/bug.php?id=94096
+
 
 ## =========== Special: set global innodb_saved_page_number_debug=x ===========
 # Mailed Umesh on 14 Aug 2017 to re-open bug 74481 as one testcase still crashes ref [13 Aug 23:29] Roel Van de Paar
