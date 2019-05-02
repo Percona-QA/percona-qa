@@ -443,7 +443,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   # this is needed in 3.6 for MongoRocks since it doesn't support FCV 3.6 and config servers control this in sharding setup
   if [ "${STORAGE_ENGINE}" = "rocksdb" -a "${VERSION_MAJOR}" = "3.6" ]; then
     sleep 15
-    ${NODESDIR}/${CFGRSNAME}/cl_primary.sh --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
+    ${BINDIR}/mongo "mongodb://localhost:${CFGPORT},localhost:$(($CFGPORT + 1)),localhost:$(($CFGPORT + 2))/?replicaSet=${CFGRSNAME}" --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
   fi
 
   # setup 2 data replica sets
