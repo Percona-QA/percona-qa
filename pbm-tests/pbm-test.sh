@@ -5,10 +5,11 @@ set -e
 PQA_PATH=/home/plavi/percona-qa
 PBM_PATH=/home/plavi/lab/pbm/pbm-latest
 YCSB_PATH=/home/plavi/lab/psmdb/ycsb-mongodb-binding-0.15.0
-MONGODB_PATH=/home/plavi/lab/psmdb/bin/percona-server-mongodb-4.0.9-4
+MONGODB_PATH=/home/plavi/lab/psmdb/bin/percona-server-mongodb-3.6.12-3.2
 STORAGE_ENGINE="wiredTiger"
 MONGODB_USER="dba"
 MONGODB_PASS="test1234"
+#
 TEST_RESULT=0
 
 cd ${MONGODB_PATH}
@@ -120,18 +121,30 @@ check_cleanup() {
 
 cleanup() {
   echo "##### ${TEST_NAME}: Data cleanup #####"
-  # drop users (dropping a database doesn't drop users/roles!!!)
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropUser("tomislav_admin", {w: "majority", wtimeout: 5000})' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropUser("tomislav", {w: "majority", wtimeout: 5000})' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropUser("ivana", {w: "majority", wtimeout: 5000})' --quiet
-  # drop roles (dropping a database doesn't drop users/roles!!!)
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropRole( "myCustomAdminRole", { w: "majority" } )' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole1", { w: "majority" } )' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole2", { w: "majority" } )' --quiet
-  # finally drop database
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
+  stop_all_pbm
+  stop_all_mongo
+  sleep 5
+  mkdir ${MONGODB_PATH}/pbm-test-temp
+  mv ${MONGODB_PATH}/nodes/backup ${MONGODB_PATH}/pbm-test-temp
+  mv ${MONGODB_PATH}/nodes/pbm-coordinator/workdir ${MONGODB_PATH}/pbm-test-temp
+  rm -rf ${MONGODB_PATH}/nodes
+  start_replica
+  sleep 10
+  mv ${MONGODB_PATH}/pbm-test-temp/backup ${MONGODB_PATH}/nodes
+  mv ${MONGODB_PATH}/pbm-test-temp/workdir ${MONGODB_PATH}/nodes/pbm-coordinator
+  rm -rf ${MONGODB_PATH}/pbm-test-temp
+  ## drop users (dropping a database doesn't drop users/roles!!!)
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropUser("tomislav_admin", {w: "majority", wtimeout: 5000})' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropUser("tomislav", {w: "majority", wtimeout: 5000})' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropUser("ivana", {w: "majority", wtimeout: 5000})' --quiet
+  ## drop roles (dropping a database doesn't drop users/roles!!!)
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropRole( "myCustomAdminRole", { w: "majority" } )' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole1", { w: "majority" } )' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole2", { w: "majority" } )' --quiet
+  ## finally drop database
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
 }
 
 prepare_data() {
