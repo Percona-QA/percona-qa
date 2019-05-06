@@ -5,15 +5,26 @@ set -e
 PQA_PATH=/home/plavi/percona-qa
 PBM_PATH=/home/plavi/lab/pbm/pbm-latest
 YCSB_PATH=/home/plavi/lab/psmdb/ycsb-mongodb-binding-0.15.0
-MONGODB_PATH=/home/plavi/lab/psmdb/bin/percona-server-mongodb-3.6.12-3.2
+MONGODB_PATH=/home/plavi/lab/psmdb/bin/percona-server-mongodb-4.0.9-4
 STORAGE_ENGINE="wiredTiger"
 MONGODB_USER="dba"
 MONGODB_PASS="test1234"
+TEST_RESULT_DIR="${MONGODB_PATH}/pbm-tests"
 #
 TEST_RESULT=0
 
 cd ${MONGODB_PATH}
-mkdir pbm-tests
+
+prepare_environment() {
+  mkdir -p ${TEST_RESULT_DIR}/tools
+  pushd ${TEST_RESULT_DIR}/tools
+  rm -f mgodatagen_linux_x86_64.tar.gz
+  wget --no-verbose https://github.com/feliixx/mgodatagen/releases/download/0.7.4/mgodatagen_linux_x86_64.tar.gz
+  tar xf mgodatagen_linux_x86_64.tar.gz
+  rm -f mgodatagen_linux_x86_64.tar.gz
+  wget --no-verbose https://raw.githubusercontent.com/feliixx/mgodatagen/master/datagen/testdata/big.json
+  popd
+}
 
 start_replica() {
   echo "##### ${TEST_NAME}: Starting replica set rs1 #####"
@@ -116,6 +127,9 @@ check_cleanup() {
   elif [ "$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.getCollectionInfos().length' --quiet|tail -n1)" != "0" ]; then
     echo "Cleanup not completed fully! ycsb_test3 contains collections."
     TEST_RESULT=1
+  elif [ "$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.getCollectionInfos().length' --quiet|tail -n1)" != "0" ]; then
+    echo "Cleanup not completed fully! datagen_it_test contains collections."
+    TEST_RESULT=1
   fi
 }
 
@@ -152,6 +166,7 @@ prepare_data() {
   # create databases/collections
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
+  ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/big.json --host=localhost --port=27017 --username=${MONGODB_USER} --password=${MONGODB_PASS}
   # create roles
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomAdminRole", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [{ role: "root", db: "admin" }]}, { w: "majority" , wtimeout: 5000 })' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomRole1", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [ ]}, { w: "majority" , wtimeout: 5000 })' --quiet
@@ -179,6 +194,7 @@ get_hashes_counts_before() {
   YCSB_TEST1_INITIAL_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
   YCSB_TEST2_INITIAL_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
   YCSB_TEST3_INITIAL_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
+  DATAGEN_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
 }
 
 get_hashes_counts_after() {
@@ -197,6 +213,9 @@ get_hashes_counts_after() {
   YCSB_TEST1_USER_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getUser("tomislav").roles[0].role' --quiet|tail -n1)
   YCSB_TEST2_ROLE_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getRole("myCustomRole2").db' --quiet|tail -n1)
   YCSB_TEST2_USER_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getUser("ivana").roles[0].role' --quiet|tail -n1)
+  DATAGEN_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+  DATAGEN_DATA_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.link.count()' --quiet|tail -n1)
+  DATAGEN_LINK_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test.count()' --quiet|tail -n1)
 }
 
 check_after_restore() {
@@ -243,6 +262,15 @@ check_after_restore() {
   elif [ "${YCSB_TEST2_USER_RESTORED}" != "myCustomRole2" ]; then
     echo "ycsb_test2 user role issue: ${YCSB_TEST2_USER_RESTORED} != myCustomRole2"
     TEST_RESULT=1
+  elif [ "${DATAGEN_MD5_INITIAL}" != "${DATAGEN_MD5_RESTORED}" ]; then
+    echo "datagen_it_test md5 issue: ${DATAGEN_MD5_INITIAL} != ${DATAGEN_MD5_RESTORED}"
+    TEST_RESULT=1
+  elif [ "${DATAGEN_DATA_RESTORED_COUNT}" != "1000000" ]; then
+    echo "datagen_it_test data count issue: ${DATAGEN_DATA_RESTORED_COUNT} != 1000000"
+    TEST_RESULT=1
+  elif [ "${DATAGEN_LINK_RESTORED_COUNT}" != "1000000" ]; then
+    echo "datagen_it_test link count issue: ${DATAGEN_LINK_RESTORED_COUNT} != 1000000"
+    TEST_RESULT=1
   else
     echo "All checks have passed."
   fi
@@ -252,7 +280,7 @@ test_replica() {
   local TEST_STORAGE="$1"
 
   TEST_NAME="test-replica-${TEST_STORAGE}"
-  TEST_DIR="${MONGODB_PATH}/pbm-tests/${TEST_NAME}"
+  TEST_DIR="${TEST_RESULT_DIR}/${TEST_NAME}"
   rm -rf ${TEST_DIR} && mkdir -p ${TEST_DIR}
   MONGODB_NODES="localhost:27017,localhost:27018,localhost:27019"
   MONGODB_URI="mongodb://${MONGODB_USER}:${MONGODB_PASS}@${MONGODB_NODES}/"
@@ -297,6 +325,12 @@ test_replica() {
   mv ${MONGODB_PATH}/nodes ${TEST_DIR}
   echo "##### ${TEST_NAME}: Finished OK #####"
 }
+
+
+###
+### PREPARE ENVIRONMENT
+###
+prepare_environment
 
 ###
 ### RUN TESTS
