@@ -870,7 +870,7 @@ rocksdb::Status rocksdb::BlockCacheTier::Open status.ok                         
 #.str .... str .= Ptr                                                          ## Fixed ## https://jira.percona.com/browse/PS-880
 #table.*file.*inited.*handler.*NONE                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74584 (others below with same nr) (dup of 74583)
 #.table->file .... table->file->inited == handler....NONE                      ## Fixed ## This is the same as the one above, de-regexed (MS Bug #74584)
-#table->db.*table->table_name                                                  ## Fixed ## https://jira.percona.com/browse/PS-847
+table->db.*table->table_name                                                            ## https://jira.percona.com/browse/PS-847
 table->key_read == 0                                                                    ## https://bugs.mysql.com/bug.php?id=74490
 table_share->tmp_table .= NO_TMP_TABLE .* m_lock_type .= 2                              ## https://bugs.mysql.com/bug.php?id=74448
 . table->s->has_old_version                                                             ## https://jira.percona.com/browse/PS-813
