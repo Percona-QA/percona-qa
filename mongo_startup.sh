@@ -187,7 +187,7 @@ start_pbm_coordinator(){
     # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "${PBMDIR}/pbm-coordinator --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "${PBMDIR}/pbm-coordinator --debug --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
 
@@ -234,7 +234,7 @@ start_pbm_agent(){
     echo "  type: filesystem" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "  filesystem:" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "s3-us-west:" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "minio-s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "  type: s3" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "  s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
     echo "    region: us-west" >> ${NDIR}/pbm-agent/storages-config.yaml
@@ -248,7 +248,7 @@ start_pbm_agent(){
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${NODESDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${NODESDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
