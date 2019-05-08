@@ -53,7 +53,7 @@ dd_table_has_instant_cols                                ## https://jira.percona
 #ha_innodb.cc.4974.0                            ## Fixed ## https://jira.percona.com/browse/PS-4846
 dd..sdi..store                                           ## https://jira.percona.com/browse/PS-4970
 Gtid_set..ensure_sidno                                   ## https://bugs.mysql.com/bug.php?id=90946 (Assertion is from release build)
-handler..get_ha_share_ptr                                ## https://jira.percona.com/browse/PS-5206
+#handler..get_ha_share_ptr                      ## Fixed ## https://jira.percona.com/browse/PS-5206
 #is_storage_available.tuple - packed_tuple, 0   ## Fixed ## https://jira.percona.com/browse/PS-4971
 m_id .= LATCH_ID_NONE                                    ## https://jira.percona.com/browse/PS-5358
 m_output_buf->m_curr_offset <= m_output_buf->m_total_size ## https://jira.percona.com/browse/PS-5241
@@ -187,8 +187,8 @@ TEXT=.ha_release_savepoint.$                              ## https://jira.percon
 handler..unbind_psi                                       ## https://jira.percona.com/browse/PS-4929
 #TEXT=..error == 3110.$                         ## Fixed  ## https://bugs.mysql.com/bug.php?id=92777
 #Field_varstring..unpack                        ## Fixed? ## Likely https://bugs.mysql.com/bug.php?id=92448 but replayed under pquery
-innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-4933
-innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## https://jira.percona.com/browse/PS-5026
+#innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## Fixed ## https://jira.percona.com/browse/PS-4933
+#innodb_trx_id == 0 .. innodb_trx_id == trx_id .. is_attachable_transaction_active  ## Fixed ## https://jira.percona.com/browse/PS-5026
 #TEXT=.thd_report_innodb_stat.$                                            ## Fixed ## https://jira.percona.com/browse/PS-5027
 #TEXT=.THD..mark_innodb_used.$                                             ## Fixed ## https://jira.percona.com/browse/PS-5027
 #dd..create_dd_user_table                        ## Fixed ## https://jira.percona.com/browse/PS-4931
