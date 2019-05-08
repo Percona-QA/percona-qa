@@ -2,6 +2,7 @@
 # PBM: different tests for replica sets, sharding, local backup and minio backup
 set -e
 
+RUN_TEST="${1:-all}"
 PQA_PATH=/home/plavi/percona-qa
 PBM_PATH=/home/plavi/lab/pbm/pbm-latest
 YCSB_PATH=/home/plavi/lab/psmdb/ycsb-mongodb-binding-0.15.0
@@ -9,10 +10,25 @@ MONGODB_PATH=/home/plavi/lab/psmdb/bin/percona-server-mongodb-4.0.9-4
 STORAGE_ENGINE="wiredTiger"
 MONGODB_USER="dba"
 MONGODB_PASS="test1234"
+TEST_RESULT_DIR="${MONGODB_PATH}/pbm-tests"
+#
 TEST_RESULT=0
 
 cd ${MONGODB_PATH}
-mkdir pbm-tests
+
+prepare_environment() {
+  mkdir -p ${TEST_RESULT_DIR}
+  if [ ! -d ${TEST_RESULT_DIR}/tools ]; then
+    mkdir -p ${TEST_RESULT_DIR}/tools
+    pushd ${TEST_RESULT_DIR}/tools
+    rm -f mgodatagen_linux_x86_64.tar.gz
+    wget --no-verbose https://github.com/feliixx/mgodatagen/releases/download/0.7.4/mgodatagen_linux_x86_64.tar.gz > /dev/null 2>&1
+    tar xf mgodatagen_linux_x86_64.tar.gz
+    rm -f mgodatagen_linux_x86_64.tar.gz
+    wget --no-verbose https://raw.githubusercontent.com/feliixx/mgodatagen/master/datagen/testdata/big.json > /dev/null 2>&1
+    popd
+  fi
+}
 
 start_replica() {
   echo "##### ${TEST_NAME}: Starting replica set rs1 #####"
@@ -67,24 +83,67 @@ get_backup_id() {
   ${MONGODB_PATH}/nodes/pbmctl list backups 2>&1|grep "${BACKUP_DESC}" |grep -oE "^.*\.json"
 }
 
-log_rs_status() {
+get_replica_primary() {
+  local HOST=$1
+  local PORT=$2
+  ${MONGODB_PATH}/bin/mongo --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --eval 'rs.isMaster().primary' --host=${HOST} --port=${PORT} --quiet|tail -n1
+}
+
+log_status() {
   local LOG_FILE="$1"
+  local CLUSTER_TYPE="$2"
+  local PRIMARY=""
   echo "##### DATABASES LIST #####" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand( { listDatabases: 1 } )' --quiet >> ${LOG_FILE}
   echo "##### ADMIN DATABASE USERS AND ROLES #####" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
   echo "##### YCSB_TEST1 DATABASE USERS AND ROLES #####" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet >> ${LOG_FILE}
   echo "##### YCSB_TEST2 DATABASE USERS AND ROLES #####" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet >> ${LOG_FILE}
+  echo "##### YCSB_TEST3 DATABASE USER AND ROLES COUNT #####" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet >> ${LOG_FILE}
+  echo "##### DATAGEN_IT_TEST DATABASE #####" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.link.count()' --quiet >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test.count()' --quiet >> ${LOG_FILE}
+  if [ "${CLUSTER_TYPE}" == "sharding" ]; then
+    PRIMARY=$(get_replica_primary localhost 27018)
+    echo "##### YCSB_TEST1 DATABASE MD5 ON RS1 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### YCSB_TEST2 DATABASE MD5 ON RS1 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### YCSB_TEST3 DATABASE MD5 ON RS1 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### DATAGEN_IT_TEST DATABASE MD5 ON RS1 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    PRIMARY=$(get_replica_primary localhost 28018)
+    echo "##### YCSB_TEST1 DATABASE MD5 ON RS2 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### YCSB_TEST2 DATABASE MD5 ON RS2 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### YCSB_TEST3 DATABASE MD5 ON RS2 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### DATAGEN_IT_TEST DATABASE MD5 ON RS2 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet >> ${LOG_FILE}
+    echo "##### SHARDING STATUS #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.status()' --quiet >> ${LOG_FILE}
+  else
+    echo "##### YCSB_TEST1 DATABASE MD5 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
+    echo "##### YCSB_TEST2 DATABASE MD5 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
+    echo "##### YCSB_TEST3 DATABASE MD5 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
+    echo "##### DATAGEN_IT_TEST DATABASE MD5 #####" >> ${LOG_FILE}
+    ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 })' --quiet >> ${LOG_FILE}
+  fi
 }
 
 check_cleanup() {
@@ -115,23 +174,42 @@ check_cleanup() {
   elif [ "$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.getCollectionInfos().length' --quiet|tail -n1)" != "0" ]; then
     echo "Cleanup not completed fully! ycsb_test3 contains collections."
     TEST_RESULT=1
+  elif [ "$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.getCollectionInfos().length' --quiet|tail -n1)" != "0" ]; then
+    echo "Cleanup not completed fully! datagen_it_test contains collections."
+    TEST_RESULT=1
   fi
 }
 
 cleanup() {
   echo "##### ${TEST_NAME}: Data cleanup #####"
-  # drop users (dropping a database doesn't drop users/roles!!!)
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropUser("tomislav_admin", {w: "majority", wtimeout: 5000})' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropUser("tomislav", {w: "majority", wtimeout: 5000})' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropUser("ivana", {w: "majority", wtimeout: 5000})' --quiet
-  # drop roles (dropping a database doesn't drop users/roles!!!)
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropRole( "myCustomAdminRole", { w: "majority" } )' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole1", { w: "majority" } )' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole2", { w: "majority" } )' --quiet
-  # finally drop database
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
+  stop_all_pbm
+  stop_all_mongo
+  sleep 5
+  mkdir ${MONGODB_PATH}/pbm-test-temp
+  mv ${MONGODB_PATH}/nodes/backup ${MONGODB_PATH}/pbm-test-temp
+  mv ${MONGODB_PATH}/nodes/pbm-coordinator/workdir ${MONGODB_PATH}/pbm-test-temp
+  rm -rf ${MONGODB_PATH}/nodes
+  if [ "$1" == "sharding" ]; then
+    start_sharding_cluster
+  else
+    start_replica
+  fi
+  sleep 10
+  mv ${MONGODB_PATH}/pbm-test-temp/backup ${MONGODB_PATH}/nodes
+  mv ${MONGODB_PATH}/pbm-test-temp/workdir ${MONGODB_PATH}/nodes/pbm-coordinator
+  rm -rf ${MONGODB_PATH}/pbm-test-temp
+  ## drop users (dropping a database doesn't drop users/roles!!!)
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropUser("tomislav_admin", {w: "majority", wtimeout: 5000})' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropUser("tomislav", {w: "majority", wtimeout: 5000})' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropUser("ivana", {w: "majority", wtimeout: 5000})' --quiet
+  ## drop roles (dropping a database doesn't drop users/roles!!!)
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropRole( "myCustomAdminRole", { w: "majority" } )' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole1", { w: "majority" } )' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole2", { w: "majority" } )' --quiet
+  ## finally drop database
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
+  #${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
 }
 
 prepare_data() {
@@ -139,6 +217,7 @@ prepare_data() {
   # create databases/collections
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
+  ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/big.json --host=localhost --port=27017 --username=${MONGODB_USER} --password=${MONGODB_PASS}
   # create roles
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomAdminRole", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [{ role: "root", db: "admin" }]}, { w: "majority" , wtimeout: 5000 })' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomRole1", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [ ]}, { w: "majority" , wtimeout: 5000 })' --quiet
@@ -159,10 +238,31 @@ prepare_data() {
 }
 
 get_hashes_counts_before() {
-  echo "##### ${TEST_NAME}: Get DB hashes and document counts before backup #####"
-  YCSB_TEST1_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
-  YCSB_TEST2_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
-  YCSB_TEST3_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+  echo "##### ${TEST_NAME}: Get DB hashes and document counts before restore #####"
+  if [ "$1" == "sharding" ]; then
+    local PRIMARY=""
+    PRIMARY=$(get_replica_primary localhost 27018)
+    local RS1_YCSB_TEST1_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS1_YCSB_TEST2_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS1_YCSB_TEST3_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS1_DATAGEN_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    #
+    PRIMARY=$(get_replica_primary localhost 28018)
+    local RS2_YCSB_TEST1_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS2_YCSB_TEST2_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS2_YCSB_TEST3_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS2_DATAGEN_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    #
+    YCSB_TEST1_MD5_INITIAL="${RS1_YCSB_TEST1_TEMP}+${RS2_YCSB_TEST1_TEMP}"
+    YCSB_TEST2_MD5_INITIAL="${RS1_YCSB_TEST2_TEMP}+${RS2_YCSB_TEST2_TEMP}"
+    YCSB_TEST3_MD5_INITIAL="${RS1_YCSB_TEST3_TEMP}+${RS2_YCSB_TEST3_TEMP}"
+    DATAGEN_MD5_INITIAL="${RS1_DATAGEN_TEMP}+${RS2_DATAGEN_TEMP}"
+  else
+    YCSB_TEST1_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+    YCSB_TEST2_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+    YCSB_TEST3_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+    DATAGEN_MD5_INITIAL=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+  fi
   YCSB_TEST1_INITIAL_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
   YCSB_TEST2_INITIAL_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
   YCSB_TEST3_INITIAL_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
@@ -170,9 +270,30 @@ get_hashes_counts_before() {
 
 get_hashes_counts_after() {
   echo "##### ${TEST_NAME}: Get DB hashes and document counts after restore #####"
-  YCSB_TEST1_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
-  YCSB_TEST2_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
-  YCSB_TEST3_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+  if [ "$1" == "sharding" ]; then
+    local PRIMARY=""
+    PRIMARY=$(get_replica_primary localhost 27018)
+    local RS1_YCSB_TEST1_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS1_YCSB_TEST2_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS1_YCSB_TEST3_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS1_DATAGEN_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    #
+    PRIMARY=$(get_replica_primary localhost 28018)
+    local RS2_YCSB_TEST1_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS2_YCSB_TEST2_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS2_YCSB_TEST3_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    local RS2_DATAGEN_TEMP=$(${MONGODB_PATH}/bin/mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
+    #
+    YCSB_TEST1_MD5_RESTORED="${RS1_YCSB_TEST1_TEMP}+${RS2_YCSB_TEST1_TEMP}"
+    YCSB_TEST2_MD5_RESTORED="${RS1_YCSB_TEST2_TEMP}+${RS2_YCSB_TEST2_TEMP}"
+    YCSB_TEST3_MD5_RESTORED="${RS1_YCSB_TEST3_TEMP}+${RS2_YCSB_TEST3_TEMP}"
+    DATAGEN_MD5_RESTORED="${RS1_DATAGEN_TEMP}+${RS2_DATAGEN_TEMP}"
+  else
+    YCSB_TEST1_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+    YCSB_TEST2_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+    YCSB_TEST3_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+    DATAGEN_MD5_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
+  fi
   YCSB_TEST1_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
   YCSB_TEST2_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
   YCSB_TEST3_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet|tail -n1)
@@ -184,6 +305,8 @@ get_hashes_counts_after() {
   YCSB_TEST1_USER_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getUser("tomislav").roles[0].role' --quiet|tail -n1)
   YCSB_TEST2_ROLE_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getRole("myCustomRole2").db' --quiet|tail -n1)
   YCSB_TEST2_USER_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getUser("ivana").roles[0].role' --quiet|tail -n1)
+  DATAGEN_DATA_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.link.count()' --quiet|tail -n1)
+  DATAGEN_LINK_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test.count()' --quiet|tail -n1)
 }
 
 check_after_restore() {
@@ -230,6 +353,15 @@ check_after_restore() {
   elif [ "${YCSB_TEST2_USER_RESTORED}" != "myCustomRole2" ]; then
     echo "ycsb_test2 user role issue: ${YCSB_TEST2_USER_RESTORED} != myCustomRole2"
     TEST_RESULT=1
+  elif [ "${DATAGEN_MD5_INITIAL}" != "${DATAGEN_MD5_RESTORED}" ]; then
+    echo "datagen_it_test md5 issue: ${DATAGEN_MD5_INITIAL} != ${DATAGEN_MD5_RESTORED}"
+    TEST_RESULT=1
+  elif [ "${DATAGEN_DATA_RESTORED_COUNT}" != "1000000" ]; then
+    echo "datagen_it_test data count issue: ${DATAGEN_DATA_RESTORED_COUNT} != 1000000"
+    TEST_RESULT=1
+  elif [ "${DATAGEN_LINK_RESTORED_COUNT}" != "1000000" ]; then
+    echo "datagen_it_test link count issue: ${DATAGEN_LINK_RESTORED_COUNT} != 1000000"
+    TEST_RESULT=1
   else
     echo "All checks have passed."
   fi
@@ -239,7 +371,7 @@ test_replica() {
   local TEST_STORAGE="$1"
 
   TEST_NAME="test-replica-${TEST_STORAGE}"
-  TEST_DIR="${MONGODB_PATH}/pbm-tests/${TEST_NAME}"
+  TEST_DIR="${TEST_RESULT_DIR}/${TEST_NAME}"
   rm -rf ${TEST_DIR} && mkdir -p ${TEST_DIR}
   MONGODB_NODES="localhost:27017,localhost:27018,localhost:27019"
   MONGODB_URI="mongodb://${MONGODB_USER}:${MONGODB_PASS}@${MONGODB_NODES}/"
@@ -257,27 +389,95 @@ test_replica() {
   BACKUP_ID=$(get_backup_id ${TEST_NAME})
   echo "##### ${TEST_NAME}: Backup: ${BACKUP_ID} completed #####"
   # create db hash and get document counts
-  get_hashes_counts_before
+  get_hashes_counts_before replica
   echo "##### ${TEST_NAME}: Log status before restore #####"
-  log_rs_status ${TEST_DIR}/rs1_before_restore.log
-  # create db hash and get document counts
-  get_hashes_counts_after
+  log_status ${TEST_DIR}/rs1_before_restore.log replica
   # drop roles / users / databases
-  cleanup
+  cleanup replica
   check_cleanup
   if [ ${TEST_RESULT} -ne 0 ]; then
     echo "${TEST_NAME}: Stopping because cleanup was not done fully during test. ${TEST_NAME}"
     exit 1
   fi
   echo "##### ${TEST_NAME}: Log status after cleanup #####"
-  log_rs_status ${TEST_DIR}/rs1_after_cleanup.log
+  log_status ${TEST_DIR}/rs1_after_cleanup.log replica
   # do restore from local filesystem
   echo "##### ${TEST_NAME}: Doing restore of: ${BACKUP_ID} #####"
   ${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${BACKUP_ID}
   echo "##### ${TEST_NAME}: Restore from: ${BACKUP_ID} completed #####"
   echo "##### ${TEST_NAME}: Log status after restore #####"
-  log_rs_status ${TEST_DIR}/rs1_after_restore.log
+  log_status ${TEST_DIR}/rs1_after_restore.log replica
+  # create db hash and get document counts
+  get_hashes_counts_after replica
   check_after_restore
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "${TEST_NAME}: Stopping because check after restore is not ok. ${TEST_NAME}"
+    exit 1
+  fi
+  stop_all_pbm
+  stop_all_mongo
+  sleep 5
+  mv ${MONGODB_PATH}/nodes ${TEST_DIR}
+  echo "##### ${TEST_NAME}: Finished OK #####"
+}
+
+test_sharding() {
+  local TEST_STORAGE="$1"
+
+  TEST_NAME="test-sharding-${TEST_STORAGE}"
+  TEST_DIR="${TEST_RESULT_DIR}/${TEST_NAME}"
+  rm -rf ${TEST_DIR} && mkdir -p ${TEST_DIR}
+  MONGODB_NODES="localhost:27017"
+  MONGODB_URI="mongodb://${MONGODB_USER}:${MONGODB_PASS}@${MONGODB_NODES}/"
+  MONGODB_OPTS="?authSource=admin"
+
+  echo "##### ${TEST_NAME}: Starting test #####"
+  start_sharding_cluster
+  prepare_data
+  echo "##### ${TEST_NAME}: Enabling sharding collections for ycsb_test1 and ycsb_test2 #####"
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.enableSharding("ycsb_test1");' --quiet
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.enableSharding("ycsb_test2");' --quiet
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.shardCollection("ycsb_test1.usertable", { _id : 1 } );' --quiet
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.shardCollection("ycsb_test2.usertable", { _id : 1 } );' --quiet
+  sleep 7
+  # run some load in background so that oplog also gets into backup
+  ycsb_load "${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" 200000 200000 8 >/dev/null 2>&1 &
+  sleep 5
+  # create backup
+  echo "##### ${TEST_NAME}: Doing backup #####"
+  ${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE}
+  echo "##### ${TEST_NAME}: Backup: ${BACKUP_ID} completed #####"
+  # stop the balancer so it doesn't change data on the shards before we record dbhash
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand({ balancerStop: 1 });' --quiet
+  BACKUP_ID=$(get_backup_id ${TEST_NAME})
+  # create db hash and get document counts
+  get_hashes_counts_before sharding
+  echo "##### ${TEST_NAME}: Log status before restore #####"
+  log_status ${TEST_DIR}/sh1_before_restore.log sharding
+  # drop roles / users / databases
+  cleanup sharding
+  check_cleanup
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "${TEST_NAME}: Stopping because cleanup was not done fully during test. ${TEST_NAME}"
+    exit 1
+  fi
+  echo "##### ${TEST_NAME}: Log status after cleanup #####"
+  log_status ${TEST_DIR}/sh1_after_cleanup.log sharding
+  # do restore from selected storage
+  echo "##### ${TEST_NAME}: Doing restore of: ${BACKUP_ID} #####"
+  # stop the balancer so it doesn't change data on the shards before we record dbhash
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand({ balancerStop: 1 });' --quiet
+  ${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${BACKUP_ID}
+  echo "##### ${TEST_NAME}: Restore from: ${BACKUP_ID} completed #####"
+  echo "##### ${TEST_NAME}: Log status after restore #####"
+  log_status ${TEST_DIR}/sh1_after_restore.log sharding
+  # create db hash and get document counts
+  get_hashes_counts_after sharding
+  check_after_restore
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "${TEST_NAME}: Stopping because check after restore is not ok. ${TEST_NAME}"
+    exit 1
+  fi
   stop_all_pbm
   stop_all_mongo
   sleep 5
@@ -286,18 +486,40 @@ test_replica() {
 }
 
 ###
+### PREPARE ENVIRONMENT
+###
+prepare_environment
+
+###
 ### RUN TESTS
 ###
-test_replica local-filesystem
-if [ ${TEST_RESULT} -ne 0 ]; then
-  echo "Stopping because of failed test: ${TEST_NAME}"
-  exit 1
+if [ "${RUN_TEST}" = "test-replica-local" -o "${RUN_TEST}" = "all" ]; then
+  test_replica local-filesystem
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "Stopping because of failed test: ${TEST_NAME}"
+    exit 1
+  fi
 fi
-test_replica s3-us-west
-if [ ${TEST_RESULT} -ne 0 ]; then
-  echo "Stopping because of failed test: ${TEST_NAME}"
-  exit 1
+if [ "${RUN_TEST}" = "test-replica-minio" -o "${RUN_TEST}" = "all" ]; then
+  test_replica minio-s3
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "Stopping because of failed test: ${TEST_NAME}"
+    exit 1
+  fi
 fi
-# TODO: SHARDING CLUSTER TEST
+if [ "${RUN_TEST}" = "test-sharding-local" -o "${RUN_TEST}" = "all" ]; then
+  test_sharding local-filesystem
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "Stopping because of failed test: ${TEST_NAME}"
+    exit 1
+  fi
+fi
+if [ "${RUN_TEST}" = "test-sharding-minio" -o "${RUN_TEST}" = "all" ]; then
+  test_sharding minio-s3
+  if [ ${TEST_RESULT} -ne 0 ]; then
+    echo "Stopping because of failed test: ${TEST_NAME}"
+    exit 1
+  fi
+fi
 
 echo "##### All tests finished successfully! #####"
