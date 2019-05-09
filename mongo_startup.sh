@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Created by Tomislav Plavcic, Percona LLC
 
+# dynamic
+MONGO_USER="dba"
+MONGO_PASS="test1234"
+MONGO_BACKUP_USER="backupUser"
+MONGO_BACKUP_PASS="test1234"
+PBM_COORD_API_TOKEN="abcdefgh"
+# static or changed with cmd line options
 BASEDIR=""
 LAYOUT=""
 STORAGE_ENGINE="wiredTiger"
@@ -13,10 +20,6 @@ ENCRYPTION="no"
 PBMDIR=""
 AUTH=""
 BACKUP_AUTH=""
-MONGO_USER="dba"
-MONGO_PASS="test1234"
-MONGO_BACKUP_USER="backupUser"
-MONGO_BACKUP_PASS="test1234"
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -187,7 +190,7 @@ start_pbm_coordinator(){
     # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "${PBMDIR}/pbm-coordinator --debug --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "${PBMDIR}/pbm-coordinator --api-token=${PBM_COORD_API_TOKEN} --debug --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
 

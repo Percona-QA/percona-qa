@@ -2,18 +2,22 @@
 # PBM: different tests for replica sets, sharding, local backup and minio backup
 set -e
 
-RUN_TEST="${1:-all}"
-PQA_PATH=/home/plavi/percona-qa
-PBM_PATH=/home/plavi/lab/pbm/pbm-latest
-YCSB_PATH=/home/plavi/lab/psmdb/ycsb-mongodb-binding-0.15.0
-MONGODB_PATH=/home/plavi/lab/psmdb/bin/percona-server-mongodb-4.0.9-4
+PQA_PATH=${HOME}/percona-qa
+PBM_PATH=${HOME}/lab/pbm/pbm-latest
+YCSB_PATH=${HOME}/lab/psmdb/ycsb-mongodb-binding-0.15.0
+MONGODB_PATH=${HOME}/lab/psmdb/bin/percona-server-mongodb-4.0.9-4
+TEST_RESULT_DIR="${MONGODB_PATH}/pbm-tests"
 STORAGE_ENGINE="wiredTiger"
 MONGODB_USER="dba"
 MONGODB_PASS="test1234"
-TEST_RESULT_DIR="${MONGODB_PATH}/pbm-tests"
 #
 SAVE_STATE_BEFORE_RESTORE=0
+PBM_COORD_API_TOKEN="abcdefgh"
+PBM_COORD_ADDRESS="127.0.0.1:10001"
+# don't change
+RUN_TEST="${1:-all}"
 TEST_RESULT=0
+PBMCTL_OPTS="--api-token=${PBM_COORD_API_TOKEN} --server-address=${PBM_COORD_ADDRESS}"
 
 cd ${MONGODB_PATH}
 
@@ -81,7 +85,7 @@ ycsb_run() {
 
 get_backup_id() {
   local BACKUP_DESC="$1"
-  ${MONGODB_PATH}/nodes/pbmctl list backups 2>&1|grep "${BACKUP_DESC}" |grep -oE "^.*\.json"
+  ${MONGODB_PATH}/nodes/pbmctl list backups ${PBMCTL_OPTS} 2>&1|grep "${BACKUP_DESC}" |grep -oE "^.*\.json"
 }
 
 get_replica_primary() {
@@ -404,7 +408,7 @@ test_replica() {
   sleep 5
   # create backup to local filesystem
   echo "##### ${TEST_NAME}: Doing backup #####"
-  ${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE}
+  ${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
   BACKUP_ID=$(get_backup_id ${TEST_NAME})
   echo "##### ${TEST_NAME}: Backup: ${BACKUP_ID} completed #####"
   # create db hash and get document counts
@@ -422,7 +426,7 @@ test_replica() {
   log_status ${TEST_DIR}/rs1_after_cleanup.log replica
   # do restore from local filesystem
   echo "##### ${TEST_NAME}: Doing restore of: ${BACKUP_ID} #####"
-  ${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${BACKUP_ID}
+  ${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
   echo "##### ${TEST_NAME}: Restore from: ${BACKUP_ID} completed #####"
   echo "##### ${TEST_NAME}: Log status after restore #####"
   log_status ${TEST_DIR}/rs1_after_restore.log replica
@@ -466,7 +470,7 @@ test_sharding() {
   sleep 5
   # create backup
   echo "##### ${TEST_NAME}: Doing backup #####"
-  ${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE}
+  ${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
   echo "##### ${TEST_NAME}: Backup: ${BACKUP_ID} completed #####"
   # stop the balancer so it doesn't change data on the shards before we record dbhash
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand({ balancerStop: 1 });' --quiet
@@ -488,7 +492,7 @@ test_sharding() {
   echo "##### ${TEST_NAME}: Doing restore of: ${BACKUP_ID} #####"
   # stop the balancer so it doesn't change data on the shards before we record dbhash
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand({ balancerStop: 1 });' --quiet
-  ${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${BACKUP_ID}
+  ${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
   echo "##### ${TEST_NAME}: Restore from: ${BACKUP_ID} completed #####"
   echo "##### ${TEST_NAME}: Log status after restore #####"
   log_status ${TEST_DIR}/sh1_after_restore.log sharding
