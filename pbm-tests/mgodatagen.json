@@ -2,7 +2,7 @@
   {
     "database": "datagen_it_test",
     "collection": "test_bson",
-    "count": 1000000,
+    "count": 200000,
     "indexes": [
       {
         "name": "idx_1",

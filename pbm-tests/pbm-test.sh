@@ -15,6 +15,7 @@ SAVE_STATE_BEFORE_RESTORE=0
 PBM_COORD_API_TOKEN="abcdefgh"
 PBM_COORD_ADDRESS="127.0.0.1:10001"
 # don't change
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 RUN_TEST="${1:-all}"
 TEST_RESULT=0
 PBMCTL_OPTS="--api-token=${PBM_COORD_API_TOKEN} --server-address=${PBM_COORD_ADDRESS}"
@@ -30,7 +31,7 @@ prepare_environment() {
     wget --no-verbose https://github.com/feliixx/mgodatagen/releases/download/0.7.4/mgodatagen_linux_x86_64.tar.gz > /dev/null 2>&1
     tar xf mgodatagen_linux_x86_64.tar.gz
     rm -f mgodatagen_linux_x86_64.tar.gz
-    wget --no-verbose https://raw.githubusercontent.com/feliixx/mgodatagen/master/datagen/testdata/big.json > /dev/null 2>&1
+    cp ${SCRIPT_PWD}/mgodatagen.json ${TEST_RESULT_DIR}/tools
     popd
   fi
 }
@@ -226,7 +227,12 @@ prepare_data() {
   # create databases/collections
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
-  ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/big.json --host=localhost --port=27017 --username=${MONGODB_USER} --password=${MONGODB_PASS}
+  if [ "$1" == "sharding" ]; then
+    ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/mgodatagen.json --host=localhost --port=27017 --username=${MONGODB_USER} --password=${MONGODB_PASS}
+  else
+    PRIMARY=$(get_replica_primary localhost 27017 | cut -d':' -f2)
+    ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/mgodatagen.json --host=localhost --port=${PRIMARY} --username=${MONGODB_USER} --password=${MONGODB_PASS}
+  fi
   # create roles
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomAdminRole", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [{ role: "root", db: "admin" }]}, { w: "majority" , wtimeout: 5000 })' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomRole1", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [ ]}, { w: "majority" , wtimeout: 5000 })' --quiet
@@ -248,6 +254,7 @@ prepare_data() {
 
 get_hashes_counts_before() {
   echo "##### ${TEST_NAME}: Get DB hashes and document counts before restore #####"
+  # for sharding dbHash doesn't work on mongos and we need to get hashes from all shards
   if [ "$1" == "sharding" ]; then
     local PRIMARY=""
     PRIMARY=$(get_replica_primary localhost 27018)
@@ -285,6 +292,7 @@ get_hashes_counts_before() {
 
 get_hashes_counts_after() {
   echo "##### ${TEST_NAME}: Get DB hashes and document counts after restore #####"
+  # for sharding dbHash doesn't work on mongos and we need to get hashes from all shards
   if [ "$1" == "sharding" ]; then
     local PRIMARY=""
     PRIMARY=$(get_replica_primary localhost 27018)
@@ -326,8 +334,9 @@ get_hashes_counts_after() {
   YCSB_TEST1_USER_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getUser("tomislav").roles[0].role' --quiet|tail -n1)
   YCSB_TEST2_ROLE_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getRole("myCustomRole2").db' --quiet|tail -n1)
   YCSB_TEST2_USER_RESTORED=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getUser("ivana").roles[0].role' --quiet|tail -n1)
-  DATAGEN_DATA_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.link.count()' --quiet|tail -n1)
-  DATAGEN_LINK_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test.count()' --quiet|tail -n1)
+  DATAGEN_TEST_BSON_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test_bson.count()' --quiet|tail -n1)
+  DATAGEN_TEST_AGG_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test_agg.count()' --quiet|tail -n1)
+  DATAGEN_TEST_AGG_DATA_RESTORED_COUNT=$(${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test_agg_data.count()' --quiet|tail -n1)
 }
 
 check_after_restore() {
@@ -377,11 +386,14 @@ check_after_restore() {
   elif [ "${DATAGEN_MD5_INITIAL}" != "${DATAGEN_MD5_RESTORED}" ]; then
     echo "datagen_it_test md5 issue: ${DATAGEN_MD5_INITIAL} != ${DATAGEN_MD5_RESTORED}"
     TEST_RESULT=1
-  elif [ "${DATAGEN_DATA_RESTORED_COUNT}" != "1000000" ]; then
-    echo "datagen_it_test data count issue: ${DATAGEN_DATA_RESTORED_COUNT} != 1000000"
+  elif [ "${DATAGEN_TEST_BSON_RESTORED_COUNT}" != "200000" ]; then
+    echo "datagen_it_test test_bson count issue: ${DATAGEN_TEST_BSON_RESTORED_COUNT} != 200000"
     TEST_RESULT=1
-  elif [ "${DATAGEN_LINK_RESTORED_COUNT}" != "1000000" ]; then
-    echo "datagen_it_test link count issue: ${DATAGEN_LINK_RESTORED_COUNT} != 1000000"
+  elif [ "${DATAGEN_TEST_AGG_RESTORED_COUNT}" != "1000" ]; then
+    echo "datagen_it_test test_agg count issue: ${DATAGEN_TEST_AGG_RESTORED_COUNT} != 1000"
+    TEST_RESULT=1
+  elif [ "${DATAGEN_TEST_AGG_DATA_RESTORED_COUNT}" != "10000" ]; then
+    echo "datagen_it_test test_agg_data count issue: ${DATAGEN_TEST_AGG_DATA_RESTORED_COUNT} != 10000"
     TEST_RESULT=1
   else
     echo "All checks have passed."
@@ -400,7 +412,7 @@ test_replica() {
 
   echo "##### ${TEST_NAME}: Starting test #####"
   start_replica
-  prepare_data
+  prepare_data replica
   # run some load in background so that oplog also gets into backup
   ycsb_load "${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" 100000 100000 4 >/dev/null 2>&1 &
   # below is alternative good for debuging
@@ -456,7 +468,7 @@ test_sharding() {
 
   echo "##### ${TEST_NAME}: Starting test #####"
   start_sharding_cluster
-  prepare_data
+  prepare_data sharding
   echo "##### ${TEST_NAME}: Enabling sharding collections for ycsb_test1 and ycsb_test2 #####"
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.enableSharding("ycsb_test1");' --quiet
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.enableSharding("ycsb_test2");' --quiet
