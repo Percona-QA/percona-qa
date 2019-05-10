@@ -1,0 +1,207 @@
+[
+  {
+    "database": "datagen_it_test",
+    "collection": "test_bson",
+    "count": 1000000,
+    "indexes": [
+      {
+        "name": "idx_1",
+        "key": {
+          "c32": 1
+        }
+      },
+      {
+        "name": "idx_2",
+        "key": {
+          "c64": -1
+        }
+      }
+    ],
+    "content": {
+      "_id": {
+        "type": "ref",
+        "id": 1,
+        "refContent": {
+          "type": "objectId"
+        }
+      },
+      "uuid": {
+        "type": "uuid"
+      },
+      "name": {
+        "type": "string",
+        "maxDistinctValue": 500,
+        "minLength": 15,
+        "maxLength": 20
+      },
+      "c32": {
+        "type": "int",
+        "minInt": 10,
+        "maxInt": 20
+      },
+      "c64": {
+        "type": "long",
+        "nullPercentage": 10,
+        "minLong": 100,
+        "maxLong": 200
+      },
+      "float": {
+        "type": "double",
+        "minDouble": 1.0,
+        "maxDouble": 10.0
+      },
+      "verified": {
+        "type": "boolean"
+      },
+      "position": {
+        "type": "position"
+      },
+      "dt": {
+        "type": "fromArray",
+        "in": [
+          "2012-10-10",
+          "2012-12-12",
+          "2014-01-01",
+          "2016-05-05"
+        ]
+      },
+      "afa": {
+        "type": "array",
+        "size": 6,
+        "arrayContent": {
+          "type": "fromArray",
+          "in": [
+            "A",
+            "C",
+            "T",
+            "G"
+          ]
+        }
+      },
+      "ac": {
+        "type": "array",
+        "size": 2,
+        "arrayContent": {
+          "type": "constant",
+          "constVal": "const"
+        }
+      },
+      "faker": {
+        "type": "faker",
+        "method": "City"
+      },
+      "cst": {
+        "type": "constant",
+        "constVal": 2
+      },
+      "nb": {
+        "type": "autoincrement",
+        "autoType": "long",
+        "startLong": 0
+      },
+      "nnb": {
+        "type": "autoincrement",
+        "autoType": "int",
+        "startInt": 0
+      },
+      "date": {
+        "type": "date",
+        "startDate": "2010-01-10T00:00:00+00:00",
+        "endDate": "2017-01-01T22:00:00+00:00"
+      },
+      "binaryData": {
+        "type": "binary",
+        "minLength": 24,
+        "maxLength": 40
+      },
+      "list": {
+        "type": "array",
+        "size": 3,
+        "arrayContent": {
+          "type": "int",
+          "minInt": 0,
+          "maxInt": 10
+        }
+      },
+      "object": {
+        "type": "object",
+        "objectContent": {
+          "k1": {
+            "type": "string",
+            "unique": true,
+            "minLength": 3,
+            "maxLength": 9
+          },
+          "k2": {
+            "type": "int",
+            "minInt": -10,
+            "maxInt": -5
+          },
+          "sub-ob": {
+            "type": "object",
+            "objectContent": {
+              "s-k": {
+                "type": "int",
+                "minInt": 0,
+                "maxInt": 10
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "database": "datagen_it_test",
+    "collection": "test_agg_data",
+    "count": 10000,
+    "content": {
+      "link": {
+        "type": "int",
+        "minInt": 0,
+        "maxInt": 5
+      },
+        "field": {
+        "type": "fromArray",
+        "nullPercentage": 40,
+        "in": [
+          "a",
+          "b",
+          "c",
+          "d",
+          "e",
+          "f",
+          "g",
+          "h",
+          "i"
+          ]
+        },
+        "field1": {
+          "type": "int",
+          "nullPercentage": 10,
+          "minInt": 0,
+          "maxInt": 10000
+        }
+    }
+  },
+  {
+    "database": "datagen_it_test",
+    "collection": "test_agg",
+    "count": 1000,
+    "content": {
+      "_id": {
+        "type": "autoincrement",
+        "autoType": "int",
+        "startInt": 0
+      },
+      "AG-FI": {
+        "type": "countAggregator",
+        "collection": "test_agg_data",
+        "database": "datagen_it_test",
+        "query": {
+          "link": "$$_id"
+        }
+      }
+    }
+  }
+]
