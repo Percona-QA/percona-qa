@@ -7,6 +7,12 @@ MONGO_PASS="test1234"
 MONGO_BACKUP_USER="backupUser"
 MONGO_BACKUP_PASS="test1234"
 PBM_COORD_API_TOKEN="abcdefgh"
+VAULT_SERVER="192.168.88.3"
+VAULT_PORT="8200"
+VAULT_TOKEN_FILE="/home/plavi/lab/vault-server-1.1/vault-token-psmdb.cfg"
+# this is only start of vault secret, additional part is appended per node
+VAULT_SECRET="secret_v2/data/psmdb-test"
+VAULT_SERVER_CA_FILE="/home/plavi/lab/vault-server-1.1/certificates/root.cer"
 # static or changed with cmd line options
 BASEDIR=""
 LAYOUT=""
@@ -29,8 +35,8 @@ fi
 # Check if we have a functional getopt(1)
 if ! getopt --test
 then
-    go_out="$(getopt --options=mrsahe:b:tc:px \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,mongodExtra:,mongosExtra:,configExtra:,encrypt,cipherMode:,pbmDir:,auth \
+    go_out="$(getopt --options=mrsahe:b:t:c:px \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,auth \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -100,7 +106,8 @@ do
     ;;
   -t | --encrypt )
     shift
-    ENCRYPTION="keyfile"
+    ENCRYPTION="$1"
+    shift
     ;;
   -c | --cipherMode )
     shift
@@ -127,6 +134,10 @@ done
 
 if [ "${STORAGE_ENGINE}" != "wiredTiger" -a "${ENCRYPTION}" != "no" ]; then
   echo "ERROR: Data at rest encryption is possible only with wiredTiger storage engine!"
+  exit 1
+fi
+if [ "${ENCRYPTION}" != "no" -a "${ENCRYPTION}" != "keyfile" -a "${ENCRYPTION}" != "vault" ]; then
+  echo "ERROR: --encrypt parameter can be: no, keyfile or vault!"
   exit 1
 fi
 
@@ -283,6 +294,8 @@ start_mongod(){
       openssl rand -base64 32 > ${NDIR}/mongodb-keyfile
       chmod 600 ${NDIR}/mongodb-keyfile
       EXTRA="${EXTRA} --enableEncryption --encryptionKeyFile ${NDIR}/mongodb-keyfile --encryptionCipherMode ${CIPHER_MODE}"
+    elif [ "${ENCRYPTION}" = "vault" ]; then
+      EXTRA="${EXTRA} --enableEncryption --encryptionCipherMode ${CIPHER_MODE} --vaultServerName ${VAULT_SERVER} --vaultPort ${VAULT_PORT} --vaultTokenFile ${VAULT_TOKEN_FILE} --vaultSecret ${VAULT_SECRET}/${RS}-${PORT} --vaultServerCAFile ${VAULT_SERVER_CA_FILE}"
     fi
   elif [ "${SE}" == "rocksdb" ]; then
     EXTRA="${EXTRA} --rocksdbCacheSizeGB 1"
