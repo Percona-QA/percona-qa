@@ -102,23 +102,38 @@ log_status() {
   echo "##### DATABASES LIST #####" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand( { listDatabases: 1 } )' --quiet >> ${LOG_FILE}
   echo "##### ADMIN DATABASE USERS AND ROLES #####" >> ${LOG_FILE}
+  echo "USERS" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
+  echo "ROLES" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
   echo "##### YCSB_TEST1 DATABASE USERS AND ROLES #####" >> ${LOG_FILE}
+  echo "USERS" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
+  echo "ROLES" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet >> ${LOG_FILE}
+  echo "db.usertable.count()" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet | tail -n1 >> ${LOG_FILE}
   echo "##### YCSB_TEST2 DATABASE USERS AND ROLES #####" >> ${LOG_FILE}
+  echo "USERS" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
+  echo "ROLES" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet >> ${LOG_FILE}
+  echo "db.usertable.count()" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet | tail -n1 >> ${LOG_FILE}
   echo "##### YCSB_TEST3 DATABASE USER AND ROLES COUNT #####" >> ${LOG_FILE}
+  echo "USERS" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.getUsers()' --quiet >> ${LOG_FILE}
+  echo "ROLES" >> ${LOG_FILE}
   ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.getRoles()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet >> ${LOG_FILE}
-  echo "##### DATAGEN_IT_TEST DATABASE #####" >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.link.count()' --quiet >> ${LOG_FILE}
-  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test.count()' --quiet >> ${LOG_FILE}
+  echo "db.usertable.count()" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.usertable.count()' --quiet | tail -n1 >> ${LOG_FILE}
+  echo "##### DATAGEN_IT_TEST DATABASE COLLECTION COUNTS #####" >> ${LOG_FILE}
+  echo "db.test_bson.count()" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test_bson.count()' --quiet | tail -n1 >> ${LOG_FILE}
+  echo "db.test_agg.count()" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test_agg.count()' --quiet | tail -n1 >> ${LOG_FILE}
+  echo "db.test_agg_data.count()" >> ${LOG_FILE}
+  ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.test_agg_data.count()' --quiet | tail -n1 >> ${LOG_FILE}
   if [ "${CLUSTER_TYPE}" == "sharding" ]; then
     PRIMARY=$(get_replica_primary localhost 27018)
     echo "##### YCSB_TEST1 DATABASE MD5 ON RS1 #####" >> ${LOG_FILE}
