@@ -117,7 +117,7 @@ if [[ ${USE_SSL} -eq 1 ]]; then
   cd ${WORKDIR}/certificates
   echo -e "\nGenerating SSL certificates in: ${WORKDIR}/certificates"
   openssl req -newkey rsa:2048 -days 3650 -x509 -nodes -out root.cer -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
-  openssl req -newkey rsa:1024 -nodes -out vault.csr -keyout vault.key -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
+  openssl req -newkey rsa:2048 -nodes -out vault.csr -keyout vault.key -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
   echo 000a > serialfile
   touch certindex
   echo "[ ca ]" > ${WORKDIR}/certificates/vault-ca.conf
