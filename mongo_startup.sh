@@ -391,8 +391,8 @@ start_replicaset(){
     sleep 10
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${BINDIR}/mongo ${AUTH} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
-    sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
   fi
 
   # start PBM agents for replica set nodes
@@ -422,8 +422,8 @@ if [ "${LAYOUT}" == "single" ]; then
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${NODESDIR}/stop.sh
-    sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
     sleep 5
     ${NODESDIR}/start.sh
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
