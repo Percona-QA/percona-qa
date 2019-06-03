@@ -25,6 +25,10 @@ export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required f
 num_tables=10
 table_size=1000
 
+# Set stream and encryption key
+backup_stream="backup.xbstream"
+encrypt_key="mHU3Zs5sRcSB7zBAJP1BInPP5lgShKly"
+
 initialize_db() {
     # This function initializes and starts mysql database
     local MYSQLD_OPTIONS="$1"
@@ -75,14 +79,66 @@ initialize_db() {
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock prepare
 }
 
+process_backup() {
+    # This function extracts a streamed backup, decrypts and uncompresses it
+    local BK_TYPE="$1"
+    local BK_PARAMS="$2"
+    local EXT_DIR="$3"
+
+    if [[ "${BK_TYPE}" = "stream" ]]; then
+        if [ -z "${backup_dir}/${backup_stream}" ]; then
+            echo "ERR: The backup stream file was not created in ${backup_dir}/${backup_stream}. Please check the backup logs in ${logdir} for errors."
+            exit 1
+        else
+            echo "Extract the backup from the stream file at ${backup_dir}/${backup_stream}"
+            ${xtrabackup_dir}/xbstream --directory=${EXT_DIR} --extract --verbose < ${backup_dir}/${backup_stream} 2>>${logdir}/extract_backup_${log_date}_log
+            if [ "$?" -ne 0 ]; then
+                echo "ERR: Extract of backup failed. Please check the log at: ${logdir}/extract_backup_${log_date}_log"
+                exit 1
+            else
+                echo "Backup was successfully extracted. Logs available at: ${logdir}/extract_backup_${log_date}_log"
+                #rm -r ${backup_dir}/${backup_stream}
+            fi
+        fi
+    fi
+
+    if [[ "${BK_PARAMS}" = *"--encrypt-key"* ]]; then
+        echo "Decrypting the backup files at ${EXT_DIR}"
+        ${xtrabackup_dir}/xtrabackup --decrypt=AES256 --encrypt-key=${encrypt_key} --target-dir=${EXT_DIR} --parallel=10 2>>${logdir}/decrypt_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Decrypt of backup failed. Please check the log at: ${logdir}/decrypt_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Backup was successfully decrypted. Logs available at: ${logdir}/decrypt_backup_${log_date}_log"
+        fi
+    fi
+
+    if [[ "${BK_PARAMS}" = *"--compress"* ]]; then
+        if ! which qpress 2>&1>/dev/null; then
+            echo "ERR: The qpress package is not installed. It is required to decompress the backup."
+            exit 1
+        fi
+        echo "Decompressing the backup files at ${EXT_DIR}"
+        ${xtrabackup_dir}/xtrabackup --decompress --target-dir=${EXT_DIR} 2>>${logdir}/decompress_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Decompress of backup failed. Please check the log at: ${logdir}/decompress_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Backup was successfully decompressed. Logs available at: ${logdir}/decompress_backup_${log_date}_log"
+        fi
+    fi
+}
+
 incremental_backup() {
+    # This function takes the incremental backup
     local BACKUP_PARAMS="$1"
     local PREPARE_PARAMS="$2"
     local RESTORE_PARAMS="$3"
     local MYSQLD_OPTIONS="$4"
+    local BACKUP_TYPE="$5"
+    local CLOUD_PARAMS="$6"
 
     log_date=$(date +"%d_%m_%Y_%M")
-    echo "Taking full backup"
     if [ -d ${backup_dir} ]; then
         rm -r ${backup_dir}
     fi
@@ -92,13 +148,31 @@ incremental_backup() {
         mkdir ${logdir}
     fi
 
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+    case "${BACKUP_TYPE}" in
+        'cloud')
+            echo "Taking full backup and uploading it"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
+            ;;
+
+        'stream')
+            echo "Taking full backup and creating a stream file"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
+            ;;
+
+        *)
+            echo "Taking full backup"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+            ;;
+    esac
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
     else
         echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
     fi
+
+    # Call function to process backup for streaming, encryption and compression
+    process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/full"
 
     echo "Adding data in database"
     # Innodb data
@@ -108,14 +182,31 @@ incremental_backup() {
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test_rocksdb --mysql-user=root --threads=50 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
     sleep 10
 
-    echo "Taking incremental backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+    case "${BACKUP_TYPE}" in
+        'cloud')
+            echo "Taking incremental backup and uploading it"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
+            ;;
+
+        'stream')
+            echo "Taking incremental backup and creating a stream file"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
+            ;;
+
+        *)
+            echo "Taking incremental backup"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+            ;;
+    esac
     if [ "$?" -ne 0 ]; then
         echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc_backup_${log_date}_log"
         exit 1
     else
         echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
     fi
+
+    # Call function to process backup for streaming, encryption and compression
+    process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/inc"
 
     echo "Preparing full backup"
     ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
@@ -706,12 +797,41 @@ test_inc_backup_encryption() {
 
 }
 
+test_streaming_backup() {
+    # This test suite tests incremental backup when it is streamed
+
+    echo "Test: Incremental Backup and Restore with streaming"
+
+    initialize_db
+
+    incremental_backup "" "" "" "--log-bin=binlog" "stream" ""
+}
+
+test_compress_stream_backup() {
+    # This test suite tests incremental backup when it is compressed and streamed
+
+    echo "Test: Incremental Backup and Restore with compression and streaming"
+
+    incremental_backup "--compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
+}
+
+test_encrypt_compress_stream_backup() {
+    # This test suite tests incremental backup when it is encrypted, compressed and streamed
+
+    echo "Test: Incremental Backup and Restore with compression, encryption and streaming"
+
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
+}
+
 echo "Running Tests"
 # Various test suites
 #for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
 
 # Encryption test suites
-for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
+#for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
+
+# File encryption, compression and streaming test suites
+for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup; do
     $testsuite
     echo "###################################################################################"
 done
