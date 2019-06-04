@@ -7,7 +7,7 @@
 # Usage:                                                               #
 # 1. Set paths in this script:                                         #
 #    xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir, # 
-#    vault_config                                                      #
+#    vault_config, cloud_config                                        #
 # 2. Run the script as: ./innodb_myrocks_backup_tests.sh               #
 # 3. Logs are available in: logdir                                     #
 ########################################################################
@@ -20,6 +20,7 @@ export datadir="$HOME/PS060519_8_0_15_5/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
+export cloud_config="$HOME/minio.cnf"  # Only required for cloud backup tests
 
 # Set sysbench variables
 num_tables=10
@@ -171,6 +172,16 @@ incremental_backup() {
         echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
     fi
 
+    if [ "${BACKUP_TYPE}" = "cloud" ]; then
+        echo "Downloading full backup"
+        ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} get full_backup_${log_date} 2>${logdir}/download_full_backup_${log_date}_log | ${xtrabackup_dir}/xbstream -xv -C ${backup_dir}/full 2>${logdir}/download_stream_full_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Download of Full Backup failed. Please check the log at: ${logdir}/download_full_backup_${log_date}_log and ${logdir}/download_stream_full_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Full backup was successfully downloaded at: ${backup_dir}/full"
+        fi
+    fi
     # Call function to process backup for streaming, encryption and compression
     process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/full"
 
@@ -203,6 +214,17 @@ incremental_backup() {
         exit 1
     else
         echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
+    fi
+
+    if [ "${BACKUP_TYPE}" = "cloud" ]; then
+        echo "Downloading incremental backup"
+        ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} get inc_backup_${log_date} 2>${logdir}/download_inc_backup_${log_date}_log | ${xtrabackup_dir}/xbstream -xv -C ${backup_dir}/inc 2>${logdir}/download_stream_inc_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Download of Inc Backup failed. Please check the log at: ${logdir}/download_inc_backup_${log_date}_log and ${logdir}/download_stream_inc_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Incremental backup was successfully downloaded at: ${backup_dir}/inc"
+        fi
     fi
 
     # Call function to process backup for streaming, encryption and compression
@@ -823,6 +845,16 @@ test_encrypt_compress_stream_backup() {
     incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
 }
 
+test_cloud_inc_backup() {
+    # This test suite tests incremental backup for cloud
+
+    echo "Test: Incremental Backup and Restore with cloud"
+
+    # This test requires the cloud options in a config file
+    incremental_backup "--parallel=10" "" "" "" "cloud" "--defaults-file=${cloud_config}"
+}
+
+
 echo "Running Tests"
 # Various test suites
 #for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
@@ -831,7 +863,10 @@ echo "Running Tests"
 #for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
 
 # File encryption, compression and streaming test suites
-for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup; do
+#for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup; do
+
+# Cloud backup
+for testsuite in test_cloud_inc_backup; do
     $testsuite
     echo "###################################################################################"
 done
