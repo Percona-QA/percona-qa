@@ -6,12 +6,14 @@ SCRIPT_PWD=$(cd `dirname $0` && pwd)
 GEN_MYSQL_CONFIG=1
 USE_SSL=0
 GEN_VAULT_CONFIG=1
+GEN_CERTS_ONLY=0
 DL_VAULT=1
 INIT_VAULT=1
 VAULT_DEV_MODE=0
 WORKDIR=""
 VAULT_PORT="8200"
 VAULT_PROTOCOL="http"
+VAULT_IP="127.0.0.1"
 
 usage(){
   echo -e "\nThis script generates vault config, mysql keyring plugin config, ssl certificates and starts vault server."
@@ -25,6 +27,8 @@ usage(){
   echo -e ""
   echo -e "Additional options are:"
   echo -e "  --use-ssl, -s                 Generate SSL certificates and use https for communication with vault."
+  echo -e "  --generate-certs-only, -c     Generate SSL certificates only and exit"
+  echo -e "  --vault-ip=<ip>, -i<ip>       Vault IP address - SSL certificate will also be bound to this address (default: 127.0.0.1)"
   echo -e "  --vault-dev-mode, -d          This starts vault in dev mode"
   echo -e "                                (inmemory, no persistance, no ssl, no config, unsealed, default port: 8200)"
   echo -e "  --workdir=<path>, -w<path>    Directory where vault will be setup and additional directories created (mandatory)."
@@ -50,8 +54,17 @@ do
     USE_SSL=1
     shift
     ;;
+    -c | --generate-certs-only )
+    GEN_CERTS_ONLY=1
+    USE_SSL=1
+    shift
+    ;;
     -w | --workdir )
     WORKDIR="$2"
+    shift 2
+    ;;
+    -i | --vault-ip )
+    VAULT_IP="$2"
     shift 2
     ;;
     -d | --vault-dev-mode )
@@ -92,6 +105,56 @@ fi
 
 cd ${WORKDIR}
 
+if [[ ${USE_SSL} -eq 1 || ${GEN_CERTS_ONLY} -eq 1 ]]; then
+  VAULT_PROTOCOL="https"
+  if [[ ! -d "" ]]; then
+    mkdir -p ${WORKDIR}/certificates
+  fi
+  pushd ${WORKDIR}/certificates
+  echo -e "\nGenerating SSL certificates in: ${WORKDIR}/certificates"
+  openssl req -newkey rsa:2048 -days 3650 -x509 -nodes -out root.cer -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
+  openssl req -newkey rsa:2048 -nodes -out vault.csr -keyout vault.key -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
+  echo 000a > serialfile
+  touch certindex
+  echo "[ ca ]" > ${WORKDIR}/certificates/vault-ca.conf
+  echo "default_ca = myca" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "[ myca ]" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "new_certs_dir = /tmp" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "unique_subject = no" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "certificate = ${WORKDIR}/certificates/root.cer" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "database = ${WORKDIR}/certificates/certindex" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "private_key = ${WORKDIR}/certificates/privkey.pem" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "serial = ${WORKDIR}/certificates/serialfile" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "default_days = 365" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "default_md = sha256" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "policy = myca_policy" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "x509_extensions = myca_extensions" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "copy_extensions = copy" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "[ myca_policy ]" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "commonName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "stateOrProvinceName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "countryName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "emailAddress = optional" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "organizationName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "organizationalUnitName = optional" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "[ myca_extensions ]" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "basicConstraints = CA:false" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "subjectKeyIdentifier = hash" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "authorityKeyIdentifier = keyid:always" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "subjectAltName = IP:${VAULT_IP}" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "keyUsage = digitalSignature,keyEncipherment" >> ${WORKDIR}/certificates/vault-ca.conf
+  echo "extendedKeyUsage = serverAuth" >> ${WORKDIR}/certificates/vault-ca.conf
+  openssl ca -batch -config vault-ca.conf -notext -in vault.csr -out vault.crt >/dev/null 2>&1
+  popd
+  if [[ ${GEN_CERTS_ONLY} -eq 1 ]]; then
+    echo "Generated SSL certificates and exiting..."
+    exit 0
+  fi
+fi
+
 if [[ ${DL_VAULT} -eq 1 ]]; then
   if [[ -x "${WORKDIR}/vault" ]]; then
     echo "Vault binary already present, skipping download..."
@@ -109,52 +172,6 @@ fi
 echo "#!/usr/bin/env bash" > ${WORKDIR}/start_vault.sh
 chmod +x ${WORKDIR}/start_vault.sh
 
-if [[ ${USE_SSL} -eq 1 ]]; then
-  VAULT_PROTOCOL="https"
-  if [[ ! -d "" ]]; then
-    mkdir -p ${WORKDIR}/certificates
-  fi
-  cd ${WORKDIR}/certificates
-  echo -e "\nGenerating SSL certificates in: ${WORKDIR}/certificates"
-  openssl req -newkey rsa:2048 -days 3650 -x509 -nodes -out root.cer -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
-  openssl req -newkey rsa:1024 -nodes -out vault.csr -keyout vault.key -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
-  echo 000a > serialfile
-  touch certindex
-  echo "[ ca ]" > ${WORKDIR}/certificates/vault-ca.conf
-  echo "default_ca = myca" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "[ myca ]" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "new_certs_dir = /tmp" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "unique_subject = no" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "certificate = ${WORKDIR}/certificates/root.cer" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "database = ${WORKDIR}/certificates/certindex" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "private_key = ${WORKDIR}/certificates/privkey.pem" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "serial = ${WORKDIR}/certificates/serialfile" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "default_days = 365" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "default_md = sha1" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "policy = myca_policy" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "x509_extensions = myca_extensions" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "copy_extensions = copy" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "[ myca_policy ]" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "commonName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "stateOrProvinceName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "countryName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "emailAddress = optional" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "organizationName = supplied" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "organizationalUnitName = optional" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "[ myca_extensions ]" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "basicConstraints = CA:false" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "subjectKeyIdentifier = hash" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "authorityKeyIdentifier = keyid:always" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "subjectAltName = IP:127.0.0.1" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "keyUsage = digitalSignature,keyEncipherment" >> ${WORKDIR}/certificates/vault-ca.conf
-  echo "extendedKeyUsage = serverAuth" >> ${WORKDIR}/certificates/vault-ca.conf
-  openssl ca -batch -config vault-ca.conf -notext -in vault.csr -out vault.crt >/dev/null 2>&1
-  cd ${WORKDIR}
-fi
-
 if [[ ${GEN_VAULT_CONFIG} -eq 1 && ${VAULT_DEV_MODE} -eq 0 ]]; then
   echo -e "\nGenerating vault config file in: ${WORKDIR}/vault_config.hcl"
   echo "disable_mlock = true" > ${WORKDIR}/vault_config.hcl
@@ -164,7 +181,7 @@ if [[ ${GEN_VAULT_CONFIG} -eq 1 && ${VAULT_DEV_MODE} -eq 0 ]]; then
   echo "  path = \"${WORKDIR}/vault_data\"" >> ${WORKDIR}/vault_config.hcl
   echo "}" >> ${WORKDIR}/vault_config.hcl
   echo -e "\nlistener \"tcp\" {" >> ${WORKDIR}/vault_config.hcl
-  echo "  address = \"127.0.0.1:${VAULT_PORT}\"" >> ${WORKDIR}/vault_config.hcl
+  echo "  address = \"${VAULT_IP}:${VAULT_PORT}\"" >> ${WORKDIR}/vault_config.hcl
   if [[ ${USE_SSL} -eq 1 ]]; then
     echo "  tls_cert_file = \"${WORKDIR}/certificates/vault.crt\"" >> ${WORKDIR}/vault_config.hcl
     echo "  tls_key_file = \"${WORKDIR}/certificates/vault.key\"" >> ${WORKDIR}/vault_config.hcl

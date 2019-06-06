@@ -443,7 +443,7 @@ if [ ${QC} -eq 0 ]; then
           cp ${INPUTFILE} ${INPUTFILE}.backup
         else
           if [ $(ls -1 ./${TRIAL}/*thread-0.sql 2>/dev/null|wc -l) -gt 1 ]; then
-            INPUTFILE=$(ls ./${TRIAL}/node`expr ${SUBDIR} - 1`*thread-0.sql)
+            INPUTFILE=$(ls ./${TRIAL}/node${SUBDIR}*thread-0.sql)
           elif [ -f ./${TRIAL}/*thread-0.sql ] ; then
             INPUTFILE=`ls ./${TRIAL}/*thread-0.sql | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
           else

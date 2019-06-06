@@ -6,23 +6,29 @@
 # Assumption: PS8.0 and PXB8.0 are already installed                   #
 # Usage:                                                               #
 # 1. Set paths in this script:                                         #
-#    xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir  # 
+#    xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir, # 
+#    vault_config, cloud_config                                        #
 # 2. Run the script as: ./innodb_myrocks_backup_tests.sh               #
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_rocksdb_8_0_5_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_6_debug_release/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS180319_rocksdb_8_0_15_4_debug"
-export datadir="$HOME/PS180319_rocksdb_8_0_15_4_debug/data"
-#export socket="$HOME/PS180319_rocksdb_8_0_15_4_debug/socket.sock"
+export mysqldir="$HOME/PS060519_8_0_15_5"
+export datadir="$HOME/PS060519_8_0_15_5/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
+export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
+export cloud_config="$HOME/minio.cnf"  # Only required for cloud backup tests
 
 # Set sysbench variables
 num_tables=10
 table_size=1000
+
+# Set stream and encryption key
+backup_stream="backup.xbstream"
+encrypt_key="mHU3Zs5sRcSB7zBAJP1BInPP5lgShKly"
 
 initialize_db() {
     # This function initializes and starts mysql database
@@ -42,9 +48,7 @@ initialize_db() {
         exit 1
     fi
     popd >/dev/null 2>&1
-}
 
-create_data() {
     echo "Creating innodb data in database"
     which sysbench >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
@@ -53,21 +57,89 @@ create_data() {
     fi
 
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
-    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare
+    if [[ "${MYSQLD_OPTIONS}" != *"encrypt"* ]]; then
+        # Create tables without encryption
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare
+    else
+        # Create encrypted tables: changed the oltp_common.lua script to include mysql-table-options="Encryption='Y'"
+        echo "Creating encrypted tables in innodb"
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --mysql-table-options="Encryption='Y'" prepare
+        if [ "$?" -ne 0 ]; then
+            for ((i=1; i<=${num_tables}; i++)); do
+                echo "Creating the table sbtest$i..."
+                ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test.sbtest$i (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y';"
+            done
+
+            echo "Adding data in tables..."
+            sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=30 run >/dev/null 2>&1 
+        fi
+    fi
 
     echo "Creating rocksdb data in database"
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test_rocksdb;"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock prepare
 }
 
+process_backup() {
+    # This function extracts a streamed backup, decrypts and uncompresses it
+    local BK_TYPE="$1"
+    local BK_PARAMS="$2"
+    local EXT_DIR="$3"
+
+    if [[ "${BK_TYPE}" = "stream" ]]; then
+        if [ -z "${backup_dir}/${backup_stream}" ]; then
+            echo "ERR: The backup stream file was not created in ${backup_dir}/${backup_stream}. Please check the backup logs in ${logdir} for errors."
+            exit 1
+        else
+            echo "Extract the backup from the stream file at ${backup_dir}/${backup_stream}"
+            ${xtrabackup_dir}/xbstream --directory=${EXT_DIR} --extract --verbose < ${backup_dir}/${backup_stream} 2>>${logdir}/extract_backup_${log_date}_log
+            if [ "$?" -ne 0 ]; then
+                echo "ERR: Extract of backup failed. Please check the log at: ${logdir}/extract_backup_${log_date}_log"
+                exit 1
+            else
+                echo "Backup was successfully extracted. Logs available at: ${logdir}/extract_backup_${log_date}_log"
+                #rm -r ${backup_dir}/${backup_stream}
+            fi
+        fi
+    fi
+
+    if [[ "${BK_PARAMS}" = *"--encrypt-key"* ]]; then
+        echo "Decrypting the backup files at ${EXT_DIR}"
+        ${xtrabackup_dir}/xtrabackup --decrypt=AES256 --encrypt-key=${encrypt_key} --target-dir=${EXT_DIR} --parallel=10 2>>${logdir}/decrypt_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Decrypt of backup failed. Please check the log at: ${logdir}/decrypt_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Backup was successfully decrypted. Logs available at: ${logdir}/decrypt_backup_${log_date}_log"
+        fi
+    fi
+
+    if [[ "${BK_PARAMS}" = *"--compress"* ]]; then
+        if ! which qpress 2>&1>/dev/null; then
+            echo "ERR: The qpress package is not installed. It is required to decompress the backup."
+            exit 1
+        fi
+        echo "Decompressing the backup files at ${EXT_DIR}"
+        ${xtrabackup_dir}/xtrabackup --decompress --target-dir=${EXT_DIR} 2>>${logdir}/decompress_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Decompress of backup failed. Please check the log at: ${logdir}/decompress_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Backup was successfully decompressed. Logs available at: ${logdir}/decompress_backup_${log_date}_log"
+        fi
+    fi
+}
+
 incremental_backup() {
+    # This function takes the incremental backup
     local BACKUP_PARAMS="$1"
     local PREPARE_PARAMS="$2"
     local RESTORE_PARAMS="$3"
     local MYSQLD_OPTIONS="$4"
+    local BACKUP_TYPE="$5"
+    local CLOUD_PARAMS="$6"
 
     log_date=$(date +"%d_%m_%Y_%M")
-    echo "Taking full backup"
     if [ -d ${backup_dir} ]; then
         rm -r ${backup_dir}
     fi
@@ -77,13 +149,41 @@ incremental_backup() {
         mkdir ${logdir}
     fi
 
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+    case "${BACKUP_TYPE}" in
+        'cloud')
+            echo "Taking full backup and uploading it"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
+            ;;
+
+        'stream')
+            echo "Taking full backup and creating a stream file"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
+            ;;
+
+        *)
+            echo "Taking full backup"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+            ;;
+    esac
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
     else
         echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
     fi
+
+    if [ "${BACKUP_TYPE}" = "cloud" ]; then
+        echo "Downloading full backup"
+        ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} get full_backup_${log_date} 2>${logdir}/download_full_backup_${log_date}_log | ${xtrabackup_dir}/xbstream -xv -C ${backup_dir}/full 2>${logdir}/download_stream_full_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Download of Full Backup failed. Please check the log at: ${logdir}/download_full_backup_${log_date}_log and ${logdir}/download_stream_full_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Full backup was successfully downloaded at: ${backup_dir}/full"
+        fi
+    fi
+    # Call function to process backup for streaming, encryption and compression
+    process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/full"
 
     echo "Adding data in database"
     # Innodb data
@@ -93,14 +193,42 @@ incremental_backup() {
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test_rocksdb --mysql-user=root --threads=50 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
     sleep 10
 
-    echo "Taking incremental backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+    case "${BACKUP_TYPE}" in
+        'cloud')
+            echo "Taking incremental backup and uploading it"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
+            ;;
+
+        'stream')
+            echo "Taking incremental backup and creating a stream file"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
+            ;;
+
+        *)
+            echo "Taking incremental backup"
+            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+            ;;
+    esac
     if [ "$?" -ne 0 ]; then
         echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc_backup_${log_date}_log"
         exit 1
     else
         echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
     fi
+
+    if [ "${BACKUP_TYPE}" = "cloud" ]; then
+        echo "Downloading incremental backup"
+        ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} get inc_backup_${log_date} 2>${logdir}/download_inc_backup_${log_date}_log | ${xtrabackup_dir}/xbstream -xv -C ${backup_dir}/inc 2>${logdir}/download_stream_inc_backup_${log_date}_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Download of Inc Backup failed. Please check the log at: ${logdir}/download_inc_backup_${log_date}_log and ${logdir}/download_stream_inc_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Incremental backup was successfully downloaded at: ${backup_dir}/inc"
+        fi
+    fi
+
+    # Call function to process backup for streaming, encryption and compression
+    process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/inc"
 
     echo "Preparing full backup"
     ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
@@ -480,6 +608,38 @@ update_truncate_table() {
     done ) &
 }
 
+create_drop_database() {
+    # This function creates a database and drops it
+
+    echo "Create a database test1_innodb, add data and then drop it"
+    ( for ((i=1; i<=3; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test1_innodb;" >/dev/null 2>&1
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=1 --table-size=1000 --mysql-db=test1_innodb --mysql-user=root --threads=10 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_innodb.sbtest1 ADD COLUMN b JSON AS('{"k1": "value", "k2": [10, 20]}');" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_innodb.sbtest1 DROP COLUMN b;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP DATABASE test1_innodb;" >/dev/null 2>&1
+    done ) &
+
+    echo "Create a database test1_rocksdb, add data and then drop it"
+    ( for ((i=1; i<=3; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test1_rocksdb;" >/dev/null 2>&1
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=1 --table-size=1000 --mysql-db=test1_rocksdb --mysql-user=root --threads=10 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock prepare >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_rocksdb.sbtest1 ADD COLUMN b VARCHAR(255) DEFAULT '{"k1": "value", "k2": [10, 20]}';" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_rocksdb.sbtest1 DROP COLUMN b;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP DATABASE test1_rocksdb;" >/dev/null 2>&1
+    done ) &
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -487,12 +647,9 @@ update_truncate_table() {
 test_inc_backup() {
     # This test suite creates a database, takes a full backup, incremental backup and then restores the database
 
-    echo "Running Tests"
     echo "Test: Incremental Backup and Restore"
 
     initialize_db
-
-    create_data
 
     incremental_backup
 }
@@ -610,10 +767,23 @@ test_update_truncate_table() {
     incremental_backup "--lock-ddl"
 }
 
+test_create_drop_database() {
+    # This test suite takes an incremental backup during create and drop of a database
+
+    echo "Test: Backup and Restore during create and drop of a database"
+
+    initialize_db
+
+    create_drop_database
+
+    incremental_backup "--lock-ddl"
+}
+
 test_run_all_statements() {
     # This test suite runs the statements for all previous tests simultaneously in background
 
-    change_storage_engine
+    # Change storage engine does not work due to PS-5559 issue
+    #change_storage_engine
 
     add_drop_index
 
@@ -621,10 +791,82 @@ test_run_all_statements() {
 
     change_compression
 
+    change_row_format
+
+    update_truncate_table
+
     incremental_backup "--lock-ddl"
 }
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_run_all_statements; do
-for testsuite in test_update_truncate_table; do
+
+test_inc_backup_encryption() {
+    # This test suite takes an incremental backup when PS is running with encryption
+    local encrypt_type="$1"
+
+    # Note: Binlog cannot be applied to backup if it is encrypted
+
+    if [ "${encrypt_type}" = "keyring_file" ]; then
+        echo "Test: Incremental Backup and Restore for PS with keyring_file encryption"
+
+        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+    else
+        echo "Test: Incremental Backup and Restore for PS with keyring_vault encryption"
+        initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+
+        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+    fi
+
+}
+
+test_streaming_backup() {
+    # This test suite tests incremental backup when it is streamed
+
+    echo "Test: Incremental Backup and Restore with streaming"
+
+    initialize_db
+
+    incremental_backup "" "" "" "--log-bin=binlog" "stream" ""
+}
+
+test_compress_stream_backup() {
+    # This test suite tests incremental backup when it is compressed and streamed
+
+    echo "Test: Incremental Backup and Restore with compression and streaming"
+
+    incremental_backup "--compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
+}
+
+test_encrypt_compress_stream_backup() {
+    # This test suite tests incremental backup when it is encrypted, compressed and streamed
+
+    echo "Test: Incremental Backup and Restore with compression, encryption and streaming"
+
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
+}
+
+test_cloud_inc_backup() {
+    # This test suite tests incremental backup for cloud
+
+    echo "Test: Incremental Backup and Restore with cloud"
+
+    # This test requires the cloud options in a config file
+    incremental_backup "--parallel=10" "" "" "" "cloud" "--defaults-file=${cloud_config}"
+}
+
+
+echo "Running Tests"
+# Various test suites
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
+
+# Encryption test suites
+#for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
+
+# File encryption, compression and streaming test suites
+#for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup; do
+
+# Cloud backup
+for testsuite in test_cloud_inc_backup; do
     $testsuite
     echo "###################################################################################"
 done

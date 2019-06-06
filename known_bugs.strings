@@ -648,6 +648,7 @@ ha_innodb.cc line 19528                                                         
 ha_innodb.cc line 17420                                                                 ## MS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ut0ut.cc line 962                                                                       ## PS 5.7.23     --innodb-log-buffer-size=1125899906842624 (or similar)
+ut0ut.cc line 979                                                                       ## PS 5.7.26     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 18962                                                                 ## MS/PS 5.6.31  SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 935                                                          ## Outdated ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 936                                                          ## Outdated ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
@@ -710,6 +711,7 @@ row0merge.cc line 2698                                                          
 #row0mysql.cc line 5094                                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=74790 PS (Fixed in 5.6.24, 5.7.6)
 #row0mysql.cc line 688                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
+row0mysql.cc line 5134                                                                  ## https://bugs.mysql.com/bug.php?id=95470
 #row0quiesce.cc line 683                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=75398 (Fixed in 5.6.23) Duplicate MS#74346
 #row0sel.c line 3791                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88782
 row0sel.cc line 3932                                                                    ## https://jira.percona.com/browse/PS-850
@@ -1039,6 +1041,7 @@ ZN12ha_myisammrg5cloneEPKcP11st_mem_root                                        
 #ZN13Item_func_div10decimal_opEP10my_decimal                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=74807 (Same gdb trace of Z14my_decimal_divjP10my_decimalPKS_S2_i)
 ZN13MYSQL_BIN_LOG33handle_binlog_flush_or_sync_errorEP3THDb                             ## https://bugs.mysql.com/bug.php?id=86256
 ZN13MYSQL_BIN_LOG13new_file_implEbP28Format_description_log_event                       ## https://bugs.mysql.com/bug.php?id=90190
+ZN13MYSQL_BIN_LOG11open_binlogEPKcS1_mbbbP28Format_description_log_event                ## https://jira.percona.com/browse/PS-5646
 #ZN14Arg_comparator24cache_converted_constantEP3THDPP4ItemS4_11Item_result     ## Fixed ## https://bugs.mysql.com/bug.php?id=77991 (duplicate of 78188)
 #ZN14Item_func_plus10decimal_opEP10my_decimal                                  ## Fixed ## https://bugs.mysql.com/bug.php?id=74619 (Same gdb trace of Z14my_decimal_addjP10my_decimalPKS_S2_ assertion)
 #ZN14partition_info20check_partition_infoEP3THDPP10handlertonP7handlerP24st_ha_create_information  ## Fixed ## https://bugs.mysql.com/bug.php?id=74451 (Fixed in 5.6.24)

@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Created by Tomislav Plavcic, Percona LLC
 
+# dynamic
+MONGO_USER="dba"
+MONGO_PASS="test1234"
+MONGO_BACKUP_USER="backupUser"
+MONGO_BACKUP_PASS="test1234"
+PBM_COORD_API_TOKEN="abcdefgh"
+VAULT_SERVER="127.0.0.1"
+VAULT_PORT="8200"
+VAULT_TOKEN_FILE="~/vault-server/vault-token-psmdb.cfg"
+# this is only start of vault secret, additional part is appended per node
+VAULT_SECRET="secret_v2/data/psmdb-test"
+VAULT_SERVER_CA_FILE="~/vault-server/certificates/root.cer"
+# static or changed with cmd line options
 BASEDIR=""
 LAYOUT=""
 STORAGE_ENGINE="wiredTiger"
@@ -13,10 +26,6 @@ ENCRYPTION="no"
 PBMDIR=""
 AUTH=""
 BACKUP_AUTH=""
-MONGO_USER="dba"
-MONGO_PASS="test1234"
-MONGO_BACKUP_USER="backupUser"
-MONGO_BACKUP_PASS="test1234"
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -26,8 +35,8 @@ fi
 # Check if we have a functional getopt(1)
 if ! getopt --test
 then
-    go_out="$(getopt --options=mrsahe:b:tc:px \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,mongodExtra:,mongosExtra:,configExtra:,encrypt,cipherMode:,pbmDir:,auth \
+    go_out="$(getopt --options=mrsahe:b:t:c:px \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,auth \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -97,7 +106,8 @@ do
     ;;
   -t | --encrypt )
     shift
-    ENCRYPTION="keyfile"
+    ENCRYPTION="$1"
+    shift
     ;;
   -c | --cipherMode )
     shift
@@ -124,6 +134,10 @@ done
 
 if [ "${STORAGE_ENGINE}" != "wiredTiger" -a "${ENCRYPTION}" != "no" ]; then
   echo "ERROR: Data at rest encryption is possible only with wiredTiger storage engine!"
+  exit 1
+fi
+if [ "${ENCRYPTION}" != "no" -a "${ENCRYPTION}" != "keyfile" -a "${ENCRYPTION}" != "vault" ]; then
+  echo "ERROR: --encrypt parameter can be: no, keyfile or vault!"
   exit 1
 fi
 
@@ -187,7 +201,7 @@ start_pbm_coordinator(){
     # Create startup script for the pbm-coordinator
     echo "#!/usr/bin/env bash" > ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "${PBMDIR}/pbm-coordinator --debug --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
+    echo "${PBMDIR}/pbm-coordinator --api-token=${PBM_COORD_API_TOKEN} --debug --work-dir=${NODESDIR}/pbm-coordinator/workdir --log-file=${NODESDIR}/pbm-coordinator/pbm-coordinator.log 1>${NODESDIR}/pbm-coordinator/stdout.log 2>${NODESDIR}/pbm-coordinator/stderr.log &" >> ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     chmod +x ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
     ${NODESDIR}/pbm-coordinator/start_pbm_coordinator.sh
 
@@ -280,6 +294,8 @@ start_mongod(){
       openssl rand -base64 32 > ${NDIR}/mongodb-keyfile
       chmod 600 ${NDIR}/mongodb-keyfile
       EXTRA="${EXTRA} --enableEncryption --encryptionKeyFile ${NDIR}/mongodb-keyfile --encryptionCipherMode ${CIPHER_MODE}"
+    elif [ "${ENCRYPTION}" = "vault" ]; then
+      EXTRA="${EXTRA} --enableEncryption --encryptionCipherMode ${CIPHER_MODE} --vaultServerName ${VAULT_SERVER} --vaultPort ${VAULT_PORT} --vaultTokenFile ${VAULT_TOKEN_FILE} --vaultSecret ${VAULT_SECRET}/${RS}-${PORT} --vaultServerCAFile ${VAULT_SERVER_CA_FILE}"
     fi
   elif [ "${SE}" == "rocksdb" ]; then
     EXTRA="${EXTRA} --rocksdbCacheSizeGB 1"
@@ -375,8 +391,8 @@ start_replicaset(){
     sleep 10
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${BINDIR}/mongo ${AUTH} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
-    sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
   fi
 
   # start PBM agents for replica set nodes
@@ -406,8 +422,8 @@ if [ "${LAYOUT}" == "single" ]; then
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${NODESDIR}/stop.sh
-    sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
     sleep 5
     ${NODESDIR}/start.sh
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"

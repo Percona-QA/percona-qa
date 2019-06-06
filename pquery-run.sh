@@ -333,6 +333,8 @@ check_cmd(){
 
 if [[ $PXC -eq 1 ]];then
   # Creating default my.cnf file
+  SUSER=root
+  SPASS=
   rm -rf ${BASEDIR}/my.cnf
   echo "[mysqld]" > ${BASEDIR}/my.cnf
   echo "basedir=${BASEDIR}" >> ${BASEDIR}/my.cnf
@@ -373,8 +375,6 @@ pxc_startup(){
   IS_STARTUP=$1
   ADDR="127.0.0.1"
   RPORT=$(( (RANDOM%21 + 10)*1000 ))
-  SUSER=root
-  SPASS=
   if check_for_version $MYSQL_VERSION "5.7.0" ; then
     MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
   else
