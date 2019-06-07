@@ -497,6 +497,32 @@ rename_index() {
     done ) &
 }
 
+add_drop_full_text_index() {
+    # This function adds and drops a full text index in a table
+
+    echo "Add and drop a full text index in the test.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE FULLTEXT INDEX full_index on test.sbtest1 (pad);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX full_index on test.sbtest1;" >/dev/null 2>&1
+    done ) &
+
+    echo "Add and drop a full text index in the test_rocksdb.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE FULLTEXT INDEX full_index on test_rocksdb.sbtest1 (pad);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX full_index on test_rocksdb.sbtest1;" >/dev/null 2>&1
+    done ) &
+}
+
 add_drop_tablespace() {
     # This function adds a table to a tablespace and then drops the table, tablespace
 
@@ -714,6 +740,16 @@ test_rename_index() {
     incremental_backup
 }
 
+test_add_drop_full_text_index() {
+    # This test suite takes an incremental backup when full text index is added and dropped
+
+    echo "Test: Backup and Restore during add and drop full text index"
+
+    add_drop_full_text_index
+
+    incremental_backup "--lock-ddl"
+}
+
 test_add_drop_tablespace() {
     # This test suite takes an incremental backup when a tablespace is added and dropped
 
@@ -897,7 +933,7 @@ test_cloud_inc_backup() {
 
 echo "Running Tests"
 # Various test suites
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
 
 # Encryption test suites
 #for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
