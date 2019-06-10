@@ -244,25 +244,25 @@ start_pbm_agent(){
   if [ ! -z "${PBMDIR}" ]; then
     mkdir -p "${NDIR}/pbm-agent"
     # Create storages config for node agent
-    echo "local-filesystem:" > ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  type: filesystem" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  filesystem:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "minio-s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  type: s3" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    region: us-west" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    credentials:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "local-filesystem:" > ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  type: filesystem" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  filesystem:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "minio-s3:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  type: s3" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  s3:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    region: us-west" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    credentials:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${NDIR}/pbm-agent/storage-config.yaml
 
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${NODESDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=localhost --mongodb-port=${NPORT} --storage-config=${NDIR}/pbm-agent/storage-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${NODESDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
