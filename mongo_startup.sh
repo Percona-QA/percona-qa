@@ -9,10 +9,10 @@ MONGO_BACKUP_PASS="test1234"
 PBM_COORD_API_TOKEN="abcdefgh"
 VAULT_SERVER="127.0.0.1"
 VAULT_PORT="8200"
-VAULT_TOKEN_FILE="~/vault-server/vault-token-psmdb.cfg"
+VAULT_TOKEN_FILE="${VAULT_TOKEN_FILE:-${WORKSPACE}/mongodb-test-vault-token}"
 # this is only start of vault secret, additional part is appended per node
 VAULT_SECRET="secret_v2/data/psmdb-test"
-VAULT_SERVER_CA_FILE="~/vault-server/certificates/root.cer"
+VAULT_SERVER_CA_FILE="${VAULT_SERVER_CA_FILE:-${WORKSPACE}/test.cer}"
 # static or changed with cmd line options
 BASEDIR=""
 LAYOUT=""
