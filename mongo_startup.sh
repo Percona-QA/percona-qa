@@ -17,9 +17,9 @@ VAULT_SERVER_CA_FILE="${VAULT_SERVER_CA_FILE:-${WORKSPACE}/test.cer}"
 BASEDIR=""
 LAYOUT=""
 STORAGE_ENGINE="wiredTiger"
-MONGOD_EXTRA=""
-MONGOS_EXTRA=""
-CONFIG_EXTRA=""
+MONGOD_EXTRA="--bind_ip 0.0.0.0"
+MONGOS_EXTRA="--bind_ip 0.0.0.0"
+CONFIG_EXTRA="--bind_ip 0.0.0.0"
 RS_ARBITER=0
 CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
@@ -91,17 +91,17 @@ do
     ;;
   --mongodExtra )
     shift
-    MONGOD_EXTRA="$1"
+    MONGOD_EXTRA="${MONGOD_EXTRA} $1"
     shift
     ;;
   --mongosExtra )
     shift
-    MONGOS_EXTRA="$1"
+    MONGOS_EXTRA="${MONGOS_EXTRA} $1"
     shift
     ;;
   --configExtra )
     shift
-    CONFIG_EXTRA="$1"
+    CONFIG_EXTRA="${CONFIG_EXTRA} $1"
     shift
     ;;
   -t | --encrypt )
