@@ -22,7 +22,7 @@ join->best_read < double.1.79769313486231570815e            ## https://jira.perc
 __null .= dynamic_cast<Target>.arg                          ## https://bugs.mysql.com/bug.php?id=94581
 void destroy<Table_trigger_dispatcher>                      ## https://jira.percona.com/browse/PS-5460
 #Item_func_internal_get_comment_or_error..val_str ## Fixed ## https://bugs.mysql.com/bug.php?id=90518 # Optimized build
-adjust_fk_parents                              ## Fixed ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build (Fixed in 8.0.14, remark as such when released)
+#adjust_fk_parents                              ## Fixed ## https://bugs.mysql.com/bug.php?id=90520 # Optimized build 
 #.trx->declared_to_be_inside_innodb             ## Fixed ## https://bugs.mysql.com/bug.php?id=90521 # Optimized build
 #TEXT=..n . .n - 1.. == 0.$                              ## Fixed ## https://bugs.mysql.com/bug.php?id=90522 # Optimized build
 #ut0link_buf.h.191..capacity . .capacity - 1.. == 0      ## Fixed ## https://bugs.mysql.com/bug.php?id=90523 # Optimized build
@@ -38,10 +38,11 @@ adjust_fk_parents                              ## Fixed ## https://bugs.mysql.co
 #.thd->has_gtid_consistency_violation           ## Fixed ## https://bugs.mysql.com/bug.php?id=90551
 #table .. table->s .. table->s->ha_share        ## Fixed ## https://bugs.mysql.com/bug.php?id=90552
 #addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA ## Fixed ## https://bugs.mysql.com/bug.php?id=90590
-head->variables.gtid_next.type .= UNDEFINED_GTID         ## https://bugs.mysql.com/bug.php?id=90640 (Fixed in 8.0.14, remark as such when released)
+#head->variables.gtid_next.type .= UNDEFINED_GTID ## Fixed ## https://bugs.mysql.com/bug.php?id=90640
 #TEXT=.bin2decimal.$                            ## Fixed ## https://bugs.mysql.com/bug.php?id=90673
 all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 w->frame_buffer                                          ## https://jira.percona.com/browse/PS-5564
+.is_owned..                                              ## https://bugs.mysql.com/bug.php?id=95923
 
 ## =========== PS/MS 8.0
 #.innodb_inited .. strlen.s_uuid. .= 0           ## Reproduced only with PS-8.0.13-debug release branch (release-8.0.13-3) ## https://jira.percona.com/browse/PS-5189
@@ -653,7 +654,8 @@ ha_innodb.cc line 18962                                                         
 #ut0ut.cc line 935                                                          ## Outdated ## MS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 #ut0ut.cc line 936                                                          ## Outdated ## PS 5.7.13     SET @@GLOBAL.innodb_buffer_pool_size=9556544565345346; (or similar)
 ut0ut.cc:670                                                                            ## https://bugs.mysql.com/bug.php?id=92487, MS8, related to large innodb-buffer-pool-size
-ut0ut.cc.632                                                                            ## https://bugs.mysql.com/bug.php?id=94579
+ut0ut.cc.632                                                                            ## https://bugs.mysql.com/bug.php?id=94579 # on MS 8.0.15
+ut0ut.cc.629                                                                            ## https://bugs.mysql.com/bug.php?id=94579 # on MS 8.0.16
 ut0ut.cc.722                                                                            ## https://bugs.mysql.com/bug.php?id=92487, PS8, related to large innodb-buffer-pool-size
 ut0ut.cc line 958                                                                       ## PS 5.7.20     --innodb-buffer-pool-size=-1125899906842624 (or similar)
 mem0dbg.c line 684                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
@@ -712,6 +714,7 @@ row0merge.cc line 2698                                                          
 #row0mysql.cc line 688                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
 row0mysql.cc line 5134                                                                  ## https://bugs.mysql.com/bug.php?id=95470
+table->n_rec_locks == 0                                                                 ## https://bugs.mysql.com/bug.php?id=95470 MS 8.0.16
 #row0quiesce.cc line 683                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=75398 (Fixed in 5.6.23) Duplicate MS#74346
 #row0sel.c line 3791                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88782
 row0sel.cc line 3932                                                                    ## https://jira.percona.com/browse/PS-850
