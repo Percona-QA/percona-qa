@@ -9,17 +9,17 @@ MONGO_BACKUP_PASS="test1234"
 PBM_COORD_API_TOKEN="abcdefgh"
 VAULT_SERVER="127.0.0.1"
 VAULT_PORT="8200"
-VAULT_TOKEN_FILE="~/vault-server/vault-token-psmdb.cfg"
+VAULT_TOKEN_FILE="${VAULT_TOKEN_FILE:-${WORKSPACE}/mongodb-test-vault-token}"
 # this is only start of vault secret, additional part is appended per node
 VAULT_SECRET="secret_v2/data/psmdb-test"
-VAULT_SERVER_CA_FILE="~/vault-server/certificates/root.cer"
+VAULT_SERVER_CA_FILE="${VAULT_SERVER_CA_FILE:-${WORKSPACE}/test.cer}"
 # static or changed with cmd line options
 BASEDIR=""
 LAYOUT=""
 STORAGE_ENGINE="wiredTiger"
-MONGOD_EXTRA=""
-MONGOS_EXTRA=""
-CONFIG_EXTRA=""
+MONGOD_EXTRA="--bind_ip 0.0.0.0"
+MONGOS_EXTRA="--bind_ip 0.0.0.0"
+CONFIG_EXTRA="--bind_ip 0.0.0.0"
 RS_ARBITER=0
 CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
@@ -91,17 +91,17 @@ do
     ;;
   --mongodExtra )
     shift
-    MONGOD_EXTRA="$1"
+    MONGOD_EXTRA="${MONGOD_EXTRA} $1"
     shift
     ;;
   --mongosExtra )
     shift
-    MONGOS_EXTRA="$1"
+    MONGOS_EXTRA="${MONGOS_EXTRA} $1"
     shift
     ;;
   --configExtra )
     shift
-    CONFIG_EXTRA="$1"
+    CONFIG_EXTRA="${CONFIG_EXTRA} $1"
     shift
     ;;
   -t | --encrypt )
@@ -244,25 +244,25 @@ start_pbm_agent(){
   if [ ! -z "${PBMDIR}" ]; then
     mkdir -p "${NDIR}/pbm-agent"
     # Create storages config for node agent
-    echo "local-filesystem:" > ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  type: filesystem" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  filesystem:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "minio-s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  type: s3" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "  s3:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    region: us-west" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "    credentials:" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${NDIR}/pbm-agent/storages-config.yaml
-    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${NDIR}/pbm-agent/storages-config.yaml
+    echo "local-filesystem:" > ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  type: filesystem" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  filesystem:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    path: ${NODESDIR}/backup" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "minio-s3:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  type: s3" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "  s3:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    region: us-west" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    endpointUrl: http://localhost:9000" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "    credentials:" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${NDIR}/pbm-agent/storage-config.yaml
+    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${NDIR}/pbm-agent/storage-config.yaml
 
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${NODESDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=localhost --mongodb-port=${NPORT} --storages-config=${NDIR}/pbm-agent/storages-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=localhost --mongodb-port=${NPORT} --storage-config=${NDIR}/pbm-agent/storage-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${NODESDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
@@ -391,8 +391,8 @@ start_replicaset(){
     sleep 10
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${BINDIR}/mongo ${AUTH} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
-    sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
   fi
 
   # start PBM agents for replica set nodes
@@ -422,8 +422,8 @@ if [ "${LAYOUT}" == "single" ]; then
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${NODESDIR}/stop.sh
-    sed -i '/AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sed -i '/BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
+    sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
     sleep 5
     ${NODESDIR}/start.sh
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
