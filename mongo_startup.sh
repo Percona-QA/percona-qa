@@ -14,6 +14,7 @@ VAULT_TOKEN_FILE="${VAULT_TOKEN_FILE:-${WORKSPACE}/mongodb-test-vault-token}"
 VAULT_SECRET="secret_v2/data/psmdb-test"
 VAULT_SERVER_CA_FILE="${VAULT_SERVER_CA_FILE:-${WORKSPACE}/test.cer}"
 # static or changed with cmd line options
+HOST="localhost"
 BASEDIR=""
 LAYOUT=""
 STORAGE_ENGINE="wiredTiger"
@@ -35,8 +36,8 @@ fi
 # Check if we have a functional getopt(1)
 if ! getopt --test
 then
-    go_out="$(getopt --options=mrsahe:b:t:c:px \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,auth \
+    go_out="$(getopt --options=mrsahe:b:o:t:c:px \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,host:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,auth \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -74,6 +75,7 @@ do
     echo -e "-a, --arbiter\t\t\t instead of 3 nodes in replica set add 2 nodes and 1 arbiter"
     echo -e "-e<se>, --storageEngine=<se>\t specify storage engine for data nodes (wiredTiger, rocksdb, mmapv1)"
     echo -e "-b<path>, --binDir=<path>\t specify binary directory if running from some other location (this should end with /bin)"
+    echo -e "-o<name>, --host=<name>\t instead of localhost specify some hostname for MongoDB setup"
     echo -e "--mongodExtra=\"...\"\t\t specify extra options to pass to mongod"
     echo -e "--mongosExtra=\"...\"\t\t specify extra options to pass to mongos"
     echo -e "--configExtra=\"...\"\t\t specify extra options to pass to config server"
@@ -117,6 +119,11 @@ do
   -b | --binDir )
     shift
     BINDIR="$1"
+    shift
+    ;;
+  -o | --host )
+    shift
+    HOST="$1"
     shift
     ;;
   -p | --pbmDir )
@@ -262,7 +269,7 @@ start_pbm_agent(){
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${NODESDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "echo \"Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} \"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=localhost --mongodb-port=${NPORT} --storage-config=${NDIR}/pbm-agent/storage-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=${HOST} --mongodb-port=${NPORT} --storage-config=${NDIR}/pbm-agent/storage-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${NODESDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
@@ -312,11 +319,11 @@ start_mongod(){
   echo "${BINDIR}/mongod \${ENABLE_AUTH} --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
   echo "#!/usr/bin/env bash" > ${NDIR}/cl.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/cl.sh
-  echo "${BINDIR}/mongo localhost:${PORT} \${AUTH} \$@" >> ${NDIR}/cl.sh
+  echo "${BINDIR}/mongo ${HOST}:${PORT} \${AUTH} \$@" >> ${NDIR}/cl.sh
   echo "#!/usr/bin/env bash" > ${NDIR}/stop.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/stop.sh
   echo "echo \"Stopping mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/stop.sh
-  echo "${BINDIR}/mongo localhost:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NDIR}/stop.sh
+  echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NDIR}/stop.sh
   echo "#!/usr/bin/env bash" > ${NDIR}/wipe.sh
   echo "${NDIR}/stop.sh" >> ${NDIR}/wipe.sh
   echo "rm -rf ${NDIR}/db.PREV" >> ${NDIR}/wipe.sh
@@ -352,15 +359,15 @@ start_replicaset(){
   echo "echo \"Initializing replica set: ${RSNAME}\"" >> ${RSDIR}/init_rs.sh
   if [ ${RS_ARBITER} = 0 ]; then
     if [ "${STORAGE_ENGINE}" == "inMemory" -a "${RSNAME}" != "config" ]; then
-      echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: [{\"_id\":1, \"host\":\"localhost:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"localhost:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"localhost:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
     else
-      echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"localhost:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"localhost:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"localhost:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
     fi
   else
-    echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"localhost:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"localhost:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
+    echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
     echo "sleep 20" >> ${RSDIR}/init_rs.sh
-    echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
-    echo "${BINDIR}/mongo \${PRIMARY} --quiet --eval 'rs.addArb(\"localhost:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
+    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
+    echo "${BINDIR}/mongo \${PRIMARY} --quiet --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
   fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_rs.sh
   echo "echo \"=== Stopping replica set: ${RSNAME} ===\"" >> ${RSDIR}/stop_rs.sh
@@ -375,10 +382,10 @@ start_replicaset(){
   echo "#!/usr/bin/env bash" > ${RSDIR}/cl_primary.sh
   echo "source ${NODESDIR}/COMMON" >> ${RSDIR}/cl_primary.sh
   if [ "${VERSION_MAJOR}" = "3.2" ]; then
-    echo "PRIMARY=\$(${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1) \${AUTH}" >> ${RSDIR}/cl_primary.sh
+    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1) \${AUTH}" >> ${RSDIR}/cl_primary.sh
     echo "${BINDIR}/mongo \${PRIMARY} \${AUTH} \$@" >> ${RSDIR}/cl_primary.sh
   else
-    echo "${BINDIR}/mongo \"mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}\" \${AUTH} \$@" >> ${RSDIR}/cl_primary.sh
+    echo "${BINDIR}/mongo \"mongodb://${HOST}:${RSBASEPORT},${HOST}:$(($RSBASEPORT + 1)),${HOST}:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}\" \${AUTH} \$@" >> ${RSDIR}/cl_primary.sh
   fi
   chmod +x ${RSDIR}/init_rs.sh
   chmod +x ${RSDIR}/start_rs.sh
@@ -415,18 +422,15 @@ if [ "${LAYOUT}" == "single" ]; then
   start_mongod "${NODESDIR}" "nors" "27017" "${STORAGE_ENGINE}" "${MONGOD_EXTRA}"
 
   if [[ "${MONGOD_EXTRA}" == *"replSet"* ]]; then
-    ${BINDIR}/mongo localhost:27017 --quiet --eval 'rs.initiate()'
+    ${BINDIR}/mongo ${HOST}:27017 --quiet --eval 'rs.initiate()'
     sleep 5
   fi
 
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
-    ${NODESDIR}/stop.sh
     sed -i '/^AUTH=/c\AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
     sed -i '/^BACKUP_AUTH=/c\BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"' ${NODESDIR}/COMMON
-    sleep 5
-    ${NODESDIR}/start.sh
-    ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo localhost:27017/admin ${AUTH} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
 
   start_pbm_agent "${NODESDIR}" "rs1" "27017" "mongod"
@@ -459,7 +463,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   # this is needed in 3.6 for MongoRocks since it doesn't support FCV 3.6 and config servers control this in sharding setup
   if [ "${STORAGE_ENGINE}" = "rocksdb" -a "${VERSION_MAJOR}" = "3.6" ]; then
     sleep 15
-    ${BINDIR}/mongo "mongodb://localhost:${CFGPORT},localhost:$(($CFGPORT + 1)),localhost:$(($CFGPORT + 2))/?replicaSet=${CFGRSNAME}" --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
+    ${BINDIR}/mongo "mongodb://${HOST}:${CFGPORT},${HOST}:$(($CFGPORT + 1)),${HOST}:$(($CFGPORT + 2))/?replicaSet=${CFGRSNAME}" --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
   fi
 
   # setup 2 data replica sets
@@ -469,10 +473,10 @@ if [ "${LAYOUT}" == "sh" ]; then
   # create managing scripts
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "echo \"=== Starting sharding server: ${SHNAME} on port ${SHPORT} ===\"" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
-  echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/localhost:${CFGPORT},localhost:$(($CFGPORT + 1)),localhost:$(($CFGPORT + 2)) --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork "$MONGOS_EXTRA" >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
+  echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/${HOST}:${CFGPORT},${HOST}:$(($CFGPORT + 1)),${HOST}:$(($CFGPORT + 2)) --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork "$MONGOS_EXTRA" >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/cl_mongos.sh
   echo "source ${NODESDIR}/COMMON" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
-  echo "${BINDIR}/mongo localhost:${SHPORT} \${AUTH} \$@" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
+  echo "${BINDIR}/mongo ${HOST}:${SHPORT} \${AUTH} \$@" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
   ln -s ${NODESDIR}/${SHNAME}/cl_mongos.sh ${NODESDIR}/cl_mongos.sh
   echo "echo \"=== Stopping sharding cluster: ${SHNAME} ===\"" >> ${NODESDIR}/stop_all.sh
   echo "${NODESDIR}/${SHNAME}/stop_mongos.sh" >> ${NODESDIR}/stop_all.sh
@@ -482,7 +486,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "source ${NODESDIR}/COMMON" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "echo \"Stopping mongos on port: ${SHPORT}\"" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
-  echo "${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
+  echo "${BINDIR}/mongo ${HOST}:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/start_all.sh
   echo "echo \"Starting sharding cluster on port: ${SHPORT}\"" >> ${NODESDIR}/start_all.sh
   echo "${NODESDIR}/${CFGRSNAME}/start_rs.sh" >> ${NODESDIR}/start_all.sh
@@ -503,8 +507,8 @@ if [ "${LAYOUT}" == "sh" ]; then
   # add Shards to the Cluster
   echo "Adding shards to the cluster..."
   sleep 20
-  ${BINDIR}/mongo localhost:${SHPORT} --quiet --eval "sh.addShard(\"${RS1NAME}/localhost:${RS1PORT}\")" ${AUTH}
-  ${BINDIR}/mongo localhost:${SHPORT} --quiet --eval "sh.addShard(\"${RS2NAME}/localhost:${RS2PORT}\")" ${AUTH}
+  ${BINDIR}/mongo ${HOST}:${SHPORT} --quiet --eval "sh.addShard(\"${RS1NAME}/${HOST}:${RS1PORT}\")" ${AUTH}
+  ${BINDIR}/mongo ${HOST}:${SHPORT} --quiet --eval "sh.addShard(\"${RS2NAME}/${HOST}:${RS2PORT}\")" ${AUTH}
   echo -e "\n>>> Enable sharding on specific database with: sh.enableSharding(\"<database>\") <<<"
   echo -e ">>> Shard a collection with: sh.shardCollection(\"<database>.<collection>\", { <key> : <direction> } ) <<<\n"
 
