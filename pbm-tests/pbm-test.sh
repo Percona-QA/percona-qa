@@ -5,7 +5,7 @@ set -e
 PQA_PATH=${HOME}/percona-qa
 PBM_PATH=${HOME}/lab/pbm/pbm-latest
 YCSB_PATH=${HOME}/lab/psmdb/ycsb-mongodb-binding-0.15.0
-MONGODB_PATH=${HOME}/lab/psmdb/bin/percona-server-mongodb-4.0.9-4
+MONGODB_PATH=${HOME}/lab/psmdb/bin/percona-server-mongodb-4.0.10-5
 TEST_RESULT_DIR="${MONGODB_PATH}/pbm-tests"
 STORAGE_ENGINE="wiredTiger"
 MONGODB_USER="dba"
@@ -48,11 +48,7 @@ start_sharding_cluster() {
 
 stop_all_mongo() {
   echo "##### ${TEST_NAME}: Stopping all mongodb processes #####"
-  if [ -x ${MONGODB_PATH}/nodes/stop_all.sh ]; then
-    ${MONGODB_PATH}/nodes/stop_all.sh
-  else
-    ${MONGODB_PATH}/nodes/stop_rs.sh
-  fi
+  ${MONGODB_PATH}/nodes/stop_all.sh
 }
 
 stop_all_pbm() {
