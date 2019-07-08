@@ -503,8 +503,10 @@ start_replicaset(){
 fi
 }
 
-# start PBM coordinator if PBM directory specified
-start_pbm_coordinator
+# start PBM coordinator if PBM options specified
+if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
+  start_pbm_coordinator
+fi
 
 if [ "${LAYOUT}" == "single" ]; then
   mkdir -p "${NODESDIR}"
@@ -522,8 +524,6 @@ if [ "${LAYOUT}" == "single" ]; then
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${NODESDIR}/COMMON
     ${BINDIR}/mongo localhost:27017/admin ${AUTH} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
-
-  start_pbm_agent "${NODESDIR}" "rs1" "27017" "mongod"
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
