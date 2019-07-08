@@ -29,6 +29,8 @@ PBM_DOCKER_IMAGE=""
 AUTH=""
 BACKUP_AUTH=""
 BACKUP_DOCKER_AUTH=""
+SSL=0
+SSL_CLIENT=""
 
 if [ -z $1 ]; then
   echo "You need to specify at least one of the options for layout: --single, --rSet, --sCluster or use --help!"
@@ -39,7 +41,7 @@ fi
 if ! getopt --test
 then
     go_out="$(getopt --options=mrsahe:b:o:t:c:p:d:x \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,host:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,pbmDocker:,auth \
+        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,host:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,pbmDocker:,auth,ssl \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -77,10 +79,11 @@ do
     echo -e "-a, --arbiter\t\t\t instead of 3 nodes in replica set add 2 nodes and 1 arbiter"
     echo -e "-e<se>, --storageEngine=<se>\t specify storage engine for data nodes (wiredTiger, rocksdb, mmapv1)"
     echo -e "-b<path>, --binDir=<path>\t specify binary directory if running from some other location (this should end with /bin)"
-    echo -e "-o<name>, --host=<name>\t instead of localhost specify some hostname for MongoDB setup"
+    echo -e "-o<name>, --host=<name>\t\t instead of localhost specify some hostname for MongoDB setup"
     echo -e "--mongodExtra=\"...\"\t\t specify extra options to pass to mongod"
     echo -e "--mongosExtra=\"...\"\t\t specify extra options to pass to mongos"
     echo -e "--configExtra=\"...\"\t\t specify extra options to pass to config server"
+    echo -e "--ssl\t\t\t\t generate ssl certificates and start nodes with requiring ssl connection"
     echo -e "-t, --encrypt\t\t\t enable data at rest encryption (wiredTiger only)"
     echo -e "-c<mode>, --cipherMode=<mode>\t specify cipher mode for encryption (AES256-CBC or AES256-GCM)"
     echo -e "-p<path>, --pbmDir=<path>\t enables Percona Backup for MongoDB (starts agents and coordinator from binaries)"
@@ -144,6 +147,10 @@ do
     AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"
     BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"
     BACKUP_DOCKER_AUTH="-e PBM_AGENT_MONGODB_USERNAME=${MONGO_BACKUP_USER} -e PBM_AGENT_MONGODB_PASSWORD=${MONGO_BACKUP_PASS} -e PBM_AGENT_MONGODB-AUTHDB=admin"
+    ;;
+  --ssl )
+    shift
+    SSL=1
     ;;
   esac
 done
@@ -212,6 +219,29 @@ if [ ! -z "${AUTH}" ]; then
   MONGOD_EXTRA="${MONGOD_EXTRA} --keyFile ${NODESDIR}/keyFile"
   MONGOS_EXTRA="${MONGOS_EXTRA} --keyFile ${NODESDIR}/keyFile"
   CONFIG_EXTRA="${CONFIG_EXTRA} --keyFile ${NODESDIR}/keyFile"
+fi
+
+if [ ${SSL} -eq 1 ]; then
+  mkdir -p "${NODESDIR}/certificates"
+  pushd "${NODESDIR}/certificates"
+  echo -e "\n=== Generating SSL certificates in ${NODESDIR}/certificates ==="
+  # Generate self signed root CA cert
+  openssl req -nodes -x509 -newkey rsa:4096 -keyout ca.key -out ca.crt -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=root/CN=${HOST}/emailAddress=test@percona.com"
+  # Generate server cert to be signed
+  openssl req -nodes -newkey rsa:4096 -keyout server.key -out server.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=server/CN=${HOST}/emailAddress=test@percona.com"
+  # Sign server sert
+  openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt
+  # Create server PEM file
+  cat server.key server.crt > server.pem
+  # Generate client cert to be signed
+  openssl req -nodes -newkey rsa:4096 -keyout client.key -out client.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=client/CN=${HOST}/emailAddress=test@percona.com"
+  # Sign the client cert
+  openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -set_serial 02 -out client.crt
+  # Create client PEM file
+  cat client.key client.crt > client.pem
+  popd
+  SSL_CLIENT="--ssl --sslCAFile ${NODESDIR}/certificates/ca.crt --sslPEMKeyFile ${NODESDIR}/certificates/client.pem"
+  echo "SSL_CLIENT=\"${SSL_CLIENT}\"" >> ${NODESDIR}/COMMON
 fi
 
 VERSION_FULL=$(${BINDIR}/mongod --version|head -n1|sed 's/db version v//')
@@ -398,6 +428,12 @@ start_mongod(){
       EXTRA="${EXTRA} --useDeprecatedMongoRocks"
     fi
   fi
+  if [ ${SSL} -eq 1 ]; then
+#    openssl req -nodes -newkey rsa:4096 -keyout ${NDIR}/psmdb-${RS}-${PORT}.key -out ${NDIR}/psmdb-${RS}-${PORT}.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=server/CN=${HOST}/emailAddress=test@percona.com"
+#    openssl x509 -req -in ${NDIR}/psmdb-${RS}-${PORT}.csr -CA ${NODESDIR}/certificates/ca.crt -CAkey ${NODESDIR}/certificates/ca.key -set_serial 01 -out ${NDIR}/psmdb-${RS}-${PORT}.crt
+#    cat ${NDIR}/psmdb-${RS}-${PORT}.key ${NDIR}/psmdb-${RS}-${PORT}.crt > ${NDIR}/psmdb-${RS}-${PORT}.pem
+    EXTRA="${EXTRA} --sslMode requireSSL --sslPEMKeyFile ${NODESDIR}/certificates/server.pem --sslCAFile ${NODESDIR}/certificates/ca.crt"
+  fi
 
   echo "#!/usr/bin/env bash" > ${NDIR}/start.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/start.sh
@@ -407,11 +443,11 @@ start_mongod(){
   echo "${BINDIR}/mongod \${ENABLE_AUTH} --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
   echo "#!/usr/bin/env bash" > ${NDIR}/cl.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/cl.sh
-  echo "${BINDIR}/mongo ${HOST}:${PORT} \${AUTH} \$@" >> ${NDIR}/cl.sh
+  echo "${BINDIR}/mongo ${HOST}:${PORT} \${AUTH} \${SSL_CLIENT} \$@" >> ${NDIR}/cl.sh
   echo "#!/usr/bin/env bash" > ${NDIR}/stop.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/stop.sh
   echo "echo \"Stopping mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/stop.sh
-  echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NDIR}/stop.sh
+  echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NDIR}/stop.sh
   echo "#!/usr/bin/env bash" > ${NDIR}/wipe.sh
   echo "${NDIR}/stop.sh" >> ${NDIR}/wipe.sh
   echo "rm -rf ${NDIR}/db.PREV" >> ${NDIR}/wipe.sh
@@ -434,7 +470,7 @@ start_replicaset(){
   local RSBASEPORT="$3"
   local EXTRA="$4"
   mkdir -p "${RSDIR}"
-  echo "=== Starting replica set: ${RSNAME} ==="
+  echo -e "\n=== Starting replica set: ${RSNAME} ==="
   for i in 1 2 3; do
     if [ "${RSNAME}" != "config" ]; then
       start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "${STORAGE_ENGINE}" "${EXTRA}"
@@ -444,18 +480,19 @@ start_replicaset(){
   done
   sleep 5
   echo "#!/usr/bin/env bash" > ${RSDIR}/init_rs.sh
+  echo "source ${NODESDIR}/COMMON" >> ${RSDIR}/init_rs.sh
   echo "echo \"Initializing replica set: ${RSNAME}\"" >> ${RSDIR}/init_rs.sh
   if [ ${RS_ARBITER} = 0 ]; then
     if [ "${STORAGE_ENGINE}" == "inMemory" -a "${RSNAME}" != "config" ]; then
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
     else
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
     fi
   else
-    echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
+    echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
     echo "sleep 20" >> ${RSDIR}/init_rs.sh
-    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
-    echo "${BINDIR}/mongo \${PRIMARY} --quiet --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
+    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
+    echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
   fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_all.sh
   echo "echo \"=== Stopping replica set: ${RSNAME} ===\"" >> ${RSDIR}/stop_all.sh
@@ -470,10 +507,10 @@ start_replicaset(){
   echo "#!/usr/bin/env bash" > ${RSDIR}/cl_primary.sh
   echo "source ${NODESDIR}/COMMON" >> ${RSDIR}/cl_primary.sh
   if [ "${VERSION_MAJOR}" = "3.2" ]; then
-    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1) \${AUTH}" >> ${RSDIR}/cl_primary.sh
-    echo "${BINDIR}/mongo \${PRIMARY} \${AUTH} \$@" >> ${RSDIR}/cl_primary.sh
+    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet --eval 'db.runCommand(\"ismaster\").primary' | tail -n1) \${AUTH} \${SSL_CLIENT}" >> ${RSDIR}/cl_primary.sh
+    echo "${BINDIR}/mongo \${PRIMARY} \${AUTH} \${SSL_CLIENT} \$@" >> ${RSDIR}/cl_primary.sh
   else
-    echo "${BINDIR}/mongo \"mongodb://${HOST}:${RSBASEPORT},${HOST}:$(($RSBASEPORT + 1)),${HOST}:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}\" \${AUTH} \$@" >> ${RSDIR}/cl_primary.sh
+    echo "${BINDIR}/mongo \"mongodb://${HOST}:${RSBASEPORT},${HOST}:$(($RSBASEPORT + 1)),${HOST}:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}\" \${AUTH} \${SSL_CLIENT} \$@" >> ${RSDIR}/cl_primary.sh
   fi
   chmod +x ${RSDIR}/init_rs.sh
   chmod +x ${RSDIR}/start_all.sh
@@ -484,8 +521,8 @@ start_replicaset(){
   # for config server this is done via mongos
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 10
-    ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
-    ${BINDIR}/mongo ${AUTH} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${NODESDIR}/COMMON
     sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${NODESDIR}/COMMON
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${NODESDIR}/COMMON
@@ -513,16 +550,16 @@ if [ "${LAYOUT}" == "single" ]; then
   start_mongod "${NODESDIR}" "nors" "27017" "${STORAGE_ENGINE}" "${MONGOD_EXTRA}"
 
   if [[ "${MONGOD_EXTRA}" == *"replSet"* ]]; then
-    ${BINDIR}/mongo ${HOST}:27017 --quiet --eval 'rs.initiate()'
+    ${BINDIR}/mongo ${HOST}:27017 --quiet ${SSL_CLIENT} --eval 'rs.initiate()'
     sleep 5
   fi
 
   if [ ! -z "${AUTH}" ]; then
-    ${BINDIR}/mongo localhost:27017/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
+    ${BINDIR}/mongo localhost:27017/admin --quiet ${SSL_CLIENT} --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${NODESDIR}/COMMON
     sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${NODESDIR}/COMMON
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${NODESDIR}/COMMON
-    ${BINDIR}/mongo localhost:27017/admin ${AUTH} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
 fi
 
@@ -546,14 +583,18 @@ if [ "${LAYOUT}" == "sh" ]; then
   mkdir -p "${NODESDIR}/${CFGRSNAME}"
   mkdir -p "${NODESDIR}/${SHNAME}"
 
-  echo "=== Configuring sharding cluster: ${SHNAME} ==="
+  if [ ${SSL} -eq 1 ]; then
+    MONGOS_EXTRA="${MONGOS_EXTRA} --sslMode requireSSL --sslPEMKeyFile ${NODESDIR}/certificates/server.pem --sslCAFile ${NODESDIR}/certificates/ca.crt"
+  fi
+
+  echo -e "\n=== Configuring sharding cluster: ${SHNAME} ==="
   # setup config replicaset (3 node)
   start_replicaset "${NODESDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}" "--configsvr ${CONFIG_EXTRA}"
 
   # this is needed in 3.6 for MongoRocks since it doesn't support FCV 3.6 and config servers control this in sharding setup
   if [ "${STORAGE_ENGINE}" = "rocksdb" -a "${VERSION_MAJOR}" = "3.6" ]; then
     sleep 15
-    ${BINDIR}/mongo "mongodb://${HOST}:${CFGPORT},${HOST}:$(($CFGPORT + 1)),${HOST}:$(($CFGPORT + 2))/?replicaSet=${CFGRSNAME}" --quiet --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
+    ${BINDIR}/mongo "mongodb://${HOST}:${CFGPORT},${HOST}:$(($CFGPORT + 1)),${HOST}:$(($CFGPORT + 2))/?replicaSet=${CFGRSNAME}" --quiet ${SSL_CLIENT} --eval "db.adminCommand({ setFeatureCompatibilityVersion: \"3.4\" });"
   fi
 
   # setup 2 data replica sets
@@ -566,7 +607,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo "${BINDIR}/mongos --port ${SHPORT} --configdb ${CFGRSNAME}/${HOST}:${CFGPORT},${HOST}:$(($CFGPORT + 1)),${HOST}:$(($CFGPORT + 2)) --logpath ${NODESDIR}/${SHNAME}/mongos.log --fork "$MONGOS_EXTRA" >/dev/null" >> ${NODESDIR}/${SHNAME}/start_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/cl_mongos.sh
   echo "source ${NODESDIR}/COMMON" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
-  echo "${BINDIR}/mongo ${HOST}:${SHPORT} \${AUTH} \$@" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
+  echo "${BINDIR}/mongo ${HOST}:${SHPORT} \${AUTH} \${SSL_CLIENT} \$@" >> ${NODESDIR}/${SHNAME}/cl_mongos.sh
   ln -s ${NODESDIR}/${SHNAME}/cl_mongos.sh ${NODESDIR}/cl_mongos.sh
   echo "echo \"=== Stopping sharding cluster: ${SHNAME} ===\"" >> ${NODESDIR}/stop_all.sh
   echo "${NODESDIR}/${SHNAME}/stop_mongos.sh" >> ${NODESDIR}/stop_all.sh
@@ -576,7 +617,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo "#!/usr/bin/env bash" > ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "source ${NODESDIR}/COMMON" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "echo \"Stopping mongos on port: ${SHPORT}\"" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
-  echo "${BINDIR}/mongo ${HOST}:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH}" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
+  echo "${BINDIR}/mongo ${HOST}:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NODESDIR}/${SHNAME}/stop_mongos.sh
   echo "#!/usr/bin/env bash" > ${NODESDIR}/start_all.sh
   echo "echo \"Starting sharding cluster on port: ${SHPORT}\"" >> ${NODESDIR}/start_all.sh
   echo "${NODESDIR}/${CFGRSNAME}/start_all.sh" >> ${NODESDIR}/start_all.sh
@@ -591,14 +632,14 @@ if [ "${LAYOUT}" == "sh" ]; then
   # start mongos
   ${NODESDIR}/${SHNAME}/start_mongos.sh
   if [ ! -z "${AUTH}" ]; then
-    ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
-    ${BINDIR}/mongo ${AUTH} localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet ${SSL_CLIENT} --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
   # add Shards to the Cluster
   echo "Adding shards to the cluster..."
   sleep 20
-  ${BINDIR}/mongo ${HOST}:${SHPORT} --quiet --eval "sh.addShard(\"${RS1NAME}/${HOST}:${RS1PORT}\")" ${AUTH}
-  ${BINDIR}/mongo ${HOST}:${SHPORT} --quiet --eval "sh.addShard(\"${RS2NAME}/${HOST}:${RS2PORT}\")" ${AUTH}
+  ${BINDIR}/mongo ${HOST}:${SHPORT} --quiet --eval "sh.addShard(\"${RS1NAME}/${HOST}:${RS1PORT}\")" ${AUTH} ${SSL_CLIENT}
+  ${BINDIR}/mongo ${HOST}:${SHPORT} --quiet --eval "sh.addShard(\"${RS2NAME}/${HOST}:${RS2PORT}\")" ${AUTH} ${SSL_CLIENT}
   echo -e "\n>>> Enable sharding on specific database with: sh.enableSharding(\"<database>\") <<<"
   echo -e ">>> Shard a collection with: sh.shardCollection(\"<database>.<collection>\", { <key> : <direction> } ) <<<\n"
 
