@@ -22,6 +22,8 @@ MONGOD_EXTRA="--bind_ip 0.0.0.0"
 MONGOS_EXTRA="--bind_ip 0.0.0.0"
 CONFIG_EXTRA="--bind_ip 0.0.0.0"
 RS_ARBITER=0
+RS_HIDDEN=0
+RS_DELAYED=0
 CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
 PBMDIR=""
@@ -41,7 +43,7 @@ fi
 if ! getopt --test
 then
     go_out="$(getopt --options=mrsahe:b:o:t:c:p:d:x \
-        --longoptions=single,rSet,sCluster,arbiter,help,storageEngine:,binDir:,host:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,pbmDocker:,auth,ssl \
+        --longoptions=single,rSet,sCluster,arbiter,hidden,delayed,help,storageEngine:,binDir:,host:,mongodExtra:,mongosExtra:,configExtra:,encrypt:,cipherMode:,pbmDir:,pbmDocker:,auth,ssl \
         --name="$(basename "$0")" -- "$@")"
     test $? -eq 0 || exit 1
     eval set -- $go_out
@@ -96,6 +98,14 @@ do
     shift
     STORAGE_ENGINE="$1"
     shift
+    ;;
+  --hidden )
+    shift
+    RS_HIDDEN=1
+    ;;
+  --delayed )
+    shift
+    RS_DELAYED=1
     ;;
   --mongodExtra )
     shift
@@ -169,6 +179,18 @@ if [ ! -z "${PBMDIR}" -a ! -z "${PBM_DOCKER_IMAGE}" ]; then
 fi
 if [ ! -z "${PBM_DOCKER_IMAGE}" -a "${HOST}" == "localhost" ]; then
   echo "WARNING: When using --pbmDocker option it is recommended to set --host to something different than localhost"
+fi
+if [ ${RS_DELAYED} = 1 ] && [ ${RS_ARBITER} = 1 ]; then
+  echo "ERROR: Cannot use arbiter and delayed nodes together"
+  exit 1
+fi
+if [ ${RS_DELAYED} = 1 ] && [ ${RS_HIDDEN} = 1 ]; then
+  echo "ERROR: Cannot use hidden and delayed nodes together."
+  exit 1
+fi
+if [ ${RS_ARBITER} = 1 ] && [ ${RS_HIDDEN} = 1 ]; then
+  echo "ERROR: Cannot use hidden and arbiter nodes together."
+  exit 1
 fi
 
 BASEDIR="$(pwd)"
@@ -482,7 +504,7 @@ start_replicaset(){
   echo "#!/usr/bin/env bash" > ${RSDIR}/init_rs.sh
   echo "source ${NODESDIR}/COMMON" >> ${RSDIR}/init_rs.sh
   echo "echo \"Initializing replica set: ${RSNAME}\"" >> ${RSDIR}/init_rs.sh
-  if [ ${RS_ARBITER} = 0 ]; then
+  if [ ${RS_ARBITER} = 0 ] && [ ${RS_DELAYED} = 0 ] && [ ${RS_HIDDEN} = 0 ]; then
     if [ "${STORAGE_ENGINE}" == "inMemory" -a "${RSNAME}" != "config" ]; then
       echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
     else
@@ -492,7 +514,13 @@ start_replicaset(){
     echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
     echo "sleep 20" >> ${RSDIR}/init_rs.sh
     echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
-    echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
+    if [ ${RS_ARBITER} = 1 ]; then
+      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
+    elif [ ${RS_DELAYED} = 1 ]; then
+      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.add({host: \"${HOST}:$(($RSBASEPORT + 2))\", priority: 0, votes: 0, hidden: true, slaveDelay: 3600})'" >> ${RSDIR}/init_rs.sh
+    elif [ ${RS_HIDDEN} = 1 ]; then
+      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.add({host: \"${HOST}:$(($RSBASEPORT + 2))\",  priority: 0, votes: 0, hidden: true})'" >> ${RSDIR}/init_rs.sh
+    fi
   fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_all.sh
   echo "echo \"=== Stopping replica set: ${RSNAME} ===\"" >> ${RSDIR}/stop_all.sh
