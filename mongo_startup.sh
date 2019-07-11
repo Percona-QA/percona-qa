@@ -92,6 +92,8 @@ do
     echo -e "-d<image>, --pbmDocker=<image>\t starts Percona Backup for MongoDB agents from docker image"
     echo -e "-x, --auth\t\t\t enable authentication"
     echo -e "-h, --help\t\t\t this help"
+    echo -e "--hidden, enable hidden node for replica"
+    echo -e "--delayed, enable delayed node for replica"
     exit 0
     ;;
   -e | --storageEngine )
@@ -180,18 +182,14 @@ fi
 if [ ! -z "${PBM_DOCKER_IMAGE}" -a "${HOST}" == "localhost" ]; then
   echo "WARNING: When using --pbmDocker option it is recommended to set --host to something different than localhost"
 fi
-if [ ${RS_DELAYED} = 1 ] && [ ${RS_ARBITER} = 1 ]; then
-  echo "ERROR: Cannot use arbiter and delayed nodes together"
-  exit 1
-fi
 if [ ${RS_DELAYED} = 1 ] && [ ${RS_HIDDEN} = 1 ]; then
   echo "ERROR: Cannot use hidden and delayed nodes together."
   exit 1
 fi
-if [ ${RS_ARBITER} = 1 ] && [ ${RS_HIDDEN} = 1 ]; then
-  echo "ERROR: Cannot use hidden and arbiter nodes together."
-  exit 1
+if [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
+  RS_ARBITER=1
 fi
+
 
 BASEDIR="$(pwd)"
 if [ -z "${BINDIR}" ]; then
@@ -493,11 +491,16 @@ start_replicaset(){
   local EXTRA="$4"
   mkdir -p "${RSDIR}"
   echo -e "\n=== Starting replica set: ${RSNAME} ==="
-  for i in 1 2 3; do
+  if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ]; then
+    nodes_count=(1 2 3 4)
+  else:
+    nodes_count=(1 2 3)
+  fi
+  for i in "${!nodes_count[@]}"; do
     if [ "${RSNAME}" != "config" ]; then
-      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "${STORAGE_ENGINE}" "${EXTRA}"
+      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}"
     else
-      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "wiredTiger" "${EXTRA}"
+      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}"
     fi
   done
   sleep 5
@@ -515,10 +518,12 @@ start_replicaset(){
     echo "sleep 20" >> ${RSDIR}/init_rs.sh
     echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
     if [ ${RS_ARBITER} = 1 ]; then
-      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 2))\")'" >> ${RSDIR}/init_rs.sh
-    elif [ ${RS_DELAYED} = 1 ]; then
+      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 3))\")'" >> ${RSDIR}/init_rs.sh
+    fi
+    if [ ${RS_DELAYED} = 1 ]; then
       echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.add({host: \"${HOST}:$(($RSBASEPORT + 2))\", priority: 0, votes: 0, hidden: true, slaveDelay: 3600})'" >> ${RSDIR}/init_rs.sh
-    elif [ ${RS_HIDDEN} = 1 ]; then
+    fi
+    if [ ${RS_HIDDEN} = 1 ]; then
       echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.add({host: \"${HOST}:$(($RSBASEPORT + 2))\",  priority: 0, votes: 0, hidden: true})'" >> ${RSDIR}/init_rs.sh
     fi
   fi
@@ -560,9 +565,9 @@ start_replicaset(){
   # for config server replica set this is done in another place after cluster user is added
   if [ ! -z "${PBMDIR}${PBM_DOCKER_IMAGE}" -a "${RSNAME}" != "config" ]; then
     sleep 5
-    for i in 1 2 3; do
+    for i in "${!nodes_count[@]}"; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "mongod"
+        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "mongod"
       fi
     done
 fi
