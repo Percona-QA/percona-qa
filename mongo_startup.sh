@@ -490,12 +490,13 @@ start_replicaset(){
   local RSBASEPORT="$3"
   local EXTRA="$4"
   mkdir -p "${RSDIR}"
-  echo -e "\n=== Starting replica set: ${RSNAME} ==="
   if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ]; then
     nodes_count=(1 2 3 4)
-  else:
+  else
     nodes_count=(1 2 3)
   fi
+  echo -e "\n=== Starting replica set: ${RSNAME} ==="
+#  for i in 1 2 3; do
   for i in "${!nodes_count[@]}"; do
     if [ "${RSNAME}" != "config" ]; then
       start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}"
@@ -686,4 +687,3 @@ if [ "${LAYOUT}" == "sh" ]; then
     done
   fi
 fi
-
