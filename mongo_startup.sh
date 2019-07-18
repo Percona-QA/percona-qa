@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Created by Tomislav Plavcic, Percona LLC
-
 # dynamic
 MONGO_USER="dba"
 MONGO_PASS="test1234"
@@ -496,7 +495,6 @@ start_replicaset(){
     nodes_count=(1 2 3)
   fi
   echo -e "\n=== Starting replica set: ${RSNAME} ==="
-#  for i in 1 2 3; do
   for i in "${!nodes_count[@]}"; do
     if [ "${RSNAME}" != "config" ]; then
       start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}"
@@ -509,23 +507,24 @@ start_replicaset(){
   echo "source ${NODESDIR}/COMMON" >> ${RSDIR}/init_rs.sh
   echo "echo \"Initializing replica set: ${RSNAME}\"" >> ${RSDIR}/init_rs.sh
   if [ ${RS_ARBITER} = 0 ] && [ ${RS_DELAYED} = 0 ] && [ ${RS_HIDDEN} = 0 ]; then
+    MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]"
     if [ "${STORAGE_ENGINE}" == "inMemory" -a "${RSNAME}" != "config" ]; then
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     else
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     fi
   else
-    echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: [{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"}]})'" >> ${RSDIR}/init_rs.sh
-    echo "sleep 20" >> ${RSDIR}/init_rs.sh
-    echo "PRIMARY=\$(${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'db.runCommand(\"ismaster\").primary' | tail -n1)" >> ${RSDIR}/init_rs.sh
-    if [ ${RS_ARBITER} = 1 ]; then
-      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.addArb(\"${HOST}:$(($RSBASEPORT + 3))\")'" >> ${RSDIR}/init_rs.sh
-    fi
-    if [ ${RS_DELAYED} = 1 ]; then
-      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.add({host: \"${HOST}:$(($RSBASEPORT + 2))\", priority: 0, votes: 0, hidden: true, slaveDelay: 3600})'" >> ${RSDIR}/init_rs.sh
-    fi
-    if [ ${RS_HIDDEN} = 1 ]; then
-      echo "${BINDIR}/mongo \${PRIMARY} --quiet \${SSL_CLIENT} --eval 'rs.add({host: \"${HOST}:$(($RSBASEPORT + 2))\",  priority: 0, votes: 0, hidden: true})'" >> ${RSDIR}/init_rs.sh
+    if [ ${RS_ARBITER} = 1 ] || [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
+	if [ ${RS_DELAYED} = 1 ]; then
+	  MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true,\"slaveDelay\":3600},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
+          echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+        elif [ ${RS_HIDDEN} = 1 ]; then
+	  MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true}},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
+          echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+        else
+          MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"arbiterOnly\":true}]"
+          echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+        fi
     fi
   fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_all.sh
@@ -554,7 +553,7 @@ start_replicaset(){
 
   # for config server this is done via mongos
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
-    sleep 10
+    sleep 20
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
     ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${NODESDIR}/COMMON
