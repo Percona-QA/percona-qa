@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Created by Tomislav Plavcic, Percona LLC
+
 # dynamic
 MONGO_USER="dba"
 MONGO_PASS="test1234"
