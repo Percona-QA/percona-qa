@@ -186,8 +186,13 @@ if [ ${RS_DELAYED} = 1 ] && [ ${RS_HIDDEN} = 1 ]; then
   echo "ERROR: Cannot use hidden and delayed nodes together."
   exit 1
 fi
-if [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
-  RS_ARBITER=1
+if [ ${RS_ARBITER} = 1 ] && [ ${RS_HIDDEN} = 1 ]; then
+  echo "ERROR: Cannot use arbiter and hidden nodes together."
+  exit 1
+fi
+if [ ${RS_ARBITER} = 1 ] && [ ${RS_DELAYED} = 1 ]; then
+  echo "ERROR: Cannot use arbiter and delayed nodes together."
+  exit 1
 fi
 
 
@@ -461,14 +466,14 @@ start_mongod(){
   echo "echo \"Starting mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/start.sh
   echo "ENABLE_AUTH=\"\"" >> ${NDIR}/start.sh
   echo "if [ ! -z \"\${AUTH}\" ]; then ENABLE_AUTH=\"--auth\"; fi" >> ${NDIR}/start.sh
-  if [ ! -z ${NTYPE} ]; then
+  if [ ${NTYPE} == "arbiter" ]; then
       echo "${BINDIR}/mongod --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
   else
       echo "${BINDIR}/mongod \${ENABLE_AUTH} --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
   fi
   echo "#!/usr/bin/env bash" > ${NDIR}/cl.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/cl.sh
-  if [ ! -z ${NTYPE} ]; then
+  if [ ${NTYPE} == "arbiter" ]; then
       echo "${BINDIR}/mongo ${HOST}:${PORT} \${SSL_CLIENT} \$@" >> ${NDIR}/cl.sh
   else
       echo "${BINDIR}/mongo ${HOST}:${PORT} \${AUTH} \${SSL_CLIENT} \$@" >> ${NDIR}/cl.sh
@@ -503,25 +508,18 @@ start_replicaset(){
   local RSBASEPORT="$3"
   local EXTRA="$4"
   mkdir -p "${RSDIR}"
-  if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ] || [ ${RS_ARBITER} = 1 ]; then
-    nodes_count=(1 2 3 4)
+  if [ ${RS_ARBITER} = 1 ]; then
+    nodes=(config config arbiter)
   else
-    nodes_count=(1 2 3)
+    nodes=(config config config)
   fi
   echo -e "\n=== Starting replica set: ${RSNAME} ==="
-  for i in "${!nodes_count[@]}"; do
+  for i in "${!nodes[@]}"; do
+    node_number=$(($i + 1))
     if [ "${RSNAME}" != "config" ]; then
-      if [ "${i}" = 3 ]; then
-          start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}" "${RS_ARBITER}"
-      else
-	  start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}"
-      fi
+          start_mongod "${RSDIR}/node${node_number}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}" "${nodes[$i]}"
     else
-      if [ "${i}" = 3 ]; then
-          start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}" "${RS_ARBITER}"
-      else
-	  start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}"
-      fi
+          start_mongod "${RSDIR}/node${node_number}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}" "${nodes[$i]}"
     fi
   done
   sleep 5
@@ -536,14 +534,12 @@ start_replicaset(){
       echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     fi
   else
-    if [ ${RS_ARBITER} = 1 ] || [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
-        if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ]; then
-	      MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
+    if [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
+	  MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true}]"
           echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
-        else
-          MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
+    else
+          MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\",\"arbiterOnly\":true}]"
           echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
-        fi
     fi
   fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_all.sh
