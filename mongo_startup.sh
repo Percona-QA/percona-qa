@@ -428,6 +428,7 @@ start_mongod(){
   local PORT="$3"
   local SE="$4"
   local EXTRA="$5"
+  local NTYPE="$6"
   local RS_OPT=""
   mkdir -p ${NDIR}/db
   if [ ${RS} != "nors" ]; then
@@ -460,14 +461,26 @@ start_mongod(){
   echo "echo \"Starting mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/start.sh
   echo "ENABLE_AUTH=\"\"" >> ${NDIR}/start.sh
   echo "if [ ! -z \"\${AUTH}\" ]; then ENABLE_AUTH=\"--auth\"; fi" >> ${NDIR}/start.sh
-  echo "${BINDIR}/mongod \${ENABLE_AUTH} --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
+  if [ ! -z ${NTYPE} ]; then
+      echo "${BINDIR}/mongod --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
+  else
+      echo "${BINDIR}/mongod \${ENABLE_AUTH} --port ${PORT} --storageEngine ${SE} --dbpath ${NDIR}/db --logpath ${NDIR}/mongod.log --fork ${EXTRA} > /dev/null" >> ${NDIR}/start.sh
+  fi
   echo "#!/usr/bin/env bash" > ${NDIR}/cl.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/cl.sh
-  echo "${BINDIR}/mongo ${HOST}:${PORT} \${AUTH} \${SSL_CLIENT} \$@" >> ${NDIR}/cl.sh
+  if [ ! -z ${NTYPE} ]; then
+      echo "${BINDIR}/mongo ${HOST}:${PORT} \${SSL_CLIENT} \$@" >> ${NDIR}/cl.sh
+  else
+      echo "${BINDIR}/mongo ${HOST}:${PORT} \${AUTH} \${SSL_CLIENT} \$@" >> ${NDIR}/cl.sh
+  fi
   echo "#!/usr/bin/env bash" > ${NDIR}/stop.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/stop.sh
   echo "echo \"Stopping mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/stop.sh
-  echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NDIR}/stop.sh
+  if [ ! -z ${NTYPE} ]; then
+      echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${SSL_CLIENT}" >> ${NDIR}/stop.sh
+  else
+      echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NDIR}/stop.sh
+  fi
   echo "#!/usr/bin/env bash" > ${NDIR}/wipe.sh
   echo "${NDIR}/stop.sh" >> ${NDIR}/wipe.sh
   echo "rm -rf ${NDIR}/db.PREV" >> ${NDIR}/wipe.sh
@@ -490,7 +503,7 @@ start_replicaset(){
   local RSBASEPORT="$3"
   local EXTRA="$4"
   mkdir -p "${RSDIR}"
-  if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ]; then
+  if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ] || [ ${RS_ARBITER} = 1 ]; then
     nodes_count=(1 2 3 4)
   else
     nodes_count=(1 2 3)
@@ -498,9 +511,17 @@ start_replicaset(){
   echo -e "\n=== Starting replica set: ${RSNAME} ==="
   for i in "${!nodes_count[@]}"; do
     if [ "${RSNAME}" != "config" ]; then
-      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}"
+      if [ "${i}" = 3 ]; then
+          start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}" "${RS_ARBITER}"
+      else
+	  start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "${STORAGE_ENGINE}" "${EXTRA}"
+      fi
     else
-      start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}"
+      if [ "${i}" = 3 ]; then
+          start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}" "${RS_ARBITER}"
+      else
+	  start_mongod "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "wiredTiger" "${EXTRA}"
+      fi
     fi
   done
   sleep 5
@@ -516,14 +537,11 @@ start_replicaset(){
     fi
   else
     if [ ${RS_ARBITER} = 1 ] || [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
-	if [ ${RS_DELAYED} = 1 ]; then
-	  MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true,\"slaveDelay\":3600},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
-          echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
-        elif [ ${RS_HIDDEN} = 1 ]; then
-	  MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true}},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
+        if [ ${RS_HIDDEN} = 1 ] || [ ${RS_DELAYED} = 1 ]; then
+	      MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
           echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
         else
-          MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"arbiterOnly\":true}]"
+          MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"},{\"_id\":4, \"host\":\"${HOST}:$(($RSBASEPORT + 3))\", \"arbiterOnly\":true}]"
           echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
         fi
     fi
@@ -555,13 +573,15 @@ start_replicaset(){
   # for config server this is done via mongos
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 20
-    ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
-    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] })"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] })"
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${NODESDIR}/COMMON
     sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${NODESDIR}/COMMON
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${NODESDIR}/COMMON
   fi
-
+  if [ ${RS_DELAYED} = 1 ]; then
+     ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:$(($RSBASEPORT + 1))/?replicaSet=${RSNAME}" --quiet --eval "cfg = rs.conf(); cfg.members[2].slaveDelay = 600; rs.reconfig(cfg);"
+  fi
   # start PBM agents for replica set nodes
   # for config server replica set this is done in another place after cluster user is added
   if [ ! -z "${PBMDIR}${PBM_DOCKER_IMAGE}" -a "${RSNAME}" != "config" ]; then
@@ -573,7 +593,6 @@ start_replicaset(){
     done
 fi
 }
-
 # start PBM coordinator if PBM options specified
 if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
   start_pbm_coordinator
