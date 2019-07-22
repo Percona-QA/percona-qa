@@ -481,7 +481,7 @@ start_mongod(){
   echo "#!/usr/bin/env bash" > ${NDIR}/stop.sh
   echo "source ${NODESDIR}/COMMON" >> ${NDIR}/stop.sh
   echo "echo \"Stopping mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/stop.sh
-  if [ ! -z ${NTYPE} ]; then
+  if [ ${NTYPE} == "arbiter" ]; then
       echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${SSL_CLIENT}" >> ${NDIR}/stop.sh
   else
       echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NDIR}/stop.sh
