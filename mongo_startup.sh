@@ -586,9 +586,9 @@ start_replicaset(){
   # for config server replica set this is done in another place after cluster user is added
   if [ ! -z "${PBMDIR}${PBM_DOCKER_IMAGE}" -a "${RSNAME}" != "config" ]; then
     sleep 5
-    for i in "${!nodes[@]}"; do
+    for i in 1 2 3; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i}))" "mongod"
+        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "mongod"
       fi
     done
 fi
