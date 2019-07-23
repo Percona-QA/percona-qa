@@ -26,7 +26,7 @@ ycsb_load "${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" 100000 100000 4 >/dev/null 2
 sleep 5
 # create backup
 vlog "Doing backup"
-${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
+pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
 # stop the balancer so it doesn't change data on the shards before we record dbhash
 ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand({ balancerStop: 1 });' --quiet
 BACKUP_ID=$(get_backup_id ${TEST_NAME})
@@ -44,7 +44,7 @@ log_status ${TEST_DIR}/sh1_after_cleanup.log sharding
 vlog "Doing restore of: ${BACKUP_ID}"
 # stop the balancer so it doesn't change data on the shards before we record dbhash
 ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.adminCommand({ balancerStop: 1 });' --quiet
-${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
+pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
 vlog "Restore from: ${BACKUP_ID} completed"
 vlog "Log status after restore"
 log_status ${TEST_DIR}/sh1_after_restore.log sharding

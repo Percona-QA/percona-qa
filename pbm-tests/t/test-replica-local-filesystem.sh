@@ -20,7 +20,7 @@ ycsb_load "${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" 100000 100000 4 >/dev/null 2
 sleep 5
 # create backup to local filesystem
 vlog "Doing backup"
-${MONGODB_PATH}/nodes/pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
+pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
 BACKUP_ID=$(get_backup_id "${TEST_NAME}")
 vlog "Backup: ${BACKUP_ID} completed"
 # create db hash and get document counts
@@ -34,7 +34,7 @@ vlog "Log status after cleanup"
 log_status ${TEST_DIR}/rs1_after_cleanup.log replica
 # do restore from local filesystem
 vlog "Doing restore of: ${BACKUP_ID}"
-${MONGODB_PATH}/nodes/pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
+pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
 vlog "Restore from: ${BACKUP_ID} completed"
 vlog "Log status after restore"
 log_status ${TEST_DIR}/rs1_after_restore.log replica
