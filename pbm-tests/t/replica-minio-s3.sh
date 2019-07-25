@@ -6,7 +6,7 @@ TEST_NAME="test-replica-${TEST_STORAGE}"
 TEST_DIR="${TEST_RESULT_DIR}/results/${TEST_NAME}"
 rm -rf ${TEST_DIR} && mkdir -p ${TEST_DIR}
 
-MONGODB_NODES="localhost:27017,localhost:27018,localhost:27019"
+MONGODB_NODES="${HOST}:27017,${HOST}:27018,${HOST}:27019"
 MONGODB_URI="mongodb://${MONGODB_USER}:${MONGODB_PASS}@${MONGODB_NODES}/"
 MONGODB_OPTS="?replicaSet=rs1&authSource=admin"
 

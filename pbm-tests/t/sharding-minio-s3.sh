@@ -6,7 +6,7 @@ TEST_NAME="test-sharding-${TEST_STORAGE}"
 TEST_DIR="${TEST_RESULT_DIR}/results/${TEST_NAME}"
 rm -rf ${TEST_DIR} && mkdir -p ${TEST_DIR}
 
-MONGODB_NODES="localhost:27017"
+MONGODB_NODES="${HOST}:27017"
 MONGODB_URI="mongodb://${MONGODB_USER}:${MONGODB_PASS}@${MONGODB_NODES}/"
 MONGODB_OPTS="?authSource=admin"
 

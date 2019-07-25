@@ -48,7 +48,7 @@ start_sharding_cluster() {
 
 stop_all_mongo() {
   echo "##### ${TEST_NAME}: Stopping all mongodb processes #####"
-  ${MONGODB_PATH}/nodes/stop_all.sh
+  ${MONGODB_PATH}/nodes/stop_mongodb.sh
 }
 
 stop_all_pbm() {

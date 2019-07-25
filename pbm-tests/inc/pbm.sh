@@ -16,12 +16,12 @@ prepare_environment() {
 
 start_replica() {
   vlog "Starting replica set rs1"
-  ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes
+  ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST}
 }
 
 start_sharding_cluster() {
   vlog "Starting sharding cluster"
-  ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes
+  ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST}
 }
 
 stop_all_mongo() {
@@ -40,6 +40,15 @@ pbmctl() {
 
 mongo() {
   ${MONGODB_PATH}/bin/mongo "$@"
+}
+
+mgodatagen() {
+  local FILE="$1"
+  local HOST="$2"
+  local PORT="$3"
+  local USERNAME="$4"
+  local PASSWORD="$5"
+  ${TEST_RESULT_DIR}/tools/mgodatagen --file=${FILE} --host=${HOST} --port=${PORT} --username=${USERNAME} --password=${PASSWORD}
 }
 
 ycsb_load() {
@@ -178,12 +187,8 @@ cleanup() {
   stop_all_pbm
   stop_all_mongo
   sleep 5
-  rm -rf ${MONGODB_PATH}/pbm-test-temp
+  rm -rf ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
   mv ${TEST_RESULT_DIR}/var/w$worker/nodes ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
-  #mkdir ${MONGODB_PATH}/pbm-test-temp
-  #mv ${MONGODB_PATH}/nodes/backup ${MONGODB_PATH}/pbm-test-temp
-  #mv ${MONGODB_PATH}/nodes/pbm-coordinator/workdir ${MONGODB_PATH}/pbm-test-temp
-  #rm -rf ${MONGODB_PATH}/nodes
   if [ "$1" == "sharding" ]; then
     start_sharding_cluster
   else
@@ -195,18 +200,6 @@ cleanup() {
   if [ ${SAVE_STATE_BEFORE_RESTORE} -eq 0 ]; then
     rm -rf ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
   fi
-  ## drop users (dropping a database doesn't drop users/roles!!!)
-  #mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropUser("tomislav_admin", {w: "majority", wtimeout: 5000})' --quiet
-  #mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropUser("tomislav", {w: "majority", wtimeout: 5000})' --quiet
-  #mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropUser("ivana", {w: "majority", wtimeout: 5000})' --quiet
-  ## drop roles (dropping a database doesn't drop users/roles!!!)
-  #mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropRole( "myCustomAdminRole", { w: "majority" } )' --quiet
-  #mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole1", { w: "majority" } )' --quiet
-  #mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropRole( "myCustomRole2", { w: "majority" } )' --quiet
-  ## finally drop database
-  #mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
-  #mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
-  #mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.dropDatabase()' --quiet
 }
 
 prepare_data() {
@@ -215,10 +208,10 @@ prepare_data() {
   mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   if [ "$1" == "sharding" ]; then
-    ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/mgodatagen.json --host=localhost --port=27017 --username=${MONGODB_USER} --password=${MONGODB_PASS}
+    mgodatagen ${TEST_RESULT_DIR}/tools/mgodatagen.json ${HOST} 27017 ${MONGODB_USER} ${MONGODB_PASS}
   else
     PRIMARY=$(get_replica_primary localhost 27017 | cut -d':' -f2)
-    ${TEST_RESULT_DIR}/tools/mgodatagen --file=${TEST_RESULT_DIR}/tools/mgodatagen.json --host=localhost --port=${PRIMARY} --username=${MONGODB_USER} --password=${MONGODB_PASS}
+    mgodatagen ${TEST_RESULT_DIR}/tools/mgodatagen.json ${HOST} ${PRIMARY} ${MONGODB_USER} ${MONGODB_PASS}
   fi
   # create roles
   mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomAdminRole", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [{ role: "root", db: "admin" }]}, { w: "majority" , wtimeout: 5000 })' --quiet
@@ -244,7 +237,7 @@ get_hashes_counts_before() {
   # for sharding dbHash doesn't work on mongos and we need to get hashes from all shards
   if [ "$1" == "sharding" ]; then
     local PRIMARY=""
-    PRIMARY=$(get_replica_primary localhost 27018)
+    PRIMARY=$(get_replica_primary ${HOST} 27018)
     local RS1_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS1_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS1_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
@@ -252,7 +245,7 @@ get_hashes_counts_before() {
     local RS1_YCSB_TEST3_TEMP==$(md5sum -b ${TEST_DIR}/ycsb_test3-rs1-oplog-export-before.csv|cut -d' ' -f1)
     local RS1_DATAGEN_TEMP=$(mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #
-    PRIMARY=$(get_replica_primary localhost 28018)
+    PRIMARY=$(get_replica_primary ${HOST} 28018)
     local RS2_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS2_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS2_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
@@ -282,7 +275,7 @@ get_hashes_counts_after() {
   # for sharding dbHash doesn't work on mongos and we need to get hashes from all shards
   if [ "$1" == "sharding" ]; then
     local PRIMARY=""
-    PRIMARY=$(get_replica_primary localhost 27018)
+    PRIMARY=$(get_replica_primary ${HOST} 27018)
     local RS1_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS1_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS1_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
@@ -290,7 +283,7 @@ get_hashes_counts_after() {
     local RS1_YCSB_TEST3_TEMP==$(md5sum -b ${TEST_DIR}/ycsb_test3-rs1-oplog-export-after.csv|cut -d' ' -f1)
     local RS1_DATAGEN_TEMP=$(mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #
-    PRIMARY=$(get_replica_primary localhost 28018)
+    PRIMARY=$(get_replica_primary ${HOST} 28018)
     local RS2_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS2_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS2_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
