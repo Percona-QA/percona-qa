@@ -16,12 +16,12 @@ prepare_environment() {
 
 start_replica() {
   vlog "Starting replica set rs1"
-  ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST}
+  ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
 }
 
 start_sharding_cluster() {
   vlog "Starting sharding cluster"
-  ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST}
+  ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
 }
 
 stop_all_mongo() {
@@ -77,7 +77,46 @@ ycsb_run() {
 
 get_backup_id() {
   local BACKUP_DESC="$1"
-  ${TEST_RESULT_DIR}/var/w$worker/nodes/pbmctl list backups ${PBMCTL_OPTS} 2>&1|grep "${BACKUP_DESC}" |grep -oE "^.*\.json"
+  pbmctl list backups ${PBMCTL_OPTS} 2>&1|grep "${BACKUP_DESC}" |grep -oE "^.*\.json"
+}
+
+start_pbm_agent() {
+  local AGENT_DIR="$1"
+  vlog "Starting PBM agent in dir ${AGENT_DIR}..."
+  run_cmd ${TEST_RESULT_DIR}/var/w$worker/nodes/${AGENT_DIR}/pbm-agent/start_pbm_agent.sh
+}
+
+stop_pbm_agent() {
+  local AGENT_DIR="$1"
+  vlog "Stopping PBM agent in dir ${AGENT_DIR}..."
+  run_cmd ${TEST_RESULT_DIR}/var/w$worker/nodes/${AGENT_DIR}/pbm-agent/stop_pbm_agent.sh
+}
+
+check_pbm_agent() {
+  local AGENT="$1"
+  local CHECK="$2"
+  vlog "Checking if PBM agent ${AGENT} is ${CHECK}..."
+  local RESULT=$(pbmctl list nodes ${PBMCTL_OPTS} 2>&1|grep -c "${AGENT}")
+  if [ "${CHECK}" == "listed" ]; then
+    if [ ${RESULT} -ne 1 ]; then
+      die "===> Agent ${AGENT} should be listed in list nodes output!"
+    fi
+  elif [ "${CHECK}" == "not_listed" ]; then
+    if [ ${RESULT} -ne 0 ]; then
+      die "===> Agent ${AGENT} should not be listed in list nodes output!"
+    fi
+  else
+    die "===> Unknown command ${CHECK} to check_pbm_agent function!"
+  fi
+}
+
+check_pbm_agent_count() {
+  local COUNT="$1"
+  vlog "Checking that PBM agent count should be: ${COUNT}..."
+  local RESULT=$(pbmctl list nodes ${PBMCTL_OPTS} 2>&1|grep -c "${HOST}:")
+  if [ ${RESULT} -ne ${COUNT} ]; then
+    die "===> Number of PBM agents listed is ${RESULT} but it should be ${COUNT}!"
+  fi
 }
 
 get_replica_primary() {

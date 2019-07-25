@@ -5,12 +5,11 @@ TEST_STORAGE="minio-s3"
 TEST_NAME="test-sharding-${TEST_STORAGE}"
 TEST_DIR="${TEST_RESULT_DIR}/results/${TEST_NAME}"
 rm -rf ${TEST_DIR} && mkdir -p ${TEST_DIR}
-
+EXTRA_STARTUP_OPTS="--pbmStorage=all"
 MONGODB_NODES="${HOST}:27017"
 MONGODB_URI="mongodb://${MONGODB_USER}:${MONGODB_PASS}@${MONGODB_NODES}/"
 MONGODB_OPTS="?authSource=admin"
 
-vlog "Starting test"
 start_sharding_cluster
 prepare_data sharding
 vlog "Enabling sharding collections for ycsb_test1 and ycsb_test2"
@@ -21,8 +20,6 @@ ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'sh.shardCol
 sleep 7
 # run some load in background so that oplog also gets into backup
 ycsb_load "${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" 100000 100000 4 >/dev/null 2>&1 &
-# below is alternative good for debuging
-# ${MONGODB_PATH}/bin/mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'for(i=1; i <= 40000; i++) { db.usertable.insert({ _id: i, field1: "a", field0: "b", field7: "c" })}' --quiet >/dev/null 2>&1 &
 sleep 5
 # create backup
 vlog "Doing backup"
@@ -51,8 +48,3 @@ log_status ${TEST_DIR}/sh1_after_restore.log sharding
 # create db hash and get document counts
 get_hashes_counts_after sharding
 check_after_restore
-stop_all_pbm
-stop_all_mongo
-sleep 5
-# mv ${MONGODB_PATH}/nodes ${TEST_DIR}
-vlog "Finished OK"
