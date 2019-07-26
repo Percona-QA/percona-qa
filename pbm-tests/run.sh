@@ -13,8 +13,6 @@ export PQA_PATH=${SCRIPT_PWD}/../
 . ${PQA_PATH}/pbm-tests/inc/common.sh
 . ${PQA_PATH}/pbm-tests/subunit.sh
 
-cd ${MONGODB_PATH}
-
 ###
 ### PREPARE ENVIRONMENT
 ###
@@ -59,7 +57,6 @@ Usage: $0 [-f] [-g] [-h] [-s suite] [-t test_name] [-d mysql_basedir] [-c build_
             Default is 't'
 -j N        Run tests in N parallel processes
 -T seconds  Test timeout (default is $TEST_TIMEOUT seconds)
--x options  Extra options to pass to xtrabackup
 -r path     Use specified path as root directory for test workers
 EOF
 }
@@ -633,7 +630,7 @@ SUBUNIT_OUT=${TEST_RESULT_DIR}/test_results.subunit
 NWORKERS=
 DEBUG_WORKER=""
 
-while getopts "fgh?:t:s:d:c:j:T:x:i:r:" options; do
+while getopts "fgh?:t:s:d:c:j:T:i:r:" options; do
         case $options in
             f ) force="yes";;
             t )
@@ -669,10 +666,6 @@ recognized for compatibility";;
                     exit -1
                 fi
                 TEST_TIMEOUT="$OPTARG"
-                ;;
-
-            x )
-                XB_EXTRA_MY_CNF_OPTS="$OPTARG"
                 ;;
 
             r )
