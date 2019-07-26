@@ -32,7 +32,7 @@ TEST_TIMEOUT=1800
 export SKIPPED_EXIT_CODE=200
 
 # Default server installation directory (-d option)
-MONGODB_BASEDIR=${MONGODB_BASEDIR:-"$PWD"}
+MONGODB_PATH=${MONGODB_PATH:-"$PWD"}
 
 TEST_BASEDIR="${PQA_PATH}/pbm-tests"
 TEST_VAR_ROOT="${TEST_RESULT_DIR}/var"
@@ -296,13 +296,16 @@ function set_vars()
         SED=sed
     fi
 
-  #  find_program MONGOD mongod $MONGODB_BASEDIR/bin/ $MONGODB_BASEDIR/libexec
-  #  find_program MONGO mongo $MONGODB_BASEDIR/bin
-  #  find_program MONGOS mongos $MONGODB_BASEDIR/bin
+    #find_program MONGOD mongod $MONGODB_PATH/bin
+    #find_program MONGO mongo $MONGODB_PATH/bin
+    #find_program MONGOS mongos $MONGODB_PATH/bin
+    #find_program MONGODUMP mongodump $MONGODB_PATH/bin
+    #find_program MONGOEXPORT mongoexport $MONGODB_PATH/bin
+    #find_program BSONDUMP bsondump $MONGODB_PATH/bin
 
-    PATH="${MONGODB_BASEDIR}/bin:$PATH"
+    PATH="${MONGODB_PATH}/bin:${PBM_PATH}:${YCSB_PATH}/bin:${MGODATAGEN_PATH}:$PATH"
 
-    export TAR SED MONGODB_BASEDIR MONGO MONGOD MONGOS PATH
+    export TAR SED MONGODB_PATH PATH
 }
 
 ###########################################################################
@@ -314,7 +317,6 @@ function kill_servers()
 {
   stop_all_mongo >/dev/null 2>&1 || true
   stop_all_pbm >/dev/null 2>&1 || true
-  rm -rf ${MONGODB_PATH}/nodes
 }
 #function kill_servers()
 #{
@@ -347,7 +349,6 @@ function kill_servers_for_worker()
 {
   stop_all_mongo >/dev/null 2>&1 || true
   stop_all_pbm >/dev/null 2>&1 || true
-  rm -rf ${MONGODB_PATH}/nodes
 }
 #function kill_servers_for_worker()
 #{
@@ -648,7 +649,7 @@ while getopts "fgh?:t:s:d:c:j:T:x:i:r:" options; do
             g ) DEBUG=on;;
             h ) usage; exit;;
             s ) tname="$OPTARG/*.sh";;
-            d ) export MONGODB_BASEDIR="$OPTARG";;
+            d ) export MONGODB_PATH="$OPTARG";;
             c ) echo "Warning: -c does not have any effect and is only \
 recognized for compatibility";;
             j )

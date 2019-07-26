@@ -13,7 +13,7 @@ MONGODB_OPTS="?replicaSet=rs1&authSource=admin"
 start_replica
 prepare_data replica
 # run some load in background so that oplog also gets into backup
-ycsb_load "${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" 100000 100000 4 >/dev/null 2>&1 &
+run_cmd ycsb load mongodb -s -P ${YCSB_PATH}/workloads/workloadb -p recordcount=100000 -p operationcount=100000 -threads 4 -p mongodb.url="${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" -p mongodb.auth="true" >/dev/null 2>&1 &
 sleep 5
 # create backup to local filesystem
 vlog "Doing backup"

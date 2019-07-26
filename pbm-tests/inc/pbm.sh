@@ -2,26 +2,16 @@ set -eu
 
 prepare_environment() {
   mkdir -p ${TEST_RESULT_DIR}
-  if [ ! -d ${TEST_RESULT_DIR}/tools ]; then
-    mkdir -p ${TEST_RESULT_DIR}/tools
-    pushd ${TEST_RESULT_DIR}/tools >/dev/null
-    rm -f mgodatagen_linux_x86_64.tar.gz
-    wget --no-verbose https://github.com/feliixx/mgodatagen/releases/download/0.7.4/mgodatagen_linux_x86_64.tar.gz > /dev/null 2>&1
-    tar xf mgodatagen_linux_x86_64.tar.gz
-    rm -f mgodatagen_linux_x86_64.tar.gz
-    cp ${SCRIPT_PWD}/mgodatagen.json ${TEST_RESULT_DIR}/tools
-    popd >/dev/null
-  fi
 }
 
 start_replica() {
   vlog "Starting replica set rs1"
-  ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
+  ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_PATH}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
 }
 
 start_sharding_cluster() {
   vlog "Starting sharding cluster"
-  ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_BASEDIR}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
+  ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_PATH}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
 }
 
 stop_all_mongo() {
@@ -32,47 +22,6 @@ stop_all_mongo() {
 stop_all_pbm() {
   vlog "Stopping all PBM processes"
   ${TEST_RESULT_DIR}/var/w$worker/nodes/stop_pbm.sh
-}
-
-pbmctl() {
-  ${TEST_RESULT_DIR}/var/w$worker/nodes/pbmctl "$@"
-}
-
-mongo() {
-  ${MONGODB_PATH}/bin/mongo "$@"
-}
-
-mgodatagen() {
-  local FILE="$1"
-  local HOST="$2"
-  local PORT="$3"
-  local USERNAME="$4"
-  local PASSWORD="$5"
-  ${TEST_RESULT_DIR}/tools/mgodatagen --file=${FILE} --host=${HOST} --port=${PORT} --username=${USERNAME} --password=${PASSWORD}
-}
-
-ycsb_load() {
-  local MONGODB_URL="$1"
-  local YCSB_RECORD_COUNT="$2"
-  local YCSB_OPERATIONS_COUNT="$3"
-  local YCSB_THREADS="$4"
-
-  pushd ${YCSB_PATH}
-  vlog "Starting YCSB insert load"
-  ${YCSB_PATH}/bin/ycsb load mongodb -s -P workloads/workloadb -p recordcount=${YCSB_RECORD_COUNT} -p operationcount=${YCSB_OPERATIONS_COUNT} -threads ${YCSB_THREADS} -p mongodb.url="${MONGODB_URL}" -p mongodb.auth="true"
-  popd
-}
-
-ycsb_run() {
-  local MONGODB_URL="$1"
-  local YCSB_RECORD_COUNT="$2"
-  local YCSB_OPERATIONS_COUNT="$3"
-  local YCSB_THREADS="$4"
-
-  pushd ${YCSB_PATH}
-  vlog "Starting YCSB oltp run"
-  ${YCSB_PATH}/bin/ycsb run mongodb -s -P workloads/workloadb -p recordcount=${YCSB_RECORD_COUNT} -p operationcount=${YCSB_OPERATIONS_COUNT} -threads ${YCSB_THREADS} -p mongodb.url="${MONGODB_URL}" -p mongodb.auth="true"
-  popd
 }
 
 get_backup_id() {
@@ -247,10 +196,10 @@ prepare_data() {
   mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.createCollection("usertable")' --quiet
   if [ "$1" == "sharding" ]; then
-    mgodatagen ${TEST_RESULT_DIR}/tools/mgodatagen.json ${HOST} 27017 ${MONGODB_USER} ${MONGODB_PASS}
+    mgodatagen --file=${TEST_BASEDIR}/mgodatagen.json --host=${HOST} --port=27017 --username=${MONGODB_USER} --password=${MONGODB_PASS}
   else
-    PRIMARY=$(get_replica_primary localhost 27017 | cut -d':' -f2)
-    mgodatagen ${TEST_RESULT_DIR}/tools/mgodatagen.json ${HOST} ${PRIMARY} ${MONGODB_USER} ${MONGODB_PASS}
+    PRIMARY=$(get_replica_primary ${HOST} 27017 | cut -d':' -f2)
+    mgodatagen --file=${TEST_BASEDIR}/mgodatagen.json --host=${HOST} --port=${PRIMARY} --username=${MONGODB_USER} --password=${MONGODB_PASS}
   fi
   # create roles
   mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.createRole({ role: "myCustomAdminRole", privileges: [{ resource: { db: "ycsb_test1", collection: "" }, actions: [ "find", "update", "insert", "remove" ] }], roles: [{ role: "root", db: "admin" }]}, { w: "majority" , wtimeout: 5000 })' --quiet
@@ -266,8 +215,8 @@ prepare_data() {
   mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.createIndex({ field1: 1, field2: -1 })' --quiet
   mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.usertable.createIndex({ field3: -1, field4: 1 })' --quiet
   # insert data
-  ycsb_load "${MONGODB_URI}ycsb_test1${MONGODB_OPTS}" 10000 10000 8
-  ycsb_load "${MONGODB_URI}ycsb_test2${MONGODB_OPTS}" 500000 500000 8
+  ycsb load mongodb -s -P ${YCSB_PATH}/workloads/workloadb -p recordcount=10000 -p operationcount=10000 -threads 8 -p mongodb.url="${MONGODB_URI}ycsb_test1${MONGODB_OPTS}" -p mongodb.auth="true"
+  ycsb load mongodb -s -P ${YCSB_PATH}/workloads/workloadb -p recordcount=500000 -p operationcount=500000 -threads 8 -p mongodb.url="${MONGODB_URI}ycsb_test2${MONGODB_OPTS}" -p mongodb.auth="true"
   sleep 10
 }
 

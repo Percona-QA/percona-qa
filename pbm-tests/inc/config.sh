@@ -1,6 +1,7 @@
 export PBM_PATH=${HOME}/lab/pbm/pbm-latest
 export YCSB_PATH=${HOME}/lab/psmdb/ycsb-mongodb-binding-0.15.0
 export MONGODB_PATH=${HOME}/lab/psmdb/bin/percona-server-mongodb-4.0.10-5
+export MGODATAGEN_PATH=${HOME}/lab/psmdb/mgodatagen-0.7.4
 export TEST_RESULT_DIR="${MONGODB_PATH}/pbm-test-run"
 export STORAGE_ENGINE="wiredTiger"
 export HOST="localhost"
