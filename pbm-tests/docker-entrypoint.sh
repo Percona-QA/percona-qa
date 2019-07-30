@@ -27,15 +27,18 @@ export PBM_PATH="/pbm-latest"
 export TEST_RESULT_DIR="/pbm-test-run"
 export PATH=$PATH:/usr/local/go/bin
 
+mkdir -p ${PBM_PATH}
 mkdir -p ~/go/src/github.com/percona
 export GOPATH=~/go
 export PATH=$PATH:${GOPATH}
 pushd ~/go/src/github.com/percona
 git clone ${PBM_REPO} --branch ${PBM_BRANCH}
 pushd percona-backup-mongodb
+echo "PBM_REPO=${PBM_REPO}" | tee ${PBM_PATH}/pbm.properties
+echo "PBM_BRANCH=${PBM_BRANCH}" | tee ${PBM_PATH}/pbm.properties
+echo "PBM_COMMIT=$(git rev-parse --short HEAD)" | tee ${PBM_PATH}/pbm.properties
 make clean && make
 popd && popd
-mkdir -p ${PBM_PATH}
 mv ~/go/src/github.com/percona/percona-backup-mongodb/pbmctl ${PBM_PATH}
 mv ~/go/src/github.com/percona/percona-backup-mongodb/pbm-agent ${PBM_PATH}
 mv ~/go/src/github.com/percona/percona-backup-mongodb/pbm-coordinator ${PBM_PATH}
