@@ -11,7 +11,7 @@ PBM_BRANCH=$2
 TEST_SUITE=$3
 MONGODB_TARBALL=$4
 
-if [[ $string == *"/"* ]]; then
+if [[ "${TEST_SUITE}" == *"/"* ]]; then
   RUN_EXTRA="-t /percona-qa/pbm-tests/${TEST_SUITE}"
 else
   RUN_EXTRA="-s ${TEST_SUITE}"
