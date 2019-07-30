@@ -1,0 +1,75 @@
+pipeline {
+  agent {
+    node {
+      label 'docker'
+    }
+  }
+  parameters {
+    string(name: 'PBM_REPO', defaultValue: 'https://github.com/percona/percona-backup-mongodb.git', description: 'Target repository')
+    string(name: 'PBM_BRANCH', defaultValue: 'development', description: 'Target branch')
+    string(name: 'PBM_TEST_SUITE', defaultValue: 't', description: 'Test suite to run')
+  }
+  environment {
+    PBM_TEST_MINIO_ACCESS_KEY = credentials('PBM_TEST_MINIO_ACCESS_KEY')
+    PBM_TEST_MINIO_SECRET_KEY = credentials('PBM_TEST_MINIO_SECRET_KEY')
+  }
+  stages {
+    stage('Prepare') {
+      steps {
+        sh '''
+          docker logout
+          docker stop pbm-test-minio && docker rm pbm-test-minio || true
+          docker run -d \
+          -p 9000:9000 \
+          -e "MINIO_ACCESS_KEY=${PBM_TEST_MINIO_ACCESS_KEY}" \
+          -e "MINIO_SECRET_KEY=${PBM_TEST_MINIO_SECRET_KEY}" \
+          --name pbm-test-minio minio/minio server /data
+          docker exec pbm-test-minio mkdir -p /data/pbm
+        '''
+      }
+    }
+    stage('Test 3.6') {
+      steps {
+        sh '''
+          docker stop pbm-test && docker rm pbm-test || true
+          docker run --name=pbm-test --network="host" \
+          -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
+          -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
+          perconalab/pbm-test:latest ${PBM_REPO} ${PBM_BRANCH} ${PBM_TEST_SUITE} https://www.percona.com/downloads/percona-server-mongodb-3.6/percona-server-mongodb-3.6.13-3.3/binary/tarball/percona-server-mongodb-3.6.13-3.3-bionic-x86_64.tar.gz
+          docker cp pbm-test:/pbm-test-run/test_results.xml .
+          docker rm pbm-test
+        '''
+      }
+      post {
+        always {
+          junit "**/test_results.xml"
+        }
+      }
+    }
+    stage('Test 4.0') {
+      steps {
+        sh '''
+          docker stop pbm-test && docker rm pbm-test || true
+          docker run --name=pbm-test --network="host" \
+          -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
+          -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
+          perconalab/pbm-test:latest ${PBM_REPO} ${PBM_BRANCH} ${PBM_TEST_SUITE} https://www.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.0.10-5/binary/tarball/percona-server-mongodb-4.0.10-5-bionic-x86_64.tar.gz
+          docker cp pbm-test:/pbm-test-run/test_results.xml .
+          docker rm pbm-test
+        '''
+      }
+      post {
+        always {
+          junit "**/test_results.xml"
+        }
+      }
+    }
+    stage('Cleanup') {
+      steps {
+        sh '''
+          docker stop pbm-test-minio && docker rm pbm-test-minio || true
+        '''
+      }
+    }
+  }
+}

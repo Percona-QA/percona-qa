@@ -46,10 +46,12 @@ void boost..throw_exception<asio..system_error>                                 
 ZN5boost15throw_exceptionIN4asio12system_errorEEEvRKT_                                   ## https://jira.percona.com/browse/PXC-2392
 wsrep_ws_handle.trx_id == .0x7fffffffffffffffLL . 2ULL                                   ## https://jira.percona.com/browse/PXC-2442
 xid_seqno >= trx_sys_cur_xid_seqno                                                       ## https://jira.percona.com/browse/PXC-2390
+.referenced                                                                              ## https://jira.percona.com/browse/PXC-2571
 ## =========== Line number based ===========
 #ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
 ha_innodb.cc line 19502                                                                  ## https://jira.percona.com/browse/PXC-915
 ## =========== Assertion based ===========
+is_fixed_or_outer_ref.this                                                               ## https://jira.percona.com/browse/PXC-2562
 bytes_read == data_written - checksum_length .. bytes_read == data_written - checksum_length - 1 ## https://jira.percona.com/browse/PXC-2131
 galera..ReplicatorSMM..param_set                                                         ## https://jira.percona.com/browse/PXC-2137
 #.provider_resumed                                                               # Fixed ## https://jira.percona.com/browse/PXC-461

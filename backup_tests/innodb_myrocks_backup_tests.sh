@@ -452,6 +452,8 @@ add_drop_index() {
             break
         fi
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE INDEX kc on test.sbtest1 (k,c);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ADD INDEX kc2 (k,c);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc2 on test.sbtest1;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test.sbtest1;" >/dev/null 2>&1
     done ) &
 
@@ -463,7 +465,61 @@ add_drop_index() {
             break
         fi
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE INDEX kc on test_rocksdb.sbtest1 (k,c);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 ADD INDEX kc2 (k,c);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc2 on test_rocksdb.sbtest1;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test_rocksdb.sbtest1;" >/dev/null 2>&1
+    done ) &
+}
+
+rename_index() {
+    # This function renames an index in a table
+
+    echo "Rename an index in the test.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 RENAME INDEX k_1 TO k_2, ALGORITHM=INPLACE, LOCK=NONE;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 RENAME INDEX k_2 TO k_1, ALGORITHM=INPLACE, LOCK=NONE;" >/dev/null 2>&1
+    done ) &
+
+    echo "Rename an index in the test_rocksdb.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 RENAME INDEX k_1 TO k_2, ALGORITHM=INPLACE, LOCK=NONE;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 RENAME INDEX k_2 TO k_1, ALGORITHM=INPLACE, LOCK=NONE;" >/dev/null 2>&1
+    done ) &
+}
+
+add_drop_full_text_index() {
+    # This function adds and drops a full text index in a table
+
+    echo "Add and drop a full text index in the test.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE FULLTEXT INDEX full_index on test.sbtest1 (pad);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX full_index on test.sbtest1;" >/dev/null 2>&1
+    done ) &
+
+    echo "Add and drop a full text index in the test_rocksdb.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE FULLTEXT INDEX full_index on test_rocksdb.sbtest1 (pad);" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX full_index on test_rocksdb.sbtest1;" >/dev/null 2>&1
     done ) &
 }
 
@@ -674,6 +730,26 @@ test_add_drop_index() {
     incremental_backup "--lock-ddl"
 }
 
+test_rename_index() {
+    # This test suite takes an incremental backup when an index is renamed
+
+    echo "Test: Backup and Restore during rename index"
+
+    rename_index
+
+    incremental_backup
+}
+
+test_add_drop_full_text_index() {
+    # This test suite takes an incremental backup when full text index is added and dropped
+
+    echo "Test: Backup and Restore during add and drop full text index"
+
+    add_drop_full_text_index
+
+    incremental_backup "--lock-ddl"
+}
+
 test_add_drop_tablespace() {
     # This test suite takes an incremental backup when a tablespace is added and dropped
 
@@ -857,7 +933,7 @@ test_cloud_inc_backup() {
 
 echo "Running Tests"
 # Various test suites
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
 
 # Encryption test suites
 #for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
