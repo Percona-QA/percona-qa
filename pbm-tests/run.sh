@@ -24,7 +24,7 @@ trap terminate SIGHUP SIGINT SIGQUIT SIGTERM
 result=0
 
 # Default test timeout in seconds
-TEST_TIMEOUT=1800
+TEST_TIMEOUT=900
 
 # Magic exit code to indicate a skipped test
 export SKIPPED_EXIT_CODE=200
