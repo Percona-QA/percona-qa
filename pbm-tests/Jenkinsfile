@@ -32,6 +32,7 @@ pipeline {
       steps {
         sh '''
           docker stop pbm-test && docker rm pbm-test || true
+          docker pull perconalab/pbm-test:latest
           docker run --name=pbm-test --network="host" \
           -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
           -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
@@ -50,6 +51,7 @@ pipeline {
       steps {
         sh '''
           docker stop pbm-test && docker rm pbm-test || true
+          docker pull perconalab/pbm-test:latest
           docker run --name=pbm-test --network="host" \
           -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
           -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
