@@ -10,77 +10,79 @@ pipeline {
     PBM_TEST_MINIO_SECRET_KEY = credentials('PBM_TEST_MINIO_SECRET_KEY')
   }
   stages {
-    parallel {
-      stage('Test PSMDB 3.6') {
-        agent {
-          label 'docker'
-        }
-        steps {
-          sh '''
-            docker logout
-            docker stop pbm-test-minio && docker rm pbm-test-minio || true
-            docker run -d \
-            -p 9000:9000 \
-            -e "MINIO_ACCESS_KEY=${PBM_TEST_MINIO_ACCESS_KEY}" \
-            -e "MINIO_SECRET_KEY=${PBM_TEST_MINIO_SECRET_KEY}" \
-            --name pbm-test-minio minio/minio server /data
-            docker exec pbm-test-minio mkdir -p /data/pbm
-          '''
-          sh '''
-            docker stop pbm-test && docker rm pbm-test || true
-            docker pull perconalab/pbm-test:latest
-            docker run --name=pbm-test --network="host" \
-            -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
-            -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
-            perconalab/pbm-test:latest ${PBM_REPO} ${PBM_BRANCH} ${PBM_TEST_SUITE} https://www.percona.com/downloads/percona-server-mongodb-3.6/percona-server-mongodb-3.6.13-3.3/binary/tarball/percona-server-mongodb-3.6.13-3.3-bionic-x86_64.tar.gz
-            docker cp pbm-test:/pbm-test-run/test_results.xml .
-            docker rm pbm-test
-          '''
-          sh '''
-            docker stop pbm-test-minio && docker rm pbm-test-minio || true
-          '''
-        }
-        post {
-          always {
-            junit "**/test_results.xml"
+    stage('Run tests') {
+      parallel {
+        stage('Test PSMDB 3.6') {
+          agent {
+            label 'docker'
           }
-        }
-      } //End stage Test PSMDB 3.6
-      stage('Test PSMDB 4.0') {
-        agent {
-          label 'docker'
-        }
-        steps {
-          sh '''
-            docker logout
-            docker stop pbm-test-minio && docker rm pbm-test-minio || true
-            docker run -d \
-            -p 9000:9000 \
-            -e "MINIO_ACCESS_KEY=${PBM_TEST_MINIO_ACCESS_KEY}" \
-            -e "MINIO_SECRET_KEY=${PBM_TEST_MINIO_SECRET_KEY}" \
-            --name pbm-test-minio minio/minio server /data
-            docker exec pbm-test-minio mkdir -p /data/pbm
-          '''
-          sh '''
-            docker stop pbm-test && docker rm pbm-test || true
-            docker pull perconalab/pbm-test:latest
-            docker run --name=pbm-test --network="host" \
-            -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
-            -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
-            perconalab/pbm-test:latest ${PBM_REPO} ${PBM_BRANCH} ${PBM_TEST_SUITE} https://www.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.0.10-5/binary/tarball/percona-server-mongodb-4.0.10-5-bionic-x86_64.tar.gz
-            docker cp pbm-test:/pbm-test-run/test_results.xml .
-            docker rm pbm-test
-          '''
-          sh '''
-            docker stop pbm-test-minio && docker rm pbm-test-minio || true
-          '''
-        }
-        post {
-          always {
-            junit "**/test_results.xml"
+          steps {
+            sh '''
+              docker logout
+              docker stop pbm-test-minio && docker rm pbm-test-minio || true
+              docker run -d \
+              -p 9000:9000 \
+              -e "MINIO_ACCESS_KEY=${PBM_TEST_MINIO_ACCESS_KEY}" \
+              -e "MINIO_SECRET_KEY=${PBM_TEST_MINIO_SECRET_KEY}" \
+              --name pbm-test-minio minio/minio server /data
+              docker exec pbm-test-minio mkdir -p /data/pbm
+            '''
+            sh '''
+              docker stop pbm-test && docker rm pbm-test || true
+              docker pull perconalab/pbm-test:latest
+              docker run --name=pbm-test --network="host" \
+              -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
+              -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
+              perconalab/pbm-test:latest ${PBM_REPO} ${PBM_BRANCH} ${PBM_TEST_SUITE} https://www.percona.com/downloads/percona-server-mongodb-3.6/percona-server-mongodb-3.6.13-3.3/binary/tarball/percona-server-mongodb-3.6.13-3.3-bionic-x86_64.tar.gz
+              docker cp pbm-test:/pbm-test-run/test_results.xml .
+              docker rm pbm-test
+            '''
+            sh '''
+              docker stop pbm-test-minio && docker rm pbm-test-minio || true
+            '''
           }
-        }
-      } //End stage Test PSMDB 4.0
-    } //End parallel
+          post {
+            always {
+              junit "**/test_results.xml"
+            }
+          }
+        } //End stage Test PSMDB 3.6
+        stage('Test PSMDB 4.0') {
+          agent {
+            label 'docker'
+          }
+          steps {
+            sh '''
+              docker logout
+              docker stop pbm-test-minio && docker rm pbm-test-minio || true
+              docker run -d \
+              -p 9000:9000 \
+              -e "MINIO_ACCESS_KEY=${PBM_TEST_MINIO_ACCESS_KEY}" \
+              -e "MINIO_SECRET_KEY=${PBM_TEST_MINIO_SECRET_KEY}" \
+              --name pbm-test-minio minio/minio server /data
+              docker exec pbm-test-minio mkdir -p /data/pbm
+            '''
+            sh '''
+              docker stop pbm-test && docker rm pbm-test || true
+              docker pull perconalab/pbm-test:latest
+              docker run --name=pbm-test --network="host" \
+              -e MINIO_ACCESS_KEY_ID=${PBM_TEST_MINIO_ACCESS_KEY} \
+              -e MINIO_SECRET_ACCESS_KEY=${PBM_TEST_MINIO_SECRET_KEY} \
+              perconalab/pbm-test:latest ${PBM_REPO} ${PBM_BRANCH} ${PBM_TEST_SUITE} https://www.percona.com/downloads/percona-server-mongodb-LATEST/percona-server-mongodb-4.0.10-5/binary/tarball/percona-server-mongodb-4.0.10-5-bionic-x86_64.tar.gz
+              docker cp pbm-test:/pbm-test-run/test_results.xml .
+              docker rm pbm-test
+            '''
+            sh '''
+              docker stop pbm-test-minio && docker rm pbm-test-minio || true
+            '''
+          }
+          post {
+            always {
+              junit "**/test_results.xml"
+            }
+          }
+        } //End stage Test PSMDB 4.0
+      } //End parallel
+    } //End stage Run tests
   } //End stages
 } //End pipeline
