@@ -1,5 +1,6 @@
 pipeline {
   agent none
+  options { timestamps () }
   parameters {
     string(name: 'PBM_REPO', defaultValue: 'https://github.com/percona/percona-backup-mongodb.git', description: 'Target repository')
     string(name: 'PBM_BRANCH', defaultValue: 'development', description: 'Target branch')
