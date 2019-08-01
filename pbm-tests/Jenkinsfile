@@ -15,7 +15,7 @@ pipeline {
       parallel {
         stage('Test PSMDB 3.6') {
           agent {
-            label 'docker'
+            label 'docker-32gb'
           }
           steps {
             sh '''
@@ -50,7 +50,7 @@ pipeline {
         } //End stage Test PSMDB 3.6
         stage('Test PSMDB 4.0') {
           agent {
-            label 'docker'
+            label 'docker-32gb'
           }
           steps {
             sh '''
