@@ -125,32 +125,32 @@ fi
 echo -e "    if [ ! -d \$node ]; then" >> ./start_pxc
 echo -e "      \${MID} --datadir=\$node  > \${BUILD}/startup_node\$i.err 2>&1 || exit 1;" >> ./start_pxc
 echo -e "    fi\n" >> ./start_pxc
-echo -e "    touch \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"[mysqld]\" > \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"basedir=\${BUILD}\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"datadir=\$node\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"innodb_file_per_table\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"innodb_autoinc_lock_mode=2\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep-provider=\${BUILD}/lib/libgalera_smm.so\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep_cluster_address=\$WSREP_CLUSTER\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep_node_incoming_address=$ADDR\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep_provider_options=gmcast.listen_addr=tcp://\$LADDR1\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep_sst_method=\$sst_method\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep_node_address=$ADDR\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"core-file\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"log-error=\$node/node\$i.err\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"log-error-verbosity=3\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"socket=\$node/socket.sock\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"log-output=none\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"port=\$RBASE1\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"server-id=1\$i\" >> \$node/my.cnf " >> ./start_pxc
-echo -e "    echo \"wsrep_slave_threads=2\" >> \$node/my.cnf " >> ./start_pxc
+echo -e "    touch ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"[mysqld]\" > ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"basedir=\${BUILD}\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"datadir=\$node\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"innodb_file_per_table\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"innodb_autoinc_lock_mode=2\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep-provider=\${BUILD}/lib/libgalera_smm.so\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_cluster_address=\$WSREP_CLUSTER\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_node_incoming_address=$ADDR\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_provider_options=gmcast.listen_addr=tcp://\$LADDR1\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_sst_method=$sst_method\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_node_address=$ADDR\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"core-file\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"log-error=\$node/node\$i.err\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"log-error-verbosity=3\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"socket=\$node/socket.sock\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"log-output=none\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"port=\$RBASE1\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"server-id=1\$i\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_slave_threads=2\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
 
 if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
-  echo -e "    echo \"wsrep_sst_auth=$SUSER:$SPASS\" >> \$node/my.cnf " >> ./start_pxc
+  echo -e "    echo \"wsrep_sst_auth=$SUSER:$SPASS\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
 fi
 
-echo -e "    \${BUILD}/bin/mysqld --defaults-file=\$node/my.cnf  \\" >> ./start_pxc
+echo -e "    \${BUILD}/bin/mysqld --defaults-file=${BUILD}/node\$i.cnf  \\" >> ./start_pxc
 echo -e "      \$PXC_MYEXTRA > \$node/node\$i.err 2>&1 &\n" >> ./start_pxc
 
 echo -e "    for X in \$(seq 0 \${PXC_START_TIMEOUT}); do" >> ./start_pxc
