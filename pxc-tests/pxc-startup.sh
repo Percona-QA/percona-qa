@@ -3,7 +3,7 @@
 
 BUILD=$(pwd)
 SKIP_RQG_AND_BUILD_EXTRACT=0
-sst_method="rsync"
+sst_method="xtrabackup-v2"
 
 #Format version string (thanks to wsrep_sst_xtrabackup-v2) 
 normalize_version(){
@@ -34,6 +34,7 @@ check_for_version()
   fi
 }
 declare MYSQL_VERSION=$(${BUILD}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+declare XTRABACKUP_VERSION=$(xtrabackup --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
@@ -51,17 +52,13 @@ if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   fi
 fi
 
-if [[ $sst_method == "xtrabackup" ]];then
-  PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
-  if [ ! -z $PXB_BASE ];then
-    export PATH="$BUILD/$PXB_BASE/bin:$PATH"
-  else
-    wget http://jenkins.percona.com/job/percona-xtrabackup-2.4-binary-tarball/label_exp=centos5-64/lastSuccessfulBuild/artifact/*zip*/archive.zip
-    unzip archive.zip
-    tar -xzf archive/TARGET/*.tar.gz
-    PXB_BASE=`ls -1td percona-xtrabackup* | grep -v ".tar" | head -n1`
-    export PATH="$BUILD/$PXB_BASE/bin:$PATH"
+if check_for_version $MYSQL_VERSION "8.0.0" ; then 
+  if ! check_for_version $XTRABACKUP_VERSION "8.0.0" ; then
+	echo "Xtrabackup version($XTRABACKUP_VERSION) do not support current Percona XtraDB cluster version($MYSQL_VERSION). Terminating."
+	exit 1
   fi
+else
+  KEY_RING_CHECK=1
 fi
 
 if [ ! -r $BUILD/mysql-test/mysql-test-run.pl ]; then
@@ -122,32 +119,39 @@ echo -e "    else" >> ./start_pxc
 echo -e "      WSREP_CLUSTER=\"\$WSREP_CLUSTER,gcomm://\$LADDR1\"" >> ./start_pxc
 echo -e "    fi" >> ./start_pxc
 echo -e "    node=\"${BUILD}/node\$i\"" >> ./start_pxc
-
 if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
   echo -e "    mkdir -p \$node" >> ./start_pxc
 fi
-
 echo -e "    if [ ! -d \$node ]; then" >> ./start_pxc
 echo -e "      \${MID} --datadir=\$node  > \${BUILD}/startup_node\$i.err 2>&1 || exit 1;" >> ./start_pxc
 echo -e "    fi\n" >> ./start_pxc
+echo -e "    touch ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"[mysqld]\" > ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"basedir=\${BUILD}\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"datadir=\$node\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"innodb_file_per_table\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"innodb_autoinc_lock_mode=2\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep-provider=\${BUILD}/lib/libgalera_smm.so\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_cluster_address=\$WSREP_CLUSTER\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_node_incoming_address=$ADDR\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_provider_options=gmcast.listen_addr=tcp://\$LADDR1\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_sst_method=$sst_method\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_node_address=$ADDR\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"core-file\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"log-error=\$node/node\$i.err\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"log-error-verbosity=3\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"socket=\$node/socket.sock\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"log-output=none\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"port=\$RBASE1\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"server-id=1\$i\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+echo -e "    echo \"wsrep_slave_threads=2\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
 
-echo -e "    \${BUILD}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \\" >> ./start_pxc
-echo -e "      --basedir=\${BUILD} --datadir=\$node \\" >> ./start_pxc
-echo -e "      --innodb_file_per_table \$PXC_MYEXTRA --innodb_autoinc_lock_mode=2 \\" >> ./start_pxc
-echo -e "      --wsrep-provider=\${BUILD}/lib/libgalera_smm.so \\" >> ./start_pxc
-echo -e "      --wsrep_cluster_address=\$WSREP_CLUSTER \\" >> ./start_pxc
-echo -e "      --wsrep_node_incoming_address=$ADDR \\" >> ./start_pxc
-echo -e "      --wsrep_provider_options=gmcast.listen_addr=tcp://\$LADDR1 \\" >> ./start_pxc
-echo -e "      --wsrep_sst_method=rsync \\" >> ./start_pxc
 if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
-  echo -e "      --wsrep_sst_auth=$SUSER:$SPASS \\" >> ./start_pxc
+  echo -e "    echo \"wsrep_sst_auth=$SUSER:$SPASS\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
 fi
-echo -e "      --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \\" >> ./start_pxc
-echo -e "      --core-file  --sql-mode=no_engine_substitution \\" >> ./start_pxc
-echo -e "      --secure-file-priv= --loose-innodb-status-file=1 \\" >> ./start_pxc
-echo -e "      --log-error=\$node/node\$i.err --log-error-verbosity=3 \\" >> ./start_pxc
-echo -e "      --socket=\$node/socket.sock --log-output=none \\" >> ./start_pxc
-echo -e "      --port=\$RBASE1 --server-id=1\$i --wsrep_slave_threads=2 > \$node/node\$i.err 2>&1 &\n" >> ./start_pxc
+
+echo -e "    \${BUILD}/bin/mysqld --defaults-file=${BUILD}/node\$i.cnf  \\" >> ./start_pxc
+echo -e "      \$PXC_MYEXTRA > \$node/node\$i.err 2>&1 &\n" >> ./start_pxc
 
 echo -e "    for X in \$(seq 0 \${PXC_START_TIMEOUT}); do" >> ./start_pxc
 echo -e "      sleep 1" >> ./start_pxc
