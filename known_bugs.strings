@@ -207,7 +207,8 @@ TEXT=.Item..save_in_field_inner.$                         ## https://bugs.mysql.
 set_field_to_null_with_conversions                        ## https://bugs.mysql.com/bug.php?id=93306 (PS, opt)
 Item_func_can_access_view..val_int                        ## https://bugs.mysql.com/bug.php?id=93525
 #TEXT=.THD..thread_id.$                          ## Fixed ## https://jira.percona.com/browse/PS-5134 (dbg)
-#TEXT=.thd_get_thread_id.$                       ## Fixed ## https://jira.percona.com/browse/PS-5134 (opt)
+TEXT=.thd_get_thread_id.$                                 ## https://jira.percona.com/browse/PS-5134 (opt) Fixed in 5.7/8.0 https://jira.percona.com/browse/PS-5826 <-5/6 (not fixed)
+ZN7handler7ha_openEP5TABLEPKcii                           ## https://jira.percona.com/browse/PS-5826
 TEXT=.compression_dict..create_zip_dict.$                 ## https://jira.percona.com/browse/PS-5148 (dbg)
 #MYSQL_BIN_LOG..open_binlog                                ## https://jira.percona.com/browse/PS-5173   # NEEDS MORE RESEARCH AND/OR TESTCASES
 MYSQL_BIN_LOG..new_file_impl                              ## https://bugs.mysql.com/bug.php?id=93631 (MS 8.0.13)
@@ -851,6 +852,7 @@ multi_range_length > 0                                                          
 #m_status == DA_ERROR                                                          ## Fixed ## https://bugs.mysql.com/bug.php?id=86260 (LP #1689736)
 nr >= 0.0                                                                               ## https://bugs.mysql.com/bug.php?id=74946
 #n < m_size                                                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=74447
+n < m_size                                                                              ## https://bugs.mysql.com/bug.php?id=96510
 #n_linear_rings > 0                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=81411 (Affects only 5.5)
 opt_debug_sync_timeout > 0                                                              ## https://bugs.mysql.com/bug.php?id=74002
 old_value >= 1                                                                          ## https://bugs.mysql.com/bug.php?id=85064
