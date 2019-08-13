@@ -43,8 +43,10 @@ void destroy<Table_trigger_dispatcher>                      ## https://jira.perc
 all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 w->frame_buffer                                          ## https://jira.percona.com/browse/PS-5564
 .is_owned..                                              ## https://bugs.mysql.com/bug.php?id=95923
+mtr0mtr.h.219.m_impl.m_memo.size.. == 0                  ## https://bugs.mysql.com/bug.php?id=96514
 
 ## =========== PS/MS 8.0
+is_classic_protocol                                      ## https://jira.percona.com/browse/PS-5853
 #.innodb_inited .. strlen.s_uuid. .= 0           ## Reproduced only with PS-8.0.13-debug release branch (release-8.0.13-3) ## https://jira.percona.com/browse/PS-5189
 .part_share                                              ## https://jira.percona.com/browse/PS-5210
 addr.page == FIL_NULL .. addr.boffset >= FIL_PAGE_DATA   ## https://jira.percona.com/browse/PS-5073
