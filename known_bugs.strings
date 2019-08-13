@@ -46,6 +46,7 @@ w->frame_buffer                                          ## https://jira.percona
 mtr0mtr.h.219.m_impl.m_memo.size.. == 0                  ## https://bugs.mysql.com/bug.php?id=96514
 
 ## =========== PS/MS 8.0
+Partition_helper..handle_ordered_prev                    ## https://jira.percona.com/browse/PS-5856
 is_classic_protocol                                      ## https://jira.percona.com/browse/PS-5853
 #.innodb_inited .. strlen.s_uuid. .= 0           ## Reproduced only with PS-8.0.13-debug release branch (release-8.0.13-3) ## https://jira.percona.com/browse/PS-5189
 .part_share                                              ## https://jira.percona.com/browse/PS-5210
