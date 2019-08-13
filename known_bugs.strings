@@ -452,6 +452,7 @@ txn->for_recovery                                                      ## https:
 #ha_tokudb..bulk_insert_poll                                  ## Fixed ## https://jira.percona.com/browse/PS-5158 (dup of 4828)
 #mh->m_magic == 1234                                          ## Fixed ## https://jira.percona.com/browse/PS-4943
 send_metadata .. field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. field_types.field_pos. == MYSQL_TYPE_JSON .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY     ## https://jira.percona.com/browse/PS-4945
+ZN18Locked_tables_list20unlock_locked_tablesEP3THD                     ## https://jira.percona.com/browse/PS-5855
 
 ## =========== Special: Various & Permanent Filters ===========
 ha_innodb.cc line 3469                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512)
