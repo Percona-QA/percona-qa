@@ -1,0 +1,9 @@
+Non-edge cases:
+"Stereotypical cluster" 2 shards, 3 nodes per replicaset, authentication enabled
+"Stereotypical non-shard replset" 3 nodes
+
+Edge cases:
+"Standalone-not-really" 1-node replicaset
+"Batshit crazy cluster" 1 node in configsvr replset, one shard with 2 nodes and a dead node, and another shard with 3 normal nodes and a hidden node and an arbiter.
+
+SSL support
