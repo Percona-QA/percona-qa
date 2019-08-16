@@ -721,6 +721,7 @@ row0merge.cc line 2698                                                          
 #row0mysql.cc line 688                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (with oldPS) (dup of 1410410)
 #row0mysql.cc line 689                                                         ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1200502 (dup of 1410410)
 row0mysql.cc line 5134                                                                  ## https://bugs.mysql.com/bug.php?id=95470
+row0mysql.cc line 5136                                                                  ## https://bugs.mysql.com/bug.php?id=95470 (5.7.27)
 table->n_rec_locks == 0                                                                 ## https://bugs.mysql.com/bug.php?id=95470 MS 8.0.16
 #row0quiesce.cc line 683                                                       ## Fixed ## https://bugs.mysql.com/bug.php?id=75398 (Fixed in 5.6.23) Duplicate MS#74346
 #row0sel.c line 3791                                                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88782
