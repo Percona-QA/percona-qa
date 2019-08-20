@@ -13,14 +13,15 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_6_debug_release/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_8_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS060519_8_0_15_5"
-export datadir="$HOME/PS060519_8_0_15_5/data"
+export mysqldir="$HOME/PS_8_0_16_7_ssl"
+export datadir="$HOME/PS_8_0_16_7_ssl/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/minio.cnf"  # Only required for cloud backup tests
+export PATH="$PATH:$xtrabackup_dir"
 
 # Set sysbench variables
 num_tables=10
@@ -120,7 +121,8 @@ process_backup() {
             exit 1
         fi
         echo "Decompressing the backup files at ${EXT_DIR}"
-        ${xtrabackup_dir}/xtrabackup --decompress --target-dir=${EXT_DIR} 2>>${logdir}/decompress_backup_${log_date}_log
+        #${xtrabackup_dir}/xtrabackup --decompress --remove-original --parallel=100 --target-dir=${EXT_DIR} 2>>${logdir}/decompress_backup_${log_date}_log
+        ${xtrabackup_dir}/xtrabackup --decompress --parallel=10 --target-dir=${EXT_DIR} 2>>${logdir}/decompress_backup_${log_date}_log
         if [ "$?" -ne 0 ]; then
             echo "ERR: Decompress of backup failed. Please check the log at: ${logdir}/decompress_backup_${log_date}_log"
             exit 1
@@ -455,6 +457,8 @@ add_drop_index() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ADD INDEX kc2 (k,c);" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc2 on test.sbtest1;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test.sbtest1;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ADD INDEX kc (k,c), ALGORITHM=COPY, LOCK=EXCLUSIVE;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test.sbtest1;" >/dev/null 2>&1
     done ) &
 
     echo "Add and drop an index in the test_rocksdb.sbtest1 table"
@@ -467,6 +471,8 @@ add_drop_index() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE INDEX kc on test_rocksdb.sbtest1 (k,c);" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 ADD INDEX kc2 (k,c);" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc2 on test_rocksdb.sbtest1;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test_rocksdb.sbtest1;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 ADD INDEX kc (k,c), ALGORITHM=COPY, LOCK=EXCLUSIVE;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX kc on test_rocksdb.sbtest1;" >/dev/null 2>&1
     done ) &
 }
@@ -520,6 +526,59 @@ add_drop_full_text_index() {
         fi
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE FULLTEXT INDEX full_index on test_rocksdb.sbtest1 (pad);" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX full_index on test_rocksdb.sbtest1;" >/dev/null 2>&1
+    done ) &
+}
+
+change_index_type() {
+    # This function changes the index type in a table
+
+    echo "Change the index type in the test.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 DROP INDEX k_1, ADD INDEX k_1(k) USING BTREE, ALGORITHM=INSTANT;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 DROP INDEX k_1, ADD INDEX k_1(k) USING HASH, ALGORITHM=INSTANT;" >/dev/null 2>&1
+    done ) &
+
+    echo "Change the index type in the test_rocksdb.sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 DROP INDEX k_1, ADD INDEX k_1(k) USING BTREE, ALGORITHM=INSTANT;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test_rocksdb.sbtest1 DROP INDEX k_1, ADD INDEX k_1(k) USING HASH, ALGORITHM=INSTANT;" >/dev/null 2>&1
+    done ) &
+}
+
+add_drop_spatial_index() {
+    # This function adds data to a spatial table along with add/drop index
+
+    echo "Adding data in spatial table: test.geom"
+    a=1; b=2
+    ( while true; do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "INSERT INTO test.geom VALUES(POINT($a,$b));" >/dev/null 2>&1
+        let a++; let b++
+    done ) &
+
+    echo "Add and drop a spacial index in the test.geom table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE SPATIAL INDEX spa_index on test.geom (g), ALGORITHM=INPLACE, LOCK=SHARED;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX spa_index on test.geom;" >/dev/null 2>&1
     done ) &
 }
 
@@ -676,7 +735,10 @@ create_drop_database() {
         fi
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test1_innodb;" >/dev/null 2>&1
         sysbench /usr/share/sysbench/oltp_insert.lua --tables=1 --table-size=1000 --mysql-db=test1_innodb --mysql-user=root --threads=10 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_innodb.sbtest1 ADD COLUMN b JSON AS('{"k1": "value", "k2": [10, 20]}');" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_innodb.sbtest1 ADD COLUMN b JSON AS('{\"k1\": \"value\", \"k2\": [10, 20]}');" >/dev/null 2>&1
+        # Create a multivalue index - causes crash in PXB
+        #${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE INDEX jindex on test1_innodb.sbtest1( (CAST(b->'$.k2' AS UNSIGNED ARRAY)) );"
+        #${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP INDEX jindex on test1_innodb.sbtest1;"
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test1_innodb.sbtest1 DROP COLUMN b;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP DATABASE test1_innodb;" >/dev/null 2>&1
     done ) &
@@ -748,6 +810,28 @@ test_add_drop_full_text_index() {
     add_drop_full_text_index
 
     incremental_backup "--lock-ddl"
+}
+
+test_change_index_type() {
+    # This test suite takes an incremental backup when an index type is changed
+
+    echo "Test: Backup and Restore during index type change"
+
+    change_index_type
+
+    incremental_backup
+}
+
+test_spatial_data_index() {
+    # This test suite takes an incremental backup when a spatial index is added and dropped"
+
+    echo "Test: Backup and Restore during add and drop spatial index"
+    echo "Creating a table with spatial data"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test.geom (g GEOMETRY NOT NULL SRID 0);"
+
+    add_drop_spatial_index
+
+    incremental_backup
 }
 
 test_add_drop_tablespace() {
@@ -883,14 +967,16 @@ test_inc_backup_encryption() {
     if [ "${encrypt_type}" = "keyring_file" ]; then
         echo "Test: Incremental Backup and Restore for PS with keyring_file encryption"
 
-        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+        #Changed --default-table-encryption=OFF as rocksdb tables can't be created with this option
+        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=OFF --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=OFF --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
     else
         echo "Test: Incremental Backup and Restore for PS with keyring_vault encryption"
-        initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+        #Changed --default-table-encryption=OFF as rocksdb tables can't be created with this option
+        initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=OFF --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
+        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=OFF --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
     fi
 
 }
@@ -921,6 +1007,37 @@ test_encrypt_compress_stream_backup() {
     incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
 }
 
+test_compress_backup() {
+    # This test suite tests incremental backup when it is compressed
+
+    echo "Test: Incremental Backup and Restore with compression"
+
+    initialize_db
+
+    echo "Test: Quicklz compression"
+    incremental_backup "--compress=quicklz" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Quicklz compression with --compress-threads=10 --parallel=10"
+    incremental_backup "--compress=quicklz --compress-threads=10 --parallel=10" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Quicklz compression with --compress-chunk-size=64K --compress-threads=10 --parallel=10"
+    incremental_backup "--compress=quicklz --compress-threads=10 --parallel=10 --compress-chunk-size=64K" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Lz4 compression"
+    incremental_backup "--compress=lz4" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Lz4 compression with --compress-threads=10 --parallel=10"
+    incremental_backup "--compress=lz4 --compress-threads=10 --parallel=10" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Lz4 compression with --compress-chunk-size=4096K --compress-threads=100 --parallel=100"
+    incremental_backup "--compress=lz4 --compress-chunk-size=4096K --compress-threads=100 --parallel=100" "" "" "--log-bin=binlog" "" ""
+}
+
 test_cloud_inc_backup() {
     # This test suite tests incremental backup for cloud
 
@@ -933,16 +1050,16 @@ test_cloud_inc_backup() {
 
 echo "Running Tests"
 # Various test suites
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_run_all_statements; do
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_run_all_statements; do
 
 # Encryption test suites
 #for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
 
-# File encryption, compression and streaming test suites
-#for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup; do
-
 # Cloud backup
-for testsuite in test_cloud_inc_backup; do
+#for testsuite in test_cloud_inc_backup; do
+
+# File encryption, compression and streaming test suites
+for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup test_compress_backup; do
     $testsuite
     echo "###################################################################################"
 done
