@@ -1934,15 +1934,15 @@ start_pxc_main(){
   rm -rf ${WORKD}/my.cnf
   echo "[mysqld]" > ${WORKD}/my.cnf
   echo "basedir=${BASEDIR}" >> ${WORKD}/my.cnf
-  echo "wsrep-debug=ON" >> ${WORKD}/my.cnf
+  echo "wsrep-debug=1" >> ${WORKD}/my.cnf
   echo "innodb_file_per_table" >> ${WORKD}/my.cnf
   echo "innodb_autoinc_lock_mode=2" >> ${WORKD}/my.cnf
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKD}/my.cnf
+    echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
   echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKD}/my.cnf
-  echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
   echo "core-file" >> ${WORKD}/my.cnf
   echo "log-output=none" >> ${WORKD}/my.cnf
   echo "wsrep_slave_threads=2" >> ${WORKD}/my.cnf
