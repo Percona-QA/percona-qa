@@ -32,8 +32,10 @@ mutex .= NULL                                                                   
 OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
+pause_seqno_.is_undefined                                                                ## https://jira.percona.com/browse/PXC-2624
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
 rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459
+rcode <= 0                                                                               ## https://jira.percona.com/browse/PXC-2623
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 state_ == s_joiner .. state_ == s_initialized                                            ## https://jira.percona.com/browse/PXC-2612
 state_ == s_none                                                                         ## https://jira.percona.com/browse/PXC-2615
@@ -49,6 +51,7 @@ thd->wsrep_exec_mode == LOCAL_STATE                                             
 thd->wsrep_safe_to_abort == true                                                         ## https://jira.percona.com/browse/PXC-2385
 void boost..throw_exception<asio..system_error>                                          ## https://jira.percona.com/browse/PXC-2392
 ZN5boost15throw_exceptionIN4asio12system_errorEEEvRKT_                                   ## https://jira.percona.com/browse/PXC-2392
+void std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<char> >.._M_construct ## https://jira.percona.com/browse/PXC-2622
 wsrep_ws_handle.trx_id == .0x7fffffffffffffffLL . 2ULL                                   ## https://jira.percona.com/browse/PXC-2442
 wsrep..transaction..before_rollback                                                      ## https://jira.percona.com/browse/PXC-2620
 xid_seqno >= trx_sys_cur_xid_seqno                                                       ## https://jira.percona.com/browse/PXC-2390
