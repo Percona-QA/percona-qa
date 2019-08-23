@@ -17,6 +17,7 @@ dict_stats_disabled_event .= __null                                             
 error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
 find_sys_var_ex                                                                          ## https://jira.percona.com/browse/PXC-2499
 galera..WriteSetOut..gather                                                              ## https://jira.percona.com/browse/PXC-2616
+gcache..GCache..free_common                                                              ## https://jira.percona.com/browse/PXC-2617
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
 key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
@@ -34,7 +35,6 @@ page_cleaner .= nullptr                                                         
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
 rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
-state.. == s_executing .. state.. == s_committing .. state.. == s_must_abort             ## https://jira.percona.com/browse/PXC-2618
 state_ == s_joiner .. state_ == s_initialized                                            ## https://jira.percona.com/browse/PXC-2612
 state_ == s_none                                                                         ## https://jira.percona.com/browse/PXC-2615
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
@@ -50,8 +50,12 @@ thd->wsrep_safe_to_abort == true                                                
 void boost..throw_exception<asio..system_error>                                          ## https://jira.percona.com/browse/PXC-2392
 ZN5boost15throw_exceptionIN4asio12system_errorEEEvRKT_                                   ## https://jira.percona.com/browse/PXC-2392
 wsrep_ws_handle.trx_id == .0x7fffffffffffffffLL . 2ULL                                   ## https://jira.percona.com/browse/PXC-2442
+wsrep..transaction..before_rollback                                                      ## https://jira.percona.com/browse/PXC-2620
 xid_seqno >= trx_sys_cur_xid_seqno                                                       ## https://jira.percona.com/browse/PXC-2390
 .referenced                                                                              ## https://jira.percona.com/browse/PXC-2571
+TEXT=.active.$                                                                           ## https://jira.percona.com/browse/PXC-2621
+TEXT=.state.$                                                                            ## https://jira.percona.com/browse/PXC-2618
+
 ## =========== Line number based ===========
 #ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
 ha_innodb.cc line 19502                                                                  ## https://jira.percona.com/browse/PXC-915
