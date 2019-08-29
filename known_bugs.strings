@@ -46,6 +46,10 @@ w->frame_buffer                                          ## https://jira.percona
 mtr0mtr.h.219.m_impl.m_memo.size.. == 0                  ## https://bugs.mysql.com/bug.php?id=96514
 mtr0mtr.h.216.m_impl.m_memo.size.. == 0                  ## https://bugs.mysql.com/bug.php?id=96514 (8.0.17)
 error < 10000                                            ## https://bugs.mysql.com/bug.php?id=96639
+.table->const_table                                      ## https://bugs.mysql.com/bug.php?id=96680
+.atomic .. .error .= 2 .. error .= 155                   ## https://bugs.mysql.com/bug.php?id=96681
+m_where_cond->is_bool_func                               ## https://bugs.mysql.com/bug.php?id=96682
+
 
 ## =========== PS/MS 8.0
 Partition_helper..handle_ordered_prev                    ## https://jira.percona.com/browse/PS-5856
@@ -87,6 +91,7 @@ thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespac
 #m_thd->get_transaction                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88255
 #max_length >= length                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88256
 TEXT=.String\.\.ptr.$                                    ## https://bugs.mysql.com/bug.php?id=88257
+TEXT=.String\.\.length$                                  ## https://bugs.mysql.com/bug.php?id=96691
 #trans_table .. .changed .. thd->get_transaction ## Fixed ## https://bugs.mysql.com/bug.php?id=88258
 #TEXT=.mon > 0 \.\. mon < 13.$                  ## Fixed ## https://bugs.mysql.com/bug.php?id=88259
 #trn_ctx->is_active.Transaction_ctx..SESSION    ## Fixed ## https://bugs.mysql.com/bug.php?id=88260
