@@ -49,6 +49,7 @@ error < 10000                                            ## https://bugs.mysql.c
 .table->const_table                                      ## https://bugs.mysql.com/bug.php?id=96680
 .atomic .. .error .= 2 .. error .= 155                   ## https://bugs.mysql.com/bug.php?id=96681
 m_where_cond->is_bool_func                               ## https://bugs.mysql.com/bug.php?id=96682
+trn_ctx->is_active.Transaction_ctx..SESSION              ## https://bugs.mysql.com/bug.php?id=96692
 
 
 ## =========== PS/MS 8.0
@@ -91,7 +92,7 @@ thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., tablespac
 #m_thd->get_transaction                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88255
 #max_length >= length                           ## Fixed ## https://bugs.mysql.com/bug.php?id=88256
 TEXT=.String\.\.ptr.$                                    ## https://bugs.mysql.com/bug.php?id=88257
-TEXT=.String\.\.length$                                  ## https://bugs.mysql.com/bug.php?id=96691
+TEXT=String\.\.length$                                   ## https://bugs.mysql.com/bug.php?id=96691
 #trans_table .. .changed .. thd->get_transaction ## Fixed ## https://bugs.mysql.com/bug.php?id=88258
 #TEXT=.mon > 0 \.\. mon < 13.$                  ## Fixed ## https://bugs.mysql.com/bug.php?id=88259
 #trn_ctx->is_active.Transaction_ctx..SESSION    ## Fixed ## https://bugs.mysql.com/bug.php?id=88260
@@ -127,7 +128,7 @@ error == DB_SUCCESS                                      ## https://bugs.mysql.c
 #TEXT=.null_value.$                             ## Fixed ## https://bugs.mysql.com/bug.php?id=88352
 #m_prebuilt->magic_n == 78540783                ## Fixed ## https://bugs.mysql.com/bug.php?id=88353
 err == DB_SUCCESS .. err == DB_DUPLICATE_KEY             ## https://bugs.mysql.com/bug.php?id=88355
-#TEXT=.table2 == NULL.$                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88356
+#TEXT=.table2 == NULL.$                         ## Fixed ## https://bugs.mysql.com/bug.php?id=88356 https://bugs.mysql.com/bug.php?id=96700 (fixed in 8.0.18)
 purge_sys->n_stop == 0                                   ## https://bugs.mysql.com/bug.php?id=89503
 #Sql_cmd_install_plugin..execute                ## Fixed ## https://bugs.mysql.com/bug.php?id=89504
 #thread_ids.empty                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=91847
