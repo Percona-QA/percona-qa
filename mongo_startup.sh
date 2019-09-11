@@ -6,7 +6,6 @@ MONGO_USER="dba"
 MONGO_PASS="test1234"
 MONGO_BACKUP_USER="backupUser"
 MONGO_BACKUP_PASS="test1234"
-PBM_COORDINATOR_API_TOKEN="abcdefgh"
 VAULT_SERVER="127.0.0.1"
 VAULT_PORT="8200"
 VAULT_TOKEN_FILE="${VAULT_TOKEN_FILE:-${WORKSPACE}/mongodb-test-vault-token}"
@@ -29,7 +28,7 @@ CIPHER_MODE="AES256-CBC"
 ENCRYPTION="no"
 PBMDIR=""
 PBM_DOCKER_IMAGE=""
-PBM_STORAGE="fs"
+PBM_STORAGE="minio"
 AUTH=""
 BACKUP_AUTH=""
 BACKUP_DOCKER_AUTH=""
@@ -91,7 +90,7 @@ do
     echo -e "--ssl\t\t\t\t generate ssl certificates and start nodes with requiring ssl connection"
     echo -e "-t, --encrypt\t\t\t enable data at rest encryption (wiredTiger only)"
     echo -e "-c<mode>, --cipherMode=<mode>\t specify cipher mode for encryption (AES256-CBC or AES256-GCM)"
-    echo -e "-p<path>, --pbmDir=<path>\t enables Percona Backup for MongoDB (starts agents and coordinator from binaries)"
+    echo -e "-p<path>, --pbmDir=<path>\t enables Percona Backup for MongoDB (starts agents from binaries)"
     echo -e "--pbmStorage=fs|minio|all\t which storage will be configured for PBM"
     echo -e "-d<image>, --pbmDocker=<image>\t starts Percona Backup for MongoDB agents from docker image"
     echo -e "-x, --auth\t\t\t enable authentication"
@@ -231,22 +230,19 @@ elif [ ! -x "${BINDIR}/mongo" ]; then
   exit 1
 fi
 
-if [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbmctl" ]; then
+if [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm" ]; then
   echo "${PBMDIR}/pbmctl doesn't exists or is not executable!"
   exit 1
 elif [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm-agent" ]; then
   echo "${PBMDIR}/pbm-agent doesn't exists or is not executable!"
   exit 1
-elif [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm-coordinator" ]; then
-  echo "${PBMDIR}/pbm-coordinator doesn't exists or is not executable!"
-  exit 1
 fi
 
-if [ -d ${WORKDIR} ]; then
+if [ -d "${WORKDIR}" ]; then
   echo "${WORKDIR} already exists"
   exit 1
 else
-  mkdir ${WORKDIR}
+  mkdir "${WORKDIR}"
 fi
 
 echo "MONGO_USER=\"${MONGO_USER}\"" > ${WORKDIR}/COMMON
@@ -264,149 +260,36 @@ if [ ! -z "${AUTH}" ]; then
   CONFIG_EXTRA="${CONFIG_EXTRA} --keyFile ${WORKDIR}/keyFile"
 fi
 
-if [ ${SSL} -eq 1 ]; then
-  mkdir -p "${WORKDIR}/certificates"
-  pushd "${WORKDIR}/certificates"
-  echo -e "\n=== Generating SSL certificates in ${WORKDIR}/certificates ==="
-  # Generate self signed root CA cert
-  openssl req -nodes -x509 -newkey rsa:4096 -keyout ca.key -out ca.crt -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=root/CN=${HOST}/emailAddress=test@percona.com"
-  # Generate server cert to be signed
-  openssl req -nodes -newkey rsa:4096 -keyout server.key -out server.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=server/CN=${HOST}/emailAddress=test@percona.com"
-  # Sign server sert
-  openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt
-  # Create server PEM file
-  cat server.key server.crt > server.pem
-  # Generate client cert to be signed
-  openssl req -nodes -newkey rsa:4096 -keyout client.key -out client.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=client/CN=${HOST}/emailAddress=test@percona.com"
-  # Sign the client cert
-  openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -set_serial 02 -out client.crt
-  # Create client PEM file
-  cat client.key client.crt > client.pem
-  popd
-  SSL_CLIENT="--ssl --sslCAFile ${WORKDIR}/certificates/ca.crt --sslPEMKeyFile ${WORKDIR}/certificates/client.pem"
-  echo "SSL_CLIENT=\"${SSL_CLIENT}\"" >> ${WORKDIR}/COMMON
-fi
-
 VERSION_FULL=$(${BINDIR}/mongod --version|head -n1|sed 's/db version v//')
 VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
-
-start_pbm_coordinator(){
-  mkdir -p "${WORKDIR}/pbm-coordinator/workdir"
-  mkdir -p "${WORKDIR}/backup"
-
-  if [ ! -z "${PBMDIR}" ]; then
-    # Create startup script for the pbm-coordinator
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "echo \"=== Starting pbm-coordinator on port: 10000 ===\"" >> ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "${PBMDIR}/pbm-coordinator --api-token=${PBM_COORDINATOR_API_TOKEN} --debug --work-dir=${WORKDIR}/pbm-coordinator/workdir --log-file=${WORKDIR}/pbm-coordinator/pbm-coordinator.log 1>${WORKDIR}/pbm-coordinator/stdout.log 2>${WORKDIR}/pbm-coordinator/stderr.log &" >> ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    chmod +x ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-
-    # Create stop script for the pbm-coordinator
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh
-    echo "killall pbm-coordinator" >> ${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh
-    chmod +x ${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh
-
-    # create symlinks to PBM binaries
-    ln -s ${PBMDIR}/pbmctl ${WORKDIR}/pbmctl
-    ln -s ${PBMDIR}/pbm-coordinator ${WORKDIR}/pbm-coordinator
-
-    # create startup/stop scripts for the whole PBM setup
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/start_pbm.sh
-    echo "${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh" >> ${WORKDIR}/start_pbm.sh
-    echo "sleep 5" >> ${WORKDIR}/start_pbm.sh
-    chmod +x ${WORKDIR}/start_pbm.sh
-
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/stop_pbm.sh
-    echo "killall pbm-agent pbm-coordinator" >> ${WORKDIR}/stop_pbm.sh
-    chmod +x ${WORKDIR}/stop_pbm.sh
-
-  elif [ ! -z "${PBM_DOCKER_IMAGE}" ]; then
-    # Create startup script for the pbm-coordinator from docker image
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm-coordinator/create_pbm_coordinator.sh
-    echo "echo \"=== Starting pbm-coordinator on port: 10000 from docker image: ${PBM_DOCKER_IMAGE} ===\"" >> ${WORKDIR}/pbm-coordinator/create_pbm_coordinator.sh
-    echo "docker run -d --restart=always --user=$(id -u) --name=pbm-coordinator -e PBM_COORDINATOR_API_TOKEN=${PBM_COORDINATOR_API_TOKEN} -e PBM_COORDINATOR_GRPC_PORT=10000 -e PBM_COORDINATOR_API_PORT=10001 -e PBM_COORDINATOR_WORK_DIR=/data -e PBM_COORDINATOR_LOG_FILE=/logdir/pbm-coordinator.log -p 10000-10001:10000-10001 -v ${WORKDIR}/pbm-coordinator/workdir:/data -v ${WORKDIR}/pbm-coordinator:/logdir ${PBM_DOCKER_IMAGE} pbm-coordinator" >> ${WORKDIR}/pbm-coordinator/create_pbm_coordinator.sh
-    chmod +x ${WORKDIR}/pbm-coordinator/create_pbm_coordinator.sh
-    ${WORKDIR}/pbm-coordinator/create_pbm_coordinator.sh
-
-    # Create start/stop script for the pbm-coordinator
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "docker start pbm-coordinator" >> ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    chmod +x ${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh
-    echo "docker stop pbm-coordinator" >> ${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh
-    chmod +x ${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm-coordinator/destroy_pbm_coordinator.sh
-    echo "docker stop pbm-coordinator" >> ${WORKDIR}/pbm-coordinator/destroy_pbm_coordinator.sh
-    echo "docker rm pbm-coordinator" >> ${WORKDIR}/pbm-coordinator/destroy_pbm_coordinator.sh
-    chmod +x ${WORKDIR}/pbm-coordinator/destroy_pbm_coordinator.sh
-
-    # create startup/stop scripts for the whole PBM setup
-    # these get updated at later point
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/start_pbm.sh
-    echo "${WORKDIR}/pbm-coordinator/start_pbm_coordinator.sh" >> ${WORKDIR}/start_pbm.sh
-    echo "sleep 5" >> ${WORKDIR}/start_pbm.sh
-    chmod +x ${WORKDIR}/start_pbm.sh
-
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/stop_pbm.sh
-    echo "${WORKDIR}/pbm-coordinator/stop_pbm_coordinator.sh" >> ${WORKDIR}/stop_pbm.sh
-    chmod +x ${WORKDIR}/stop_pbm.sh
-
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/destroy_pbm.sh
-    echo "${WORKDIR}/pbm-coordinator/destroy_pbm_coordinator.sh" >> ${WORKDIR}/destroy_pbm.sh
-    chmod +x ${WORKDIR}/destroy_pbm.sh
-
-    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbmctl
-    echo "docker exec -i -e PBMCTL_API_TOKEN=${PBM_COORDINATOR_API_TOKEN} pbm-coordinator pbmctl \$@" >> ${WORKDIR}/pbmctl
-    chmod +x ${WORKDIR}/pbmctl
-  fi
-}
 
 start_pbm_agent(){
   local NDIR="$1"
   local RS="$2"
   local NPORT="$3"
-  local ITYPE="$4"
 
   local MAUTH=""
-  local MREPLICASET=""
+  local URI_SUFFIX=""
   if [ ! -z "${AUTH}" ]; then
-    MAUTH="--mongodb-username=\${MONGO_BACKUP_USER} --mongodb-password=\${MONGO_BACKUP_PASS}"
+    MAUTH="${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@"
+    URI_SUFFIX="?authSource=admin"
   fi
   if [ "${RS}" != "nors" ]; then
-    MREPLICASET="--mongodb-replicaset=${RS}"
+    if [ ! -z ${MAUTH} ]; then
+      URI_SUFFIX="${URI_SUFFIX}&replicaSet=${RS}"
+    else
+      URI_SUFFIX="?replicaSet=${RS}"
+    fi
   fi
 
   mkdir -p "${NDIR}/pbm-agent"
-  # Create storages config for node agent
-  if [ "${PBM_STORAGE}" == "fs" -o "${PBM_STORAGE}" == "all" ]; then
-    echo "local-filesystem:" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "  type: filesystem" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "  filesystem:" >> ${NDIR}/pbm-agent/storage-config.yaml
-    if [ ! -z "${PBMDIR}" ]; then
-      echo "    path: ${WORKDIR}/backup" >> ${NDIR}/pbm-agent/storage-config.yaml
-    elif [ ! -z "${PBM_DOCKER_IMAGE}" ]; then
-      echo "    path: /data" >> ${NDIR}/pbm-agent/storage-config.yaml
-    fi
-  fi
-  if [ "${PBM_STORAGE}" == "minio" -o "${PBM_STORAGE}" == "all" ]; then
-    echo "minio-s3:" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "  type: s3" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "  s3:" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "    region: us-west" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "    endpointUrl: http://${HOST}:9000" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "    bucket: pbm" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "    credentials:" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${NDIR}/pbm-agent/storage-config.yaml
-    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${NDIR}/pbm-agent/storage-config.yaml
-  fi
 
   if [ ! -z "${PBMDIR}" ]; then
     # Create startup script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${WORKDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "echo \"=== Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} ===\"" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --debug --mongodb-host=${HOST} --mongodb-port=${NPORT} --storage-config=${NDIR}/pbm-agent/storage-config.yaml --server-address=127.0.0.1:10000 --log-file=${NDIR}/pbm-agent/pbm-agent.log --pid-file=${NDIR}/pbm-agent/pbm-agent.pid ${MREPLICASET} ${MAUTH} 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "echo '=== Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} ==='" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --mongodb-uri='mongodb://${MAUTH}${HOST}:${NPORT}/${URI_SUFFIX}' 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${WORKDIR}/start_pbm.sh
     ${NDIR}/pbm-agent/start_pbm_agent.sh
@@ -596,7 +479,7 @@ start_replicaset(){
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 20
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] })"
-    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] })"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"root\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] })"
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${WORKDIR}/COMMON
     sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${WORKDIR}/COMMON
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${WORKDIR}/COMMON
@@ -610,18 +493,91 @@ start_replicaset(){
     sleep 5
     for i in 1 2 3; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))" "mongod"
+        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))"
       fi
     done
 fi
 }
-# start PBM coordinator if PBM options specified
-if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
-  start_pbm_coordinator
+
+# General prepare
+if [ ${SSL} -eq 1 ]; then
+  mkdir -p "${WORKDIR}/certificates"
+  pushd "${WORKDIR}/certificates"
+  echo -e "\n=== Generating SSL certificates in ${WORKDIR}/certificates ==="
+  # Generate self signed root CA cert
+  openssl req -nodes -x509 -newkey rsa:4096 -keyout ca.key -out ca.crt -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=root/CN=${HOST}/emailAddress=test@percona.com"
+  # Generate server cert to be signed
+  openssl req -nodes -newkey rsa:4096 -keyout server.key -out server.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=server/CN=${HOST}/emailAddress=test@percona.com"
+  # Sign server sert
+  openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out server.crt
+  # Create server PEM file
+  cat server.key server.crt > server.pem
+  # Generate client cert to be signed
+  openssl req -nodes -newkey rsa:4096 -keyout client.key -out client.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=client/CN=${HOST}/emailAddress=test@percona.com"
+  # Sign the client cert
+  openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -set_serial 02 -out client.crt
+  # Create client PEM file
+  cat client.key client.crt > client.pem
+  popd
+  SSL_CLIENT="--ssl --sslCAFile ${WORKDIR}/certificates/ca.crt --sslPEMKeyFile ${WORKDIR}/certificates/client.pem"
+  echo "SSL_CLIENT=\"${SSL_CLIENT}\"" >> ${WORKDIR}/COMMON
 fi
 
+# Prepare if running with PBM
+if [ ! -z "${PBMDIR}" ]; then
+  mkdir -p "${WORKDIR}/backup"
+  # create symlinks to PBM binaries
+  ln -s ${PBMDIR}/pbm ${WORKDIR}/pbm
+  ln -s ${PBMDIR}/pbm-agent ${WORKDIR}/pbm-agent
+
+  # create startup/stop scripts for the whole PBM setup
+  echo "#!/usr/bin/env bash" > ${WORKDIR}/start_pbm.sh
+  chmod +x ${WORKDIR}/start_pbm.sh
+
+  echo "#!/usr/bin/env bash" > ${WORKDIR}/stop_pbm.sh
+  echo "killall pbm pbm-agent" >> ${WORKDIR}/stop_pbm.sh
+  chmod +x ${WORKDIR}/stop_pbm.sh
+elif [ ! -z "${PBM_DOCKER_IMAGE}" ]; then
+  # create startup/stop scripts for the whole PBM setup
+  # these get updated at later point
+  echo "#!/usr/bin/env bash" > ${WORKDIR}/start_pbm.sh
+  chmod +x ${WORKDIR}/start_pbm.sh
+
+  echo "#!/usr/bin/env bash" > ${WORKDIR}/stop_pbm.sh
+  chmod +x ${WORKDIR}/stop_pbm.sh
+
+  echo "#!/usr/bin/env bash" > ${WORKDIR}/destroy_pbm.sh
+  chmod +x ${WORKDIR}/destroy_pbm.sh
+
+  echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm
+  echo "docker exec -i -e PBM_API_TOKEN=${PBM_API_TOKEN} pbm-control pbm \$@" >> ${WORKDIR}/pbm
+  chmod +x ${WORKDIR}/pbm
+fi
+# Create storages config for node agent
+if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
+  if [ "${PBM_STORAGE}" == "fs" -o "${PBM_STORAGE}" == "all" ]; then
+    echo "type: filesystem" >> ${WORKDIR}/storage-config.yaml
+    echo "filesystem:" >> ${WORKDIR}/storage-config.yaml
+    if [ ! -z "${PBMDIR}" ]; then
+      echo "  path: ${WORKDIR}/backup" >> ${WORKDIR}/storage-config.yaml
+    elif [ ! -z "${PBM_DOCKER_IMAGE}" ]; then
+      echo "  path: /data" >> ${WORKDIR}/storage-config.yaml
+    fi
+  fi
+  if [ "${PBM_STORAGE}" == "minio" -o "${PBM_STORAGE}" == "all" ]; then
+    echo "type: s3" >> ${WORKDIR}/storage-config.yaml
+    echo "s3:" >> ${WORKDIR}/storage-config.yaml
+    echo "  region: us-west" >> ${WORKDIR}/storage-config.yaml
+    echo "  endpointUrl: http://${HOST}:9000" >> ${WORKDIR}/storage-config.yaml
+    echo "  bucket: pbm" >> ${WORKDIR}/storage-config.yaml
+    echo "  credentials:" >> ${WORKDIR}/storage-config.yaml
+    echo "    access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${WORKDIR}/storage-config.yaml
+    echo "    secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${WORKDIR}/storage-config.yaml
+  fi
+fi
+
+# Run different configurations
 if [ "${LAYOUT}" == "single" ]; then
-  mkdir -p "${WORKDIR}"
   start_mongod "${WORKDIR}" "nors" "27017" "${STORAGE_ENGINE}" "${MONGOD_EXTRA}"
 
   if [[ "${MONGOD_EXTRA}" == *"replSet"* ]]; then
@@ -639,8 +595,6 @@ if [ "${LAYOUT}" == "single" ]; then
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
-  mkdir -p "${WORKDIR}"
-  # start replica set
   start_replicaset "${WORKDIR}" "rs1" "27017" "${MONGOD_EXTRA}"
 fi
 
@@ -719,11 +673,11 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo -e ">>> Shard a collection with: sh.shardCollection(\"<database>.<collection>\", { <key> : <direction> } ) <<<\n"
 
   # start a PBM agent on the config replica set node (needed here because auth is enabled through mongos)
-  #start_pbm_agent "${WORKDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}" "mongod"
+  #start_pbm_agent "${WORKDIR}/${CFGRSNAME}" "${CFGRSNAME}" "${CFGPORT}"
   if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
     for i in 1 2 3; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-        start_pbm_agent "${WORKDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))" "mongod"
+        start_pbm_agent "${WORKDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))"
       fi
     done
   fi
