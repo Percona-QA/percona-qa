@@ -499,6 +499,20 @@ start_replicaset(){
 fi
 }
 
+set_pbm_store(){
+  if [ ! -z "${PBMDIR}" ]; then
+    echo "=== Setting PBM store config... ==="
+    if [ "${LAYOUT}" == "single" ]; then
+      ${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017/?authSource=admin&replicaSet=rs1"
+    elif [ "${LAYOUT}" == "rs" ]; then
+      ${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017,${HOST}:27018,${HOST}:27019/?authSource=admin&replicaSet=rs1"
+    elif [ "${LAYOUT}" == "sh" ]; then
+      ${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_USER}:${MONGO_PASS}@${HOST}:27017/?authSource=admin"
+      #${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017/?authSource=admin"
+    fi
+  fi
+}
+
 # General prepare
 if [ ${SSL} -eq 1 ]; then
   mkdir -p "${WORKDIR}/certificates"
@@ -592,10 +606,12 @@ if [ "${LAYOUT}" == "single" ]; then
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${WORKDIR}/COMMON
     ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
+  set_pbm_store
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
   start_replicaset "${WORKDIR}" "rs1" "27017" "${MONGOD_EXTRA}"
+  set_pbm_store
 fi
 
 if [ "${LAYOUT}" == "sh" ]; then
@@ -681,4 +697,5 @@ if [ "${LAYOUT}" == "sh" ]; then
       fi
     done
   fi
+  set_pbm_store
 fi
