@@ -15,8 +15,8 @@
 # Set script variables
 export xtrabackup_dir="$HOME/pxb_8_0_8_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS_8_0_16_7_ssl"
-export datadir="$HOME/PS_8_0_16_7_ssl/data"
+export mysqldir="$HOME/PS110919_8_0_16_7_debug"
+export datadir="$HOME/PS110919_8_0_16_7_debug/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
@@ -30,6 +30,9 @@ table_size=1000
 # Set stream and encryption key
 backup_stream="backup.xbstream"
 encrypt_key="mHU3Zs5sRcSB7zBAJP1BInPP5lgShKly"
+
+# Set user for backup
+backup_user="root"
 
 initialize_db() {
     # This function initializes and starts mysql database
@@ -132,6 +135,23 @@ process_backup() {
     fi
 }
 
+restart_db() {
+    # This function restarts the mysql database
+    local MYSQLD_OPTIONS="$1"
+
+    ${mysqldir}/bin/mysqladmin -uroot -S${mysqldir}/socket.sock shutdown
+    sleep 2
+    pushd $mysqldir >/dev/null 2>&1
+    ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1
+    ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Database could not be started in location ${mysqldir}. Database logs: ${mysqldir}/log"
+        popd >/dev/null 2>&1
+        exit 1
+    fi
+    popd >/dev/null 2>&1
+}
+
 incremental_backup() {
     # This function takes the incremental backup
     local BACKUP_PARAMS="$1"
@@ -154,17 +174,17 @@ incremental_backup() {
     case "${BACKUP_TYPE}" in
         'cloud')
             echo "Taking full backup and uploading it"
-            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
             ;;
 
         'stream')
             echo "Taking full backup and creating a stream file"
-            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
             ;;
 
         *)
             echo "Taking full backup"
-            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -198,17 +218,17 @@ incremental_backup() {
     case "${BACKUP_TYPE}" in
         'cloud')
             echo "Taking incremental backup and uploading it"
-            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
             ;;
 
         'stream')
             echo "Taking incremental backup and creating a stream file"
-            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
             ;;
 
         *)
             echo "Taking incremental backup"
-            ${xtrabackup_dir}/xtrabackup --user=root --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -251,18 +271,8 @@ incremental_backup() {
     fi
 
     echo "Restart mysql server to stop all running queries"
-    ${mysqldir}/bin/mysqladmin -uroot -S${mysqldir}/socket.sock shutdown
-    sleep 2
-    pushd $mysqldir >/dev/null 2>&1
-    ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1
-    ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: Database could not be started in location ${mysqldir}. Database logs: ${mysqldir}/log"
-        popd >/dev/null 2>&1
-        exit 1
-    fi
+    restart_db "${MYSQLD_OPTIONS}"
     echo "The mysql server was restarted successfully"
-    popd >/dev/null 2>&1
 
     echo "Collecting current data of innodb and myrocks tables"
     # Get record count for each table in databases test and test_rocksdb
@@ -297,6 +307,9 @@ incremental_backup() {
         echo "Restore of full backup was successful. Logs available at: ${logdir}/res_backup_${log_date}_log"
     fi
 
+    # Copy server certificates from original data dir
+    cp -pr ${mysqldir}/data_orig_$(date +"%d_%m_%Y")/*.pem ${mysqldir}/data/
+
     echo "Starting mysql server"
     pushd $mysqldir >/dev/null 2>&1
     ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
@@ -306,8 +319,8 @@ incremental_backup() {
         popd >/dev/null 2>&1
         exit 1
     fi
-    echo "The mysql server was started successfully"
     popd >/dev/null 2>&1
+    echo "The mysql server was started successfully"
 
     echo "Check xtrabackup for binlog position"
     xb_binlog_file=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $1}')
@@ -1047,6 +1060,43 @@ test_cloud_inc_backup() {
     incremental_backup "--parallel=10" "" "" "" "cloud" "--defaults-file=${cloud_config}"
 }
 
+test_ssl_backup() {
+    # This test suite tests incremental backup with ssl options
+    backup_user="backup"
+
+    echo "Test: Incremental Backup and Restore with ssl options"
+
+    initialize_db
+
+    echo "Test: Backup with SSL certificates and keys"
+
+    # Restart server with ssl options
+    restart_db "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem"
+
+    # Add user with ssl
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE USER 'backup'@'localhost' REQUIRE SSL;"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "GRANT ALL ON *.* TO 'backup'@'localhost';"
+
+    incremental_backup "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem" "" "" "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Backup with SSL option --ssl-mode"
+    mysql_port=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "select @@port;")
+
+    incremental_backup "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-mode=REQUIRED --host=127.0.0.1 -P ${mysql_port}" "" "" "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup with SSL option --ssl-cipher and --ssl-fips-mode"
+    # Note: PS should be compiled with OpenSSL lib to use with --ssl-fips-mode
+    # Restart server with ssl-cipher and ssl-fips-mode options
+    restart_db "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=DHE-RSA-AES128-GCM-SHA256:AES128-SHA --ssl-fips-mode=ON"
+
+    incremental_backup "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=AES128-SHA --ssl-fips-mode=ON --host=127.0.0.1 -P ${mysql_port}" "" "" "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=DHE-RSA-AES128-GCM-SHA256:AES128-SHA --ssl-fips-mode=ON" "" ""
+
+    backup_user="root"
+}
+
 
 echo "Running Tests"
 # Various test suites
@@ -1055,11 +1105,14 @@ echo "Running Tests"
 # Encryption test suites
 #for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
 
-# Cloud backup
+# Cloud backup test suite
 #for testsuite in test_cloud_inc_backup; do
 
 # File encryption, compression and streaming test suites
-for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup test_compress_backup; do
+#for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup test_compress_backup; do
+
+# SSL options test suite
+for testsuite in test_ssl_backup; do
     $testsuite
     echo "###################################################################################"
 done
