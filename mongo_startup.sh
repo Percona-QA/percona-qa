@@ -271,7 +271,8 @@ start_pbm_agent(){
   local MAUTH=""
   local URI_SUFFIX=""
   if [ ! -z "${AUTH}" ]; then
-    MAUTH="${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@"
+    MAUTH="${MONGO_USER}:${MONGO_PASS}@"
+    #MAUTH="${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@"
     URI_SUFFIX="?authSource=admin"
   fi
   if [ "${RS}" != "nors" ]; then
