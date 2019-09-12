@@ -503,13 +503,18 @@ fi
 set_pbm_store(){
   if [ ! -z "${PBMDIR}" ]; then
     echo "=== Setting PBM store config... ==="
+    echo "Please run nodes/pbm_store_set.sh manually after editing nodes/storage-config.yaml"
+    echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm_store_set.sh
+    chmod +x ${WORKDIR}/pbm_store_set.sh
     if [ "${LAYOUT}" == "single" ]; then
-      ${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017/?authSource=admin&replicaSet=rs1"
+      echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${MONGO_USER}:${MONGO_PASS}@${HOST}:27017/?authSource=admin&replicaSet=rs1'" >> ${WORKDIR}/pbm_store_set.sh
+      #echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017/?authSource=admin&replicaSet=rs1'" >> ${WORKDIR}/pbm_store_set.sh
     elif [ "${LAYOUT}" == "rs" ]; then
-      ${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017,${HOST}:27018,${HOST}:27019/?authSource=admin&replicaSet=rs1"
+      echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${MONGO_USER}:${MONGO_PASS}@${HOST}:27017,${HOST}:27018,${HOST}:27019/?authSource=admin&replicaSet=rs1'" >> ${WORKDIR}/pbm_store_set.sh
+      #echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017,${HOST}:27018,${HOST}:27019/?authSource=admin&replicaSet=rs1'" >> ${WORKDIR}/pbm_store_set.sh
     elif [ "${LAYOUT}" == "sh" ]; then
-      ${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_USER}:${MONGO_PASS}@${HOST}:27017/?authSource=admin"
-      #${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri="mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017/?authSource=admin"
+      echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${MONGO_USER}:${MONGO_PASS}@${HOST}:27017/?authSource=admin'" >> ${WORKDIR}/pbm_store_set.sh
+      # echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@${HOST}:27017/?authSource=admin'" >> ${WORKDIR}/pbm_store_set.sh
     fi
   fi
 }
