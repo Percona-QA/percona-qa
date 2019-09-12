@@ -97,8 +97,8 @@ if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; t
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "pxb" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.3"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.0"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then VERSION="4.0"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.2"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then VERSION="4.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "postgresql" ]]; then
   VERSION=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-.*-x64-.*.tar.gz"|head -n1|grep -oP "[0-9]+\.[0-9]+(\.[0-9]+)?")
 fi
@@ -341,10 +341,19 @@ get_link(){
     else
       BASE_LINK="http://downloads.mongodb.org/src/"
     fi
+    if [[ "${VERSION}" == "4.2" ]]; then
+      if [[ "${DISTRIBUTION}" == "ubuntu" ]]; then
+        DISTRIBUTION="-ubuntu1804"
+      else
+        DISTRIBUTION="-${DISTRIBUTION}";
+      fi
+    else
+      DISTRIBUTION=""
+    fi
 
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        TARBALL=$(wget -qO- https://www.mongodb.org/dl/linux/x86_64 | grep -o -P "mongodb-linux-x86_64-${VERSION}\..{1,6}\.tgz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
+        TARBALL=$(wget -qO- https://www.mongodb.org/dl/linux/x86_64 | grep -o -P "mongodb-linux-x86_64${DISTRIBUTION}-${VERSION}\..{1,6}\.tgz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       else
         TARBALL=$(wget -qO- https://www.mongodb.org/dl/src | grep -o -P "mongodb-src-r${VERSION}\..{1,6}\.tar.gz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
