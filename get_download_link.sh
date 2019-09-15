@@ -248,10 +248,10 @@ get_link(){
   elif [[ "${PRODUCT}" = "pt" ]]; then
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        LINK=$(wget -qO- https://www.percona.com/downloads/percona-toolkit/LATEST/binary/|grep -oE "percona-toolkit-[0-9]+\.[0-9]+\.[0-9]+_${BUILD_ARCH}\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/percona-toolkit/LATEST/binary/|grep -oE "percona-toolkit-[0-9]+\.[0-9]+_${BUILD_ARCH}\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-toolkit/LATEST/binary/tarball/${LINK}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/percona-toolkit/LATEST/source/|grep -oE "percona-toolkit-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/percona-toolkit/LATEST/source/|grep -oE "percona-toolkit-[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-toolkit/LATEST/source/tarball/${LINK}"; fi
       fi
     else
