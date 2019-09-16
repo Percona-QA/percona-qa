@@ -231,7 +231,7 @@ elif [ ! -x "${BINDIR}/mongo" ]; then
 fi
 
 if [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm" ]; then
-  echo "${PBMDIR}/pbmctl doesn't exists or is not executable!"
+  echo "${PBMDIR}/pbm doesn't exists or is not executable!"
   exit 1
 elif [ ! -z "${PBMDIR}" -a ! -x "${PBMDIR}/pbm-agent" ]; then
   echo "${PBMDIR}/pbm-agent doesn't exists or is not executable!"
