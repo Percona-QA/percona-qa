@@ -274,13 +274,13 @@ start_pbm_agent(){
     MAUTH="${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@"
     URI_SUFFIX="?authSource=admin"
   fi
-  if [ "${RS}" != "nors" ]; then
-    if [ ! -z ${MAUTH} ]; then
-      URI_SUFFIX="${URI_SUFFIX}&replicaSet=${RS}"
-    else
-      URI_SUFFIX="?replicaSet=${RS}"
-    fi
-  fi
+  #if [ "${RS}" != "nors" ]; then
+  #  if [ ! -z ${MAUTH} ]; then
+  #    URI_SUFFIX="${URI_SUFFIX}&replicaSet=${RS}"
+  #  else
+  #    URI_SUFFIX="?replicaSet=${RS}"
+  #  fi
+  #fi
 
   mkdir -p "${NDIR}/pbm-agent"
 
