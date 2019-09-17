@@ -479,7 +479,7 @@ start_replicaset(){
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 20
     ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] })"
-    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] })"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] })"
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${WORKDIR}/COMMON
     sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${WORKDIR}/COMMON
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${WORKDIR}/COMMON
@@ -606,7 +606,7 @@ if [ "${LAYOUT}" == "single" ]; then
     sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${WORKDIR}/COMMON
     sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${WORKDIR}/COMMON
     sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${WORKDIR}/COMMON
-    ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
   set_pbm_store
 fi
@@ -680,7 +680,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   ${WORKDIR}/${SHNAME}/start_mongos.sh
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:${SHPORT}/admin --quiet ${SSL_CLIENT} --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\", \"userAdminAnyDatabase\", \"clusterAdmin\" ] });"
-    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} localhost:${SHPORT}/admin --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
   # add Shards to the Cluster
   echo "Adding shards to the cluster..."
