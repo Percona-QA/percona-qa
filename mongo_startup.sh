@@ -658,9 +658,9 @@ if [ "${LAYOUT}" == "sh" ]; then
   ln -s ${WORKDIR}/${SHNAME}/cl_mongos.sh ${WORKDIR}/cl_mongos.sh
   echo "echo \"=== Stopping sharding cluster: ${SHNAME} ===\"" >> ${WORKDIR}/stop_mongodb.sh
   echo "${WORKDIR}/${SHNAME}/stop_mongos.sh" >> ${WORKDIR}/stop_mongodb.sh
-  for cmd in $(find ${WORKDIR}/${RSNAME} -name stop.sh); do
-    echo "${cmd}" >> ${WORKDIR}/stop_mongodb.sh
-  done
+  echo "${WORKDIR}/${RS1NAME}/stop_mongodb.sh" >> ${WORKDIR}/stop_mongodb.sh
+  echo "${WORKDIR}/${RS2NAME}/stop_mongodb.sh" >> ${WORKDIR}/stop_mongodb.sh
+  echo "${WORKDIR}/${CFGRSNAME}/stop_mongodb.sh" >> ${WORKDIR}/stop_mongodb.sh
   echo "#!/usr/bin/env bash" > ${WORKDIR}/${SHNAME}/stop_mongos.sh
   echo "source ${WORKDIR}/COMMON" >> ${WORKDIR}/${SHNAME}/stop_mongos.sh
   echo "echo \"Stopping mongos on port: ${SHPORT}\"" >> ${WORKDIR}/${SHNAME}/stop_mongos.sh
