@@ -292,7 +292,6 @@ start_pbm_agent(){
     echo "${PBMDIR}/pbm-agent --mongodb-uri='mongodb://${MAUTH}${HOST}:${NPORT}/${URI_SUFFIX}' 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${WORKDIR}/start_pbm.sh
-    ${NDIR}/pbm-agent/start_pbm_agent.sh
 
     # Create stop script for the agent on the node
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/stop_pbm_agent.sh
@@ -609,11 +608,13 @@ if [ "${LAYOUT}" == "single" ]; then
     ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" } ] });"
   fi
   set_pbm_store
+  ${WORKDIR}/start_pbm.sh
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
   start_replicaset "${WORKDIR}" "rs1" "27017" "${MONGOD_EXTRA}"
   set_pbm_store
+  ${WORKDIR}/start_pbm.sh
 fi
 
 if [ "${LAYOUT}" == "sh" ]; then
@@ -700,4 +701,5 @@ if [ "${LAYOUT}" == "sh" ]; then
     done
   fi
   set_pbm_store
+  ${WORKDIR}/start_pbm.sh
 fi
