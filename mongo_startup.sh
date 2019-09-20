@@ -267,7 +267,7 @@ fi
 VERSION_FULL=$(${BINDIR}/mongod --version|head -n1|sed 's/db version v//')
 VERSION_MAJOR=$(echo "${VERSION_FULL}"|grep -o '^.\..')
 
-start_pbm_agent(){
+setup_pbm_agent(){
   local NDIR="$1"
   local RS="$2"
   local NPORT="$3"
@@ -483,7 +483,7 @@ start_replicaset(){
     sleep 5
     for i in 1 2 3; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-        start_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))"
+        setup_pbm_agent "${RSDIR}/node${i}" "${RSNAME}" "$(($RSBASEPORT + ${i} - 1))"
       fi
     done
   fi
@@ -601,14 +601,19 @@ if [ "${LAYOUT}" == "single" ]; then
     ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.getSiblingDB(\"admin\").createRole( { role: \"pbmAnyAction\", privileges: [ { resource: { anyResource: true }, actions: [ \"anyAction\" ] } ], roles: [] } )"
     ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" }, { db: \"admin\", role: \"pbmAnyAction\" } ] });"
   fi
-  set_pbm_store
-  ${WORKDIR}/start_pbm.sh
+
+  if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
+    set_pbm_store
+    ${WORKDIR}/start_pbm.sh
+  fi
 fi
 
 if [ "${LAYOUT}" == "rs" ]; then
   start_replicaset "${WORKDIR}" "rs1" "27017" "${MONGOD_EXTRA}"
-  set_pbm_store
-  ${WORKDIR}/start_pbm.sh
+  if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
+    set_pbm_store
+    ${WORKDIR}/start_pbm.sh
+  fi
 fi
 
 if [ "${LAYOUT}" == "sh" ]; then
@@ -691,10 +696,10 @@ if [ "${LAYOUT}" == "sh" ]; then
   if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
     for i in 1 2 3; do
       if [ ${RS_ARBITER} != 1 -o ${i} -lt 3 ]; then
-        start_pbm_agent "${WORKDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))"
+        setup_pbm_agent "${WORKDIR}/${CFGRSNAME}/node${i}" "${CFGRSNAME}" "$(($CFGPORT + ${i} - 1))"
       fi
     done
+    set_pbm_store
+    ${WORKDIR}/start_pbm.sh
   fi
-  set_pbm_store
-  ${WORKDIR}/start_pbm.sh
 fi
