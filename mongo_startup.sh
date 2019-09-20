@@ -164,6 +164,8 @@ do
     AUTH="--username=${MONGO_USER} --password=${MONGO_PASS} --authenticationDatabase=admin"
     BACKUP_AUTH="--username=${MONGO_BACKUP_USER} --password=${MONGO_BACKUP_PASS} --authenticationDatabase=admin"
     BACKUP_DOCKER_AUTH="-e PBM_AGENT_MONGODB_USERNAME=${MONGO_BACKUP_USER} -e PBM_AGENT_MONGODB_PASSWORD=${MONGO_BACKUP_PASS} -e PBM_AGENT_MONGODB-AUTHDB=admin"
+    BACKUP_URI_AUTH="${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@"
+    BACKUP_URI_SUFFIX="?authSource=admin"
     ;;
   --ssl )
     shift
@@ -254,14 +256,14 @@ echo "MONGO_BACKUP_PASS=\"${MONGO_BACKUP_PASS}\"" >> ${WORKDIR}/COMMON
 echo "AUTH=\"\"" >> ${WORKDIR}/COMMON
 echo "BACKUP_AUTH=\"\"" >> ${WORKDIR}/COMMON
 echo "BACKUP_DOCKER_AUTH=\"\"" >> ${WORKDIR}/COMMON
+echo "BACKUP_URI_AUTH=\"\"" >> ${WORKDIR}/COMMON
+
 if [ ! -z "${AUTH}" ]; then
   openssl rand -base64 756 > ${WORKDIR}/keyFile
   chmod 400 ${WORKDIR}/keyFile
   MONGOD_EXTRA="${MONGOD_EXTRA} --keyFile ${WORKDIR}/keyFile"
   MONGOS_EXTRA="${MONGOS_EXTRA} --keyFile ${WORKDIR}/keyFile"
   CONFIG_EXTRA="${CONFIG_EXTRA} --keyFile ${WORKDIR}/keyFile"
-  BACKUP_URI_AUTH="${MONGO_BACKUP_USER}:${MONGO_BACKUP_PASS}@"
-  BACKUP_URI_SUFFIX="?authSource=admin"
 fi
 
 VERSION_FULL=$(${BINDIR}/mongod --version|head -n1|sed 's/db version v//')
@@ -279,7 +281,7 @@ setup_pbm_agent(){
     echo "#!/usr/bin/env bash" > ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "source ${WORKDIR}/COMMON" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "echo '=== Starting pbm-agent for mongod on port: ${NPORT} replicaset: ${RS} ==='" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
-    echo "${PBMDIR}/pbm-agent --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:${NPORT}/${BACKUP_URI_SUFFIX}' 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
+    echo "${PBMDIR}/pbm-agent --mongodb-uri=\"mongodb://\${BACKUP_URI_AUTH}${HOST}:${NPORT}/${BACKUP_URI_SUFFIX}\" 1>${NDIR}/pbm-agent/stdout.log 2>${NDIR}/pbm-agent/stderr.log &" >> ${NDIR}/pbm-agent/start_pbm_agent.sh
     chmod +x ${NDIR}/pbm-agent/start_pbm_agent.sh
     echo "${NDIR}/pbm-agent/start_pbm_agent.sh" >> ${WORKDIR}/start_pbm.sh
 
@@ -349,9 +351,6 @@ start_mongod(){
     fi
   fi
   if [ ${SSL} -eq 1 ]; then
-#    openssl req -nodes -newkey rsa:4096 -keyout ${NDIR}/psmdb-${RS}-${PORT}.key -out ${NDIR}/psmdb-${RS}-${PORT}.csr -subj "/C=US/ST=California/L=San Francisco/O=Percona/OU=server/CN=${HOST}/emailAddress=test@percona.com"
-#    openssl x509 -req -in ${NDIR}/psmdb-${RS}-${PORT}.csr -CA ${WORKDIR}/certificates/ca.crt -CAkey ${WORKDIR}/certificates/ca.key -set_serial 01 -out ${NDIR}/psmdb-${RS}-${PORT}.crt
-#    cat ${NDIR}/psmdb-${RS}-${PORT}.key ${NDIR}/psmdb-${RS}-${PORT}.crt > ${NDIR}/psmdb-${RS}-${PORT}.pem
     EXTRA="${EXTRA} --sslMode requireSSL --sslPEMKeyFile ${WORKDIR}/certificates/server.pem --sslCAFile ${WORKDIR}/certificates/ca.crt"
   fi
 
@@ -376,9 +375,9 @@ start_mongod(){
   echo "source ${WORKDIR}/COMMON" >> ${NDIR}/stop.sh
   echo "echo \"Stopping mongod on port: ${PORT} storage engine: ${SE} replica set: ${RS#nors}\"" >> ${NDIR}/stop.sh
   if [ "${NTYPE}" == "arbiter" ]; then
-      echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${SSL_CLIENT}" >> ${NDIR}/stop.sh
+      echo "${BINDIR}/mongo localhost:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${SSL_CLIENT}" >> ${NDIR}/stop.sh
   else
-      echo "${BINDIR}/mongo ${HOST}:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NDIR}/stop.sh
+      echo "${BINDIR}/mongo localhost:${PORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${NDIR}/stop.sh
   fi
   echo "#!/usr/bin/env bash" > ${NDIR}/wipe.sh
   echo "${NDIR}/stop.sh" >> ${NDIR}/wipe.sh
@@ -423,21 +422,21 @@ start_replicaset(){
   if [ ${RS_ARBITER} = 0 ] && [ ${RS_DELAYED} = 0 ] && [ ${RS_HIDDEN} = 0 ]; then
     MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]"
     if [ "${STORAGE_ENGINE}" == "inMemory" -a "${RSNAME}" != "config" ]; then
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", writeConcernMajorityJournalDefault: false, members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     else
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     fi
   else
     if [ ${RS_DELAYED} = 1 ] || [ ${RS_HIDDEN} = 1 ]; then
 	    MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\", \"priority\":0, \"hidden\":true}]"
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     else
       if [ "${RSNAME}" == "config" ]; then
         MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\"}]"
       else
         MEMBERS="[{\"_id\":1, \"host\":\"${HOST}:$(($RSBASEPORT))\"},{\"_id\":2, \"host\":\"${HOST}:$(($RSBASEPORT + 1))\"},{\"_id\":3, \"host\":\"${HOST}:$(($RSBASEPORT + 2))\",\"arbiterOnly\":true}]"
       fi
-      echo "${BINDIR}/mongo ${HOST}:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
+      echo "${BINDIR}/mongo localhost:$(($RSBASEPORT + 1)) --quiet \${SSL_CLIENT} --eval 'rs.initiate({_id:\"${RSNAME}\", members: ${MEMBERS}})'" >> ${RSDIR}/init_rs.sh
     fi
   fi
   echo "#!/usr/bin/env bash" > ${RSDIR}/stop_mongodb.sh
@@ -467,12 +466,14 @@ start_replicaset(){
   # for config server this is done via mongos
   if [ ! -z "${AUTH}" -a "${RSNAME}" != "config" ]; then
     sleep 20
-    ${BINDIR}/mongo "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] })"
-    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createRole( { role: \"pbmAnyAction\", privileges: [ { resource: { anyResource: true }, actions: [ \"anyAction\" ] } ], roles: [] } )"
-    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:${RSBASEPORT},localhost:$(($RSBASEPORT + 1)),localhost:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" }, { db: \"admin\", role: \"pbmAnyAction\" } ] })"
-    sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${WORKDIR}/COMMON
-    sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${WORKDIR}/COMMON
-    sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${WORKDIR}/COMMON
+    local PRIMARY=$(${BINDIR}/mongo localhost:${RSBASEPORT} --quiet ${SSL_CLIENT} --eval "db.isMaster().primary"|tail -n1|cut -d':' -f2)
+    ${BINDIR}/mongo localhost:${PRIMARY} --quiet ${SSL_CLIENT} --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] })"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://${HOST}:${RSBASEPORT},${HOST}:$(($RSBASEPORT + 1)),${HOST}:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createRole( { role: \"pbmAnyAction\", privileges: [ { resource: { anyResource: true }, actions: [ \"anyAction\" ] } ], roles: [] } )"
+    ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://${HOST}:${RSBASEPORT},${HOST}:$(($RSBASEPORT + 1)),${HOST}:$(($RSBASEPORT + 2))/?replicaSet=${RSNAME}" --quiet --eval "db.getSiblingDB(\"admin\").createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" }, { db: \"admin\", role: \"pbmAnyAction\" } ] })"
+    sed -i "/^AUTH=/c\AUTH=\"--username=\${MONGO_USER} --password=\${MONGO_PASS} --authenticationDatabase=admin\"" ${WORKDIR}/COMMON
+    sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"--username=\${MONGO_BACKUP_USER} --password=\${MONGO_BACKUP_PASS} --authenticationDatabase=admin\"" ${WORKDIR}/COMMON
+    sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"-e PBM_AGENT_MONGODB_USERNAME=\${MONGO_BACKUP_USER} -e PBM_AGENT_MONGODB_PASSWORD=\${MONGO_BACKUP_PASS} -e PBM_AGENT_MONGODB-AUTHDB=admin\"" ${WORKDIR}/COMMON
+    sed -i "/^BACKUP_URI_AUTH=/c\BACKUP_URI_AUTH=\"\${MONGO_BACKUP_USER}:\${MONGO_BACKUP_PASS}@\"" ${WORKDIR}/COMMON
   fi
   if [ ${RS_DELAYED} = 1 ]; then
      ${BINDIR}/mongo ${AUTH} ${SSL_CLIENT} "mongodb://localhost:$(($RSBASEPORT + 1))/?replicaSet=${RSNAME}" --quiet --eval "cfg = rs.conf(); cfg.members[2].slaveDelay = 600; rs.reconfig(cfg);"
@@ -595,16 +596,12 @@ if [ "${LAYOUT}" == "single" ]; then
 
   if [ ! -z "${AUTH}" ]; then
     ${BINDIR}/mongo localhost:27017/admin --quiet ${SSL_CLIENT} --eval "db.createUser({ user: \"${MONGO_USER}\", pwd: \"${MONGO_PASS}\", roles: [ \"root\" ] });"
-    sed -i "/^AUTH=/c\AUTH=\"${AUTH}\"" ${WORKDIR}/COMMON
-    sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"${BACKUP_AUTH}\"" ${WORKDIR}/COMMON
-    sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"${BACKUP_DOCKER_AUTH}\"" ${WORKDIR}/COMMON
-    ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.getSiblingDB(\"admin\").createRole( { role: \"pbmAnyAction\", privileges: [ { resource: { anyResource: true }, actions: [ \"anyAction\" ] } ], roles: [] } )"
-    ${BINDIR}/mongo localhost:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" }, { db: \"admin\", role: \"pbmAnyAction\" } ] });"
-  fi
-
-  if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
-    set_pbm_store
-    ${WORKDIR}/start_pbm.sh
+    sed -i "/^AUTH=/c\AUTH=\"--username=\${MONGO_USER} --password=\${MONGO_PASS} --authenticationDatabase=admin\"" ${WORKDIR}/COMMON
+    sed -i "/^BACKUP_AUTH=/c\BACKUP_AUTH=\"--username=\${MONGO_BACKUP_USER} --password=\${MONGO_BACKUP_PASS} --authenticationDatabase=admin\"" ${WORKDIR}/COMMON
+    sed -i "/^BACKUP_DOCKER_AUTH=/c\BACKUP_DOCKER_AUTH=\"-e PBM_AGENT_MONGODB_USERNAME=\${MONGO_BACKUP_USER} -e PBM_AGENT_MONGODB_PASSWORD=\${MONGO_BACKUP_PASS} -e PBM_AGENT_MONGODB-AUTHDB=admin\"" ${WORKDIR}/COMMON
+    sed -i "/^BACKUP_URI_AUTH=/c\BACKUP_URI_AUTH=\"\${MONGO_BACKUP_USER}:\${MONGO_BACKUP_PASS}@\"" ${WORKDIR}/COMMON
+    ${BINDIR}/mongo ${HOST}:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.getSiblingDB(\"admin\").createRole( { role: \"pbmAnyAction\", privileges: [ { resource: { anyResource: true }, actions: [ \"anyAction\" ] } ], roles: [] } )"
+    ${BINDIR}/mongo ${HOST}:27017/admin ${AUTH} ${SSL_CLIENT} --quiet --eval "db.createUser({ user: \"${MONGO_BACKUP_USER}\", pwd: \"${MONGO_BACKUP_PASS}\", roles: [ { db: \"admin\", role: \"readWrite\", collection: \"\" }, { db: \"admin\", role: \"backup\" }, { db: \"admin\", role: \"clusterMonitor\" }, { db: \"admin\", role: \"restore\" }, { db: \"admin\", role: \"pbmAnyAction\" } ] });"
   fi
 fi
 
@@ -664,7 +661,7 @@ if [ "${LAYOUT}" == "sh" ]; then
   echo "#!/usr/bin/env bash" > ${WORKDIR}/${SHNAME}/stop_mongos.sh
   echo "source ${WORKDIR}/COMMON" >> ${WORKDIR}/${SHNAME}/stop_mongos.sh
   echo "echo \"Stopping mongos on port: ${SHPORT}\"" >> ${WORKDIR}/${SHNAME}/stop_mongos.sh
-  echo "${BINDIR}/mongo ${HOST}:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${WORKDIR}/${SHNAME}/stop_mongos.sh
+  echo "${BINDIR}/mongo localhost:${SHPORT}/admin --quiet --eval 'db.shutdownServer({force:true})' \${AUTH} \${SSL_CLIENT}" >> ${WORKDIR}/${SHNAME}/stop_mongos.sh
   echo "#!/usr/bin/env bash" > ${WORKDIR}/start_mongodb.sh
   echo "echo \"Starting sharding cluster on port: ${SHPORT}\"" >> ${WORKDIR}/start_mongodb.sh
   echo "${WORKDIR}/${CFGRSNAME}/start_mongodb.sh" >> ${WORKDIR}/start_mongodb.sh
