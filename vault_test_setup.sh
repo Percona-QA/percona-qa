@@ -4,6 +4,7 @@
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 GEN_MYSQL_CONFIG=1
+GEN_PSMDB_CONFIG=1
 USE_SSL=0
 GEN_VAULT_CONFIG=1
 GEN_CERTS_ONLY=0
@@ -39,8 +40,8 @@ usage(){
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=sw:dmh \
-  --longoptions=use-ssl,workdir:,vault-dev-mode,setup-pxc-mount-points,help \
+  go_out="$(getopt --options=sw:di:p:mh \
+  --longoptions=use-ssl,workdir:,vault-dev-mode,vault-ip:,vault-port:,setup-pxc-mount-points,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
@@ -65,6 +66,10 @@ do
     ;;
     -i | --vault-ip )
     VAULT_IP="$2"
+    shift 2
+    ;;
+    -p | --vault-port )
+    VAULT_PORT="$2"
     shift 2
     ;;
     -d | --vault-dev-mode )
@@ -110,8 +115,9 @@ if [[ ${USE_SSL} -eq 1 || ${GEN_CERTS_ONLY} -eq 1 ]]; then
   if [[ ! -d "" ]]; then
     mkdir -p ${WORKDIR}/certificates
   fi
-  pushd ${WORKDIR}/certificates
-  echo -e "\nGenerating SSL certificates in: ${WORKDIR}/certificates"
+  pushd ${WORKDIR}/certificates >/dev/null
+  echo -e "\n===== Generating SSL certificates ====="
+  echo "SSL certificates location: ${WORKDIR}/certificates"
   openssl req -newkey rsa:2048 -days 3650 -x509 -nodes -out root.cer -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
   openssl req -newkey rsa:2048 -nodes -out vault.csr -keyout vault.key -subj "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com" >/dev/null 2>&1
   echo 000a > serialfile
@@ -148,7 +154,7 @@ if [[ ${USE_SSL} -eq 1 || ${GEN_CERTS_ONLY} -eq 1 ]]; then
   echo "keyUsage = digitalSignature,keyEncipherment" >> ${WORKDIR}/certificates/vault-ca.conf
   echo "extendedKeyUsage = serverAuth" >> ${WORKDIR}/certificates/vault-ca.conf
   openssl ca -batch -config vault-ca.conf -notext -in vault.csr -out vault.crt >/dev/null 2>&1
-  popd
+  popd >/dev/null
   if [[ ${GEN_CERTS_ONLY} -eq 1 ]]; then
     echo "Generated SSL certificates and exiting..."
     exit 0
@@ -157,9 +163,9 @@ fi
 
 if [[ ${DL_VAULT} -eq 1 ]]; then
   if [[ -x "${WORKDIR}/vault" ]]; then
-    echo "Vault binary already present, skipping download..."
+    echo -e "\n===== Vault binary already present, skipping download ====="
   else
-    echo "Downloading vault binary..."
+    echo -e "\n===== Downloading vault binary ====="
     VAULT_URL=$(${SCRIPT_PWD}/get_download_link.sh --product=vault)
     wget "${VAULT_URL}" > /dev/null 2>&1
     VAULT_ZIP=$(echo "${VAULT_URL}"|grep -oP "vault_.*linux.*.zip")
@@ -173,7 +179,8 @@ echo "#!/usr/bin/env bash" > ${WORKDIR}/start_vault.sh
 chmod +x ${WORKDIR}/start_vault.sh
 
 if [[ ${GEN_VAULT_CONFIG} -eq 1 && ${VAULT_DEV_MODE} -eq 0 ]]; then
-  echo -e "\nGenerating vault config file in: ${WORKDIR}/vault_config.hcl"
+  echo -e "\n===== Generating vault config file ====="
+  echo "Config file is in: ${WORKDIR}/vault_config.hcl"
   echo "disable_mlock = true" > ${WORKDIR}/vault_config.hcl
   echo "default_lease_ttl = \"24h\"" >> ${WORKDIR}/vault_config.hcl
   echo "max_lease_ttl = \"24h\"" >> ${WORKDIR}/vault_config.hcl
@@ -196,61 +203,81 @@ if [[ ${INIT_VAULT} -eq 1 ]]; then
     mkdir -p "${WORKDIR}/vault_data"
   fi
   if [[ ${VAULT_DEV_MODE} -eq 1 ]]; then
-    echo -e "\nInitializing vault server in development mode..."
+    echo -e "\n===== Initializing vault server in development mode ====="
     VAULT_PORT="8200"
-    echo "Vault output located in: ${WORKDIR}/vault_output.txt"
+    echo "Vault output is in: ${WORKDIR}/vault_output.txt"
     CMD="nohup ${WORKDIR}/vault server -dev >${WORKDIR}/vault_output.txt 2>&1 &"
     eval $CMD
     echo "$CMD" >> ${WORKDIR}/start_vault.sh
     sleep 3
     ROOT_TOKEN=$(grep "Root Token: " ${WORKDIR}/vault_output.txt|sed 's/Root Token: //')
   else
-    echo -e "\nInitializing vault server in standard mode..."
-    echo "Vault output located in: ${WORKDIR}/vault_output.txt"
-    echo "Vault keys located in: ${WORKDIR}/vault_keys.txt"
+    echo -e "\n===== Initializing vault server in standard mode ====="
+    echo "Vault output is in: ${WORKDIR}/vault_output.txt"
+    echo "Vault keys are in: ${WORKDIR}/vault_keys.txt"
     CMD="nohup ${WORKDIR}/vault server -config=${WORKDIR}/vault_config.hcl >${WORKDIR}/vault_output.txt 2>&1 &"
     eval $CMD
     echo "$CMD" >> ${WORKDIR}/start_vault.sh
     CMD="sleep 3"
     eval $CMD
     echo "$CMD" >> ${WORKDIR}/start_vault.sh
-    ${WORKDIR}/vault operator init -address=${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT} -tls-skip-verify > ${WORKDIR}/vault_keys.txt
+    ${WORKDIR}/vault operator init -address=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT} -tls-skip-verify > ${WORKDIR}/vault_keys.txt
     UNSEAL_KEY1=$(grep "Unseal Key 1: " ${WORKDIR}/vault_keys.txt|sed 's/Unseal Key 1: //')
     UNSEAL_KEY2=$(grep "Unseal Key 2: " ${WORKDIR}/vault_keys.txt|sed 's/Unseal Key 2: //')
     UNSEAL_KEY3=$(grep "Unseal Key 3: " ${WORKDIR}/vault_keys.txt|sed 's/Unseal Key 3: //')
     ROOT_TOKEN=$(grep "Initial Root Token: " ${WORKDIR}/vault_keys.txt|sed 's/Initial Root Token: //')
-    CMD="${WORKDIR}/vault operator unseal -address=${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT} -tls-skip-verify ${UNSEAL_KEY1} >/dev/null"
+    CMD="${WORKDIR}/vault operator unseal -address=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT} -tls-skip-verify ${UNSEAL_KEY1} >/dev/null"
     eval $CMD
     echo "$CMD" >> ${WORKDIR}/start_vault.sh
-    CMD="${WORKDIR}/vault operator unseal -address=${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT} -tls-skip-verify ${UNSEAL_KEY2} >/dev/null"
+    CMD="${WORKDIR}/vault operator unseal -address=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT} -tls-skip-verify ${UNSEAL_KEY2} >/dev/null"
     eval $CMD
     echo "$CMD" >> ${WORKDIR}/start_vault.sh
-    CMD="${WORKDIR}/vault operator unseal -address=${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT} -tls-skip-verify ${UNSEAL_KEY3} >/dev/null"
+    CMD="${WORKDIR}/vault operator unseal -address=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT} -tls-skip-verify ${UNSEAL_KEY3} >/dev/null"
     eval $CMD
     echo "$CMD" >> ${WORKDIR}/start_vault.sh
   fi
+
+  echo -e "\n===== Generating set_env.sh for using vault from command line ====="
+  echo "Use in shell with: $ source ${WORKDIR}/set_env.sh"
+  echo "export VAULT_ADDR=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" >> ${WORKDIR}/set_env.sh
+  echo "export VAULT_TOKEN=${ROOT_TOKEN}" >> ${WORKDIR}/set_env.sh
+
+  echo -e "\n===== Enabling the kv secrets engine in the vault ====="
+  source ${WORKDIR}/set_env.sh
+  ${WORKDIR}/vault secrets enable -tls-skip-verify -path=secret kv
+  ${WORKDIR}/vault secrets enable -tls-skip-verify -path=secret_v2 kv
+  ${WORKDIR}/vault kv enable-versioning -tls-skip-verify secret_v2/
 fi
 
 if [[ ${GEN_MYSQL_CONFIG} -eq 1 ]]; then
-  echo -e "\nGenerating MySQL config file..."
-  echo "Keyring vault plugin config file located in: ${WORKDIR}/keyring_vault.cnf"
-  echo "vault_url = ${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT}" > ${WORKDIR}/keyring_vault.cnf
-  echo "secret_mount_point = secret" >> ${WORKDIR}/keyring_vault.cnf
-  echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault.cnf
+  echo -e "\n===== Generating MySQL config file ====="
+  echo "Keyring vault plugin config file location: ${WORKDIR}/keyring_vault_ps.cnf"
+  echo "vault_url = ${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" > ${WORKDIR}/keyring_vault_ps.cnf
+  echo "secret_mount_point = secret" >> ${WORKDIR}/keyring_vault_ps.cnf
+  echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault_ps.cnf
   if [[ ${USE_SSL} -eq 1 ]]; then
-    echo "vault_ca = ${WORKDIR}/certificates/root.cer" >> ${WORKDIR}/keyring_vault.cnf
+    echo "vault_ca = ${WORKDIR}/certificates/root.cer" >> ${WORKDIR}/keyring_vault_ps.cnf
   fi
   echo -e "\nUse following mysql parameters for connecting to this vault server:"
-  echo "--early-plugin-load=keyring_vault=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/keyring_vault.cnf"
+  echo "--early-plugin-load=keyring_vault=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/keyring_vault_ps.cnf"
+fi
+
+if [[ ${GEN_PSMDB_CONFIG} -eq 1 ]]; then
+  echo -e "\n===== Generating PSMDB token file ====="
+  echo "Vault token file for PSMDB location: ${WORKDIR}/vault_token_psmdb.cfg"
+  echo "${ROOT_TOKEN}" >> ${WORKDIR}/vault_token_psmdb.cfg
+  chmod 600 ${WORKDIR}/vault_token_psmdb.cfg
+  echo -e "\nUse following PSMDB parameters for connecting to this vault server:"
+  echo "--vaultServerName ${VAULT_IP} --vaultPort ${VAULT_PORT} --vaultTokenFile ${WORKDIR}/vault_token_psmdb.cfg --vaultSecret secret_v2/data/psmdb-test/psmdb-27017 --vaultServerCAFile ${WORKDIR}/certificates/root.cer"
 fi
 
 if [[ $SETUP_PXC_MOUNT_POINTS -eq 1 ]];then
-  echo -e "\nGenerating mount points for Percona XtraDB Cluster..."
-  export VAULT_ADDR=${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT}
+  echo -e "\n===== Generating mount points for Percona XtraDB Cluster ====="
+  export VAULT_ADDR=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}
   export VAULT_TOKEN=${ROOT_TOKEN}
   for i in `seq 1 3`; do
     ${WORKDIR}/vault mount -tls-skip-verify -path=pxc_node${i} generic 2>/dev/null
-    echo "vault_url = ${VAULT_PROTOCOL}://127.0.0.1:${VAULT_PORT}" > ${WORKDIR}/keyring_vault_pxc${i}.cnf
+    echo "vault_url = ${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" > ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "secret_mount_point = pxc_node${i}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "Vault configuration for PXC node${i} : ${WORKDIR}/keyring_vault_pxc${i}.cnf"
