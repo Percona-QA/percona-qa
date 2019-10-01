@@ -7,11 +7,13 @@ prepare_environment() {
 start_replica() {
   vlog "Starting replica set rs1"
   ${PQA_PATH}/mongo_startup.sh --rSet --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_PATH}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
+  run_cmd ${TEST_RESULT_DIR}/var/w$worker/nodes/pbm_store_set.sh
 }
 
 start_sharding_cluster() {
   vlog "Starting sharding cluster"
   ${PQA_PATH}/mongo_startup.sh --sCluster --pbmDir=${PBM_PATH} --storageEngine=${STORAGE_ENGINE} --auth --binDir=${MONGODB_PATH}/bin --workDir=${TEST_RESULT_DIR}/var/w$worker/nodes --host=${HOST} ${EXTRA_STARTUP_OPTS}
+  run_cmd ${TEST_RESULT_DIR}/var/w$worker/nodes/pbm_store_set.sh
 }
 
 stop_all_mongo() {
@@ -24,9 +26,62 @@ stop_all_pbm() {
   ${TEST_RESULT_DIR}/var/w$worker/nodes/stop_pbm.sh
 }
 
-get_backup_id() {
-  local BACKUP_DESC="$1"
-  pbmctl list backups ${PBMCTL_OPTS} 2>&1|grep "${BACKUP_DESC}" |grep -oE "^.*\.json"
+run_backup() {
+  run_cmd pbm backup --mongodb-uri="${MONGODB_URI}${MONGODB_OPTS}" | tee ${TEST_RESULT_DIR}/var/w$worker/nodes/last_backup_id
+}
+
+run_restore() {
+  local BACKUP_ID_TO_RESTORE=$1
+  run_cmd pbm restore --mongodb-uri="${MONGODB_URI}${MONGODB_OPTS}" ${BACKUP_ID_TO_RESTORE}
+}
+
+get_last_backup_id() {
+  cat ${TEST_RESULT_DIR}/var/w$worker/nodes/last_backup_id | tail -n1 | cut -d' ' -f3 | sed 's/'\''//g'
+}
+
+get_last_backup_status() {
+  local BACKUP_ID=$(get_last_backup_id)
+  run_cmd mongo ${MONGODB_URI}${MONGODB_OPTS} --eval "db.getSiblingDB('admin').pbmBackups.findOne({ name: \"${BACKUP_ID}\" }).status" --quiet | tail -n1
+}
+
+get_operation_count() {
+  run_cmd mongo ${MONGODB_URI}${MONGODB_OPTS} --eval "db.getSiblingDB('admin').pbmOp.count()" --quiet | tail -n1
+}
+
+wait_backup_finish() {
+  local TIMEOUT=${1:-300}
+  local BACKUP_STATUS=""
+  local TIMEOUT_COUNTER=0
+  while true; do
+    sleep 1
+    BACKUP_STATUS=$(get_last_backup_status)
+    TIMEOUT_COUNTER=$((TIMEOUT_COUNTER+1))
+    if [ "${BACKUP_STATUS}" == "done" ]; then
+      vlog "Backup has finished."
+      break
+    elif [ ${TIMEOUT_COUNTER} -eq ${TIMEOUT} ]; then
+      die "Backup didn't finish, timeout reached."
+      break
+    fi
+  done
+}
+
+wait_restore_finish() {
+  local TIMEOUT=${1:-300}
+  local RESTORE_STATUS=0
+  local TIMEOUT_COUNTER=0
+  while true; do
+    sleep 1
+    RESTORE_STATUS=$(get_operation_count)
+    TIMEOUT_COUNTER=$((TIMEOUT_COUNTER+1))
+    if [ ${RESTORE_STATUS} -eq 0 ]; then
+      vlog "Restore has finished."
+      break
+    elif [ ${TIMEOUT_COUNTER} -eq ${TIMEOUT} ]; then
+      die "Restore didn't finish, timeout reached."
+      break
+    fi
+  done
 }
 
 start_pbm_agent() {
@@ -39,33 +94,6 @@ stop_pbm_agent() {
   local AGENT_DIR="$1"
   vlog "Stopping PBM agent in dir ${AGENT_DIR}..."
   run_cmd ${TEST_RESULT_DIR}/var/w$worker/nodes/${AGENT_DIR}/pbm-agent/stop_pbm_agent.sh
-}
-
-check_pbm_agent() {
-  local AGENT="$1"
-  local CHECK="$2"
-  vlog "Checking if PBM agent ${AGENT} is ${CHECK}..."
-  local RESULT=$(pbmctl list nodes ${PBMCTL_OPTS} 2>&1|grep -c "${AGENT}")
-  if [ "${CHECK}" == "listed" ]; then
-    if [ ${RESULT} -ne 1 ]; then
-      die "===> Agent ${AGENT} should be listed in list nodes output!"
-    fi
-  elif [ "${CHECK}" == "not_listed" ]; then
-    if [ ${RESULT} -ne 0 ]; then
-      die "===> Agent ${AGENT} should not be listed in list nodes output!"
-    fi
-  else
-    die "===> Unknown command ${CHECK} to check_pbm_agent function!"
-  fi
-}
-
-check_pbm_agent_count() {
-  local COUNT="$1"
-  vlog "Checking that PBM agent count should be: ${COUNT}..."
-  local RESULT=$(pbmctl list nodes ${PBMCTL_OPTS} 2>&1|grep -c "${HOST}:")
-  if [ ${RESULT} -ne ${COUNT} ]; then
-    die "===> Number of PBM agents listed is ${RESULT} but it should be ${COUNT}!"
-  fi
 }
 
 get_replica_primary() {
@@ -172,22 +200,32 @@ check_cleanup() {
 
 cleanup() {
   vlog "Data cleanup"
-  stop_all_pbm
-  stop_all_mongo
-  sleep 5
-  rm -rf ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
-  mv ${TEST_RESULT_DIR}/var/w$worker/nodes ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
-  if [ "$1" == "sharding" ]; then
-    start_sharding_cluster
-  else
-    start_replica
-  fi
-  sleep 10
-  mv ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp/backup ${TEST_RESULT_DIR}/var/w$worker/nodes
-  mv ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp/pbm-coordinator/workdir ${TEST_RESULT_DIR}/var/w$worker/nodes/pbm-coordinator
-  if [ ${SAVE_STATE_BEFORE_RESTORE} -eq 0 ]; then
-    rm -rf ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
-  fi
+  # drop users
+  mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropUser("tomislav_admin");' --quiet
+  mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropUser("tomislav");' --quiet
+  mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropUser("ivana");' --quiet
+  # drop roles
+  mongo ${MONGODB_URI}admin${MONGODB_OPTS} --eval 'db.dropRole("myCustomAdminRole")' --quiet
+  mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.dropRole("myCustomRole1")' --quiet
+  mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.dropRole("myCustomRole2")' --quiet
+  # drop user databases
+  run_cmd mongo ${MONGODB_URI}${MONGODB_OPTS} --eval 'db.getMongo().getDBNames().forEach(function(i){ if (i != "admin" && i != "local" && i != "config") { db.getSiblingDB(i).dropDatabase() } })' --quiet
+#  stop_all_pbm
+#  stop_all_mongo
+#  sleep 5
+#  rm -rf ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
+#  mv ${TEST_RESULT_DIR}/var/w$worker/nodes ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
+#  if [ "$1" == "sharding" ]; then
+#    start_sharding_cluster
+#  else
+#    start_replica
+#  fi
+#  sleep 10
+#  mv ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp/backup ${TEST_RESULT_DIR}/var/w$worker/nodes
+#  mv ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp/pbm-coordinator/workdir ${TEST_RESULT_DIR}/var/w$worker/nodes/pbm-coordinator
+#  if [ ${SAVE_STATE_BEFORE_RESTORE} -eq 0 ]; then
+#    rm -rf ${TEST_RESULT_DIR}/var/w$worker/pbm-test-temp
+#  fi
 }
 
 prepare_data() {

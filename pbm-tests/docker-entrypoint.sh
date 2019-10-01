@@ -37,11 +37,10 @@ pushd percona-backup-mongodb
 echo "PBM_REPO=${PBM_REPO}" | tee ${PBM_PATH}/pbm.properties
 echo "PBM_BRANCH=${PBM_BRANCH}" | tee ${PBM_PATH}/pbm.properties
 echo "PBM_COMMIT=$(git rev-parse --short HEAD)" | tee ${PBM_PATH}/pbm.properties
-make clean && make
+make build
 popd && popd
-mv ~/go/src/github.com/percona/percona-backup-mongodb/pbmctl ${PBM_PATH}
-mv ~/go/src/github.com/percona/percona-backup-mongodb/pbm-agent ${PBM_PATH}
-mv ~/go/src/github.com/percona/percona-backup-mongodb/pbm-coordinator ${PBM_PATH}
+mv ~/go/src/github.com/percona/percona-backup-mongodb/bin/pbm ${PBM_PATH}
+mv ~/go/src/github.com/percona/percona-backup-mongodb/bin/pbm-agent ${PBM_PATH}
 
 cd percona-qa/pbm-tests
 ./run.sh -f ${RUN_EXTRA}
