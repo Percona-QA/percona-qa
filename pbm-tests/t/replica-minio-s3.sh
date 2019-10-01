@@ -15,10 +15,11 @@ prepare_data replica
 # run some load in background so that oplog also gets into backup
 run_cmd ycsb load mongodb -s -P ${YCSB_PATH}/workloads/workloadb -p recordcount=100000 -p operationcount=100000 -threads 4 -p mongodb.url="${MONGODB_URI}ycsb_test3${MONGODB_OPTS}" -p mongodb.auth="true" >/dev/null 2>&1 &
 sleep 5
-# create backup to local filesystem
+# create backup to minio storage
 vlog "Doing backup"
-run_cmd pbmctl run backup --description="${TEST_NAME}" --storage=${TEST_STORAGE} ${PBMCTL_OPTS}
-BACKUP_ID=$(get_backup_id "${TEST_NAME}")
+run_backup
+BACKUP_ID=$(get_last_backup_id)
+wait_backup_finish
 vlog "Backup: ${BACKUP_ID} completed"
 # create db hash and get document counts
 get_hashes_counts_before replica
@@ -31,7 +32,8 @@ vlog "Log status after cleanup"
 log_status ${TEST_DIR}/rs1_after_cleanup.log replica
 # do restore from local filesystem
 vlog "Doing restore of: ${BACKUP_ID}"
-run_cmd pbmctl run restore --storage=${TEST_STORAGE} ${PBMCTL_OPTS} ${BACKUP_ID}
+run_restore ${BACKUP_ID}
+wait_restore_finish
 vlog "Restore from: ${BACKUP_ID} completed"
 vlog "Log status after restore"
 log_status ${TEST_DIR}/rs1_after_restore.log replica
