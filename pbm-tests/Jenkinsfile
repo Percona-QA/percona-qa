@@ -3,7 +3,7 @@ pipeline {
   options { timestamps () }
   parameters {
     string(name: 'PBM_REPO', defaultValue: 'https://github.com/percona/percona-backup-mongodb.git', description: 'Target repository')
-    string(name: 'PBM_BRANCH', defaultValue: 'development', description: 'Target branch')
+    string(name: 'PBM_BRANCH', defaultValue: 'master', description: 'Target branch')
     string(name: 'PBM_TEST_SUITE', defaultValue: 't', description: 'Test suite to run (or specify single test like t/replica-sanity-agents.sh)')
   }
   environment {
