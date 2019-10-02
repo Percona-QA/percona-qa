@@ -267,7 +267,7 @@ get_hashes_counts_before() {
     local RS1_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS1_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS1_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
-    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:27018,localhost:27019,localhost:27020/ycsb_test3?replicaSet=rs1&authSource=admin" --collection usertable --type csv --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs1-oplog-export-before.csv
+    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:27018,localhost:27019,localhost:27020/ycsb_test3?replicaSet=rs1&authSource=admin" --collection usertable --type csv --sort '{_id: 1}' --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs1-oplog-export-before.csv
     local RS1_YCSB_TEST3_TEMP==$(md5sum -b ${TEST_DIR}/ycsb_test3-rs1-oplog-export-before.csv|cut -d' ' -f1)
     local RS1_DATAGEN_TEMP=$(mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #
@@ -275,7 +275,7 @@ get_hashes_counts_before() {
     local RS2_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS2_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS2_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
-    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:28018,localhost:28019,localhost:28020/ycsb_test3?replicaSet=rs2&authSource=admin" --collection usertable --type csv --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs2-oplog-export-before.csv
+    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:28018,localhost:28019,localhost:28020/ycsb_test3?replicaSet=rs2&authSource=admin" --collection usertable --type csv --sort '{_id: 1}' --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs2-oplog-export-before.csv
     local RS2_YCSB_TEST3_TEMP==$(md5sum -b ${TEST_DIR}/ycsb_test3-rs2-oplog-export-before.csv|cut -d' ' -f1)
     local RS2_DATAGEN_TEMP=$(mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #
@@ -305,7 +305,7 @@ get_hashes_counts_after() {
     local RS1_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS1_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS1_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
-    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:27018,localhost:27019,localhost:27020/ycsb_test3?replicaSet=rs1&authSource=admin" --collection usertable --type csv --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs1-oplog-export-after.csv
+    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:27018,localhost:27019,localhost:27020/ycsb_test3?replicaSet=rs1&authSource=admin" --collection usertable --type csv --sort '{_id: 1}' --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs1-oplog-export-after.csv
     local RS1_YCSB_TEST3_TEMP==$(md5sum -b ${TEST_DIR}/ycsb_test3-rs1-oplog-export-after.csv|cut -d' ' -f1)
     local RS1_DATAGEN_TEMP=$(mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #
@@ -313,7 +313,7 @@ get_hashes_counts_after() {
     local RS2_YCSB_TEST1_TEMP=$(mongo ${PRIMARY}/ycsb_test1 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     local RS2_YCSB_TEST2_TEMP=$(mongo ${PRIMARY}/ycsb_test2 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #local RS2_YCSB_TEST3_TEMP=$(mongo ${PRIMARY}/ycsb_test3 --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
-    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:28018,localhost:28019,localhost:28020/ycsb_test3?replicaSet=rs2&authSource=admin" --collection usertable --type csv --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs2-oplog-export-after.csv
+    mongoexport --uri="mongodb://${MONGODB_USER}:${MONGODB_PASS}@localhost:28018,localhost:28019,localhost:28020/ycsb_test3?replicaSet=rs2&authSource=admin" --collection usertable --type csv --sort '{_id: 1}' --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-rs2-oplog-export-after.csv
     local RS2_YCSB_TEST3_TEMP==$(md5sum -b ${TEST_DIR}/ycsb_test3-rs2-oplog-export-after.csv|cut -d' ' -f1)
     local RS2_DATAGEN_TEMP=$(mongo ${PRIMARY}/datagen_it_test --eval 'db.runCommand({ dbHash: 1 }).md5' --username=${MONGODB_USER} --password=${MONGODB_PASS} --authenticationDatabase=admin --quiet|tail -n1)
     #
