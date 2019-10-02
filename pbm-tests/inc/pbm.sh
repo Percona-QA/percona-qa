@@ -287,7 +287,7 @@ get_hashes_counts_before() {
     YCSB_TEST1_MD5_INITIAL=$(mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
     YCSB_TEST2_MD5_INITIAL=$(mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
     #YCSB_TEST3_MD5_INITIAL=$(mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
-    mongoexport --uri=${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --collection usertable --type csv --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-oplog-export-before.csv
+    mongoexport --uri=${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --collection usertable --type csv --sort '{_id: 1}' --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-oplog-export-before.csv
     YCSB_TEST3_MD5_INITIAL=$(md5sum -b ${TEST_DIR}/ycsb_test3-oplog-export-before.csv|cut -d' ' -f1)
     DATAGEN_MD5_INITIAL=$(mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
   fi
@@ -325,7 +325,7 @@ get_hashes_counts_after() {
     YCSB_TEST1_MD5_RESTORED=$(mongo ${MONGODB_URI}ycsb_test1${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
     YCSB_TEST2_MD5_RESTORED=$(mongo ${MONGODB_URI}ycsb_test2${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
     #YCSB_TEST3_MD5_RESTORED=$(mongo ${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
-    mongoexport --uri=${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --collection usertable --type csv --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-oplog-export-after.csv
+    mongoexport --uri=${MONGODB_URI}ycsb_test3${MONGODB_OPTS} --collection usertable --type csv --sort '{_id: 1}' --fields _id,field0,field1,field2,field3,field4,field5,field6,field7,field8,field9 --noHeaderLine --out ${TEST_DIR}/ycsb_test3-oplog-export-after.csv
     YCSB_TEST3_MD5_RESTORED=$(md5sum -b ${TEST_DIR}/ycsb_test3-oplog-export-after.csv|cut -d' ' -f1)
     DATAGEN_MD5_RESTORED=$(mongo ${MONGODB_URI}datagen_it_test${MONGODB_OPTS} --eval 'db.runCommand({ dbHash: 1 }).md5' --quiet|tail -n1)
   fi
