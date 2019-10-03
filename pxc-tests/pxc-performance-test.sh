@@ -9,12 +9,12 @@ export RPORT=$(( RANDOM%21 + 10 ))
 export RBASE="$(( RPORT*1000 ))"
 export SUSER=root
 export SPASS=
-export BIG_DIR=${PWD}
+export BIG_DIR=${WORKSPACE}
 export SCRIPT_DIR=$(cd $(dirname $0) && pwd)
 export PXC_START_TIMEOUT=300
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PXC
-export NODES=1
+export NODES=3
 
 # make sure we have passed basedir parameter for this benchmark run
 if [ -z $2 ]; then
@@ -37,8 +37,8 @@ export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
-if [ ! -z ${WORKDIR} ]; then
-  export BIG_DIR=${WORKDIR}
+if [ -z ${BIG_DIR} ]; then
+  export BIG_DIR=${PWD}
 fi
 
 if [ ! -d ${BIG_DIR}/backups ]; then
@@ -68,17 +68,17 @@ sysbench_run(){
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$NUM_ROWS --oltp_tables_count=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --num-threads=$NUM_TABLES --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB --mysql-user=$SUSER  --num-threads=$num_threads --db-driver=mysql --oltp-non-index-updates=1"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB --mysql-user=$SUSER  --num-threads=$num_threads --db-driver=mysql --oltp-non-index-updates=1 --db-ps-mode=disable"
     elif [ "$TEST_TYPE" == "oltp_read" ];then
-      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp-read-only --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB  --mysql-user=$SUSER --num-threads=$num_threads --db-driver=mysql"
+      SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp-read-only --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB  --mysql-user=$SUSER --num-threads=$num_threads --db-driver=mysql --db-ps-mode=disable"
     fi
   elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$NUM_TABLES --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql --non_index_updates=1"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_write.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql --non_index_updates=1 --db-ps-mode=disable"
     elif [ "$TEST_TYPE" == "oltp_read" ];then
-      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_only.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql"
+      SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_read_only.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
     fi
   fi
 }
@@ -211,8 +211,6 @@ function sysbench_rw_run(){
     sleep 60
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
-  echo '<?xml version="1.0" encoding="UTF-8"?>' > ${WORKSPACE}/${BENCH_ID}.xml
-  echo '<performance>' >> ${WORKSPACE}/${BENCH_ID}.xml
   for num_threads in ${threadCountList}; do
     LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS-$num_threads.txt
     LOG_NAME_MEMORY=${LOG_NAME}.memory
@@ -231,11 +229,8 @@ function sysbench_rw_run(){
     sysbench_run oltp $MYSQL_DATABASE $RUN_TIME_SECONDS
     sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --percentile=99 run | tee $LOG_NAME
     sleep 6
-    AVG_TRANS=`grep "transactions:" $LOG_NAME | awk '{print $3}' | sed 's/(//'`
-    echo "$num_threads : $AVG_TRANS" >> ${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS.summary
-    echo "  <THREAD_${num_threads} type=\"result\">${AVG_TRANS}</THREAD_${num_threads}>" >> ${WORKSPACE}/${BENCH_ID}.xml
+    result_set+=(`grep  "queries:" $LOG_NAME | cut -d'(' -f2 | awk '{print $1 ","}'`)
   done
-  echo '</performance>' >> ${WORKSPACE}/${BENCH_ID}.xml
 
   pkill -f dstat
   pkill -f iostat
@@ -244,6 +239,9 @@ function sysbench_rw_run(){
     timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${i}/socket.sock shutdown > /dev/null 2>&1
   done
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+  for i in {0..7}; do if [ -z ${result_set[i]} ]; then  result_set[i]='0,' ; fi; done
+  echo "[ '${BUILD_NUMBER}', ${result_set[*]} ]," >> ${LOGS}/sysbench_${BENCH_ID}_perf_result_set.txt
+  unset result_set
   tarFileName="sysbench_${BENCH_ID}_perf_result_set_${DATE}.tar.gz"
   tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node*/*.err
   mkdir -p ${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}
@@ -348,6 +346,19 @@ export RUN_MINUTES=60
 export COMMIT_SYNC=0
 export MAX_IPS=-1
 export NUM_SECONDARY_INDEXES=3
+
+#Generate graph
+VERSION_INFO=`$DB_DIR/bin/mysqld --version | cut -d' ' -f2-`
+UPTIME_HOUR=`uptime -p`
+SYSTEM_LOAD=`uptime | sed 's|  | |g' | sed -e 's|.*user*.,|System|'`
+MEM=`free -g | grep "Mem:" | awk '{print "Total:"$2"GB  Used:"$3"GB  Free:"$4"GB" }'`
+if [ ! -f $LOGS/hw.info ];then
+  RELEASE=`cat /etc/redhat-release`
+  KERNEL=`uname -r`
+  echo "HW info | $RELEASE $KERNEL"  > $LOGS/hw.info
+fi
+echo "Build #$BUILD_NUMBER | `date +'%d-%m-%Y | %H:%M'` | $VERSION_INFO | $UPTIME_HOUR | $SYSTEM_LOAD | Memory: $MEM " >> $LOGS/build_info.log
+$SCRIPT_DIR/ps_multibench_html_gen.sh $LOGS
 
 #start_pxc
 #iibench_insert_run
