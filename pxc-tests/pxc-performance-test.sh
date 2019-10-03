@@ -358,7 +358,7 @@ if [ ! -f $LOGS/hw.info ];then
   echo "HW info | $RELEASE $KERNEL"  > $LOGS/hw.info
 fi
 echo "Build #$BUILD_NUMBER | `date +'%d-%m-%Y | %H:%M'` | $VERSION_INFO | $UPTIME_HOUR | $SYSTEM_LOAD | Memory: $MEM " >> $LOGS/build_info.log
-$SCRIPT_DIR/ps_multibench_html_gen.sh $LOGS
+$SCRIPT_DIR/multibench_html_gen.sh $LOGS
 
 #start_pxc
 #iibench_insert_run
