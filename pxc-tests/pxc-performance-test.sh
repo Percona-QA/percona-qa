@@ -16,6 +16,11 @@ export MYSQL_DATABASE=test
 export MYSQL_NAME=PXC
 export NODES=3
 
+# Check if workdir was set by Jenkins, otherwise this is presumably a local run
+if [ -z ${BIG_DIR} ]; then
+  export BIG_DIR=${PWD}
+fi
+
 # make sure we have passed basedir parameter for this benchmark run
 if [ -z $2 ]; then
   echo "No valid parameter passed.  Need relative workdir (1st option) and relative basedir (2nd option) settings. Retry."
@@ -35,11 +40,6 @@ fi
 
 export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
-
-# Check if workdir was set by Jenkins, otherwise this is presumably a local run
-if [ -z ${BIG_DIR} ]; then
-  export BIG_DIR=${PWD}
-fi
 
 if [ ! -d ${BIG_DIR}/backups ]; then
   mkdir -p ${BIG_DIR}/backups
@@ -158,7 +158,7 @@ function start_multi_node(){
     ${DB_DIR}/bin/mysql -uroot -S${WS_DATADIR}/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
     sysbench_run load_data $MYSQL_DATABASE
     sysbench $SYSBENCH_OPTIONS --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock prepare > $LOGS/sysbench_prepare.log 2>&1
-    for i in `seq 1 $NODES`;do
+    for i in `seq $NODES -1 1`;do
       timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_${i}/socket.sock shutdown > /dev/null 2>&1
     done
   fi
@@ -235,7 +235,7 @@ function sysbench_rw_run(){
   pkill -f dstat
   pkill -f iostat
   kill -9 ${MEM_PID[@]}
-  for i in `seq 1 $NODES`;do
+  for i in `seq $NODES -1 1`;do
     timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${i}/socket.sock shutdown > /dev/null 2>&1
   done
   ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
