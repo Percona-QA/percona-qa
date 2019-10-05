@@ -38,6 +38,12 @@ else
   export LOGS=$BIG_DIR/$1/logs
 fi
 
+archives() {
+  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS} || true
+}
+
+trap archives EXIT KILL
+
 export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
 
@@ -363,4 +369,4 @@ $SCRIPT_DIR/multibench_html_gen.sh $LOGS
 #start_pxc
 #iibench_insert_run
 
-
+exit 0
