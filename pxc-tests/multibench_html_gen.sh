@@ -1,5 +1,5 @@
 #!/bin/bash
-LOG_LOC = $1
+LOG_LOC=$1
 cd ${LOG_LOC}
 if [ -z ${BIG_DIR} ]; then
   export BIG_DIR=${PWD}

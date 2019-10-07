@@ -38,14 +38,14 @@ else
   export LOGS=$BIG_DIR/$1/logs
 fi
 
+export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
+export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
+
 archives() {
-  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS} || true
+  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS} ${DB_DIR}/node*/*.err true
 }
 
 trap archives EXIT KILL
-
-export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
-export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
 
 if [ ! -d ${BIG_DIR}/backups ]; then
   mkdir -p ${BIG_DIR}/backups
