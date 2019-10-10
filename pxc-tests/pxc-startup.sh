@@ -79,7 +79,7 @@ echo -e "#!/bin/bash" > ./start_pxc
 echo -e "NODES=\$1"  >> ./start_pxc
 echo -e "RBASE=\"$(( RPORT*1000 ))\""  >> ./start_pxc
 echo -e "LADDR=\"$ADDR:$(( RBASE + 8 ))\""  >> ./start_pxc
-echo -e "PXC_MYEXTRA=\"\"" >> ./start_pxc
+echo -e "PXC_MYEXTRA=\"\" # Please add your custom configurations here. eg : --wsrep-debug=1" >> ./start_pxc
 echo -e "PXC_START_TIMEOUT=300"  >> ./start_pxc
 echo -e "KEY_RING_CHECK=$KEY_RING_CHECK"  >> ./start_pxc
 echo -e "BUILD=\$(pwd)\n"  >> ./start_pxc
