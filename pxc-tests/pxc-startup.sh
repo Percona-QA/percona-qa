@@ -1,6 +1,41 @@
 #!/bin/bash
 # Created by Ramesh Sivaraman, Percona LLC
 
+# Dispay script usage details
+usage () {
+  echo "Usage:"
+  echo ""
+  echo "bash pxc-startup.sh"
+  echo ""
+  echo " This script will help you configure multi node"
+  echo " PXC cluster using binary tarball on your local machine"
+  echo ""
+}
+
+# Check if we have a functional getopt(1)
+if ! getopt --test
+  then
+  go_out="$(getopt --options=h --longoptions=help \
+  --name="$(basename "$0")" -- "$@")"
+  test $? -eq 0 || exit 1
+  eval set -- "$go_out"
+fi
+
+for arg
+do
+  case "$arg" in
+    -- ) shift; break;;
+    -h | --help )
+      usage
+      exit 0
+      ;;
+    ?)
+      echo "Invalid option: ${OPTARG}"
+      ;;
+  esac
+done
+
+
 BUILD=$(pwd)
 SKIP_RQG_AND_BUILD_EXTRACT=0
 sst_method="xtrabackup-v2"
@@ -76,11 +111,20 @@ else
 fi
 
 echo -e "#!/bin/bash" > ./start_pxc
+
+echo -e "if [ -z \$1 ]; then"  >> ./start_pxc
+echo -e "  echo \"Usage: start_pxc <number-of-nodes-in-cluster>\""  >> ./start_pxc
+echo -e "  exit 1"  >> ./start_pxc
+echo -e "fi"  >> ./start_pxc
+echo -e "if ! [[ \$1 =~ ^[0-9]+$ ]]; then"  >> ./start_pxc
+echo -e "  echo \"Given parameter is not an integer\""  >> ./start_pxc
+echo -e "  exit 1"  >> ./start_pxc
+echo -e "fi"  >> ./start_pxc
 echo -e "NODES=\$1"  >> ./start_pxc
 echo -e "RBASE=\"$(( RPORT*1000 ))\""  >> ./start_pxc
 echo -e "LADDR=\"$ADDR:$(( RBASE + 8 ))\""  >> ./start_pxc
 echo -e "PXC_MYEXTRA=\"\" # Please add your custom configurations here. eg : --wsrep-debug=1" >> ./start_pxc
-echo -e "PXC_START_TIMEOUT=300"  >> ./start_pxc
+echo -e "PXC_START_TIMEOUT=200"  >> ./start_pxc
 echo -e "KEY_RING_CHECK=$KEY_RING_CHECK"  >> ./start_pxc
 echo -e "BUILD=\$(pwd)\n"  >> ./start_pxc
 echo -e "echo 'Starting PXC nodes..'\n" >> ./start_pxc
@@ -152,8 +196,18 @@ echo -e "      \$PXC_MYEXTRA > \$node/node\$i.err 2>&1 &\n" >> ./start_pxc
 echo -e "    for X in \$(seq 0 \${PXC_START_TIMEOUT}); do" >> ./start_pxc
 echo -e "      sleep 1" >> ./start_pxc
 echo -e "      if \${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock ping > /dev/null 2>&1; then" >> ./start_pxc
-echo -e "        echo \"Server on socket \${node}/socket.sock with datadir \${node} started\"" >> ./start_pxc
-echo -e "        break" >> ./start_pxc
+echo -e "        if [ \"\`\${BUILD}/bin/mysql -uroot -S\$node/socket.sock -Bse\"show global status like 'wsrep_local_state_comment'\" | awk '{print \$2}'\`\" == \"Synced\" ]; then" >> ./start_pxc
+echo -e "          echo \"Server on socket \${node}/socket.sock with datadir \${node} started\"" >> ./start_pxc
+echo -e "          echo \" Configuration file : ${BUILD}/node\$i.cnf\"" >> ./start_pxc
+echo -e "          break" >> ./start_pxc
+echo -e "        fi" >> ./start_pxc
+echo -e "      fi" >> ./start_pxc
+echo -e "      if [[ \${X} -eq 200 ]] ; then" >> ./start_pxc
+echo -e "        echo \"Server on socket \${node}/socket.sock with datadir \${node} failed\"" >> ./start_pxc
+echo -e "        echo \"************************* ERROR *******************************\"" >> ./start_pxc
+echo -e "        grep -i '\\[ERROR\\]' \${node}/node\${i}.err" >> ./start_pxc
+echo -e "        echo \"************************* ERROR *******************************\"" >> ./start_pxc
+echo -e "        exit 1" >> ./start_pxc
 echo -e "      fi" >> ./start_pxc
 echo -e "    done" >> ./start_pxc
 
