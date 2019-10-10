@@ -34,24 +34,17 @@ check_for_version()
     return 0
   fi
 }
+
+# Check mysqld binary
+if [ -r ${BUILD}/bin/mysqld ]; then
+  BIN=${BUILD}/bin/mysqld
+else
+  echo "Assert: there is no (script readable) mysqld binary at ${BUILD}/bin/mysqld ?"
+  exit 1
+fi
+
 declare MYSQL_VERSION=$(${BUILD}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 declare XTRABACKUP_VERSION=$(xtrabackup --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
-
-# Ubuntu mysqld runtime provisioning
-if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
-  if [ "$(dpkg -l | grep 'libaio1')" == "" ]; then
-    sudo apt-get install libaio1
-  fi
-  if [ "$(dpkg -l | grep 'libjemalloc1')" == "" ]; then
-    sudo apt-get install libjemalloc1
-  fi
-  if [ ! -r /lib/x86_64-linux-gnu/libssl.so.6 ]; then
-    sudo ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.6
-  fi
-  if [ ! -r /lib/x86_64-linux-gnu/libcrypto.so.6 ]; then
-    sudo ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.6
-  fi
-fi
 
 if check_for_version $MYSQL_VERSION "8.0.0" ; then 
   if ! check_for_version $XTRABACKUP_VERSION "8.0.0" ; then
