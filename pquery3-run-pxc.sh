@@ -520,7 +520,7 @@ pxc_startup(){
 
   fi
   if [ "$IS_STARTUP" == "startup" ]; then
-    ${BASEDIR}/bin/mysql -uroot -S$node/node${i}_socket.sock -e "create database if not exists test" > /dev/null 2>&1
+    ${BASEDIR}/bin/mysql -uroot -S${WORKDIR}/node${NR}.template/node${NR}_socket.sock -e "create database if not exists test" > /dev/null 2>&1
   fi
 }
 
@@ -1049,7 +1049,7 @@ pquery_test(){
         | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
         | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
         > ${RUNDIR}/${TRIAL}/pquery.cfg
-		${PQUERY_BIN} --config-file ${RUNDIR}/${TRIAL}/pquery.cfg   --no-tbs  --no-enc -k >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+		${PQUERY_BIN} --config-file ${RUNDIR}/${TRIAL}/pquery.cfg --log-all-queries  --no-tbs  --no-enc -k >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
     PQPID="$!"
 
     for X in $(seq 1 ${PQUERY_RUN_TIMEOUT}); do
