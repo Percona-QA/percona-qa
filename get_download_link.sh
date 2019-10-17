@@ -93,10 +93,10 @@ if [[ -z "$(which wget)" ]]; then
   exit 1
 fi
 
-if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; then VERSION="5.7"; fi
+if [[ -z "${VERSION}" ]] && [[ "${PRODUCT}" = "ps" || "${PRODUCT}" = "pxc" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mysql" ]]; then VERSION="8.0"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "pxb" ]]; then VERSION="8.0"; fi
-if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.3"; fi
+if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.4"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then VERSION="4.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "postgresql" ]]; then
@@ -299,8 +299,8 @@ get_link(){
       else
         VERSION_FULL="${DIRECTORY#mariadb-}"
         if [[ ${SOURCE} = 0 ]]; then
-          DIRECTORY="${DIRECTORY}/bintar-linux-${BUILD_ARCH_TMP}/"
-          TARBALL="mariadb-${VERSION_FULL}-linux-${BUILD_ARCH}.tar.gz"
+          DIRECTORY="${DIRECTORY}/bintar-linux-systemd-${BUILD_ARCH_TMP}/"
+          TARBALL="mariadb-${VERSION_FULL}-linux-systemd-${BUILD_ARCH}.tar.gz"
           LINK="${BASE_LINK}${DIRECTORY}${TARBALL}"
         else
           DIRECTORY="${DIRECTORY}/source/"

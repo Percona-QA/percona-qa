@@ -1,13 +1,13 @@
 #!/usr/bin/env bats
 
 @test "check ps" {
-  run ./get_download_link.sh --product ps --version 5.5
-  [ "$status" -eq 0 ]
-
   run ./get_download_link.sh --product ps --version 5.6
   [ "$status" -eq 0 ]
 
   run ./get_download_link.sh --product ps --version 5.7
+  [ "$status" -eq 0 ]
+
+  run ./get_download_link.sh --product ps --version 8.0
   [ "$status" -eq 0 ]
 }
 
@@ -23,12 +23,6 @@
 }
 
 @test "check psmdb" {
-  run ./get_download_link.sh --product psmdb --version 3.0
-  [ "$status" -eq 0 ]
-
-  run ./get_download_link.sh --product psmdb --version 3.2
-  [ "$status" -eq 0 ]
-
   run ./get_download_link.sh --product psmdb --version 3.4
   [ "$status" -eq 0 ]
 
@@ -72,23 +66,17 @@
 }
 
 @test "check mariadb" {
-  run ./get_download_link.sh --product mariadb --version 10.0
-  [ "$status" -eq 0 ]
-
-  run ./get_download_link.sh --product mariadb --version 10.1
-  [ "$status" -eq 0 ]
-
   run ./get_download_link.sh --product mariadb --version 10.2
   [ "$status" -eq 0 ]
 
   run ./get_download_link.sh --product mariadb --version 10.3
   [ "$status" -eq 0 ]
+
+  run ./get_download_link.sh --product mariadb --version 10.4
+  [ "$status" -eq 0 ]
 }
 
 @test "check mongodb" {
-  run ./get_download_link.sh --product mongodb --version 3.2
-  [ "$status" -eq 0 ]
-
   run ./get_download_link.sh --product mongodb --version 3.4
   [ "$status" -eq 0 ]
 
