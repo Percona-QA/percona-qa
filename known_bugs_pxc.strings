@@ -27,6 +27,7 @@ log_sys .= nullptr                                                              
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
 MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450
+meta->depends_on == trx.ts                                                               ## https://jira.percona.com/browse/PXC-2679
 m_progress .= nullptr                                                                    ## https://jira.percona.com/browse/PXC-2481
 mutex .= NULL                                                                            ## https://jira.percona.com/browse/PXC-2515
 OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
@@ -59,6 +60,8 @@ xid_seqno >= trx_sys_cur_xid_seqno                                              
 TEXT=.active.$                                                                           ## https://jira.percona.com/browse/PXC-2621
 TEXT=.state.$                                                                            ## https://jira.percona.com/browse/PXC-2618
 
+## =========== PXC-5.7 ====================
+lock0lock.cc line 7233                                                                   ## https://jira.percona.com/browse/PXC-2683
 ## =========== Line number based ===========
 #ha_innodb.cc line 15656                                                         # Fixed ## https://jira.percona.com/browse/PXC-452
 ha_innodb.cc line 19502                                                                  ## https://jira.percona.com/browse/PXC-915
