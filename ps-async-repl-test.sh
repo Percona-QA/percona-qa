@@ -425,16 +425,17 @@ function async_rpl_test(){
       fi
       if [[ "$ENCRYPTION" == 1 ]];then
         if [[ "$EXTRA_OPT" != "GR" ]]; then
-          if ! check_for_version $MYSQL_VERSION "8.0.14" ; then
+          if ! check_for_version $MYSQL_VERSION "8.0.16" ; then
             echo "encrypt_binlog=ON" >> ${PS_BASEDIR}/n${i}.cnf
+            echo "innodb_encrypt_tables=OFF" >> ${PS_BASEDIR}/n${i}.cnf
           else
             echo "binlog_encryption=ON" >> ${PS_BASEDIR}/n${i}.cnf
+            echo "default_table_encryption=OFF" >> ${PS_BASEDIR}/n${i}.cnf
           fi
           echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
           echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf.
           echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
           echo "encrypt-tmp-files=ON" >> ${PS_BASEDIR}/n${i}.cnf
-          echo "innodb_encrypt_tables=OFF" >> ${PS_BASEDIR}/n${i}.cnf
           if [[ "$EXTRA_OPT" != "XB" ]]; then
             echo "innodb_sys_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
           fi
@@ -466,7 +467,11 @@ function async_rpl_test(){
         sleep 1
         if ${PS_BASEDIR}/bin/mysqladmin -uroot -S/tmp/ps${i}.sock ping > /dev/null 2>&1; then
           if [[ "$ENCRYPTION" == 1 ]];then
-            ${PS_BASEDIR}/bin/mysql  -uroot -S/tmp/ps${i}.sock -e"SET GLOBAL innodb_encrypt_tables=ON;"  > /dev/null 2>&1
+            if ! check_for_version $MYSQL_VERSION "8.0.16" ; then
+              ${PS_BASEDIR}/bin/mysql  -uroot -S/tmp/ps${i}.sock -e"SET GLOBAL innodb_encrypt_tables=ON;"  > /dev/null 2>&1
+            else
+              ${PS_BASEDIR}/bin/mysql  -uroot -S/tmp/ps${i}.sock -e"SET GLOBAL default_table_encryption=ON;"  > /dev/null 2>&1
+            fi
           fi
           break
         fi
