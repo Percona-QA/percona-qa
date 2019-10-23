@@ -228,7 +228,7 @@ ps -ef | grep 'ps[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print
 ps -ef | grep 'bkpslave.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 cleanup(){
-  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}${TEST_DESCRIPTION:-}.tar.gz $WORKDIR/logs || true
 }
 
 trap cleanup EXIT KILL
