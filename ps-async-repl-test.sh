@@ -444,7 +444,7 @@ function async_rpl_test(){
             echo "keyring_file_data=$node/keyring" >> ${PS_BASEDIR}/n${i}.cnf
   	      elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
             echo "early-plugin-load=keyring_vault.so" >> ${PS_BASEDIR}/n${i}.cnf
-            echo "keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf" >> ${PS_BASEDIR}/n${i}.cnf
+            echo "keyring_vault_config=$WORKDIR/vault/keyring_vault_ps.cnf" >> ${PS_BASEDIR}/n${i}.cnf
           fi
         fi
       fi
@@ -633,10 +633,10 @@ function async_rpl_test(){
         ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin > $WORKDIR/logs/xb_prepare_backup.log 2>&1
         
       elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
-        ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault.cnf --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
+        ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault_ps.cnf --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
         
         echoit "Prepare xtrabackup"	
-        ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault.cnf > $WORKDIR/logs/xb_prepare_backup.log 2>&1 
+        ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault_ps.cnf > $WORKDIR/logs/xb_prepare_backup.log 2>&1
       fi
     fi
     echoit "Restore backup to slave datadir"
