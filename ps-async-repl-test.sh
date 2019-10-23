@@ -425,7 +425,11 @@ function async_rpl_test(){
       fi
       if [[ "$ENCRYPTION" == 1 ]];then
         if [[ "$EXTRA_OPT" != "GR" ]]; then
-          echo "encrypt_binlog" >> ${PS_BASEDIR}/n${i}.cnf
+          if ! check_for_version $MYSQL_VERSION "8.0.14" ; then
+            echo "encrypt_binlog=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          else
+            echo "binlog_encryption=ON" >> ${PS_BASEDIR}/n${i}.cnf
+          fi
           echo "master_verify_checksum=on" >> ${PS_BASEDIR}/n${i}.cnf
           echo "binlog_checksum=crc32" >> ${PS_BASEDIR}/n${i}.cnf.
           echo "innodb_temp_tablespace_encrypt=ON" >> ${PS_BASEDIR}/n${i}.cnf
