@@ -326,7 +326,11 @@ else
   if [[ -z $ENCRYPTION ]]; then
     MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR}"
   else
-    MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${PS_BASEDIR}"
+    if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+      MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --basedir=${PS_BASEDIR} --innodb_sys_tablespace_encrypt=ON"
+    elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+      MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault_ps.cnf --basedir=${PS_BASEDIR} --innodb_sys_tablespace_encrypt=ON"
+    fi
   fi
 fi
 
@@ -451,9 +455,13 @@ function async_rpl_test(){
 
       if [[ "$EXTRA_OPT" == "XB" ]]; then
         if [[ "$ENCRYPTION" == 1 ]];then
-          ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --basedir=${PS_BASEDIR} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+          if [[ "$KEYRING_PLUGIN" == "file" ]]; then
+            ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --basedir=${PS_BASEDIR} --datadir=$node > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+          elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
+            ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault_ps.cnf --basedir=${PS_BASEDIR} --datadir=$node > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+          fi
         else
-		   ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
+          ${MID} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
         fi
       elif [[ "$EXTRA_OPT" == "GR" ]]; then
         ${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_BASEDIR} --datadir=$node  > ${WORKDIR}/logs/psnode${i}.err 2>&1 || exit 1;
