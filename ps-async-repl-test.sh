@@ -194,7 +194,7 @@ if [ -z ${TCOUNT} ]; then
 fi
 
 if [ -z "$ENGINE" ]; then
-  ENGINE="INNODB"
+  ENGINE="innodb"
 fi
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
@@ -228,6 +228,7 @@ ps -ef | grep 'ps[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print
 ps -ef | grep 'bkpslave.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
 
 cleanup(){
+  cp -f ${PS_BASEDIR}/*.cnf $WORKDIR/logs
   tar cvzf $ROOT_FS/results-${BUILD_NUMBER}${TEST_DESCRIPTION:-}.tar.gz $WORKDIR/logs || true
 }
 
@@ -396,18 +397,18 @@ function async_rpl_test(){
       echo "report-host=$ADDR" >> ${PS_BASEDIR}/n${i}.cnf
       echo "report-port=$RBASE1" >> ${PS_BASEDIR}/n${i}.cnf
       if [ "$ENGINE" == "innodb" ]; then
-        echo "default-storage-engine=INNODB" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=innodb" >> ${PS_BASEDIR}/n${i}.cnf
       elif [ "$ENGINE" == "rocksdb" ]; then
         echo "plugin-load-add=rocksdb=ha_rocksdb.so" >> ${PS_BASEDIR}/n${i}.cnf
         echo "init-file=${SCRIPT_PWD}/MyRocks.sql" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "default-storage-engine=ROCKSDB" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=rocksdb" >> ${PS_BASEDIR}/n${i}.cnf
         echo "rocksdb-flush-log-at-trx-commit=2" >> ${PS_BASEDIR}/n${i}.cnf
         echo "rocksdb-wal-recovery-mode=2" >> ${PS_BASEDIR}/n${i}.cnf
       elif [ "$ENGINE" == "tokudb" ]; then
         echo "plugin-load-add=tokudb=ha_tokudb.so" >> ${PS_BASEDIR}/n${i}.cnf
         echo "tokudb-check-jemalloc=0" >> ${PS_BASEDIR}/n${i}.cnf
         echo "init-file=${SCRIPT_PWD}/TokuDB.sql" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "default-storage-engine=TokuDB" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "default-storage-engine=tokudb" >> ${PS_BASEDIR}/n${i}.cnf
       fi
       if [[ "$EXTRA_OPT" == "GR" ]]; then
         echo "binlog_checksum=none" >> ${PS_BASEDIR}/n${i}.cnf
@@ -703,7 +704,7 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps2.sock" "$WORKDIR/logs/slave_status_psnode2.log" "$WORKDIR/logs/psnode2.err"
     sleep 10
     echoit "1. PS master slave: Checksum result."
-    if [ "$ENGINE" == "ROCKSDB" ]; then
+    if [ "$ENGINE" == "rocksdb" ]; then
       run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
@@ -762,7 +763,7 @@ function async_rpl_test(){
     slave_sync_check "/tmp/ps4.sock" "$WORKDIR/logs/slave_status_psnode4.log" "$WORKDIR/logs/psnode4.err"
     sleep 10
     echoit "2. PS master multi slave: Checksum result."
-    if [ "$ENGINE" == "ROCKSDB" ]; then
+    if [ "$ENGINE" == "rocksdb" ]; then
       run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps3.sock"
       run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps4.sock"
@@ -813,7 +814,7 @@ function async_rpl_test(){
 
     sleep 10
     echoit "3. PS master master: Checksum result."
-    if [ "$ENGINE" == "ROCKSDB" ]; then
+    if [ "$ENGINE" == "rocksdb" ]; then
       run_mysqldbcompare "sbtest_ps_master_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
@@ -902,7 +903,7 @@ function async_rpl_test(){
     sleep 10
     echoit "4. multi source replication: Checksum result."
 
-    if [ "$ENGINE" == "ROCKSDB" ]; then
+    if [ "$ENGINE" == "rocksdb" ]; then
       echoit "Checksum for msr_db_master1 database"
       run_mysqldbcompare "msr_db_master1" "/tmp/ps2.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master2 database"
@@ -1045,7 +1046,7 @@ function async_rpl_test(){
 
     sleep 10
     echoit "5. multi thread replication: Checksum result."
-    if [ "$ENGINE" == "ROCKSDB" ]; then
+    if [ "$ENGINE" == "rocksdb" ]; then
       run_mysqldbcompare "mtr_db_ps1_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "mtr_db_ps1_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqldbcompare "mtr_db_ps1_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
@@ -1067,28 +1068,36 @@ function async_rpl_test(){
   }
 
   function mgr_test(){
-    echoit "******************** $MYEXTRA_CHECK mysql group replication test ************************"
-    #PS server initialization
-    echoit "PS server initialization for group replication test"
-    ps_start 3 GR
+    if [[ "$ENGINE" != "tokudb" && "$ENGINE" != "rocksdb" ]]; then
+      echoit "******************** $MYEXTRA_CHECK mysql group replication test ************************"
+      #PS server initialization
+      echoit "PS server initialization for group replication test"
+      ps_start 3 GR
 
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"drop database if exists sbtest_gr_db;create database sbtest_gr_db;"
-    create_test_user "/tmp/ps1.sock"
-    echoit "Running sysbench data load"
-    async_sysbench_load sbtest_gr_db "/tmp/ps1.sock"
-    async_sysbench_insert_run sbtest_gr_db "/tmp/ps1.sock"
-    sleep 5
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e"drop database if exists sbtest_gr_db;create database sbtest_gr_db;"
+      create_test_user "/tmp/ps1.sock"
+      echoit "Running sysbench data load"
+      async_sysbench_load sbtest_gr_db "/tmp/ps1.sock"
+      async_sysbench_insert_run sbtest_gr_db "/tmp/ps1.sock"
+      sleep 5
 
-    if [ "$ENCRYPTION" == 1 ];then
-      echoit "Running general tablespace encryption test run"
-      gt_test_run sbtest_gr_db "/tmp/ps1.sock"
+      if [ "$ENCRYPTION" == 1 ];then
+        echoit "Running general tablespace encryption test run"
+        gt_test_run sbtest_gr_db "/tmp/ps1.sock"
+      fi
+      sleep 10
+      echoit "6. group replication: Checksum result."
+      run_mysqldbcompare "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqldbcompare "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps3.sock"
+
+      $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+      $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
+      $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
+      ENCRYPTION=1
+    else
+      echoit "Group replication is not supported for TokuDB/RocksDB!"
+      return 0
     fi
-    sleep 10
-
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown
-    ENCRYPTION=1
   }
 
   function xb_master_slave_test(){
@@ -1116,7 +1125,7 @@ function async_rpl_test(){
 	
     slave_startup_check "/tmp/bkpslave.sock" "$WORKDIR/logs/slave_status_bkpslave.log" "$WORKDIR/logs/bkpslave.err"
 
-    echoit "XB master slave replication: Checksum result."
+    echoit "7. XB master slave replication: Checksum result."
     run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock"
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/bkpslave.sock -u root shutdown
