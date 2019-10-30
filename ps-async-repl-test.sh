@@ -60,7 +60,7 @@ usage () {
   echo "                                      xb_master_slave_test"
   echo "                                    If you specify 'all', the script will execute all testcases"
   echo ""
-  echo "  -e, --with-encryption              Run the script with encryption feature"
+  echo "  -e, --with-encryption             Run the script with encryption feature"
 }
 
 # Check if we have a functional getopt(1)
@@ -204,12 +204,6 @@ echoit(){
   echo "[$(date +'%T')] $1"
   if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/ps_async_test.log; fi
 }
-if [ "$ENGINE" == "rocksdb" ]; then
-  if [[ ! -e $(which mysqldbcompare 2> /dev/null) ]] ;then
-    echo "ERROR! mysql utilities are currently not installed. Please install mysql utilities. Terminating"
-    exit 1
-  fi
-fi
 
 if [ "$ENCRYPTION" == 1 ];then
   if [[ "$KEYRING_PLUGIN" == "vault" ]]; then
@@ -229,7 +223,7 @@ ps -ef | grep 'bkpslave.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{prin
 
 cleanup(){
   cp -f ${PS_BASEDIR}/*.cnf $WORKDIR/logs
-  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}${TEST_DESCRIPTION:-}.tar.gz $WORKDIR/logs || true
+  tar czf $ROOT_FS/results-${BUILD_NUMBER}${TEST_DESCRIPTION:-}.tar.gz $WORKDIR/logs || true
 }
 
 trap cleanup EXIT KILL
@@ -506,12 +500,31 @@ function async_rpl_test(){
     pt-table-checksum S=$SOCKET,u=test_user,p=test -d $DATABASES --recursion-method hosts --no-check-binlog-format
     check_cmd $?
   }
-  function run_mysqldbcompare(){
-    local DATABASES=${1:-}
+
+  function run_mysqlchecksum(){
+    local DATABASE=${1:-}
     local MASTER_SOCKET=${2:-}
     local SLAVE_SOCKET=${3:-}
-    mysqldbcompare --server1=test_user:test@localhost:$MASTER_SOCKET --server2=test_user:test@localhost:$SLAVE_SOCKET $DATABASES --changes-for=server2  --difftype=sql
-    check_cmd $?
+    local TABLES_MASTER=$(${PS_BASEDIR}/bin/mysql -sN -uroot --socket=${MASTER_SOCKET} -e "SELECT GROUP_CONCAT(TABLE_NAME SEPARATOR \", \") FROM information_schema.tables WHERE table_schema = \"${DATABASE}\";")
+    local TABLES_SLAVE=$(${PS_BASEDIR}/bin/mysql -sN -uroot --socket=${SLAVE_SOCKET} -e "SELECT GROUP_CONCAT(TABLE_NAME SEPARATOR \", \") FROM information_schema.tables WHERE table_schema = \"${DATABASE}\";")
+    local CHECKSUM_MASTER=$(${PS_BASEDIR}/bin/mysql -sN -uroot --socket=${MASTER_SOCKET} -e "checksum table ${TABLES_MASTER};" -D ${DATABASE})
+    local CHECKSUM_SLAVE=$(${PS_BASEDIR}/bin/mysql -sN -uroot --socket=${SLAVE_SOCKET} -e "checksum table ${TABLES_SLAVE};" -D ${DATABASE})
+
+    echoit "Master ${MASTER_SOCKET} database ${DATABASE} tables: ${TABLES_MASTER}"
+    echoit "Master ${MASTER_SOCKET} database ${DATABASE} checksums:"
+    echoit "${CHECKSUM_MASTER}"
+    echoit "Slave ${SLAVE_SOCKET} database ${DATABASE} tables: ${TABLES_SLAVE}"
+    echoit "Slave ${SLAVE_SOCKET} database ${DATABASE} checksums:"
+    echoit "${CHECKSUM_SLAVE}"
+    if [[ -z "${TABLES_MASTER}" || -z "${TABLES_SLAVE}" || -z "${CHECKSUM_MASTER}" || -z "${CHECKSUM_SLAVE}" ]]; then
+      echoit "One of the checksum values is empty!"
+      exit 1
+    elif [[ "${CHECKSUM_MASTER}" == "${CHECKSUM_SLAVE}" ]]; then
+      echoit "Database checksums are the same."
+    else
+      echoit "Difference noticed in the checksums!"
+      exit 1
+    fi
   }
 
   function invoke_slave(){
@@ -705,7 +718,7 @@ function async_rpl_test(){
     sleep 10
     echoit "1. PS master slave: Checksum result."
     if [ "$ENGINE" == "rocksdb" ]; then
-      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
     fi
@@ -764,9 +777,9 @@ function async_rpl_test(){
     sleep 10
     echoit "2. PS master multi slave: Checksum result."
     if [ "$ENGINE" == "rocksdb" ]; then
-      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps3.sock"
-      run_mysqldbcompare "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps4.sock"
+      run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps3.sock"
+      run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps4.sock"
     else
       run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
     fi
@@ -815,8 +828,8 @@ function async_rpl_test(){
     sleep 10
     echoit "3. PS master master: Checksum result."
     if [ "$ENGINE" == "rocksdb" ]; then
-      run_mysqldbcompare "sbtest_ps_master_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "sbtest_ps_master_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "/tmp/ps1.sock"
     fi
@@ -905,11 +918,11 @@ function async_rpl_test(){
 
     if [ "$ENGINE" == "rocksdb" ]; then
       echoit "Checksum for msr_db_master1 database"
-      run_mysqldbcompare "msr_db_master1" "/tmp/ps2.sock" "/tmp/ps1.sock"
+      run_mysqlchecksum "msr_db_master1" "/tmp/ps2.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master2 database"
-      run_mysqldbcompare "msr_db_master2" "/tmp/ps3.sock" "/tmp/ps1.sock"
+      run_mysqlchecksum "msr_db_master2" "/tmp/ps3.sock" "/tmp/ps1.sock"
       echoit "Checksum for msr_db_master3 database"
-      run_mysqldbcompare "msr_db_master3" "/tmp/ps4.sock" "/tmp/ps1.sock"
+      run_mysqlchecksum "msr_db_master3" "/tmp/ps4.sock" "/tmp/ps1.sock"
     else
       echoit "Checksum for msr_db_master1 database"
       run_pt_table_checksum "msr_db_master1" "/tmp/ps2.sock"
@@ -1047,16 +1060,16 @@ function async_rpl_test(){
     sleep 10
     echoit "5. multi thread replication: Checksum result."
     if [ "$ENGINE" == "rocksdb" ]; then
-      run_mysqldbcompare "mtr_db_ps1_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps1_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps1_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps1_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps1_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps2_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps2_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps2_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps2_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps1_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps1_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps1_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps1_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps1_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps2_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps2_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps2_3" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps2_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
       run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5"  "/tmp/ps1.sock"
     fi
@@ -1087,8 +1100,8 @@ function async_rpl_test(){
       fi
       sleep 10
       echoit "6. group replication: Checksum result."
-      run_mysqldbcompare "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps2.sock"
-      run_mysqldbcompare "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps3.sock"
+      run_mysqlchecksum "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps2.sock"
+      run_mysqlchecksum "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps3.sock"
 
       $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
       $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
