@@ -338,7 +338,7 @@ if [[ $PXC -eq 1 ]];then
   rm -rf ${BASEDIR}/my.cnf
   echo "[mysqld]" > ${BASEDIR}/my.cnf
   echo "basedir=${BASEDIR}" >> ${BASEDIR}/my.cnf
-  echo "wsrep-debug=ON" >> ${BASEDIR}/my.cnf
+  echo "wsrep-debug=1" >> ${BASEDIR}/my.cnf
   echo "innodb_file_per_table" >> ${BASEDIR}/my.cnf
   echo "innodb_autoinc_lock_mode=2" >> ${BASEDIR}/my.cnf
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
@@ -447,14 +447,35 @@ pxc_startup(){
     sed -i "2i log-error=$node/node${i}.err" ${DATADIR}/n${i}.cnf
     sed -i "2i port=$RBASE1" ${DATADIR}/n${i}.cnf
     sed -i "2i datadir=$node" ${DATADIR}/n${i}.cnf
-    sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
+    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+      sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
+	else
+      sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT;socket.ssl_key=${WORKDIR}/cert/server-key.pem;socket.ssl_cert=${WORKDIR}/cert/server-cert.pem;socket.ssl_ca=${WORKDIR}/cert/ca.pem\"" ${DATADIR}/n${i}.cnf
+	fi
     sed -i "2i socket=$node/node${i}_socket.sock" ${DATADIR}/n${i}.cnf
     sed -i "2i tmpdir=$DATADIR/tmp${i}" ${DATADIR}/n${i}.cnf
-
+    echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf
+    echo "[client]" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-cert = ${WORKDIR}/cert/client-cert.pem" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-key = ${WORKDIR}/cert/client-key.pem" >> ${DATADIR}/n${i}.cnf
+    echo "[sst]" >> ${DATADIR}/n${i}.cnf
+    echo "encrypt = 4" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
+    echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf    
     if [ "$IS_STARTUP" == "startup" ]; then
       ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
     fi
   done
+  if check_for_version $MYSQL_VERSION "8.0.0" ; then
+    if [ "$IS_STARTUP" == "startup" ]; then
+	  mkdir ${WORKDIR}/cert
+	  cp ${WORKDIR}/node1.template/*.pem ${WORKDIR}/cert/
+    fi
+  fi
   get_error_socket_file(){
     NR=$1
     if [ "$IS_STARTUP" == "startup" ]; then
@@ -520,7 +541,7 @@ pxc_startup(){
 
   fi
   if [ "$IS_STARTUP" == "startup" ]; then
-    ${BASEDIR}/bin/mysql -uroot -S$node/node${i}_socket.sock -e "create database if not exists test" > /dev/null 2>&1
+    ${BASEDIR}/bin/mysql -uroot -S${WORKDIR}/node${NR}.template/node${NR}_socket.sock -e "create database if not exists test" > /dev/null 2>&1
   fi
 }
 
