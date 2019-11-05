@@ -10,6 +10,7 @@
 .wsrep_has_changes.thd                                                                   ## https://jira.percona.com/browse/PXC-2619
 ACL_HOST_AND_IP..has_wildcard                                                            ## https://jira.percona.com/browse/PXC-2508
 all .. .thd->slave_thread .. one_phase                                                   ## https://jira.percona.com/browse/PXC-2511
+apply_monitor_.last_left                                                                 ## https://jira.percona.com/browse/PXC-2700
 autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 conn_map_.size                                                                           ## https://jira.percona.com/browse/PXC-2487
@@ -42,6 +43,7 @@ rcode <= 0                                                                      
 row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
 state_ == s_joiner .. state_ == s_initialized                                            ## https://jira.percona.com/browse/PXC-2612
 state_ == s_none                                                                         ## https://jira.percona.com/browse/PXC-2615
+state_ == s_executing .. state_ == s_committed .. state_ == s_aborted                    ## https://jira.percona.com/browse/PXC-2702
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
 set_and_validate_user_attributes                                                         ## https://jira.percona.com/browse/PXC-2500
 t->s->tmp_table .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE          ## https://jira.percona.com/browse/PXC-2507
