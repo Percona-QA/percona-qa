@@ -477,6 +477,7 @@ ha_innodb.cc line 3539                           ##DONOTREMOVE## https://jira.pe
 ha_innodb.cc line 3540                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
 ha_innodb.cc line 3545                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
 ha_innodb.cc line 3557                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.43
+ha_innodb.cc line 3565                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.46
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
@@ -562,7 +563,8 @@ ha_innodb.cc line 2128                           ## https://bugs.mysql.com/bug.p
 #ha_innodb.cc line 2085                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 #ha_innodb.cc line 2102                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 #ha_innodb.cc line 2110                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.36, alike to 78732)
-ha_innodb.cc line 2139                           ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.43, alike to 78732)
+#ha_innodb.cc line 2139                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.43, alike to 78732)
+ha_innodb.cc line 2147                           ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.46, alike to 78732)
 #ha_innodb.cc line 1588                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) PS (old LP #1384616)
 #ha_innodb.cc line 1869                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) MS (old LP #1384616)
 #ha_innodb.cc line 1870                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) MS (old LP #1384616)
@@ -666,6 +668,7 @@ ha_innodb.cc line 19383                                                         
 ha_innodb.cc line 19423                                                                 ## PS 5.6.36     --innodb-log-buffer-size=1125899906842624 (or similar)
 ha_innodb.cc line 19523                                                                 ## PS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
 ha_innodb.cc line 19528                                                                 ## PS 5.6.42     https://bugs.mysql.com/bug.php?id=91956
+ha_innodb.cc line 19535                                                                 ## PS 5.6.46     https://bugs.mysql.com/bug.php?id=91956
 ha_innodb.cc line 17420                                                                 ## MS 5.6.41     https://bugs.mysql.com/bug.php?id=91956
 mem0mem.c line 361                                                                      ## PS 5.5.53     --innodb-log-buffer-size=1125899906842624 (or similar)
 ut0ut.cc line 962                                                                       ## PS 5.7.23     --innodb-log-buffer-size=1125899906842624 (or similar)
@@ -679,6 +682,7 @@ ut0ut.cc.629                                                                    
 ut0ut.cc.722                                                                            ## https://bugs.mysql.com/bug.php?id=92487, PS8, related to large innodb-buffer-pool-size
 ut0ut.cc line 958                                                                       ## PS 5.7.20     --innodb-buffer-pool-size=-1125899906842624 (or similar)
 mem0dbg.c line 684                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.5.55, MS 5.5.54
+mem0dbg.c line 688                                                                      ## https://bugs.mysql.com/bug.php?id=86234 PS 5.6.46, MS 5.6.46
 #handler0alter.cc line 787                                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=88747 MS
 #handler0alter.cc line 798                                                     ## Fixed ## https://bugs.mysql.com/bug.php?id=88747 PS
 handler0alter.cc line 5680                                                              ## https://bugs.mysql.com/bug.php?id=74363 MS
@@ -704,6 +708,7 @@ mtr0mtr.cc line 323                                                             
 mtr0mtr.cc line 325                                                                     ## https://bugs.mysql.com/bug.php?id=77972 PS
 mtr0mtr.cc line 513                                                                     ## https://bugs.mysql.com/bug.php?id=77972 PS (MS:line 323) (duplicated by 78333)
 mtr0mtr.cc line 574                                                                     ## https://bugs.mysql.com/bug.php?id=77972   (duplicated by 82043 (78333))
+mtr0mtr.cc line 333                                                                     ## https://jira.percona.com/browse/PS-6061 PS 5.6.46
 os0file.cc line 1950                                                                    ## https://bugs.mysql.com/bug.php?id=74480 MS
 os0file.cc line 1951                                                                    ## https://bugs.mysql.com/bug.php?id=74480 MS
 os0file.cc line 2003                                                                    ## https://bugs.mysql.com/bug.php?id=74480 PS (with oldPS)
