@@ -48,10 +48,16 @@ t->s->tmp_table .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE 
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
+table->is_created                                                                        ## https://jira.percona.com/browse/PXC-2698
 table->n_rec_locks == 0                                                                  ## https://jira.percona.com/browse/PXC-2512
 thd->debug_binlog_xid_last.is_null                                                       ## https://jira.percona.com/browse/PXC-2386
 thd->wsrep_exec_mode == LOCAL_STATE                                                      ## https://jira.percona.com/browse/PXC-2486
 thd->wsrep_safe_to_abort == true                                                         ## https://jira.percona.com/browse/PXC-2385
+thd->wsrep_trx                                                                           ## https://jira.percona.com/browse/PXC-2696
+transaction.is_streaming                                                                 ## https://jira.percona.com/browse/PXC-2694
+transaction_.active                                                                      ## https://jira.percona.com/browse/PXC-2699
+transaction_.state                                                                       ## https://jira.percona.com/browse/PXC-2695
+trx->global_seqno                                                                        ## https://jira.percona.com/browse/PXC-2697
 user_table->get_ref_count                                                                ## https://jira.percona.com/browse/PXC-2690
 void boost..throw_exception<asio..system_error>                                          ## https://jira.percona.com/browse/PXC-2392
 ZN5boost15throw_exceptionIN4asio12system_errorEEEvRKT_                                   ## https://jira.percona.com/browse/PXC-2392
@@ -59,6 +65,7 @@ void std..__cxx11..basic_string<char, std..char_traits<char>, std..allocator<cha
 wsrep_ws_handle.trx_id == .0x7fffffffffffffffLL . 2ULL                                   ## https://jira.percona.com/browse/PXC-2442
 wsrep..transaction..before_rollback                                                      ## https://jira.percona.com/browse/PXC-2620
 wsrep_start_position_update                                                              ## https://jira.percona.com/browse/PXC-2674
+wsrep..server_state..state                                                               ## https://jira.percona.com/browse/PXC-2629
 xid_seqno >= trx_sys_cur_xid_seqno                                                       ## https://jira.percona.com/browse/PXC-2390
 .referenced                                                                              ## https://jira.percona.com/browse/PXC-2571
 TEXT=.active.$                                                                           ## https://jira.percona.com/browse/PXC-2621
