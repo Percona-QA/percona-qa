@@ -116,7 +116,7 @@ elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "
 fi
 
 function start_multi_node(){
-  ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+  ps -ef | grep 'node[1-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   MYEXTRA="--innodb-buffer-pool-size=$INNODB_CACHE"
   run_mid=0
@@ -149,23 +149,23 @@ function start_multi_node(){
     ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
       --datadir=$node $WSREP_CLUSTER_ADD $MYEXTRA \
       --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-      --log-error=$node/node$i.err  \
-      --socket=$node/socket.sock --port=$RBASE1 > $node/node$i.err 2>&1 &
+      --log-error=$LOGS/node$i.err  \
+      --socket=$LOGS/node$i.sock --port=$RBASE1 > $LOGS/node$i.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
-      if ${DB_DIR}/bin/mysqladmin -uroot -S$node/socket.sock ping > /dev/null 2>&1; then
-        echo "Started PXC node$i. Socket : $node/socket.sock"
+      if ${DB_DIR}/bin/mysqladmin -uroot -S$LOGS/node$i.sock ping > /dev/null 2>&1; then
+        echo "Started PXC node$i. Socket : $LOGS/node$i.sock"
         break
       fi
     done
   done
   if [ $run_mid -eq 1 ]; then
-    ${DB_DIR}/bin/mysql -uroot -S${WS_DATADIR}/node${DATASIZE}_1/socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
+    ${DB_DIR}/bin/mysql -uroot -S$LOGS/node$i.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
     sysbench_run load_data $MYSQL_DATABASE
-    sysbench $SYSBENCH_OPTIONS --mysql-socket=${WS_DATADIR}/node${DATASIZE}_1/socket.sock prepare > $LOGS/sysbench_prepare.log 2>&1
+    sysbench $SYSBENCH_OPTIONS --mysql-socket=$LOGS/node$i.sock prepare > $LOGS/sysbench_prepare.log 2>&1
     for i in `seq $NODES -1 1`;do
-      timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${DATASIZE}_${i}/socket.sock shutdown > /dev/null 2>&1
+      timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/node$i.sock shutdown > /dev/null 2>&1
     done
   fi
 }
@@ -185,9 +185,9 @@ function check_memory(){
 
 function start_pxc(){
   for i in `seq 1 $NODES`;do
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${i}/socket.sock shutdown > /dev/null 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/node$i.sock shutdown > /dev/null 2>&1
   done
-  ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+  ps -ef | grep 'node[1-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
 
   if [ -d ${WS_DATADIR}/node${DATASIZE}_1 ]; then
@@ -213,7 +213,7 @@ function sysbench_rw_run(){
     num_threads=64
     WARMUP_TIME_SECONDS=600
     sysbench_run oltp_read $MYSQL_DATABASE $WARMUP_TIME_SECONDS
-    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
+    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/node1.sock --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
     sleep 60
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
@@ -233,7 +233,7 @@ function sysbench_rw_run(){
         dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
     fi
     sysbench_run oltp $MYSQL_DATABASE $RUN_TIME_SECONDS
-    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=${DB_DIR}/node1/socket.sock --percentile=99 run | tee $LOG_NAME
+    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/node1.sock --percentile=99 run | tee $LOG_NAME
     sleep 6
     result_set+=(`grep  "queries:" $LOG_NAME | cut -d'(' -f2 | awk '{print $1 ","}'`)
   done
@@ -242,9 +242,9 @@ function sysbench_rw_run(){
   pkill -f iostat
   kill -9 ${MEM_PID[@]}
   for i in `seq $NODES -1 1`;do
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=${WS_DATADIR}/node${i}/socket.sock shutdown > /dev/null 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/node${i}.sock.sock shutdown > /dev/null 2>&1
   done
-  ps -ef | grep 'socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+  ps -ef | grep 'node[1-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   for i in {0..7}; do if [ -z ${result_set[i]} ]; then  result_set[i]='0,' ; fi; done
   echo "[ '${BUILD_NUMBER}', ${result_set[*]} ]," >> ${LOGS}/sysbench_${BENCH_ID}_perf_result_set.txt
   unset result_set
@@ -272,7 +272,7 @@ iibench_insert_run(){
     iostat -dxm $IOSTAT_INTERVAL $IOSTAT_ROUNDS  > $LOG_NAME_IOSTAT &
     dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
   fi
-  python iibench.py ${CREATE_TABLE_STRING} --db_user=$SUSER --db_password=$SPASS --db_socket=${DB_DIR}/node1/socket.sock  --db_name=${MYSQL_DATABASE} --max_rows=${MAX_ROWS} --max_table_rows=${MAX_TABLE_ROWS} --rows_per_report=${ROWS_PER_REPORT} --engine=INNODB ${IIBENCH_QUERY_PARM} --unique_checks=${UNIQUE_CHECKS} --run_minutes=${RUN_MINUTES} --tokudb_commit_sync=${COMMIT_SYNC} --max_ips=${MAX_IPS} --num_secondary_indexes=${NUM_SECONDARY_INDEXES} | tee $LOG_NAME
+  python iibench.py ${CREATE_TABLE_STRING} --db_user=$SUSER --db_password=$SPASS --db_socket=$LOGS/node1.sock  --db_name=${MYSQL_DATABASE} --max_rows=${MAX_ROWS} --max_table_rows=${MAX_TABLE_ROWS} --rows_per_report=${ROWS_PER_REPORT} --engine=INNODB ${IIBENCH_QUERY_PARM} --unique_checks=${UNIQUE_CHECKS} --run_minutes=${RUN_MINUTES} --tokudb_commit_sync=${COMMIT_SYNC} --max_ips=${MAX_IPS} --num_secondary_indexes=${NUM_SECONDARY_INDEXES} | tee $LOG_NAME
 
 }
 
