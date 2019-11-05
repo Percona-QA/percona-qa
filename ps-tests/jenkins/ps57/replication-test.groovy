@@ -25,7 +25,7 @@ pipeline {
             string(name: 'WITH_ROCKSDB', value: "ON"),
             string(name: 'DEFAULT_TESTING', value: "no"),
             string(name: 'HOTBACKUP_TESTING', value: "no"),
-            string(name: 'TOKUDB_ENGINES_MTR', value: "no")
+            string(name: 'TOKUDB_ENGINES_MTR', value: "no"),
             string(name: 'ROCKSDB_ENGINES_MTR', value: "no")
           ], propagate: false, wait: true
           // Navigate to jenkins > Manage jenkins > In-process Script Approval
