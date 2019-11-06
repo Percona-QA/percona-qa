@@ -1,5 +1,8 @@
 pipeline {
   agent any
+  triggers {
+    cron 'H 12 * * 6'
+  }
   parameters {
     choice(name: 'TEST_CASE', choices: ['all','master_slave_test','master_multi_slave_test','master_master_test','msr_test','mtr_test','mgr_test','xb_master_slave_test'], description: 'Test case to run.')
     string(name: 'GIT_REPO', defaultValue: 'https://github.com/percona/percona-server.git', description: 'PS repo for build.')
@@ -264,4 +267,11 @@ pipeline {
       } //End parallel
     } //End stage Run tests
   } //End stages
+  post {
+    failure {
+      mail to: 'tomislav.plavcic@percona.com, hrvoje.matijakovic@percona.com', from: 'jenkins@ps80.cd.percona.com',
+          subject: "Build: ${env.JOB_NAME} - Failed",
+          body: "Job Failed - \"${env.JOB_NAME}\" build: ${env.BUILD_NUMBER}\n\nView the log at:\n ${env.BUILD_URL}\n"
+    }
+  }
 } //End pipeline
