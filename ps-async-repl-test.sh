@@ -663,7 +663,9 @@ function async_rpl_test(){
     fi
     echoit "Restore backup to slave datadir"
     rsync -avpP ${WORKDIR}/backupdir/full/* ${WORKDIR}/bkpslave > $WORKDIR/logs/xb_restore_backup.log 2>&1
-    cp ${WORKDIR}/psnode1/keyring ${WORKDIR}/bkpslave/
+    if [ -f ${WORKDIR}/psnode1/keyring ]; then
+      cp ${WORKDIR}/psnode1/keyring ${WORKDIR}/bkpslave/
+    fi
     cat ${PS_BASEDIR}/n1.cnf |
       sed -e "0,/^[ \t]*port[ \t]*=.*$/s|^[ \t]*port[ \t]*=.*$|port=3308|" |
       sed -e "0,/^[ \t]*report-port[ \t]*=.*$/s|^[ \t]*report-port[ \t]*=.*$|report-port=3308|" |
@@ -1114,34 +1116,42 @@ function async_rpl_test(){
   }
 
   function xb_master_slave_test(){
-    echoit "******************** $MYEXTRA_CHECK master slave test using xtrabackup ************************"
-    #PS server initialization
-    echoit "PS server initialization"
-    ps_start 1 "XB"
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_db;create database sbtest_xb_db;"
-    create_test_user "/tmp/ps1.sock"
-    async_sysbench_load sbtest_xb_db "/tmp/ps1.sock"
-    async_sysbench_insert_run sbtest_xb_db "/tmp/ps1.sock"
+    if ! check_for_version $MYSQL_VERSION "8.0.15" && [[ "$ENGINE" == "rocksdb" ]]; then
+      echoit "XtraBackup 2.4 with PS 5.7 doesn't support rocksdb backup so skipping!"
+      return 0
+    elif ! check_for_version $MYSQL_VERSION "8.0.15" && [[ "$ENCRYPTION" == 1 ]]; then
+      echoit "XtraBackup 2.4 with PS 5.7 supports only limited functionality so skipping!"
+      return 0
+    else
+      echoit "******************** $MYEXTRA_CHECK master slave test using xtrabackup ************************"
+      #PS server initialization
+      echoit "PS server initialization"
+      ps_start 1 "XB"
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_db;create database sbtest_xb_db;"
+      create_test_user "/tmp/ps1.sock"
+      async_sysbench_load sbtest_xb_db "/tmp/ps1.sock"
+      async_sysbench_insert_run sbtest_xb_db "/tmp/ps1.sock"
 
-    echoit "Check xtrabackup binary"    
-    check_xb_dir
-    echoit "Initiate xtrabackup"
-    backup_database "/tmp/ps1.sock"
+      echoit "Check xtrabackup binary"
+      check_xb_dir
+      echoit "Initiate xtrabackup"
+      backup_database "/tmp/ps1.sock"
 
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_check;create database sbtest_xb_check;"
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "create table sbtest_xb_check.t1(id int);"
-    local BINLOG_FILE=$(cat ${WORKDIR}/backupdir/full/xtrabackup_binlog_info | awk '{print $1}')
-    local BINLOG_POS=$(cat ${WORKDIR}/backupdir/full/xtrabackup_binlog_info | awk '{print $2}')
-    echoit "Starting replication on restored slave"
-    local PORT=$(${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "select @@port")
-    ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/bkpslave.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$PORT, MASTER_USER='root', MASTER_LOG_FILE='$BINLOG_FILE',MASTER_LOG_POS=$BINLOG_POS;START SLAVE"
-	
-    slave_startup_check "/tmp/bkpslave.sock" "$WORKDIR/logs/slave_status_bkpslave.log" "$WORKDIR/logs/bkpslave.err"
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_xb_check;create database sbtest_xb_check;"
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "create table sbtest_xb_check.t1(id int);"
+      local BINLOG_FILE=$(cat ${WORKDIR}/backupdir/full/xtrabackup_binlog_info | awk '{print $1}')
+      local BINLOG_POS=$(cat ${WORKDIR}/backupdir/full/xtrabackup_binlog_info | awk '{print $2}')
+      echoit "Starting replication on restored slave"
+      local PORT=$(${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -Bse "select @@port")
+      ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/bkpslave.sock -e"CHANGE MASTER TO MASTER_HOST='${ADDR}', MASTER_PORT=$PORT, MASTER_USER='root', MASTER_LOG_FILE='$BINLOG_FILE',MASTER_LOG_POS=$BINLOG_POS;START SLAVE"
 
-    echoit "7. XB master slave replication: Checksum result."
-    run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock"
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
-    $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/bkpslave.sock -u root shutdown
+      slave_startup_check "/tmp/bkpslave.sock" "$WORKDIR/logs/slave_status_bkpslave.log" "$WORKDIR/logs/bkpslave.err"
+
+      echoit "7. XB master slave replication: Checksum result."
+      run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock"
+      $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
+      $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/bkpslave.sock -u root shutdown
+    fi
   }
 
   if [[ ! " ${TC_ARRAY[@]} " =~ " all " ]]; then
@@ -1177,7 +1187,7 @@ function async_rpl_test(){
     if [[ "$MYEXTRA_CHECK" == "GTID" ]]; then
       mgr_test
     fi
-	xb_master_slave_test
+	  xb_master_slave_test
   fi  
 }
 
