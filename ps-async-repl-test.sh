@@ -412,8 +412,10 @@ function async_rpl_test(){
         echo "group_replication_start_on_boot=OFF" >> ${PS_BASEDIR}/n${i}.cnf
         echo "group_replication_local_address='$ADDR:${GD_PORTS[${i}]}'" >> ${PS_BASEDIR}/n${i}.cnf
         echo "group_replication_group_seeds='$ADDR:${GD_PORTS[1]},$ADDR:${GD_PORTS[2]},$ADDR:${GD_PORTS[3]}'" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "group_replication_bootstrap_group= OFF" >> ${PS_BASEDIR}/n${i}.cnf
-        echo "group_replication_recovery_get_public_key = ON" >> ${PS_BASEDIR}/n${i}.cnf
+        echo "group_replication_bootstrap_group=OFF" >> ${PS_BASEDIR}/n${i}.cnf
+        if check_for_version $MYSQL_VERSION "8.0.4" ; then
+          echo "group_replication_recovery_get_public_key=ON" >> ${PS_BASEDIR}/n${i}.cnf
+        fi
       fi
       if [[ "$EXTRA_OPT" == "MTR" ]]; then
         echo "slave-parallel-workers=5" >> ${PS_BASEDIR}/n${i}.cnf
@@ -1120,10 +1122,10 @@ function async_rpl_test(){
       echoit "XtraBackup 2.4 with PS 5.7 doesn't support rocksdb backup so skipping!"
       return 0
     elif ! check_for_version $MYSQL_VERSION "8.0.15" && [[ "$ENCRYPTION" == 1 ]]; then
-      echoit "XtraBackup 2.4 with PS 5.7 supports only limited functionality so skipping!"
+      echoit "XtraBackup 2.4 with PS 5.7 supports only limited functionality for encryption so skipping!"
       return 0
     else
-      echoit "******************** $MYEXTRA_CHECK master slave test using xtrabackup ************************"
+      echoit "********************$MYEXTRA_CHECK master slave test using xtrabackup ************************"
       #PS server initialization
       echoit "PS server initialization"
       ps_start 1 "XB"
