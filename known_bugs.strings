@@ -624,6 +624,7 @@ dict0dict.ic line 786                                                           
 dict0dict.ic line 787                                                                   ## https://bugs.mysql.com/bug.php?id=73926, MS 5.6.34
 #dict0dict.cc line 1202                                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=74900 (Fixed in 5.6.24, 5.7.6)
 dict0dict.cc line 23[2-4][0-9]                                                          ## https://bugs.mysql.com/bug.php?id=85060
+dict0dict.cc line 2354                                                                  ## https://bugs.mysql.com/bug.php?id=85060 (MS 5.7.28)
 dict0load.c line 1066                                                                   ## https://bugs.mysql.com/bug.php?id=88794
 fsp0fsp.ic line 172                                                                     ## https://bugs.mysql.com/bug.php?id=73926, MS 5.7.16
 fil0fil.cc line 470                                                                     ## https://bugs.mysql.com/bug.php?id=94100 #PS 5.6.43
@@ -830,7 +831,7 @@ head->variables.gtid_next.type == ANONYMOUS_GROUP                               
 Handlerton. error == 0                                                                  ## https://jira.percona.com/browse/PS-4721
 #hash_not_ok == 0                                                              ## Fixed ## https://bugs.mysql.com/bug.php?id=74852
 host_length <= 60                                                                       ## https://bugs.mysql.com/bug.php?id=74678
-#innodb_trx_id == 0 .. innodb_trx_id == trx_id                                 ## Fixed ## https://jira.percona.com/browse/PS-4806
+innodb_trx_id == 0 .. innodb_trx_id == trx_id                                           ## https://jira.percona.com/browse/PS-4806
 .table .. .table->in_use .. table->in_use == _current_thd                               ## https://jira.percona.com/browse/PS-4786
 #.innodb_was_used .. innodb_slow_log_enabled                                   ## Fixed ## https://jira.percona.com/browse/PS-4788
 .innodb_was_used .. innodb_slow_log_enabled                                             ## https://jira.percona.com/browse/PS-5028 (5.7.23 & 8.0.12)
