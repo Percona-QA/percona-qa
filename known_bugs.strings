@@ -708,6 +708,7 @@ mtr0mtr.cc line 323                                                             
 mtr0mtr.cc line 325                                                                     ## https://bugs.mysql.com/bug.php?id=77972 PS
 mtr0mtr.cc line 513                                                                     ## https://bugs.mysql.com/bug.php?id=77972 PS (MS:line 323) (duplicated by 78333)
 mtr0mtr.cc line 574                                                                     ## https://bugs.mysql.com/bug.php?id=77972   (duplicated by 82043 (78333))
+mtr0mtr.cc line 582                                                                     ## https://bugs.mysql.com/bug.php?id=77972   (PS 5.7.28-31)
 mtr0mtr.cc line 333                                                                     ## https://jira.percona.com/browse/PS-6061 PS 5.6.46
 os0file.cc line 1950                                                                    ## https://bugs.mysql.com/bug.php?id=74480 MS
 os0file.cc line 1951                                                                    ## https://bugs.mysql.com/bug.php?id=74480 MS
@@ -847,6 +848,7 @@ inited == NONE                                                                  
 #item_in->left_expr->cols  ## Get better or different 5.6 testcase ## Still present in 5.6 ## https://bugs.mysql.com/bug.php?id=74357 (was 80440) (Fixed in 5.7.6) Mailed Umesh for 5.6
 #keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-4207
 #keys >= 0.0                                                                   ## Fixed ## https://jira.percona.com/browse/PS-5090 (PS-8.0.13)
+keys >= 0.0                                                                             ## https://jira.percona.com/browse/PS-6069 (PS-5.7.28-31)
 #key->flags . 1                                                                ## Fixed ## https://bugs.mysql.com/bug.php?id=89087
 #. is_set() .. m_can_overwrite_status                          ## Needs better testcase ## https://bugs.mysql.com/bug.php?id=74026 & 79303 (seen as TEXT=.\. is_set.$)
 ..Item_result_field.                                                                    ## https://bugs.mysql.com/bug.php?id=74646
