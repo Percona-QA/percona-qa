@@ -223,6 +223,10 @@ ps -ef | grep 'bkpslave.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{prin
 
 cleanup(){
   cp -f ${PS_BASEDIR}/*.cnf $WORKDIR/logs
+  if [ -d "$WORKDIR/vault" ]; then
+    rm -f $WORKDIR/vault/vault
+    cp -rf $WORKDIR/vault $WORKDIR/logs
+  fi
   tar czf $ROOT_FS/results-${BUILD_NUMBER}${TEST_DESCRIPTION:-}.tar.gz $WORKDIR/logs || true
 }
 
@@ -1102,7 +1106,7 @@ function async_rpl_test(){
         echoit "Running general tablespace encryption test run"
         gt_test_run sbtest_gr_db "/tmp/ps1.sock"
       fi
-      sleep 10
+      sleep 30
       echoit "6. group replication: Checksum result."
       run_mysqlchecksum "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqlchecksum "sbtest_gr_db" "/tmp/ps1.sock" "/tmp/ps3.sock"
