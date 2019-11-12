@@ -4,6 +4,7 @@ pipeline {
     cron 'H 12 * * 6'
   }
   parameters {
+    string(name: 'PS_BIN', defaultValue: 'build', description: 'Either "build" to make a fresh build or link to S3 binary.tar.gz download.')
     choice(name: 'TEST_CASE', choices: ['all','master_slave_test','master_multi_slave_test','master_master_test','msr_test','mtr_test','mgr_test','xb_master_slave_test'], description: 'Test case to run.')
     string(name: 'GIT_REPO', defaultValue: 'https://github.com/percona/percona-server.git', description: 'PS repo for build.')
     string(name: 'BRANCH', defaultValue: '5.7', description: 'Target branch')
@@ -19,33 +20,42 @@ pipeline {
       steps {
         script {
           currentBuild.description = "${BRANCH}-${TEST_CASE}"
-          def setupResult = build job: 'percona-server-5.7-pipeline', parameters: [
-            string(name: 'GIT_REPO', value: "${GIT_REPO}"),
-            string(name: 'BRANCH', value: "${BRANCH}"),
-            string(name: 'DOCKER_OS', value: "${DOCKER_OS}"),
-            string(name: 'CMAKE_BUILD_TYPE', value: "Debug"),
-            string(name: 'WITH_TOKUDB', value: "ON"),
-            string(name: 'WITH_ROCKSDB', value: "ON"),
-            string(name: 'DEFAULT_TESTING', value: "no"),
-            string(name: 'HOTBACKUP_TESTING', value: "no"),
-            string(name: 'TOKUDB_ENGINES_MTR', value: "no"),
-            string(name: 'ROCKSDB_ENGINES_MTR', value: "no")
-          ], propagate: false, wait: true
-          // Navigate to jenkins > Manage jenkins > In-process Script Approval
-          // staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods putAt java.lang.Object java.lang.String java.lang.Object
-          env['PIPELINE_BUILD_NUMBER'] = setupResult.getNumber()
-        }
-        sh '''
-          echo "${PIPELINE_BUILD_NUMBER}" > PIPELINE_BUILD_NUMBER
-        '''
-        archiveArtifacts artifacts: 'PIPELINE_BUILD_NUMBER', fingerprint: true
+          if (env['PS_BIN'] == 'build') {
+            def setupResult = build job: 'percona-server-5.7-pipeline', parameters: [
+              string(name: 'GIT_REPO', value: "${GIT_REPO}"),
+              string(name: 'BRANCH', value: "${BRANCH}"),
+              string(name: 'DOCKER_OS', value: "${DOCKER_OS}"),
+              string(name: 'CMAKE_BUILD_TYPE', value: "Debug"),
+              string(name: 'WITH_TOKUDB', value: "ON"),
+              string(name: 'WITH_ROCKSDB', value: "ON"),
+              string(name: 'DEFAULT_TESTING', value: "no"),
+              string(name: 'HOTBACKUP_TESTING', value: "no"),
+              string(name: 'TOKUDB_ENGINES_MTR', value: "no"),
+              string(name: 'ROCKSDB_ENGINES_MTR', value: "no")
+            ], propagate: false, wait: true
+            // Navigate to jenkins > Manage jenkins > In-process Script Approval
+            // staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods putAt java.lang.Object java.lang.String java.lang.Object
+            env['PIPELINE_BUILD_NUMBER'] = setupResult.getNumber()
+            sh '''
+              echo "${PIPELINE_BUILD_NUMBER}" > PIPELINE_BUILD_NUMBER
+            '''
         
-        copyArtifacts filter: 'public_url', fingerprintArtifacts: true, projectName: 'percona-server-5.7-pipeline', selector: specific("${PIPELINE_BUILD_NUMBER}")
-        script {
-          env['PS_BIN'] = sh(script: 'cat public_url|grep binary|grep -o "https://.*"', returnStdout: true)
-        }
-      }
-    }
+            copyArtifacts filter: 'public_url', fingerprintArtifacts: true, projectName: 'percona-server-5.7-pipeline', selector: specific("${PIPELINE_BUILD_NUMBER}")
+            env['PS_BIN'] = sh(script: 'cat public_url|grep binary|grep -o "https://.*"', returnStdout: true)
+          }
+          else {
+            sh '''
+              echo "Pipeline build not used for this test, please check PS_BIN!" > PIPELINE_BUILD_NUMBER
+            '''
+          }
+          sh '''
+            echo "${PS_BIN}" > PS_BIN
+          '''
+          archiveArtifacts artifacts: 'PS_BIN', fingerprint: true
+          archiveArtifacts artifacts: 'PIPELINE_BUILD_NUMBER', fingerprint: true
+        } //End script
+      } //End steps
+    } //End build stage
     stage('Run tests') {
       parallel {
         stage('Test InnoDB') {
