@@ -398,6 +398,7 @@ thd->variables.gtid_next.type == AUTOMATIC_GROUP         ## https://bugs.mysql.c
 #con->fd >= 0                                   ## Fixed ## https://bugs.mysql.com/bug.php?id=82584
 
 ## =========== PS 5.7 Beta & GA ===========
+join == __null                                           ## https://jira.percona.com/browse/PS-6077
 get_innobase_type_from_mysql_type                        ## https://jira.percona.com/browse/PS-5478
 #buf0lru.cc line 2259                           ## Fixed ## https://jira.percona.com/browse/PS-1702
 #ZN8Item_row7val_strEP6String                   ## Fixed ## alpha ## https://bugs.launchpad.net/percona-server/+bug/1506697 (Ref MS 78330 and MS 57552)   (# after MS 5.7.8 merge)
