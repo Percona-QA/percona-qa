@@ -1,5 +1,5 @@
 #!/bin/bash
-# PXC performance benchmark scripts
+# PS performance benchmark scripts
 # Sysbench suite will run CPUBOUND and IOBOUND performance tests
 # **********************************************************************************************
 # generic variables
@@ -11,10 +11,10 @@ export SUSER=root
 export SPASS=
 export BIG_DIR=${WORKSPACE}
 export SCRIPT_DIR=$(cd $(dirname $0) && pwd)
-export PXC_START_TIMEOUT=300
+export PS_START_TIMEOUT=100
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PXC
-export NODES=3
+export NODES=1
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
 if [ -z ${BIG_DIR} ]; then
@@ -25,9 +25,9 @@ fi
 if [ -z $2 ]; then
   echo "No valid parameter passed.  Need relative workdir (1st option) and relative basedir (2nd option) settings. Retry."
   echo "Usage example:"
-  echo "$./pxc.performance-test.sh 10 Percona-XtraDB-Cluster-5.7.14-rel8-26.17.1.Linux.x86_64"
+  echo "$./ps.performance-test.sh 10 Percona-Server-5.7.27-30-Linux.x86_64.ssl101"
   echo "This would lead to $BIG_DIR/100 being created, in which testing takes place and"
-  echo "$BIG_DIR/$1/Percona-XtraDB-Cluster-5.7.14-rel8-26.17.1.Linux.x86_64 would be used to test."
+  echo "$BIG_DIR/$1/Percona-Server-5.7.27-30-Linux.x86_64.ssl101 would be used to test."
   exit 1
 else
   mkdir -p $BIG_DIR/$1
@@ -42,7 +42,7 @@ export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
 
 archives() {
-  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS} ${DB_DIR}/node*/*.err true
+  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS}  true
 }
 
 trap archives EXIT KILL
@@ -96,12 +96,7 @@ if [ ! -f $BIG_DIR/my.cnf ]; then
   echo "[mysqld]" > my.cnf
   echo "basedir=${DB_DIR}" >> my.cnf
   echo "binlog_format=ROW" >> my.cnf
-  echo "innodb_autoinc_lock_mode=2" >> my.cnf
   echo "sync_binlog=0" >> my.cnf
-  echo "wsrep-provider=${DB_DIR}/lib/libgalera_smm.so" >> my.cnf
-  echo "wsrep_node_incoming_address=$ADDR" >> my.cnf
-  echo "wsrep_sst_auth=$SUSER:$SPASS" >> my.cnf
-  echo "wsrep_node_address=$ADDR" >> my.cnf
   echo "core-file" >> my.cnf
   echo "max-connections=1048" >> my.cnf
 fi
@@ -115,63 +110,52 @@ elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "
   WS_DATADIR="${BIG_DIR}/56_sysbench_data_template"
 fi
 
-function start_multi_node(){
-  ps -ef | grep 'node[1-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+function start_ps_node(){
+  ps -ef | grep 'ps_socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   MYEXTRA="--innodb-buffer-pool-size=$INNODB_CACHE"
   run_mid=0
   if [ "$1" == "startup" ];then
     run_mid=1
   fi
-  for i in `seq 1 $NODES`;do
-    RBASE1="$(( RBASE + ( 100 * $i ) ))"
-    LADDR1="$ADDR:$(( RBASE1 + 8 ))"
-    WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
-    if [ $run_mid -eq 1 ]; then
-      node="${WS_DATADIR}/node${DATASIZE}_$i"
-      if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
-        mkdir -p $node
-        ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
-      else
-        if [ ! -d $node ]; then
-          ${MID} --datadir=$node  > $LOGS/startup_node$i.err 2>&1
-        fi
-      fi
-    else
-      node="${DB_DIR}/node$i"
-    fi
-    if [ $i -eq 1 ]; then
-      WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
-    else
-      WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
-    fi
-
-    ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
-      --datadir=$node $WSREP_CLUSTER_ADD $MYEXTRA \
-      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-      --log-error=$LOGS/node$i.err  \
-      --socket=$LOGS/node$i.sock --port=$RBASE1 > $LOGS/node$i.err 2>&1 &
-
-    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-      sleep 1
-      if ${DB_DIR}/bin/mysqladmin -uroot -S$LOGS/node$i.sock ping > /dev/null 2>&1; then
-        echo "Started PXC node$i. Socket : $LOGS/node$i.sock"
-        break
-      fi
-    done
-  done
+  RBASE="$(( RBASE + 100 ))"
   if [ $run_mid -eq 1 ]; then
-    ${DB_DIR}/bin/mysql -uroot -S$LOGS/node$i.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
+    node="${WS_DATADIR}/psdata_${DATASIZE}"
+    if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      mkdir -p $node
+      ${MID} --datadir=$node  > $LOGS/startup.err 2>&1
+    else
+      if [ ! -d $node ]; then
+        ${MID} --datadir=$node  > $LOGS/startup.err 2>&1
+      fi
+    fi
+  else
+    node="${DB_DIR}/psdata"
+  fi
+
+  ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
+    --datadir=$node $MYEXTRA \
+    --log-error=$LOGS/master.err  \
+    --socket=$LOGS/ps_socket.sock --port=$RBASE > $LOGS/ps_socket.err 2>&1 &
+
+  for X in $(seq 0 ${PS_START_TIMEOUT}); do
+    sleep 1
+    if ${DB_DIR}/bin/mysqladmin -uroot -S$LOGS/ps_socket.sock ping > /dev/null 2>&1; then
+      echo "Started Percona Server. Socket : $LOGS/ps_socket.sock"
+      break
+    fi
+  done
+
+  if [ $run_mid -eq 1 ]; then
+    ${DB_DIR}/bin/mysql -uroot -S$LOGS/ps_socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
     sysbench_run load_data $MYSQL_DATABASE
-    sysbench $SYSBENCH_OPTIONS --mysql-socket=$LOGS/node$i.sock prepare > $LOGS/sysbench_prepare.log 2>&1
-    for i in `seq $NODES -1 1`;do
-      timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/node$i.sock shutdown > /dev/null 2>&1
-    done
+    sysbench $SYSBENCH_OPTIONS --mysql-socket=$LOGS/ps_socket.sock prepare > $LOGS/sysbench_prepare.log 2>&1
+    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/ps_socket.sock shutdown > /dev/null 2>&1
   fi
 }
 
 function check_memory(){
-  CHECK_PID=`ps -ef | grep node1 | grep -v grep | awk '{ print $2}'`
+  CHECK_PID=`ps -ef | grep ps_socket | grep -v grep | awk '{ print $2}'`
   WAIT_TIME_SECONDS=10
   while [ ${RUN_TIME_SECONDS} -gt 0 ]; do
     DATE=`date +"%Y%m%d%H%M%S"`
@@ -183,25 +167,19 @@ function check_memory(){
 }
 
 
-function start_pxc(){
-  for i in `seq 1 $NODES`;do
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/node$i.sock shutdown > /dev/null 2>&1
-  done
-  ps -ef | grep 'node[1-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+function start_ps(){
+  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/ps_socket.sock shutdown > /dev/null 2>&1
+  ps -ef | grep 'ps_socket' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
 
-  if [ -d ${WS_DATADIR}/node${DATASIZE}_1 ]; then
-    for i in `seq 1 $NODES`;do
-     cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/node${i}
-    done
-    start_multi_node
+  if [ -d ${WS_DATADIR}/psdata_${DATASIZE} ]; then
+    cp -r ${WS_DATADIR}/psdata_${DATASIZE} ${DB_DIR}/psdata
+    start_ps_node
   else
     mkdir ${WS_DATADIR} > /dev/null 2>&1
-    start_multi_node startup
-    for i in `seq 1 $NODES`;do
-     cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/node${i}
-    done
-    start_multi_node
+    start_ps_node startup
+    cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/psdata
+    start_ps_node
   fi
 }
 
@@ -213,7 +191,7 @@ function sysbench_rw_run(){
     num_threads=64
     WARMUP_TIME_SECONDS=600
     sysbench_run oltp_read $MYSQL_DATABASE $WARMUP_TIME_SECONDS
-    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/node1.sock --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
+    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/ps_socket.sock --percentile=99 run > $LOGS/sysbench_warmup.log 2>&1
     sleep 60
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
@@ -233,7 +211,7 @@ function sysbench_rw_run(){
         dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
     fi
     sysbench_run oltp $MYSQL_DATABASE $RUN_TIME_SECONDS
-    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/node1.sock --percentile=99 run | tee $LOG_NAME
+    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/ps_socket.sock --percentile=99 run | tee $LOG_NAME
     sleep 6
     result_set+=(`grep  "queries:" $LOG_NAME | cut -d'(' -f2 | awk '{print $1 ","}'`)
   done
@@ -241,20 +219,18 @@ function sysbench_rw_run(){
   pkill -f dstat
   pkill -f iostat
   kill -9 ${MEM_PID[@]}
-  for i in `seq $NODES -1 1`;do
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/node${i}.sock shutdown > /dev/null 2>&1
-  done
-  ps -ef | grep 'node[1-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
+  timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/ps_socket.sock shutdown > /dev/null 2>&1
+  ps -ef | grep 'ps_socket' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   for i in {0..7}; do if [ -z ${result_set[i]} ]; then  result_set[i]='0,' ; fi; done
   echo "[ '${BUILD_NUMBER}', ${result_set[*]} ]," >> ${LOGS}/sysbench_${BENCH_ID}_perf_result_set.txt
   unset result_set
   tarFileName="sysbench_${BENCH_ID}_perf_result_set_${DATE}.tar.gz"
-  tar czvf ${tarFileName} ${MYSQL_NAME}* ${DB_DIR}/node*/*.err
+  tar czvf ${tarFileName} ${MYSQL_NAME}* ${LOGS}/master.err
   mkdir -p ${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}
   BACKUP_FILES="${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}"
   cp ${tarFileName} ${BACKUP_FILES}
   rm -rf ${MYSQL_NAME}*
-  rm -rf ${DB_DIR}/node*
+  rm -rf ${DB_DIR}/psdata*
 
 }
 
@@ -272,7 +248,7 @@ iibench_insert_run(){
     iostat -dxm $IOSTAT_INTERVAL $IOSTAT_ROUNDS  > $LOG_NAME_IOSTAT &
     dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
   fi
-  python iibench.py ${CREATE_TABLE_STRING} --db_user=$SUSER --db_password=$SPASS --db_socket=$LOGS/node1.sock  --db_name=${MYSQL_DATABASE} --max_rows=${MAX_ROWS} --max_table_rows=${MAX_TABLE_ROWS} --rows_per_report=${ROWS_PER_REPORT} --engine=INNODB ${IIBENCH_QUERY_PARM} --unique_checks=${UNIQUE_CHECKS} --run_minutes=${RUN_MINUTES} --tokudb_commit_sync=${COMMIT_SYNC} --max_ips=${MAX_IPS} --num_secondary_indexes=${NUM_SECONDARY_INDEXES} | tee $LOG_NAME
+  python iibench.py ${CREATE_TABLE_STRING} --db_user=$SUSER --db_password=$SPASS --db_socket=$LOGS/ps_socket.sock  --db_name=${MYSQL_DATABASE} --max_rows=${MAX_ROWS} --max_table_rows=${MAX_TABLE_ROWS} --rows_per_report=${ROWS_PER_REPORT} --engine=INNODB ${IIBENCH_QUERY_PARM} --unique_checks=${UNIQUE_CHECKS} --run_minutes=${RUN_MINUTES} --tokudb_commit_sync=${COMMIT_SYNC} --max_ips=${MAX_IPS} --num_secondary_indexes=${NUM_SECONDARY_INDEXES} | tee $LOG_NAME
 
 }
 
