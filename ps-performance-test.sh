@@ -136,7 +136,7 @@ function start_ps_node(){
   ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
     --datadir=$node $MYEXTRA \
     --log-error=$LOGS/master.err  \
-    --socket=$LOGS/ps_socket.sock --port=$RBASE > $LOGS/ps_socket.err 2>&1 &
+    --socket=$LOGS/ps_socket.sock --port=$RBASE > $LOGS/master.err 2>&1 &
 
   for X in $(seq 0 ${PS_START_TIMEOUT}); do
     sleep 1
@@ -178,7 +178,7 @@ function start_ps(){
   else
     mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_ps_node startup
-    cp -r ${WS_DATADIR}/node${DATASIZE}_${i} ${DB_DIR}/psdata
+    cp -r ${WS_DATADIR}/psdata_${DATASIZE} ${DB_DIR}/psdata
     start_ps_node
   fi
 }
@@ -276,7 +276,7 @@ export BENCH_ID=innodb-5mm-${RAND_TYPE}-cpubound
 export NUM_ROWS=5000000
 export BENCHMARK_NUMBER=001
 
-start_pxc
+start_ps
 sysbench_rw_run
 
 # IO bound performance run
@@ -289,7 +289,7 @@ export NUM_ROWS=5000000
 export BENCHMARK_NUMBER=002
 
 
-start_pxc
+start_ps
 sysbench_rw_run
 
 # CPU bound performance run
@@ -300,7 +300,7 @@ export RAND_TYPE=uniform
 export BENCH_ID=innodb-1mm-${RAND_TYPE}-cpubound
 export BENCHMARK_NUMBER=003
 
-start_pxc
+start_ps
 sysbench_rw_run
 
 # IO bound performance run
@@ -311,7 +311,7 @@ export RAND_TYPE=uniform
 export BENCH_ID=innodb-1mm-${RAND_TYPE}-iobound
 export BENCHMARK_NUMBER=004
 
-start_pxc
+start_ps
 sysbench_rw_run
 
 export CREATE_TABLE_STRING="--setup"
