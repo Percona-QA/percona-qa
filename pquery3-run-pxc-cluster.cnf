@@ -6,7 +6,7 @@
 # Please do not change this file unless your name is listed above. As a template/default, it is the only configuration file which is maintained whenever pquery-run.sh is updated.
 
 # ========================================= User configurable variables: generics 1 ===============================================
-PQUERY_BIN=${SCRIPT_PWD}/pquery/pquery2-ps                           # pquery2-ps: Percona Server, pquery2-ms: MySQL, pquery2-ws: WS/FB: WSS/fb-mysql, pquery-md: MariaDB, pquery2-ps-deb: Binary compiled on Ubuntu
+PQUERY_BIN=${SCRIPT_PWD}/pquery/pquery3-pxc                           # pquery2-ps: Percona Server, pquery2-ms: MySQL, pquery2-ws: WS/FB: WSS/fb-mysql, pquery-md: MariaDB, pquery2-ps-deb: Binary compiled on Ubuntu
 PQUERY_CONFIG=${SCRIPT_PWD}/pquery/pquery3-cluster-pxc.cfg               # Default pquery cluster configuration file.
 USE_GENERATOR_INSTEAD_OF_INFILE=0                                    # If enabled, high quality generated SQL is used (the generator is located in percona-qa/generator)
 ADD_INFILE_TO_GENERATED_SQL=0                                        # If enabled, and if USE_GENERATOR_INSTEAD_OF_INFILE=1, then the INFILE is added to the generator output
@@ -84,6 +84,7 @@ SKIP_JEMALLOC_FOR_PS=0                                         # Skip LD_PRELOAD
 # ========================================= User configurable variables to enable/for PXC testing only ===========================
 PXC=1                                                          # Set to 1 to make this a PXC testing run
 PXC_CLUSTER_RUN=1                                              # Set to 1 to make this a pxc pquery cluster run (enables multi-node SQL instead of using a single node only)
+ENCRYPTION_RUN=0                                               # Set to 1 ro make this a pxc encryption enabled run
 PXC_START_TIMEOUT=200                                          # Should not be necessary to change. Default: 200
 PXC_ADD_RANDOM_OPTIONS=1                                       # Set to 1 to add random PXC mysqld options
 PXC_MAX_NR_OF_RND_OPTS_TO_ADD=4                                # Max nr of random PXC mysqld options to add (minimum is always 1). Recommended: 4

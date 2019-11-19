@@ -68,8 +68,8 @@ echo "   </head>"  >>  ${BIG_DIR}/multibench_perf_result.html
 echo "   <body>"  >>  ${BIG_DIR}/multibench_perf_result.html
 echo "   <table>" >>  ${BIG_DIR}/multibench_perf_result.html
 echo "   <tr>" >>  ${BIG_DIR}/multibench_perf_result.html
-cat $BIG_DIR/hw.info >> ${BIG_DIR}/multibench_perf_result.html
-tail -10 $BIG_DIR/build_info.log | xargs -IX printf '<br>%s\n' X >> ${BIG_DIR}/multibench_perf_result.html
+cat $LOG_LOC/hw.info >> ${BIG_DIR}/multibench_perf_result.html
+tail -10 $LOG_LOC/build_info.log | xargs -IX printf '<br>%s\n' X >> ${BIG_DIR}/multibench_perf_result.html
 echo "   </tr>" >>  ${BIG_DIR}/multibench_perf_result.html
 i=0
 for file in "${RS_ARRAY[@]}"; do 
