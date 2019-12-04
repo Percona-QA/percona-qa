@@ -497,13 +497,13 @@ set_pbm_store(){
     echo "#!/usr/bin/env bash" > ${WORKDIR}/pbm_store_set.sh
     chmod +x ${WORKDIR}/pbm_store_set.sh
     if [ "${LAYOUT}" == "single" ]; then
-      echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:27017/${BACKUP_URI_SUFFIX}'" >> ${WORKDIR}/pbm_store_set.sh
+      echo "${WORKDIR}/pbm config --file=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:27017/${BACKUP_URI_SUFFIX}'" >> ${WORKDIR}/pbm_store_set.sh
     elif [ "${LAYOUT}" == "rs" ]; then
       local BACKUP_URI_SUFFIX_REPLICA=""
       if [ -z "${BACKUP_URI_SUFFIX}" ]; then BACKUP_URI_SUFFIX_REPLICA="?replicaSet=rs1"; else BACKUP_URI_SUFFIX_REPLICA="${BACKUP_URI_SUFFIX}&replicaSet=rs1"; fi
-      echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:27017,${HOST}:27018,${HOST}:27019/${BACKUP_URI_SUFFIX_REPLICA}'" >> ${WORKDIR}/pbm_store_set.sh
+      echo "${WORKDIR}/pbm config --file=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:27017,${HOST}:27018,${HOST}:27019/${BACKUP_URI_SUFFIX_REPLICA}'" >> ${WORKDIR}/pbm_store_set.sh
     elif [ "${LAYOUT}" == "sh" ]; then
-      echo "${WORKDIR}/pbm store set --config=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:27017/${BACKUP_URI_SUFFIX}'" >> ${WORKDIR}/pbm_store_set.sh
+      echo "${WORKDIR}/pbm config --file=${WORKDIR}/storage-config.yaml --mongodb-uri='mongodb://${BACKUP_URI_AUTH}${HOST}:27017/${BACKUP_URI_SUFFIX}'" >> ${WORKDIR}/pbm_store_set.sh
     fi
   fi
 }
