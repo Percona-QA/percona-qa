@@ -565,7 +565,7 @@ fi
 # Create storages config for node agent
 if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
   if [ "${PBM_STORAGE}" == "fs" -o "${PBM_STORAGE}" == "all" ]; then
-    echo "storage" >> ${WORKDIR}/storage-config.yaml
+    echo "storage:" >> ${WORKDIR}/storage-config.yaml
     echo "  type: filesystem" >> ${WORKDIR}/storage-config.yaml
     echo "  filesystem:" >> ${WORKDIR}/storage-config.yaml
     if [ ! -z "${PBMDIR}" ]; then
@@ -575,7 +575,7 @@ if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
     fi
   fi
   if [ "${PBM_STORAGE}" == "minio" -o "${PBM_STORAGE}" == "all" ]; then
-    echo "storage" >> ${WORKDIR}/storage-config.yaml
+    echo "storage:" >> ${WORKDIR}/storage-config.yaml
     echo "  type: s3" >> ${WORKDIR}/storage-config.yaml
     echo "  s3:" >> ${WORKDIR}/storage-config.yaml
     echo "    region: us-west" >> ${WORKDIR}/storage-config.yaml
