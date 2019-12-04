@@ -565,23 +565,25 @@ fi
 # Create storages config for node agent
 if [ ! -z "${PBMDIR}" -o ! -z "${PBM_DOCKER_IMAGE}" ]; then
   if [ "${PBM_STORAGE}" == "fs" -o "${PBM_STORAGE}" == "all" ]; then
-    echo "type: filesystem" >> ${WORKDIR}/storage-config.yaml
-    echo "filesystem:" >> ${WORKDIR}/storage-config.yaml
+    echo "storage" >> ${WORKDIR}/storage-config.yaml
+    echo "  type: filesystem" >> ${WORKDIR}/storage-config.yaml
+    echo "  filesystem:" >> ${WORKDIR}/storage-config.yaml
     if [ ! -z "${PBMDIR}" ]; then
-      echo "  path: ${WORKDIR}/backup" >> ${WORKDIR}/storage-config.yaml
+      echo "    path: ${WORKDIR}/backup" >> ${WORKDIR}/storage-config.yaml
     elif [ ! -z "${PBM_DOCKER_IMAGE}" ]; then
-      echo "  path: /data" >> ${WORKDIR}/storage-config.yaml
+      echo "    path: /data" >> ${WORKDIR}/storage-config.yaml
     fi
   fi
   if [ "${PBM_STORAGE}" == "minio" -o "${PBM_STORAGE}" == "all" ]; then
-    echo "type: s3" >> ${WORKDIR}/storage-config.yaml
-    echo "s3:" >> ${WORKDIR}/storage-config.yaml
-    echo "  region: us-west" >> ${WORKDIR}/storage-config.yaml
-    echo "  endpointUrl: http://${HOST}:9000" >> ${WORKDIR}/storage-config.yaml
-    echo "  bucket: pbm" >> ${WORKDIR}/storage-config.yaml
-    echo "  credentials:" >> ${WORKDIR}/storage-config.yaml
-    echo "    access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${WORKDIR}/storage-config.yaml
-    echo "    secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${WORKDIR}/storage-config.yaml
+    echo "storage" >> ${WORKDIR}/storage-config.yaml
+    echo "  type: s3" >> ${WORKDIR}/storage-config.yaml
+    echo "  s3:" >> ${WORKDIR}/storage-config.yaml
+    echo "    region: us-west" >> ${WORKDIR}/storage-config.yaml
+    echo "    endpointUrl: http://${HOST}:9000" >> ${WORKDIR}/storage-config.yaml
+    echo "    bucket: pbm" >> ${WORKDIR}/storage-config.yaml
+    echo "    credentials:" >> ${WORKDIR}/storage-config.yaml
+    echo "      access-key-id: ${MINIO_ACCESS_KEY_ID}" >> ${WORKDIR}/storage-config.yaml
+    echo "      secret-access-key: ${MINIO_SECRET_ACCESS_KEY}" >> ${WORKDIR}/storage-config.yaml
   fi
 fi
 
