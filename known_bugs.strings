@@ -17,6 +17,8 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
+do_fill_information_schema_table                            ## https://jira.percona.com/browse/PS-6125
+
 trx_is_rseg_assigned.trx.                                   ## https://bugs.mysql.com/bug.php?id=97341
 .check_datetime_range.my_time                               ## https://bugs.mysql.com/bug.php?id=97340
 debug_skip                                                  ## https://bugs.mysql.com/bug.php?id=97312
@@ -468,6 +470,7 @@ txn->for_recovery                                                      ## https:
 #mh->m_magic == 1234                                          ## Fixed ## https://jira.percona.com/browse/PS-4943
 mh->m_magic == 1234                                                    ## https://jira.percona.com/browse/PS-6083 
 send_metadata .. field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. field_types.field_pos. == MYSQL_TYPE_JSON .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY     ## https://jira.percona.com/browse/PS-4945
+send_metadata .. field_types == nullptr .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. field_types.field_pos. == MYSQL_TYPE_JSON .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY  ## https://jira.percona.com/browse/PS-6126
 ZN18Locked_tables_list20unlock_locked_tablesEP3THD                     ## https://jira.percona.com/browse/PS-5855
 
 ## =========== Special: Various & Permanent Filters ===========
