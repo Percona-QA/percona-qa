@@ -160,7 +160,7 @@ ailure. api0api.cc.3163..sdi_delete_failed                ## https://bugs.mysql.
 index->type . 32 .. root .= FIL_NULL .. dict_table_is_discarded.m_table.  ## https://bugs.mysql.com/bug.php?id=92057 (Fixed in 8.0.14, remark as such when released)
 Item..save_in_field_inner                                 ## https://bugs.mysql.com/bug.php?id=92067 (Fixed in 8.0.14, remark as such when released)
 #lock_rec_get_rec_not_gap.lock.                  ## Fixed ## https://bugs.mysql.com/bug.php?id=92068
-lock0lock.cc.7034                                         ## https://bugs.mysql.com/bug.php?id=92069 (Fixed in 8.0.14, remark as such when released)
+#lock0lock.cc.7034                               ## Fixed ## https://bugs.mysql.com/bug.php?id=92069 (Fixed in 8.0.14, remark as such when released)
 thd->variables.gtid_next.type == AUTOMATIC_GTID           ## https://bugs.mysql.com/bug.php?id=92070
 #dict0dd.cc:5.....error                          ## Fixed ## https://bugs.mysql.com/bug.php?id=92071
 #TEXT=.mi->rli->inited.$                         ## Fixed ## https://bugs.mysql.com/bug.php?id=92073
