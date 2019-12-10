@@ -19,7 +19,7 @@ pipeline {
     stage('Build PS binary') {
       steps {
         script {
-          currentBuild.description = "${BRANCH}-${TEST_CASE}"
+          currentBuild.displayName = "#${BUILD_NUMBER}-${BRANCH}-${TEST_CASE}"
           if (env['PS_BIN'] == 'build') {
             def setupResult = build job: 'percona-server-8.0-pipeline', parameters: [
               string(name: 'GIT_REPO', value: "${GIT_REPO}"),
