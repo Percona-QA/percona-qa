@@ -9,7 +9,7 @@ pipeline {
     string(name: 'GIT_REPO', defaultValue: 'https://github.com/percona/percona-server.git', description: 'PS repo for build.')
     string(name: 'BRANCH', defaultValue: '8.0', description: 'Target branch')
     string(name: 'PT_BIN', defaultValue: 'https://www.percona.com/downloads/percona-toolkit/2.2.20/tarball/percona-toolkit-2.2.20.tar.gz', description: 'PT binary tarball')
-    string(name: 'PXB_BIN', defaultValue: 'https://www.percona.com/downloads/Percona-XtraBackup-LATEST/Percona-XtraBackup-8.0-7/binary/tarball/percona-xtrabackup-8.0.7-Linux-x86_64.libgcrypt20.tar.gz', description: 'PXB binary tarball')
+    string(name: 'PXB_BIN', defaultValue: 'https://www.percona.com/downloads/Percona-XtraBackup-LATEST/Percona-XtraBackup-8.0-8/binary/tarball/percona-xtrabackup-8.0.8-Linux-x86_64.libgcrypt20.tar.gz', description: 'PXB binary tarball')
   }
   environment {
     DOCKER_OS = "ubuntu:bionic"
