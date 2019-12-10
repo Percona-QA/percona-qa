@@ -108,13 +108,12 @@ if [[ -z "$(which wget)" && ${DL_VAULT} -eq 1 ]]; then
   exit 1
 fi
 
+mkdir -p ${WORKDIR}
 cd ${WORKDIR}
 
 if [[ ${USE_SSL} -eq 1 || ${GEN_CERTS_ONLY} -eq 1 ]]; then
   VAULT_PROTOCOL="https"
-  if [[ ! -d "" ]]; then
-    mkdir -p ${WORKDIR}/certificates
-  fi
+  mkdir -p ${WORKDIR}/certificates
   pushd ${WORKDIR}/certificates >/dev/null
   echo -e "\n===== Generating SSL certificates ====="
   echo "SSL certificates location: ${WORKDIR}/certificates"
