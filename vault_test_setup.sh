@@ -238,8 +238,13 @@ if [[ ${INIT_VAULT} -eq 1 ]]; then
 
   echo -e "\n===== Generating set_env.sh for using vault from command line ====="
   echo "Use in shell with: $ source ${WORKDIR}/set_env.sh"
-  echo "export VAULT_ADDR=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" >> ${WORKDIR}/set_env.sh
+  echo "export VAULT_ADDR=${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" > ${WORKDIR}/set_env.sh
   echo "export VAULT_TOKEN=${ROOT_TOKEN}" >> ${WORKDIR}/set_env.sh
+
+  echo -e "\n===== Generating config files suitable for automation ====="
+  echo "${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" > ${WORKDIR}/VAULT_ADDR
+  echo "${ROOT_TOKEN}" > ${WORKDIR}/VAULT_TOKEN
+  echo "${WORKDIR}/certificates/root.cer" > ${WORKDIR}/VAULT_CERT
 
   echo -e "\n===== Enabling the kv secrets engine in the vault ====="
   source ${WORKDIR}/set_env.sh
