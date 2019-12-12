@@ -18,7 +18,8 @@
 
 ## =========== MS 8.0 GA
 do_fill_information_schema_table                            ## https://jira.percona.com/browse/PS-6125
-
+JOIN..cleanup                                               ## https://bugs.mysql.com/bug.php?id=97928
+QEP_shared_owner..qs_cleanup                                ## https://bugs.mysql.com/bug.php?id=97930
 trx_is_rseg_assigned.trx.                                   ## https://bugs.mysql.com/bug.php?id=97341
 .check_datetime_range.my_time                               ## https://bugs.mysql.com/bug.php?id=97340
 debug_skip                                                  ## https://bugs.mysql.com/bug.php?id=97312
@@ -201,6 +202,7 @@ base_list_iterator..next_fast                             ## https://bugs.mysql.
 #valid_flags == m_flags                          ## Fixed ## https://jira.percona.com/browse/PS-4898 (INSTALL PLUGIN auth_pam SONAME 'auth_pam.so' or 'auth_compat.so';)
 TEXT=.ha_myisammrg..clone.$                               ## https://jira.percona.com/browse/PS-4900
 # ha_innopart..prepare_inplace_alter_table      ## Fixed  ## https://jira.percona.com/browse/PS-4928
+ha_innopart..prepare_inplace_alter_table                  ## https://jira.percona.com/browse/PS-6014
 PolicyMutex<TTASEventMutex<GenericPolicy> >..pfs_begin_lock  ## https://jira.percona.com/browse/PS-4927
 TEXT=.ha_release_savepoint.$                              ## https://jira.percona.com/browse/PS-4899
 handler..unbind_psi                                       ## https://jira.percona.com/browse/PS-4929
