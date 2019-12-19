@@ -13,16 +13,16 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_8_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_9_debug_release/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS241019_8_0_17_8_debug"
-export datadir="$HOME/PS241019_8_0_17_8_debug/data"
+export mysqldir="$HOME/PS111219_8_0_18_9_debug"
+export datadir="$HOME/PS111219_8_0_18_9_debug/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/minio.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="enabled"
+rocksdb="enabled" # Set this to disabled for PXB2.4
 
 # Set sysbench variables
 num_tables=10
@@ -42,7 +42,7 @@ initialize_db() {
     echo "Starting mysql database"
     pushd $mysqldir >/dev/null 2>&1
     if [ ! -f $mysqldir/all_no_cl ]; then
-        $qascripts startup.sh
+        $qascripts/startup.sh
     fi
 
     ./all_no_cl --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
@@ -324,10 +324,10 @@ incremental_backup() {
     echo "The mysql server was started successfully"
 
     # Binlog can't be applied if binlog is encrypted
-    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption" ]]; then
+    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption" ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]]; then
         echo "Check xtrabackup for binlog position"
-        xb_binlog_file=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $1}')
-        xb_binlog_pos=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $2}')
+        xb_binlog_file=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $1}'|head -1)
+        xb_binlog_pos=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $2}'|head -1)
         echo "Xtrabackup binlog position: $xb_binlog_file, $xb_binlog_pos"
 
         echo "Applying binlog to restored data starting from $xb_binlog_file, $xb_binlog_pos"
@@ -805,6 +805,25 @@ create_drop_database() {
     fi
 }
 
+create_delete_encrypted_table() {
+    # This function creates an encrypted table and deletes it
+
+    echo "Create an encrypted table and delete it"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test_innodb;" >/dev/null 2>&1
+
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test_innodb.sbtest1 (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y' COMPRESSION='lz4';"
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=1 --mysql-db=test_innodb --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=1 run >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE test_innodb.sbtest1;"
+    done ) &
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -1009,15 +1028,15 @@ test_run_all_statements() {
     incremental_backup "--lock-ddl"
 }
 
-test_inc_backup_encryption() {
-    # This test suite takes an incremental backup when PS is running with encryption
+test_inc_backup_encryption_8_0() {
+    # This test suite takes an incremental backup when PS 8.0 is running with encryption
     local encrypt_type="$1"
     rocksdb="disabled" # Rocksdb tables cannot be created when encryption is enabled
 
     # Note: Binlog cannot be applied to backup if it is encrypted
 
     if [ "${encrypt_type}" = "keyring_file" ]; then
-        echo "Test Suite: Tests for PS with keyring_file encryption"
+        echo "Test Suite: Incremental Backup and Restore for PS8.0 using PXB8.0 with keyring_file encryption"
 
         echo "Test: Incremental Backup and Restore for PS running with all encryption options enabled"
 
@@ -1026,124 +1045,169 @@ test_inc_backup_encryption() {
         incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10 --binlog-encryption"
         echo "###################################################################################"
 
-        #Various test suites: binlog-encryption is not included so that binlog can be applied
-        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"'
-
-        echo "Test: Backup and Restore during add and drop index"
+        echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
         initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
 
-        add_drop_index
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during add and drop tablespace"
-        add_drop_tablespace
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during change in compression"
-        change_compression
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during change in row format"
-        change_row_format
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during update and truncate of a table"
-        update_truncate_table
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during create and drop of a database"
-        create_drop_database
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during rename index"
-        rename_index
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during add and drop full text index"
-        add_drop_full_text_index
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during index type change"
-        change_index_type
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
-
-        echo "Test: Backup and Restore during add and drop spatial index"
-        add_drop_spatial_index
-        eval $lock_ddl_cmd
+        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"'
 
     else
-        echo "Test Suite: Tests for PS with keyring_vault encryption"
+        echo "Test Suite: Incremental Backup and Restore for PS8.0 using PXB8.0 with keyring_vault encryption"
 
         echo "Test: Incremental Backup and Restore for PS running with all encryption options enabled"
         initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10 --binlog-encryption"
 
         incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10 --binlog-encryption"
-    fi
 
         echo "###################################################################################"
 
-        #Various test suites: binlog-encryption is not included so that binlog can be applied
-        lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"'
-
-        echo "Test: Backup and Restore during add and drop index"
+        echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
         initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
 
-        add_drop_index
-        eval $lock_ddl_cmd
+        lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"'
+
+    fi
+
+    # Runnning test suites with lock ddl backup command
+    echo "Test: Backup and Restore during add and drop index"
+    add_drop_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during add and drop tablespace"
+    add_drop_tablespace
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during change in compression"
+    change_compression
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during change in row format"
+    change_row_format
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during update and truncate of a table"
+    update_truncate_table
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during create and drop of a database"
+    create_drop_database
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during rename index"
+    rename_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during add and drop full text index"
+    add_drop_full_text_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during index type change"
+    change_index_type
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during add and drop spatial index"
+    add_drop_spatial_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during add and delete of an encrypted table"
+    create_delete_encrypted_table
+    eval $lock_ddl_cmd
+}
+
+test_inc_backup_encryption_2_4() {
+    # This test suite takes an incremental backup when PS5.7 is running with encryption
+    local encrypt_type="$1"
+    rocksdb="disabled" # Rocksdb tables cannot be created when encryption is enabled
+
+    # Note: Binlog cannot be applied to backup if it is encrypted
+
+    if [ "${encrypt_type}" = "keyring_file" ]; then
+        echo "Test Suite: Incremental Backup and Restore for PS5.7 using PXB2.4 with keyring_file encryption"
+
+        # PXB 2.4 does not support redo log and undo log encryption
+        echo "Test: Incremental Backup and Restore when all encryption options are enabled in PS5.7"
+
+        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+
         echo "###################################################################################"
 
-        echo "Test: Backup and Restore during add and drop tablespace"
-        add_drop_tablespace
-        eval $lock_ddl_cmd
+        echo "Various tests: binlog-encryption is not included so that binlog can be applied"
+        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+
+        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
+
+    else
+        echo "Test Suite: Incremental Backup and Restore for PS5.7 using PXB2.4 with keyring_vault encryption"
+
+        # PXB 2.4 does not support redo log and undo log encryption
+        echo "Test: Incremental Backup and Restore when all encryption options are enabled in PS5.7"
+
+        initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+
+        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
         echo "###################################################################################"
 
-        echo "Test: Backup and Restore during change in compression"
-        change_compression
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+        echo "Various tests: binlog-encryption is not included so that binlog can be applied"
+        initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
-        echo "Test: Backup and Restore during change in row format"
-        change_row_format
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+        lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
+    fi
 
-        echo "Test: Backup and Restore during update and truncate of a table"
-        update_truncate_table
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+    # Runnning test suites with lock ddl backup command
+    echo "Test: Backup and Restore during add and drop index"
+    add_drop_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
-        echo "Test: Backup and Restore during create and drop of a database"
-        create_drop_database
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+    echo "Test: Backup and Restore during add and drop tablespace"
+    add_drop_tablespace
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
-        echo "Test: Backup and Restore during rename index"
-        rename_index
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+    echo "Test: Backup and Restore during change in compression"
+    change_compression
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
-        echo "Test: Backup and Restore during add and drop full text index"
-        add_drop_full_text_index
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+    echo "Test: Backup and Restore during change in row format"
+    change_row_format
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
-        echo "Test: Backup and Restore during index type change"
-        change_index_type
-        eval $lock_ddl_cmd
-        echo "###################################################################################"
+    echo "Test: Backup and Restore during update and truncate of a table"
+    update_truncate_table
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
-        echo "Test: Backup and Restore during add and drop spatial index"
-        add_drop_spatial_index
-        eval $lock_ddl_cmd
+    echo "Test: Backup and Restore during rename index"
+    rename_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during add and drop full text index"
+    add_drop_full_text_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during index type change"
+    change_index_type
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during add and delete of an encrypted table"
+    create_delete_encrypted_table
+    eval $lock_ddl_cmd
 }
 
 test_streaming_backup() {
@@ -1263,8 +1327,11 @@ echo "Running Tests"
 # SSL options test suite
 #for testsuite in test_ssl_backup; do
 
-# Encryption test suites
-for testsuite in "test_inc_backup_encryption keyring_file" "test_inc_backup_encryption keyring_vault"; do
+# Encryption test suites for PXB2.4
+#for testsuite in "test_inc_backup_encryption_2_4 keyring_file" "test_inc_backup_encryption_2_4 keyring_vault"; do
+
+# Encryption test suites for PXB8.0
+for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
     $testsuite
     echo "###################################################################################"
 done
