@@ -360,6 +360,9 @@ create_cnf(){
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKDIR}/pxc_${MYSQL_VERSION}.cnf
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKDIR}/pxc_${MYSQL_VERSION}.cnf
+  else
+    echo "pxc_encrypt_cluster_traffic=OFF" >> ${WORKDIR}/pxc_${MYSQL_VERSION}.cnf
+    echo "log_error_verbosity=3" >> ${WORKDIR}/pxc_${MYSQL_VERSION}.cnf
   fi
   echo "innodb_flush_log_at_trx_commit=0" >> ${WORKDIR}/pxc_${MYSQL_VERSION}.cnf
   echo "innodb_log_file_size=500M" >> ${WORKDIR}/pxc_${MYSQL_VERSION}.cnf
