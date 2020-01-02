@@ -369,6 +369,10 @@ if [[ $PXC -eq 1 ]];then
       echo "early-plugin-load=keyring_file.so" >> ${BASEDIR}/my.cnf
       echo "keyring_file_data=keyring" >> ${BASEDIR}/my.cnf
     fi
+  else
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      echo "pxc_encrypt_cluster_traffic=OFF" >> ${BASEDIR}/my.cnf
+    fi
   fi
 fi
 pxc_startup(){
