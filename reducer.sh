@@ -1940,6 +1940,9 @@ start_pxc_main(){
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKD}/my.cnf
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
+  else
+    echo "pxc_encrypt_cluster_traffic=OFF" >> ${WORKD}/my.cnf
+    echo "log-error-verbosity=3" >> ${WORKD}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
   echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKD}/my.cnf
