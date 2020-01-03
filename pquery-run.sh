@@ -1,6 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 # Updated by Ramesh Sivaraman, Percona LLC
+# Updated by Mohit Joshi, Percona LLC
 
 # ========================================= User configurable variables ==========================================================
 # Note: if an option is passed to this script, it will use that option as the configuration file instead, for example ./pquery-run.sh pquery-run-ps.conf
@@ -17,7 +18,7 @@ CONFIGURATION_FILE=pquery-run.conf  # Do not use any path specifiers, the .conf 
 # Internal variables: DO NOT CHANGE!
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd `dirname $0` && pwd)
-WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0
+WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0; PQUERY3=0
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -27,7 +28,10 @@ export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pa
 # Read configuration
 if [ "$1" != "" ]; then CONFIGURATION_FILE=$1; fi
 if [ ! -r ${SCRIPT_PWD}/${CONFIGURATION_FILE} ]; then echo "Assert: the confiruation file ${SCRIPT_PWD}/${CONFIGURATION_FILE} cannot be read!"; exit 1; fi
-source ${SCRIPT_PWD}/${CONFIGURATION_FILE}
+source ${SCRIPT_PWD}/$CONFIGURATION_FILE
+PQUERY_TOOL_NAME=$(basename ${PQUERY_BIN})
+if [ "${SEED}" == "" ]; then SEED=${RANDOMD}; fi
+if [ ${PQUERY_TOOL_NAME} == "pquery3-ps" ]; then PQUERY3=1; fi
 
 # Safety checks: ensure variables are correctly set to avoid rm -Rf issues (if not set correctly, it was likely due to altering internal variables at the top of this file)
 if [ "${WORKDIR}" == "/sd[a-z][/]" ]; then echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"; exit 1; fi
@@ -205,7 +209,7 @@ if [ ${THREADS} -gt 1 ]; then  # We may want to drop this to 20 seconds required
   fi
 fi
 if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
-  echoit "MODE: Creash Recovery Testing"
+  echoit "MODE: Crash Recovery Testing"
   INFILE=$CRASH_RECOVERY_INFILE
   if [ -a ${QUERY_DURATION_TESTING} -eq 1]; then
     echoit "CRASH_RECOVERY_TESTING and QUERY_DURATION_TESTING cannot be both active at the same time due to parsing limitations. This is the case. Please disable one of them."
@@ -309,6 +313,17 @@ removetrial(){
   if [ "$PMM_CLEAN_TRIAL" == "1" ];then
     echoit "Removing mysql instance (pq${RANDOMD}-${TRIAL}) from pmm-admin"
     sudo pmm-admin remove mysql pq${RANDOMD}-${TRIAL} > /dev/null
+  fi
+}
+
+removelasttrial(){
+  if [ ${TRIAL} -gt 1 ]; then
+    echoit "Removing last successful trial workdir ${WORKDIR}/$((${TRIAL}-1))"
+    if [ "${WORKDIR}" != "" -a "${TRIAL}" != "" -a -d ${WORKDIR}/$((${TRIAL}-1))/ ]; then
+      rm -Rf ${WORKDIR}/$((${TRIAL}-1))/
+    fi
+    echoit "Removing the ${WORKDIR}/step_$((${TRIAL}-1)).dll file"
+    rm ${WORKDIR}/step_$((${TRIAL}-1)).dll
   fi
 }
 
@@ -758,15 +773,20 @@ pquery_test(){
     echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/startup_failure_thread-0.sql  # Add fake file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Copying datadir from template for Primary mysqld..."
+    elif [[ ${PQUERY3} -eq 1 && ${TRIAL} -gt 1 ]]; then
+      echoit "Copying datadir from Trial $WORKDIR/$((${TRIAL}-1)) into $WORKDIR/${TRIAL}..."
     else
       echoit "Copying datadir from template..."
     fi
     if [ `ls -l ${WORKDIR}/data.template/* | wc -l` -eq 0 ]; then
       echoit "Assert: ${WORKDIR}/data.template/ is empty? Check ${WORKDIR}/log/mysql_install_db.txt to see if the original template creation worked ok. Terminating."
-      echoit "Note that this is can be caused by not having perl-Data-Dumper installed (sudo yum install perl-Data-Dumper), which is required for mysql_install_db."
+      echoit "Note that this can be caused by not having perl-Data-Dumper installed (sudo yum install perl-Data-Dumper), which is required for mysql_install_db."
       exit 1
+    elif [[ ${PQUERY3} -eq 1 && ${TRIAL} -gt 1 ]]; then
+      cp -R ${WORKDIR}/$((${TRIAL}-1))/data/* ${RUNDIR}/${TRIAL}/data 2>&1
+    else
+      cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data 2>&1
     fi
-    cp -R ${WORKDIR}/data.template/* ${RUNDIR}/${TRIAL}/data 2>&1
     MYEXTRA_SAVE_IT=${MYEXTRA}
     if [ ${ADD_RANDOM_OPTIONS} -eq 1 ]; then  # Add random mysqld --options to MYEXTRA
       OPTIONS_TO_ADD=
@@ -1356,14 +1376,27 @@ pquery_test(){
         SQL_FILE="--infile=${INFILE}"
       else
         # Multi-threaded run using a chunk from INFILE (${THREADS} clients)
-        echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this multi-threaded trial..."
+        if [ ${PQUERY3} -eq 1 ]; then
+          if [ "${TRIAL}" == "1" ]; then
+            echoit "Creating metadata randomly using random seed..."
+          else
+            echoit "Loading metadata from ${WORKDIR}/step_$((${TRIAL}-1)).dll ..."
+          fi
+        else
+          echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this multi-threaded trial..."
+        fi
         shuf --random-source=/dev/urandom ${INFILE} | head -n${MULTI_THREADED_TESTC_LINES} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
         SQL_FILE="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql"
       fi
-      # Debug echo "-------"; cat ${RUNDIR}/${TRIAL}/${TRIAL}.sql; echo "-------"
       if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-        ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+        if [ ${PQUERY3} -eq 1 ]; then
+          echo "${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}";
+          ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}  >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
+          PQPID="$!"
+        else
+          ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
         PQPID="$!"
+        fi
       else
         ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${RUNDIR}/${TRIAL}/node1/node1_socket.sock >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
         PQPID="$!"
@@ -1412,6 +1445,13 @@ pquery_test(){
         if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then
           echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
           TIMEOUT_REACHED=1
+          if [ ${TIMEOUT_INCREMENT} != 0 ]; then
+            echoit "TIMEOUT_INCREMENT option was enabled and set to ${TIMEOUT_INCREMENT} sec"
+            echoit "${TIMEOUT_INCREMENT}s will be added to the next trial timeout."
+          else
+            echoit "TIMEOUT_INCREMENT option was disabled and set to 0"
+          fi
+          PQUERY_RUN_TIMEOUT=$[ ${PQUERY_RUN_TIMEOUT} + ${TIMEOUT_INCREMENT} ]
           break
         fi
       done
@@ -1661,6 +1701,15 @@ pquery_test(){
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
         savetrial
         TRIAL_SAVED=1
+      elif [[ ${PQUERY3} -eq 1 ]]; then
+        if [ ${TRIAL} -gt 1 ]; then
+          echoit "Saving last trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=1)"
+          savetrial
+          removelasttrial
+        else
+          savetrial
+        fi
+        TRIAL_SAVED=1
       elif [[ ${PXB_CHECK} -eq 1 ]]; then
         echoit "Saving this trial for backup restore analysis"
         savetrial
@@ -1697,7 +1746,6 @@ pquery_test(){
     fi
   fi
 }
-
 # Setup
 if [[ "${INFILE}" == *".tar."* ]]; then
   echoit "The input file is a compressed tarball. This script will untar the file in the same location as the tarball. Please note this overwrites any existing files with the same names as those in the tarball, if any. If the sql input file needs patching (and is part of the github repo), please remember to update the tarball with the new file."
