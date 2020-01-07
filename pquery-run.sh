@@ -116,8 +116,8 @@ PSORNOT1=$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)
 PSORNOT2=$(${BIN} --version | grep -oi '5.7.[0-9]\+-[0-9]' | cut -f2 -d'-' | head -n1); if [ "${PSORNOT2}" == "" ]; then PSORNOT2=0; fi
 if [ "${SKIP_JEMALLOC_FOR_PS}" != "1" ]; then
   if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
-    if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
-      export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
+    if [ -r `find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+      export LD_PRELOAD=`find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
     else
       echoit "Assert! Binary (${BIN} reported itself as Percona Server, yet jemalloc was not found, please install it!";
       echoit "For Centos7 you can do this by:  sudo yum -y install epel-release; sudo yum -y install jemalloc;"
