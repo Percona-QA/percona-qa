@@ -9,3 +9,4 @@ INSTALL PLUGIN rocksdb_ddl SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_index_file_map SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_locks SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_trx SONAME 'ha_rocksdb.so';
+INSTALL PLUGIN rocksdb_deadlock SONAME 'ha_rocksdb.so';

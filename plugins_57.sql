@@ -16,6 +16,7 @@ INSTALL PLUGIN rocksdb_ddl SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_index_file_map SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_locks SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rocksdb_trx SONAME 'ha_rocksdb.so';
+INSTALL PLUGIN rocksdb_deadlock SONAME 'ha_rocksdb.so';
 INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
 INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
 INSTALL PLUGIN auth_pam SONAME 'auth_pam.so';
