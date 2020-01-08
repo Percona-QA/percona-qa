@@ -8,8 +8,8 @@ pipeline {
     choice(name: 'TEST_CASE', choices: ['all','master_slave_test','master_multi_slave_test','master_master_test','msr_test','mtr_test','mgr_test','xb_master_slave_test'], description: 'Test case to run.')
     string(name: 'GIT_REPO', defaultValue: 'https://github.com/percona/percona-server.git', description: 'PS repo for build.')
     string(name: 'BRANCH', defaultValue: '8.0', description: 'Target branch')
-    string(name: 'PT_BIN', defaultValue: 'https://www.percona.com/downloads/percona-toolkit/2.2.20/tarball/percona-toolkit-2.2.20.tar.gz', description: 'PT binary tarball')
-    string(name: 'PXB_BIN', defaultValue: 'https://www.percona.com/downloads/Percona-XtraBackup-LATEST/Percona-XtraBackup-8.0-8/binary/tarball/percona-xtrabackup-8.0.8-Linux-x86_64.libgcrypt20.tar.gz', description: 'PXB binary tarball')
+    string(name: 'PT_BIN', defaultValue: 'https://www.percona.com/downloads/percona-toolkit/3.1.0/binary/tarball/percona-toolkit-3.1.0_x86_64.tar.gz', description: 'PT binary tarball')
+    string(name: 'PXB_BIN', defaultValue: 'https://www.percona.com/downloads/Percona-XtraBackup-LATEST/Percona-XtraBackup-8.0-9/binary/tarball/percona-xtrabackup-8.0.9-Linux-x86_64.libgcrypt20.tar.gz', description: 'PXB binary tarball')
   }
   environment {
     DOCKER_OS = "ubuntu:bionic"

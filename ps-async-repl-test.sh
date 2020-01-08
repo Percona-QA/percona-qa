@@ -503,7 +503,13 @@ function async_rpl_test(){
   function run_pt_table_checksum(){
     local DATABASES=${1:-}
     local SOCKET=${2:-}
-    pt-table-checksum S=$SOCKET,u=test_user,p=test -d $DATABASES --recursion-method hosts --no-check-binlog-format
+    local CHANNEL=${3:-}
+
+    local CHANNEL_OPT=""
+    if [[ CHANNEL != "none" ]]; then
+      CHANNEL_OPT="--channel=${CHANNEL}"
+    fi
+    pt-table-checksum S=${SOCKET},u=test_user,p=test -d ${DATABASES} --recursion-method hosts --no-check-binlog-format ${CHANNEL_OPT}
     check_cmd $?
   }
 
@@ -728,7 +734,7 @@ function async_rpl_test(){
     if [ "$ENGINE" == "rocksdb" ]; then
       run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
-      run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
+      run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock" "none"
     fi
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
@@ -789,7 +795,7 @@ function async_rpl_test(){
       run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps3.sock"
       run_mysqlchecksum "sbtest_ps_master" "/tmp/ps1.sock" "/tmp/ps4.sock"
     else
-      run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock"
+      run_pt_table_checksum "sbtest_ps_master" "/tmp/ps1.sock" "none"
     fi
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
@@ -839,7 +845,7 @@ function async_rpl_test(){
       run_mysqlchecksum "sbtest_ps_master_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqlchecksum "sbtest_ps_master_2" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
-      run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "/tmp/ps1.sock"
+      run_pt_table_checksum "sbtest_ps_master_1,sbtest_ps_master_2" "/tmp/ps1.sock" "none"
     fi
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
     $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
@@ -933,11 +939,11 @@ function async_rpl_test(){
       run_mysqlchecksum "msr_db_master3" "/tmp/ps4.sock" "/tmp/ps1.sock"
     else
       echoit "Checksum for msr_db_master1 database"
-      run_pt_table_checksum "msr_db_master1" "/tmp/ps2.sock"
+      run_pt_table_checksum "msr_db_master1" "/tmp/ps2.sock" "master1"
       echoit "Checksum for msr_db_master2 database"
-      run_pt_table_checksum "msr_db_master2" "/tmp/ps3.sock"
+      run_pt_table_checksum "msr_db_master2" "/tmp/ps3.sock" "master2"
       echoit "Checksum for msr_db_master3 database"
-      run_pt_table_checksum "msr_db_master3" "/tmp/ps4.sock"
+      run_pt_table_checksum "msr_db_master3" "/tmp/ps4.sock" "master3"
     fi
 
     #Shutdown PS servers for MSR test
@@ -1079,7 +1085,7 @@ function async_rpl_test(){
       run_mysqlchecksum "mtr_db_ps2_4" "/tmp/ps1.sock" "/tmp/ps2.sock"
       run_mysqlchecksum "mtr_db_ps2_5" "/tmp/ps1.sock" "/tmp/ps2.sock"
     else
-      run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5"  "/tmp/ps1.sock"
+      run_pt_table_checksum "mtr_db_ps1_1,mtr_db_ps1_2,mtr_db_ps1_3,mtr_db_ps1_4,mtr_db_ps1_5,mtr_db_ps2_1,mtr_db_ps2_2,mtr_db_ps2_3,mtr_db_ps2_4,mtr_db_ps2_5" "/tmp/ps1.sock" "none"
     fi
 
     #Shutdown PS servers
@@ -1154,7 +1160,7 @@ function async_rpl_test(){
       slave_startup_check "/tmp/bkpslave.sock" "$WORKDIR/logs/slave_status_bkpslave.log" "$WORKDIR/logs/bkpslave.err"
 
       echoit "7. XB master slave replication: Checksum result."
-      run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock"
+      run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock" "none"
       $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
       $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/bkpslave.sock -u root shutdown
     fi
