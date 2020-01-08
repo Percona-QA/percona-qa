@@ -374,12 +374,14 @@ if [[ $PXC -eq 1 ]];then
     echo "enforce_gtid_consistency=ON" >> ${BASEDIR}/my.cnf
     echo "master_verify_checksum=on" >> ${BASEDIR}/my.cnf
     echo "binlog_checksum=CRC32" >> ${BASEDIR}/my.cnf
-    echo "binlog-encryption" >> ${BASEDIR}/my.cnf
+    echo "binlog_encryption=ON" >> ${BASEDIR}/my.cnf
     echo "innodb_temp_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
-    echo "encrypt-tmp-files=ON" >> ${BASEDIR}/my.cnf
-    echo "innodb_redo_log_encrypt=1" >> ${BASEDIR}/my.cnf
-    #echo "innodb_undo_log_encrypt=1" >> ${BASEDIR}/my.cnf
-    #echo "innodb_undo_tablespaces=2" >> ${BASEDIR}/my.cnf
+    echo "encrypt_tmp_files=ON" >> ${BASEDIR}/my.cnf
+    echo "default_table_encryption=ON" >> ${BASEDIR}/my.cnf
+    echo "innodb_redo_log_encrypt=ON" >> ${BASEDIR}/my.cnf
+    echo "innodb_undo_log_encrypt=ON" >> ${BASEDIR}/my.cnf
+    echo "innodb_sys_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
+    echo "pxc_encrypt_cluster_traffic=ON" >> ${BASEDIR}/my.cnf
     if [[ $WITH_KEYRING_VAULT -ne 1 ]];then
       echo "early-plugin-load=keyring_file.so" >> ${BASEDIR}/my.cnf
       echo "keyring_file_data=keyring" >> ${BASEDIR}/my.cnf
@@ -395,7 +397,11 @@ pxc_startup(){
   ADDR="127.0.0.1"
   RPORT=$(( (RANDOM%21 + 10)*1000 ))
   if check_for_version $MYSQL_VERSION "5.7.0" ; then
-    MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+    if [[ "$ENCRYPTION_RUN" == 1 ]];then
+      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
+	else
+      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+    fi
   else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
@@ -466,7 +472,7 @@ pxc_startup(){
     sed -i "2i log-error=$node/node${i}.err" ${DATADIR}/n${i}.cnf
     sed -i "2i port=$RBASE1" ${DATADIR}/n${i}.cnf
     sed -i "2i datadir=$node" ${DATADIR}/n${i}.cnf
-    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+    if [[ "$ENCRYPTION_RUN" != 1 ]];then
       sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
 	else
       sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT;socket.ssl_key=${WORKDIR}/cert/server-key.pem;socket.ssl_cert=${WORKDIR}/cert/server-cert.pem;socket.ssl_ca=${WORKDIR}/cert/ca.pem\"" ${DATADIR}/n${i}.cnf
@@ -1776,22 +1782,6 @@ elif [[ ${PXC} -eq 1 ]]; then
     echoit "PXC Encryption run: 'YES'"
   else
     echoit "PXC Encryption run: 'NO'"
-  fi
-  if [[ "$ENCRYPTION_RUN" == 1 ]];then
-    rm -rf ${WORKDIR}/certs
-    mkdir -p ${WORKDIR}/certs
-    pushd ${WORKDIR}/certs
-    openssl genrsa 2048 > ca-key.pem
-    openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'
-    openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'
-    openssl rsa -in server-key.pem -out server-key.pem
-    openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem
-    popd
-    echo "[sst]" >> ${BASEDIR}/my.cnf
-    echo "encrypt = 4" >> ${BASEDIR}/my.cnf
-    echo "ssl-ca=${WORKDIR}/certs/ca.pem" >> ${BASEDIR}/my.cnf
-    echo "ssl-cert=${WORKDIR}/certs/server-cert.pem" >> ${BASEDIR}/my.cnf
-    echo "ssl-key=${WORKDIR}/certs/server-key.pem" >> ${BASEDIR}/my.cnf
   fi
 elif [[ ${GRP_RPL} -eq 1 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"

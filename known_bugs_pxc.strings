@@ -5,13 +5,13 @@
 .ht->flags . .1 << 14                                                                    ## https://jira.percona.com/browse/PXC-2498
 .os_event_is_set.dblwr_shard->batch_completed.                                           ## https://jira.percona.com/browse/PXC-2510
 .srv_n_fil_crypt_threads_started                                                         ## https://jira.percona.com/browse/PXC-2514
-.thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460
+#.thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460 (Not reproducible)
 .thd->wsrep_cs                                                                           ## https://jira.percona.com/browse/PXC-2691
 .wsrep_has_changes.thd                                                                   ## https://jira.percona.com/browse/PXC-2619
 ACL_HOST_AND_IP..has_wildcard                                                            ## https://jira.percona.com/browse/PXC-2508
 all .. .thd->slave_thread .. one_phase                                                   ## https://jira.percona.com/browse/PXC-2511
 apply_monitor_.last_left                                                                 ## https://jira.percona.com/browse/PXC-2700
-autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449
+#autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449 (Not reproducible)
 buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 conn_map_.size                                                                           ## https://jira.percona.com/browse/PXC-2487
 default_table_encryption == 0 .. default_table_encryption == 1                           ## https://jira.percona.com/browse/PXC-2692
@@ -23,13 +23,13 @@ galera..WriteSetOut..gather                                                     
 gcache..GCache..free_common                                                              ## https://jira.percona.com/browse/PXC-2617
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
-key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457
+#key_part_no < actual_key_parts                                                           ## https://jira.percona.com/browse/PXC-2457 (Not reproducible)
 LatchMeta<LatchCounter>..get_id                                                          ## https://jira.percona.com/browse/PXC-2509
 log.writer_thread_alive.load..                                                           ## https://jira.percona.com/browse/PXC-2410
 log_sys .= nullptr                                                                       ## https://jira.percona.com/browse/PXC-2467
 m_attachable_trx->get_prev_attachable_trx                                                ## https://jira.percona.com/browse/PXC-2389
 MDL_lock..has_pending_conflicting_lock                                                   ## https://jira.percona.com/browse/PXC-2412
-MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450
+#MDL_checker..is_write_locked.m_thd, object                                               ## https://jira.percona.com/browse/PXC-2450 (Not reproducible)
 meta->depends_on == trx.ts                                                               ## https://jira.percona.com/browse/PXC-2679
 m_progress .= nullptr                                                                    ## https://jira.percona.com/browse/PXC-2481
 mutex .= NULL                                                                            ## https://jira.percona.com/browse/PXC-2515
@@ -38,9 +38,9 @@ p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
 pause_seqno_.is_undefined                                                                ## https://jira.percona.com/browse/PXC-2624
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
-rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459
+#rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459 (Not reproducible)
 rcode <= 0                                                                               ## https://jira.percona.com/browse/PXC-2623
-row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444
+#row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444 (Not reproducible)
 state_ == s_joiner .. state_ == s_initialized                                            ## https://jira.percona.com/browse/PXC-2612
 state_ == s_none                                                                         ## https://jira.percona.com/browse/PXC-2615
 state_ == s_executing .. state_ == s_committed .. state_ == s_aborted                    ## https://jira.percona.com/browse/PXC-2702
