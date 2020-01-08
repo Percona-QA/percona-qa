@@ -506,7 +506,7 @@ function async_rpl_test(){
     local CHANNEL=${3:-}
 
     local CHANNEL_OPT=""
-    if [[ CHANNEL != "none" ]]; then
+    if [[ "${CHANNEL}" != "none" ]]; then
       CHANNEL_OPT="--channel=${CHANNEL}"
     fi
     pt-table-checksum S=${SOCKET},u=test_user,p=test -d ${DATABASES} --recursion-method hosts --no-check-binlog-format ${CHANNEL_OPT}
