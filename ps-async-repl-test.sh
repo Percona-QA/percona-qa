@@ -317,7 +317,7 @@ sysbench_run(){
 }
 
 
-declare MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+declare MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe ' Ver [0-9]\.[0-9][\.0-9]*'|sed 's/ Ver //')
 #mysql install db check
 if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
@@ -1128,7 +1128,10 @@ function async_rpl_test(){
   }
 
   function xb_master_slave_test(){
-    if ! check_for_version $MYSQL_VERSION "8.0.15" && [[ "$ENGINE" == "rocksdb" ]]; then
+    if [[ "$ENGINE" == "tokudb" ]]; then
+      echoit "XtraBackup doesn't support tokudb backup so skipping!"
+      return 0
+    elif ! check_for_version $MYSQL_VERSION "8.0.15" && [[ "$ENGINE" == "rocksdb" ]]; then
       echoit "XtraBackup 2.4 with PS 5.7 doesn't support rocksdb backup so skipping!"
       return 0
     elif ! check_for_version $MYSQL_VERSION "8.0.15" && [[ "$ENCRYPTION" == 1 ]]; then
@@ -1160,7 +1163,12 @@ function async_rpl_test(){
       slave_startup_check "/tmp/bkpslave.sock" "$WORKDIR/logs/slave_status_bkpslave.log" "$WORKDIR/logs/bkpslave.err"
 
       echoit "7. XB master slave replication: Checksum result."
-      run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock" "none"
+      if [ "$ENGINE" == "rocksdb" ]; then
+        run_mysqlchecksum "sbtest_xb_db" "/tmp/ps1.sock" "/tmp/bkpslave.sock"
+        run_mysqlchecksum "sbtest_xb_check" "/tmp/ps1.sock" "/tmp/bkpslave.sock"
+      else
+        run_pt_table_checksum "sbtest_xb_db,sbtest_xb_check" "/tmp/ps1.sock" "none"
+      fi
       $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
       $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/bkpslave.sock -u root shutdown
     fi
