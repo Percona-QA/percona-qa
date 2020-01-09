@@ -7,9 +7,9 @@ pipeline {
     string(name: 'PS_BIN', defaultValue: 'build', description: 'Either "build" to make a fresh build or link to S3 binary.tar.gz download.')
     choice(name: 'TEST_CASE', choices: ['all','master_slave_test','master_multi_slave_test','master_master_test','msr_test','mtr_test','mgr_test','xb_master_slave_test'], description: 'Test case to run.')
     string(name: 'GIT_REPO', defaultValue: 'https://github.com/percona/percona-server.git', description: 'PS repo for build.')
-    string(name: 'BRANCH', defaultValue: '8.0', description: 'Target branch (leave empty for auto selection)')
+    string(name: 'BRANCH', defaultValue: '8.0', description: 'Target branch')
     string(name: 'PT_BIN', defaultValue: '', description: 'PT binary tarball (leave empty for auto selection)')
-    string(name: 'PXB_BIN', defaultValue: '', description: 'PXB binary tarball')
+    string(name: 'PXB_BIN', defaultValue: '', description: 'PXB binary tarball (leave empty for auto selection)')
   }
   environment {
     DOCKER_OS = "ubuntu:bionic"
