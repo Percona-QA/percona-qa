@@ -12,11 +12,11 @@ ACL_HOST_AND_IP..has_wildcard                                                   
 all .. .thd->slave_thread .. one_phase                                                   ## https://jira.percona.com/browse/PXC-2511
 apply_monitor_.last_left                                                                 ## https://jira.percona.com/browse/PXC-2700
 #autoinc > 0                                                                              ## https://jira.percona.com/browse/PXC-2449 (Not reproducible)
-buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
+#buf_size > 0                                                                             ## https://jira.percona.com/browse/PXC-2471
 conn_map_.size                                                                           ## https://jira.percona.com/browse/PXC-2487
 default_table_encryption == 0 .. default_table_encryption == 1                           ## https://jira.percona.com/browse/PXC-2692
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
-dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
+#dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
 error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
 find_sys_var_ex                                                                          ## https://jira.percona.com/browse/PXC-2499
 galera..WriteSetOut..gather                                                              ## https://jira.percona.com/browse/PXC-2616
@@ -33,7 +33,7 @@ MDL_lock..has_pending_conflicting_lock                                          
 meta->depends_on == trx.ts                                                               ## https://jira.percona.com/browse/PXC-2679
 m_progress .= nullptr                                                                    ## https://jira.percona.com/browse/PXC-2481
 mutex .= NULL                                                                            ## https://jira.percona.com/browse/PXC-2515
-OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
+#OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
 pause_seqno_.is_undefined                                                                ## https://jira.percona.com/browse/PXC-2624
@@ -46,7 +46,7 @@ state_ == s_none                                                                
 state_ == s_executing .. state_ == s_committed .. state_ == s_aborted                    ## https://jira.percona.com/browse/PXC-2702
 sctx->user                                                                               ## https://jira.percona.com/browse/PXC-2480
 set_and_validate_user_attributes                                                         ## https://jira.percona.com/browse/PXC-2500
-t->s->tmp_table .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE          ## https://jira.percona.com/browse/PXC-2507
+#t->s->tmp_table .. thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLE          ## https://jira.percona.com/browse/PXC-2507
 Table_cache_manager..free_table                                                          ## https://jira.percona.com/browse/PXC-2396
 table->get_ref_count.. == 0                                                              ## https://jira.percona.com/browse/PXC-2397
 table->file->ht->db_type == DB_TYPE_NDBCLUSTER .. error .= 146                           ## https://jira.percona.com/browse/PXC-2443
