@@ -674,7 +674,7 @@ function async_rpl_test(){
       fi
     fi
     echoit "Restore backup to slave datadir"
-    rsync -avpP ${WORKDIR}/backupdir/full/* ${WORKDIR}/bkpslave > $WORKDIR/logs/xb_restore_backup.log 2>&1
+    rsync -avpP ${WORKDIR}/backupdir/full/ ${WORKDIR}/bkpslave > $WORKDIR/logs/xb_restore_backup.log 2>&1
     if [ -f ${WORKDIR}/psnode1/keyring ]; then
       cp ${WORKDIR}/psnode1/keyring ${WORKDIR}/bkpslave/
     fi
