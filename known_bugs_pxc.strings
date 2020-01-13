@@ -7,6 +7,7 @@
 .srv_n_fil_crypt_threads_started                                                         ## https://jira.percona.com/browse/PXC-2514
 #.thd->has_gtid_consistency_violation                                                     ## https://jira.percona.com/browse/PXC-2460 (Not reproducible)
 .thd->wsrep_cs                                                                           ## https://jira.percona.com/browse/PXC-2691
+.thd->mdl_context.has_locks                                                              ## https://jira.percona.com/browse/PXC-2913
 .wsrep_has_changes.thd                                                                   ## https://jira.percona.com/browse/PXC-2619
 ACL_HOST_AND_IP..has_wildcard                                                            ## https://jira.percona.com/browse/PXC-2508
 all .. .thd->slave_thread .. one_phase                                                   ## https://jira.percona.com/browse/PXC-2511
