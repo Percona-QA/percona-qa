@@ -21,6 +21,7 @@ dd_table .= nullptr                                                             
 error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
 find_sys_var_ex                                                                          ## https://jira.percona.com/browse/PXC-2499
 galera..WriteSetOut..gather                                                              ## https://jira.percona.com/browse/PXC-2616
+wsrep..wsrep_provider_v26..enter_toi                                                     ## https://jira.percona.com/browse/PXC-2616
 gcache..GCache..free_common                                                              ## https://jira.percona.com/browse/PXC-2617
 handler..ha_table_flags                                                                  ## https://jira.percona.com/browse/PXC-2409
 is_backup_lock_and_grl_acquired<T>.m_thd                                                 ## https://jira.percona.com/browse/PXC-2452
@@ -34,6 +35,7 @@ MDL_lock..has_pending_conflicting_lock                                          
 meta->depends_on == trx.ts                                                               ## https://jira.percona.com/browse/PXC-2679
 m_progress .= nullptr                                                                    ## https://jira.percona.com/browse/PXC-2481
 mutex .= NULL                                                                            ## https://jira.percona.com/browse/PXC-2515
+MYSQLlex                                                                                 ## https://jira.percona.com/browse/PXC-2914
 #OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
