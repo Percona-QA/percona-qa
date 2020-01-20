@@ -186,6 +186,8 @@ echo -e "    echo \"wsrep_slave_threads=2\" >> ${BUILD}/node\$i.cnf " >> ./start
 
 if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
   echo -e "    echo \"wsrep_sst_auth=$SUSER:$SPASS\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
+else
+  echo -e "    echo \"pxc_encrypt_cluster_traffic=ON\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
 fi
 if check_for_version $MYSQL_VERSION "5.7.0" ; then
   echo -e "    echo \"pxc_maint_transition_period=1\" >> ${BUILD}/node\$i.cnf " >> ./start_pxc
