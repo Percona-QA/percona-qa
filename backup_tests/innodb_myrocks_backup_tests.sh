@@ -13,7 +13,7 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_9_debug_release/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_9_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export mysqldir="$HOME/PS111219_8_0_18_9_debug"
 export datadir="$HOME/PS111219_8_0_18_9_debug/data"
@@ -22,7 +22,7 @@ export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/minio.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="enabled" # Set this to disabled for PXB2.4
+rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
 
 # Set sysbench variables
 num_tables=10
@@ -855,7 +855,11 @@ test_add_drop_index() {
 
     add_drop_index
 
-    incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_rename_index() {
@@ -875,7 +879,11 @@ test_add_drop_full_text_index() {
 
     add_drop_full_text_index
 
-    incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_change_index_type() {
@@ -890,6 +898,11 @@ test_change_index_type() {
 
 test_spatial_data_index() {
     # This test suite takes an incremental backup when a spatial index is added and dropped"
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Skipping Test: Backup and Restore during add and drop spatial index, for PS/MS5.7 as it is not supported"
+        continue
+    fi
 
     echo "Test: Backup and Restore during add and drop spatial index"
     echo "Creating a table with spatial data"
@@ -907,7 +920,11 @@ test_add_drop_tablespace() {
 
     add_drop_tablespace
 
-    incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_change_compression() {
@@ -927,7 +944,11 @@ test_change_row_format() {
 
     change_row_format
 
-    incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_copy_data_across_engine() {
@@ -952,6 +973,8 @@ test_copy_data_across_engine() {
             echo "Checksum of myrocks table test_rocksdb.sbtestcopy after restore: $myrocks_checksum"
             echo "Match checksum of test.sbtest1 with test_rocksdb.sbtestcopy: Pass"
         fi
+    else
+        echo "Skipping Test: Backup and Restore after cross engine table copy, as rocksdb is disabled"
     fi
 }
 
@@ -984,6 +1007,8 @@ test_add_data_across_engine() {
         else
             echo "Checksum of both tables innodb_t and myrocks_t is same after restore: Pass"
         fi
+    else
+        echo "Skipping Test: Backup and Restore when data is added in both innodb and myrocks tables simultaneously, as rocksdb is disabled"
     fi
 }
 
@@ -994,11 +1019,20 @@ test_update_truncate_table() {
 
     update_truncate_table
 
-    incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_create_drop_database() {
     # This test suite takes an incremental backup during create and drop of a database
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Skipping Test: Backup and Restore during create and drop of a database, for PS/MS5.7 as this scenario is not supported"
+        continue
+    fi
 
     echo "Test: Backup and Restore during create and drop of a database"
 
@@ -1025,7 +1059,11 @@ test_run_all_statements() {
 
     update_truncate_table
 
-    incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_inc_backup_encryption_8_0() {
@@ -1036,21 +1074,37 @@ test_inc_backup_encryption_8_0() {
     # Note: Binlog cannot be applied to backup if it is encrypted
 
     if [ "${encrypt_type}" = "keyring_file" ]; then
-        echo "Test Suite: Incremental Backup and Restore for PS8.0 using PXB8.0 with keyring_file encryption"
+        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+            server_type="MS"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        else
+            server_type="PS"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
+        fi
 
-        echo "Test: Incremental Backup and Restore for PS running with all encryption options enabled"
+        echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_file encryption"
 
-        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10 --binlog-encryption"
+        echo "Test: Incremental Backup and Restore for ${server_type} running with all encryption options enabled"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10 --binlog-encryption"
+        initialize_db "${server_options} --binlog-encryption"
+
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption"
+
         echo "###################################################################################"
 
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
-        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
 
-        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"'
+        initialize_db "${server_options}"
+
+        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
 
     else
+        if [ "${server_type}" = "MS" ]; then
+            echo "MS 8.0 does not support keyring vault for encryption, skipping keyring vault tests"
+            continue
+        fi
+
+        # Run keyring_vault tests for PS8.0
         echo "Test Suite: Incremental Backup and Restore for PS8.0 using PXB8.0 with keyring_vault encryption"
 
         echo "Test: Incremental Backup and Restore for PS running with all encryption options enabled"
@@ -1131,23 +1185,40 @@ test_inc_backup_encryption_2_4() {
     # Note: Binlog cannot be applied to backup if it is encrypted
 
     if [ "${encrypt_type}" = "keyring_file" ]; then
-        echo "Test Suite: Incremental Backup and Restore for PS5.7 using PXB2.4 with keyring_file encryption"
+        if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+            server_type="MS"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+        else
+            server_type="PS"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+        fi
+
+        echo "Test Suite: Incremental Backup and Restore for ${server_type}5.7 using PXB2.4 with keyring_file encryption"
 
         # PXB 2.4 does not support redo log and undo log encryption
-        echo "Test: Incremental Backup and Restore when all encryption options are enabled in PS5.7"
+        echo "Test: Incremental Backup and Restore when all encryption options are enabled in ${server_type}5.7"
 
-        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+        initialize_db "${server_options}"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"
 
         echo "###################################################################################"
 
         echo "Various tests: binlog-encryption is not included so that binlog can be applied"
-        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+        if [ "${server_type}" = "MS" ]; then
+            lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        else
+            initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
-        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
+            lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
+        fi
 
     else
+        if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+            echo "MS 5.7 does not support keyring vault for encryption, skipping keyring vault tests"
+            continue
+        fi
+
         echo "Test Suite: Incremental Backup and Restore for PS5.7 using PXB2.4 with keyring_vault encryption"
 
         # PXB 2.4 does not support redo log and undo log encryption
@@ -1255,6 +1326,11 @@ test_compress_backup() {
     incremental_backup "--compress=quicklz --compress-threads=10 --parallel=10 --compress-chunk-size=64K" "" "" "--log-bin=binlog" "" ""
     echo "###################################################################################"
 
+    # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        continue
+    fi
+
     echo "Test: Lz4 compression"
     incremental_backup "--compress=lz4" "" "" "--log-bin=binlog" "" ""
     echo "###################################################################################"
@@ -1327,11 +1403,18 @@ echo "Running Tests"
 # SSL options test suite
 #for testsuite in test_ssl_backup; do
 
-# Encryption test suites for PXB2.4
+# Encryption test suites for PXB2.4 and PS5.7
 #for testsuite in "test_inc_backup_encryption_2_4 keyring_file" "test_inc_backup_encryption_2_4 keyring_vault"; do
 
-# Encryption test suites for PXB8.0
-for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
+# Encryption test suites for PXB2.4 and MS5.7
+#for testsuite in "test_inc_backup_encryption_2_4 keyring_file"; do
+
+# Encryption test suites for PXB8.0 and PS8.0
+#for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
+
+# Encryption test suites for PXB8.0 and MS8.0
+#for testsuite in "test_inc_backup_encryption_8_0 keyring_file"; do
+
     $testsuite
     echo "###################################################################################"
 done
