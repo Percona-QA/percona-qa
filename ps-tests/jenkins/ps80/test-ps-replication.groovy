@@ -71,7 +71,7 @@ pipeline {
               try {
                 sh '''
                 # prepare
-                sudo apt update && sudo apt install gnupg2
+                sudo apt update && sudo apt install -y gnupg2
                 wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
                 sudo dpkg -i percona-release_latest.generic_all.deb
                 sudo percona-release enable original
@@ -123,7 +123,7 @@ pipeline {
               try {
                 sh '''
                 # prepare
-                sudo apt update && sudo apt install gnupg2
+                sudo apt update && sudo apt install -y gnupg2
                 wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
                 sudo dpkg -i percona-release_latest.generic_all.deb
                 sudo percona-release enable original
@@ -175,7 +175,7 @@ pipeline {
               try {
                 sh '''
                 # prepare
-                sudo apt update && sudo apt install gnupg2
+                sudo apt update && sudo apt install -y gnupg2
                 wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
                 sudo dpkg -i percona-release_latest.generic_all.deb
                 sudo percona-release enable original
@@ -227,7 +227,7 @@ pipeline {
               try {
                 sh '''
                 # prepare
-                sudo apt update && sudo apt install gnupg2
+                sudo apt update && sudo apt install -y gnupg2
                 wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
                 sudo dpkg -i percona-release_latest.generic_all.deb
                 sudo percona-release enable original
@@ -279,7 +279,7 @@ pipeline {
               try {
                 sh '''
                 # prepare
-                sudo apt update && sudo apt install gnupg2
+                sudo apt update && sudo apt install -y gnupg2
                 wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
                 sudo dpkg -i percona-release_latest.generic_all.deb
                 sudo percona-release enable original
