@@ -219,6 +219,7 @@ handler..unbind_psi                                       ## https://jira.percon
 #TEXT=..table_name.$                             ## Fixed ## https://jira.percona.com/browse/PS-4979
 TEXT=..table_name.$                                       ## https://jira.percona.com/browse/PS-5410
 ZN7OSMutex5enterEv                                        ## https://jira.percona.com/browse/PS-4986
+Z12os_event_setP8os_event                                 ## https://jira.percona.com/browse/PS-4986
 log0log.cc line 1432                                      ## https://jira.percona.com/browse/PS-4987
 #sync0types.h line 1051                          ## Fixed ## https://jira.percona.com/browse/PS-4988
 #Z9abort_txnP13__toku_db_txn                     ## Fixed ## https://jira.percona.com/browse/PS-5056
@@ -427,7 +428,7 @@ ZN12ha_myisammrg15detach_childrenEv                      ## MS5.7 ## https://bug
 #ha_innodb.cc line 2444                         ## Fixed ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79416 (secondary bug, same testcase as MS #79416, on MS)
 ZN13st_select_lex19make_active_optionsEyy                ## MS5.7 ## https://bugs.mysql.com/bug.php?id=79417
 # m_prot_lock .= __null .. thd->mdl_context.owns_equal_or_stronger_lock.m_namespace, .., .., MDL_INTENTION_EXCLUSIVE ## beta ## Fixed ## https://jira.percona.com/browse/PS-3333  # No longer present? Ref bug report
-#thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## MS5.7 ## Fixed ## https://bugs.mysql.com/bug.php?id=79820
+thd->mdl_context.owns_equal_or_stronger_lock. MDL_key..TABLESPACE, .., create_info->tablespace, MDL_INTENTION_EXCLUSIVE ## MS5.7 ## https://jira.percona.com/browse/PS-6816
 #.old_mh->m_key == key                                   ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1534874  ## Fixed in PS 5.7.10-2rc2
 #..HA_ATTACHABLE_TRX_COMPATIBLE is not set.              ## beta  ## https://bugs.launchpad.net/percona-server/+bug/1520403 (duplicate of 1488055) ## Fixed in PS 5.7.10-rc1
 #fsp0fsp.cc line 766                                     ## RC1   ## https://bugs.launchpad.net/percona-server/+bug/1529555  ## Fixed in PS 5.7.10-2rc2
@@ -461,6 +462,9 @@ ZN9ha_tokudb16fill_row_mutatorEPhPjjP5TABLEP19st_key_and_col_infojb  ## https://
 ha_tokudb..fill_row_mutator                                       ## https://jira.percona.com/browse/PS-5077 (PS 8.0.13 opt+dbg)
 .options.use_direct_reads                                         ## https://jira.percona.com/browse/PS-5085
 thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, src_table->db, src_table->table_name, MDL_SHARED    ##https://jira.percona.com/browse/PS-5087
+Z21que_thr_end_lock_waitP5trx_t                                   ## https://jira.percona.com/browse/PS-5112 (opt)
+ZNK3THD23innodb_slow_log_enabledEv                                ## https://jira.percona.com/browse/PS-5112 (dbg)
+
 
 ## =========== PS 5.7 TokuDB bugs ==========
 #Handlerton. trx->tokudb_lock_count > 0                       ## Fixed ## https://jira.percona.com/browse/PS-4294
@@ -712,6 +716,7 @@ lock0lock.cc line 5618                                                          
 #lock0lock.cc line 6007                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1226525
 #lock0lock.cc line 6452                                                        ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1395579
 mem0dbg.cc line 680                                                                     ## https://jira.percona.com/browse/PS-726 (TokuDB)
+mem0mem.ic line 165                                                                     ## https://jira.percona.com/browse/PS-6817
 mtr0mtr.cc line 323                                                                     ## https://bugs.mysql.com/bug.php?id=77972 MS
 mtr0mtr.cc line 325                                                                     ## https://bugs.mysql.com/bug.php?id=77972 PS
 mtr0mtr.cc line 513                                                                     ## https://bugs.mysql.com/bug.php?id=77972 PS (MS:line 323) (duplicated by 78333)
@@ -730,6 +735,7 @@ pars0pars.cc line 865                                                           
 que0que.cc line 1206                                                                    ## https://bugs.mysql.com/bug.php?id=74762 MS
 que0que.cc line 1216                                                                    ## https://bugs.mysql.com/bug.php?id=74762 PS
 rem0rec.cc line 867                                                                     ## https://bugs.mysql.com/bug.php?id=79794
+rem0rec.cc line 880                                                                     ## https://bugs.mysql.com/bug.php?id=79794 PS 5.7.29
 rem0rec.cc line 845                                                                     ## https://bugs.mysql.com/bug.php?id=74664
 #rem0rec.ic line 939                                                           ## Fixed ## https://bugs.launchpad.net/percona-server/5.6/+bug/1226532
 #row0import.cc line 3453                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1372219
@@ -776,6 +782,7 @@ srv0srv.cc line 3084                                                            
 srv0srv.cc line 3094                                                                    ## Also 73913 PS 5.7.20
 srv0srv.cc line 3183                                                                    ## Also 73913 PS 5.7.21
 srv0srv.cc line 3222                                                                    ## Also 73913 PS 5.7.23
+srv0srv.cc line 3218                                                                    ## Also 73913 PS 5.7.29
 sync0sync.ic line 307                                                                   ## https://jira.percona.com/browse/PS-884
 sync0sync.cc line 1318                                                                  ## https://bugs.mysql.com/bug.php?id=75640 MS
 #sync0sync.cc line 1432                                                        ## Fixed ## https://jira.percona.com/browse/PS-846 (MS #74955)
@@ -908,7 +915,7 @@ share->rows_recorded                                                            
 #.snapshot_lock_acquired                                                       ## Fixed ## https://bugs.launchpad.net/percona-server/+bug/1425480
 sort_field->length >= length                                                            ## https://bugs.mysql.com/bug.php?id=74260, both buils (mailed Umesh on 14 Aug 2017)
 #TEXT=.status.ok.$                                                             ## Fixed ## https://jira.percona.com/browse/MYR-187 (NOTE: status.ok is a very generic assert according to GL, so if seen, improve text_string.sh each time you see this string to cater for the specific issue seen with a more specific string, alike to the string below: rocksdb::Status rocksdb::BlockCacheTier::Open status.ok)
-#rocksdb::Status rocksdb::BlockCacheTier::Open status.ok                       ## Fixed ## https://jira.percona.com/browse/PS-5055 (ref above on status.ok generic crashes, this is a specific string in text_string.sh)
+rocksdb::Status rocksdb::BlockCacheTier::Open status.ok                                 ## https://jira.percona.com/browse/PS-5055 (ref above on status.ok generic crashes, this is a specific string in text_string.sh)
 #.str .... str .= Ptr                                                          ## Fixed ## https://jira.percona.com/browse/PS-880
 #table.*file.*inited.*handler.*NONE                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=74584 (others below with same nr) (dup of 74583)
 #.table->file .... table->file->inited == handler....NONE                      ## Fixed ## This is the same as the one above, de-regexed (MS Bug #74584)
@@ -1054,7 +1061,8 @@ ZN7MDL_map6removeEP8MDL_lock                                                    
 #ZN9ha_myisam5extraE17ha_extra_function                                        ## Fixed ## https://bugs.mysql.com/bug.php?id=76946
 ZN9ha_myisam9write_rowEPh                                                               ## https://bugs.mysql.com/bug.php?id=75083
 ZN9PROFILING13status_changeEPKcS1_S1_j                                                  ## https://bugs.mysql.com/bug.php?id=84826
-#ZNK3THD9thread_idEv                                                           ## Fixed ## https://jira.percona.com/browse/PS-4816
+ZNK3THD9thread_idEv                                                                     ## https://jira.percona.com/browse/PS-4816 (fixed only in 8.0, relates to PS-5170)
+Z24lock_wait_suspend_threadP9que_thr_t                                                  ## https://jira.percona.com/browse/PS-5170
 #ZNK7myrocks16Rdb_dict_manager9get_valueERKN7rocksdb5SliceEPSs                 ## Fixed ## https://jira.percona.com/browse/PS-3992
 ZNK13QUERY_PROFILE13get_profilingEv                                                     ## https://bugs.mysql.com/bug.php?id=84826
 #ZN10Field_blob13get_key_imageEPhjN5Field9imagetypeE                           ## Fixed ## https://bugs.mysql.com/bug.php?id=74953 (Duplicate of internal Bug#17846865)
@@ -1171,6 +1179,8 @@ ZN12ha_myisammrg4infoEj                                                         
 Z17tokudb_update_funP9__toku_dbPK10__toku_dbtS3_S3_PFvS3_PvES4_                         ## https://jira.percona.com/browse/PS-5079
 field_types == 0 .. field_types.field_pos. == MYSQL_TYPE_DECIMAL .. field_types.field_pos. == MYSQL_TYPE_BIT .. field_types.field_pos. == MYSQL_TYPE_NEWDECIMAL .. field_types.field_pos. == MYSQL_TYPE_NEWDATE .. .field_types.field_pos. >= MYSQL_TYPE_ENUM .. field_types.field_pos. <= MYSQL_TYPE_GEOMETRY    ## https://jira.percona.com/browse/PS-5080
 #Z10acl_reloadP3THD                                                            ## Fixed ## https://bugs.mysql.com/bug.php?id=93388
+ZN7myrocks16Rdb_dict_manager4lockEv                                                     ## https://jira.percona.com/browse/PS-6784
+
 ## =========== Error log crashing query based ===========
 #^Query ([0-9a-f]\+): SELECT.*FROM INFORMATION_SCHEMA.INNODB_FT_CONFIG$        ## Fixed ## https://jira.percona.com/browse/PS-822
 
