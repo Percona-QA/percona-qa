@@ -154,7 +154,7 @@ echo -e "    LADDR1=\"$ADDR:\$(( RBASE1 + 8 ))\"" >> ./start_pxc
 echo -e "    if [ \$i -eq 1 ];then" >> ./start_pxc
 echo -e "      WSREP_CLUSTER=\"gcomm://\"" >> ./start_pxc
 echo -e "    else" >> ./start_pxc
-echo -e "      WSREP_CLUSTER=\"\$WSREP_CLUSTER,gcomm://\$LADDR1\"" >> ./start_pxc
+echo -e "      WSREP_CLUSTER=\"\$WSREP_CLUSTER,\$LADDR1\"" >> ./start_pxc
 echo -e "    fi" >> ./start_pxc
 echo -e "    node=\"${BUILD}/node\$i\"" >> ./start_pxc
 if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
