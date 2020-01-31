@@ -41,10 +41,12 @@ m_progress .= nullptr                                                           
 mutex .= NULL                                                                            ## https://jira.percona.com/browse/PXC-2515
 MYSQLlex                                                                                 ## https://jira.percona.com/browse/PXC-2914
 #OSMutex..enter                                                                           ## https://jira.percona.com/browse/PXC-2466
+owning_thread_id_ == wsrep..this_thread..get_id                                          ## https://jira.percona.com/browse/PXC-2934
 p.exists.dd_space_key_strings.DD_SPACE_DISCARD..                                         ## https://jira.percona.com/browse/PXC-2402
 page_cleaner .= nullptr                                                                  ## https://jira.percona.com/browse/PXC-2445
 pause_seqno_.is_undefined                                                                ## https://jira.percona.com/browse/PXC-2624
 PFS_instr_class..is_shared_exclusive                                                     ## https://jira.percona.com/browse/PXC-2394
+process_.indexof.last_left_                                                              ## https://jira.percona.com/browse/PXC-2943
 #rli->rows_query_ev == __null                                                             ## https://jira.percona.com/browse/PXC-2459 (Not reproducible)
 rcode <= 0                                                                               ## https://jira.percona.com/browse/PXC-2623
 #row_mysql_read_blob_ref                                                                  ## https://jira.percona.com/browse/PXC-2444 (Not reproducible)
