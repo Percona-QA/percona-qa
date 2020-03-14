@@ -58,9 +58,14 @@ error < 10000                                            ## https://bugs.mysql.c
 .atomic .. .error .= 2 .. error .= 155                   ## https://bugs.mysql.com/bug.php?id=96681
 m_where_cond->is_bool_func                               ## https://bugs.mysql.com/bug.php?id=96682
 trn_ctx->is_active.Transaction_ctx..SESSION              ## https://bugs.mysql.com/bug.php?id=96692
+inited == INDEX                                          ## https://bugs.mysql.com/bug.php?id=98867 ## Fixed 8.0.20
+temptable..Handler..init_table_handle_for_HANDLER        ## https://bugs.mysql.com/bug.php?id=98221 ## Fixed 8.0.20
+my_strnxfrm_unicode                                      ## https://bugs.mysql.com/bug.php?id=98883 ## Fixed 8.0.20
 
 
 ## =========== PS/MS 8.0
+prepare_fields_and_keys                                  ## https://jira.percona.com/browse/PS-6903
+algorithm .= nullptr                                     ## https://jira.percona.com/browse/PS-6904
 Partition_helper..handle_ordered_prev                    ## https://jira.percona.com/browse/PS-5856
 is_classic_protocol                                      ## https://jira.percona.com/browse/PS-5853
 #.innodb_inited .. strlen.s_uuid. .= 0          ## Fixed ## Reproduced only with PS-8.0.13-debug release branch (release-8.0.13-3) ## https://jira.percona.com/browse/PS-5189
