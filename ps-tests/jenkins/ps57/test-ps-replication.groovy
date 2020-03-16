@@ -323,7 +323,7 @@ pipeline {
   } //End stages
   post {
     failure {
-      mail to: 'tomislav.plavcic@percona.com, hrvoje.matijakovic@percona.com', from: 'jenkins@ps57.cd.percona.com',
+      mail to: 'hrvoje.matijakovic@percona.com', from: 'jenkins@ps57.cd.percona.com',
           subject: "Build: ${env.JOB_NAME} - Failed",
           body: "Job Failed - \"${env.JOB_NAME}\" build: ${env.BUILD_NUMBER}\n\nView the log at:\n ${env.BUILD_URL}\n"
     }
