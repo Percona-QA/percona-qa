@@ -17,6 +17,7 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
+
 do_fill_information_schema_table                            ## https://jira.percona.com/browse/PS-6125
 JOIN..cleanup                                               ## https://bugs.mysql.com/bug.php?id=97928
 QEP_shared_owner..qs_cleanup                                ## https://bugs.mysql.com/bug.php?id=97930
@@ -50,7 +51,8 @@ void destroy<Table_trigger_dispatcher>                      ## https://jira.perc
 #TEXT=.bin2decimal.$                            ## Fixed ## https://bugs.mysql.com/bug.php?id=90673
 all .. .xs->is_binlogged                                 ## https://bugs.mysql.com/bug.php?id=92993
 w->frame_buffer                                          ## https://jira.percona.com/browse/PS-5564
-#.is_owned..                                    ## Fixed ## https://bugs.mysql.com/bug.php?id=95923
+#.is_owned..                                    ## Fixed ## https://jira.percona.com/browse/PS-6935
+#.is_owned..                                    ## PS    ## https://bugs.mysql.com/bug.php?id=95923
 mtr0mtr.h.219.m_impl.m_memo.size.. == 0                  ## https://bugs.mysql.com/bug.php?id=96514
 mtr0mtr.h.216.m_impl.m_memo.size.. == 0                  ## https://bugs.mysql.com/bug.php?id=96514 (8.0.17)
 error < 10000                                            ## https://bugs.mysql.com/bug.php?id=96639
@@ -61,9 +63,14 @@ trn_ctx->is_active.Transaction_ctx..SESSION              ## https://bugs.mysql.c
 inited == INDEX                                          ## https://bugs.mysql.com/bug.php?id=98867 ## Fixed 8.0.20
 temptable..Handler..init_table_handle_for_HANDLER        ## https://bugs.mysql.com/bug.php?id=98221 ## Fixed 8.0.20
 my_strnxfrm_unicode                                      ## https://bugs.mysql.com/bug.php?id=98883 ## Fixed 8.0.20
+outer_select                                             ## https://bugs.mysql.com/bug.php?id=99018
+MYSQLlex                                                 ## https://bugs.mysql.com/bug.php?id=99017
+Acl_restrictions..size                                   ## https://bugs.mysql.com/bug.php?id=99023
+
 
 
 ## =========== PS/MS 8.0
+JOIN..create_root_iterator_for_join                      ## https://jira.percona.com/browse/PS-6937
 prepare_fields_and_keys                                  ## https://jira.percona.com/browse/PS-6903
 algorithm .= nullptr                                     ## https://jira.percona.com/browse/PS-6904
 Partition_helper..handle_ordered_prev                    ## https://jira.percona.com/browse/PS-5856
@@ -469,7 +476,7 @@ ha_tokudb..fill_row_mutator                                       ## https://jir
 thd->mdl_context.owns_equal_or_stronger_lock.MDL_key..TABLE, src_table->db, src_table->table_name, MDL_SHARED    ##https://jira.percona.com/browse/PS-5087
 Z21que_thr_end_lock_waitP5trx_t                                   ## https://jira.percona.com/browse/PS-5112 (opt)
 ZNK3THD23innodb_slow_log_enabledEv                                ## https://jira.percona.com/browse/PS-5112 (dbg)
-
+row0quiesce.cc line 643                                           ## https://jira.percona.com/browse/PS-6932
 
 ## =========== PS 5.7 TokuDB bugs ==========
 #Handlerton. trx->tokudb_lock_count > 0                       ## Fixed ## https://jira.percona.com/browse/PS-4294
@@ -960,6 +967,9 @@ next_insert_id >= auto_inc_interval_for_cur_row.minimum                         
 #whitelist .= nullptr                                                          ## Fixed ## https://jira.percona.com/browse/PS-4474
 #unp_reader .= nullptr                                                         ## Fixed ## https://jira.percona.com/browse/PS-4477
 os0thread.cc line 209                                                                   ## https://jira.percona.com/browse/PS-4991
+os0thread.cc line 217                                                                   ## https://jira.percona.com/browse/PS-6931
+JOIN..create_root_iterator_for_join                                                     ## https://jira.percona.com/browse/PS-6931
+std..thread..thread<Runnable, void                                                      ## https://jira.percona.com/browse/PS-6931
 os0thread-create.h.119.old <= static_cast<int>.srv_max_n_threads. - 1                   ## https://jira.percona.com/browse/PS-5159
 #.options.use_direct_reads                                                     ## Fixed ## https://jira.percona.com/browse/PS-4990
 fil0crypt.cc line 2081                                                                  ## https://jira.percona.com/browse/PS-4992
