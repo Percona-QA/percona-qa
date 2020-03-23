@@ -500,6 +500,7 @@ function mysql_downgrade_datacheck(){
 function non_partition_test(){
   local SOCKET=${1:-}	
 
+  echoit "##### START: non_partition_test #####"
   echoit "Creating non partitioned tables"
   start_mysql_lower_main
   echoit "Create regular tables with different storage engines"
@@ -564,11 +565,13 @@ function non_partition_test(){
 
   start_mysql_downgrade_main
   mysql_downgrade_datacheck
+  echoit "##### END: non_partition_test #####"
 }
 
 function partition_test(){
   local SOCKET=$1
 
+  echoit "##### START: partition_test #####"
   echoit "Creating partitioned tables"
   start_mysql_lower_main
   ${LOWER_BASEDIR}/bin/mysql -uroot -S$WORKDIR/mysql_lower.sock -e"drop database if exists sysbench_partition; create database sysbench_partition"
@@ -643,11 +646,13 @@ function partition_test(){
   
   start_mysql_downgrade_main
   mysql_downgrade_datacheck
+  echoit "##### END: partition_test #####"
 }
 
 function compression_test(){
   local SOCKET=${1:-}
 
+  echoit "##### START: compression_test #####"
   echoit "Creating data for compression test"
   start_mysql_lower_main
   echoit "Sysbench Run: Creating InnoDB tables"
@@ -670,11 +675,13 @@ function compression_test(){
 
   start_mysql_downgrade_main
   mysql_downgrade_datacheck
+  echoit "##### END: compression_test #####"
 }
 
 function innodb_options_test(){
   local SOCKET=${1:-}
 
+  echoit "##### START: innodb_options_test #####"
   echoit "Creating data for innodb options test"
   start_mysql_lower_main
   echoit "Sysbench Run: Creating InnoDB tables"
@@ -695,6 +702,7 @@ function innodb_options_test(){
 
   start_mysql_downgrade_main
   mysql_downgrade_datacheck
+  echoit "##### END: innodb_options_test #####"
 }
 
 function startup_check(){
@@ -709,6 +717,7 @@ function startup_check(){
 function replication_test(){
   RPL_OPTION="${1:-}"
 
+  echoit "##### START: replication_test ${RPL_OPTION} #####"
   declare SLAVE_ENCRYPT_OPTIONS=""
   rm -rf ${MYSQL_VARDIR}/mysql_master/
   mysql_master_datadir="${MYSQL_VARDIR}/mysql_master"
@@ -903,6 +912,7 @@ function replication_test(){
   echoit "Replication status after master upgrade : Slave_IO_Running=$SLAVE_IO_STATUS - Slave_SQL_Running=$SLAVE_SQL_STATUS"
   ${UPPER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/mysql_master.sock shutdown
   ${UPPER_BASEDIR}/bin/mysqladmin -uroot -S$WORKDIR/mysql_slave.sock shutdown
+  echoit "##### END: replication_test ${RPL_OPTION} #####"
 }
 
 #Run tests
