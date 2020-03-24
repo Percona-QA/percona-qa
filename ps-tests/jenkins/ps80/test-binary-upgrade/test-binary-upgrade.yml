@@ -1,0 +1,97 @@
+- job:
+    name: test-ps-binary-upgrade
+    project-type: matrix
+    defaults: global
+    description: |
+        Do not edit this job through the web!
+    disabled: false
+    concurrent: true
+    auth-token: testbinupgrade80
+    node: docker
+    properties:
+    - build-discarder:
+        days-to-keep: -1
+        num-to-keep: 50
+        artifact-days-to-keep: -1
+        artifact-num-to-keep: 50
+    parameters:
+    - string:
+        name: GIT_REPO
+        default: "https://github.com/percona/percona-server"
+        description: URL to percona-server repository
+    - string:
+        name: BRANCH
+        default: "8.0"
+        description: Tag/Branch for percona-server repository
+    - choice:
+        name: UPGRADE_FROM
+        choices:
+        - 5.7
+        - 8.0
+        description: From which version to test upgrade
+    - choice:
+        name: UPGRADE_TEST
+        choices:
+        - all
+        - partition_test
+        - non_partition_test
+        - compression_test
+        - innodb_file_per_table_on
+        - innodb_file_per_table_off
+        - replication_test_gtid
+        - replication_test_mts
+        - replication_test
+        - replication_test_gtid_keyfile
+        - replication_test_mts_keyfile
+        - replication_test_keyfile
+        description: Select tests to run
+    axes:
+      - axis:
+         type: user-defined
+         name: CMAKE_BUILD_TYPE
+         values:
+          - RelWithDebInfo
+          - Debug
+      - axis:
+         type: user-defined
+         name: DOCKER_OS
+         values:
+          - centos:6
+          - centos:7
+          - centos:8
+          - ubuntu:xenial
+          - ubuntu:bionic
+          - ubuntu:focal
+          - debian:stretch
+          - debian:buster
+    builders:
+    - trigger-builds:
+      - project: percona-server-8.0-pipeline
+        current-parameters: true
+        predefined-parameters: |
+          DOCKER_OS=${DOCKER_OS}
+          CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+          LABEL=docker-32gb
+          DEFAULT_TESTING=no
+          HOTBACKUP_TESTING=no
+          TOKUDB_ENGINES_MTR=no
+          WITH_TOKUDB=ON
+          WITH_ROCKSDB=ON
+        block: true
+        block-thresholds:
+          build-step-failure-threshold: FAILURE
+          unstable-threshold: never
+          failure-threshold: FAILURE
+    - copyartifact:
+        project: percona-server-8.0-pipeline
+        which-build: specific-build
+        build-number: "${TRIGGERED_BUILD_NUMBERS_percona_server_8_0_pipeline}"
+        do-not-fingerprint: true
+        filter: "public_url"
+    - shell: |
+        echo "${TRIGGERED_BUILD_NUMBERS_percona_server_8_0_pipeline}" > PIPELINE_BUILD_NUMBER
+        git clone https://github.com/Percona-QA/percona-qa.git --depth 1
+        percona-qa/ps-tests/jenkins/ps80/test-binary-upgrade/run-test.sh ${DOCKER_OS} ${UPGRADE_TEST} ${UPGRADE_FROM}
+    publishers:
+    - archive:
+        artifacts: "PIPELINE_BUILD_NUMBER, public_url"

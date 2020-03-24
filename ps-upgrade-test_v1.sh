@@ -5,6 +5,7 @@
 # Bash internal configuration
 #
 set -o nounset    # no undefined variables
+set -e
 
 # Global variables
 declare SBENCH="sysbench"
