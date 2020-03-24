@@ -205,10 +205,14 @@ get_link(){
     fi
 
   elif [[ "${PRODUCT}" = "pxb" ]]; then
-    if [[ "${DISTRIBUTION}" = "ubuntu" || "${DISTRIBUTION}" = "debian" ]]; then
+    if [[ "${DISTRIBUTION}" = "ubuntu" || "${DISTRIBUTION}" = "debian" ]] && [[ "${VERSION}" == "2.4" ]]; then
       OPT="libgcrypt20"
-    else
+    elif [[ "${VERSION}" == "2.4" ]]; then
       OPT="libgcrypt145"
+    elif [[ "${DISTRIBUTION}" == "ubuntu" ]]; then
+      OPT="bionic"
+    else
+      OPT="${DISTRIBUTION}"
     fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
