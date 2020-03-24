@@ -40,11 +40,14 @@
   run ./get_download_link.sh --product pt
   [ "$status" -eq 0 ]
 }
+
 @test "check pxb" {
-  run ./get_download_link.sh --product pxb
+  run ./get_download_link.sh --product pxb --version 2.4
+  [ "$status" -eq 0 ]
+
+  run ./get_download_link.sh --product pxb --version 8.0
   [ "$status" -eq 0 ]
 }
-
 
 @test "check pmm-client" {
   run ./get_download_link.sh --product pmm-client
