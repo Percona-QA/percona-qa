@@ -20,14 +20,14 @@ mkdir -m 777 -p ${PS_LOWER_DIR_FULL}
 
 cd ${PS_LOWER_DIR_FULL}
 ${ROOT_DIR}/get_download_link.sh --product=ps --version=${UPGRADE_FROM} --distribution=${SOURCE_IMAGE//:/-} --download
-PS_TARBALL=${PS_LOWER_DIR_FULL}/*.tar.gz
+PS_TARBALL=$(echo ${PS_LOWER_DIR_FULL}/*.tar.gz)
 tar -xvf ${PS_TARBALL} --strip 1
 rm -f ${PS_TARBALL}
 cd -
 
 cd ${PS_UPPER_DIR_FULL}
 aws s3 cp --no-progress s3://ps-build-cache/jenkins-percona-server-8.0-pipeline-${PIPELINE_BUILD_NUMBER}/binary.tar.gz .
-PS_TARBALL=${PS_LOWER_DIR_FULL}/*.tar.gz
+PS_TARBALL=$(echo ${PS_UPPER_DIR_FULL}/*.tar.gz)
 tar -xvf ${PS_TARBALL} --strip 1
 rm -f ${PS_TARBALL}
 cd -
