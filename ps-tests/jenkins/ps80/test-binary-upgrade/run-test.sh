@@ -20,14 +20,14 @@ mkdir -m 777 -p ${PS_LOWER_DIR_FULL}
 
 cd ${PS_LOWER_DIR_FULL}
 ${ROOT_DIR}/get_download_link.sh --product=ps --version=${UPGRADE_FROM} --distribution=${SOURCE_IMAGE//:/-} --download
-PS_TARBALL=$(echo ${PS_LOWER_DIR_FULL}/*.tar.gz)
+PS_TARBALL=$(ls *.tar.gz)
 tar -xvf ${PS_TARBALL} --strip 1
 rm -f ${PS_TARBALL}
 cd -
 
 cd ${PS_UPPER_DIR_FULL}
 aws s3 cp --no-progress s3://ps-build-cache/jenkins-percona-server-8.0-pipeline-${PIPELINE_BUILD_NUMBER}/binary.tar.gz .
-PS_TARBALL=$(echo ${PS_UPPER_DIR_FULL}/*.tar.gz)
+PS_TARBALL=$(ls *.tar.gz)
 tar -xvf ${PS_TARBALL} --strip 1
 rm -f ${PS_TARBALL}
 cd -
@@ -40,47 +40,47 @@ docker run --rm \
     set -o errexit
     set -o xtrace
 
-    if [ -x "$(which apt)" ]; then
+    if [ -f /etc/redhat-release ]; then
+      sudo yum install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+      sudo yum install -y sysbench
+    else
       sudo wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
       sudo dpkg -i percona-release_latest.generic_all.deb && sudo rm percona-release_latest.generic_all.deb
       sudo apt update
       sudo apt install -y sysbench
-    else
-      sudo yum install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-      sudo yum install -y sysbench
     fi
 
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "partition_test" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "partition_test" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t partition_test
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "non_partition_test" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "non_partition_test" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t non_partition_test
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "compression_test" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "compression_test" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t compression_test
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "innodb_file_per_table_on" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "innodb_file_per_table_on" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t innodb_options_test -o --innodb_file_per_table=ON
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "innodb_file_per_table_off" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "innodb_file_per_table_off" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t innodb_options_test -o --innodb_file_per_table=OFF
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "replication_test_gtid" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_gtid" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test_gtid
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "replication_test_mts" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_mts" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test_mts
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "replication_test" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "replication_test_gtid_keyfile" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_gtid_keyfile" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test_gtid -e -k file
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "replication_test_mts_keyfile" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_mts_keyfile" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test_mts -e -k file
     fi
-    if [ "${UPGRADE_TEST}" == "all" -o "${UPGRADE_TEST}" == "replication_test_keyfile" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_keyfile" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test -e -k file
     fi
 "
