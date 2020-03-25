@@ -7,7 +7,7 @@
     disabled: false
     concurrent: true
     auth-token: testbinupgrade80
-    node: docker
+    node: micro-amazon
     properties:
     - build-discarder:
         days-to-keep: -1
@@ -64,6 +64,11 @@
           - ubuntu:focal
           - debian:stretch
           - debian:buster
+      - axis:
+         name: label_exp
+         type: label-expression
+         values:
+          - docker-32gb
     builders:
     - trigger-builds:
       - project: percona-server-8.0-pipeline
@@ -90,8 +95,14 @@
         filter: "public_url"
     - shell: |
         echo "${TRIGGERED_BUILD_NUMBERS_percona_server_8_0_pipeline}" > PIPELINE_BUILD_NUMBER
+        echo $PWD
+        df -h
+        rm -rf percona-qa
+        rm -rf ${WORKSPACE}/ps-upgrade-test
         git clone https://github.com/Percona-QA/percona-qa.git --depth 1
-        percona-qa/ps-tests/jenkins/ps80/test-binary-upgrade/run-test.sh ${DOCKER_OS} ${UPGRADE_TEST} ${UPGRADE_FROM}
+        rm -rf ${WORKSPACE}/ps-upgrade-test
+        mkdir -m 777 -p ${WORKSPACE}/ps-upgrade-test
+        percona-qa/ps-tests/jenkins/ps80/test-binary-upgrade/run-test.sh ${DOCKER_OS} ${UPGRADE_TEST} ${UPGRADE_FROM} ${WORKSPACE}/ps-upgrade-test
     publishers:
     - archive:
         artifacts: "PIPELINE_BUILD_NUMBER, public_url"
