@@ -2,7 +2,7 @@ MariaDB QA
 ==================================================================================
 
 MariaDB QA is a suite of scripts and utilities that assists in building,
-continuous integration, automated testing & bug reporting for MariaDB products.
+automated testing & bug reporting for MariaDB products.
 
 With thanks and gratitude to the team at Percona for the original work at:
 https://github.com/Percona-QA/percona-qa
