@@ -1,0 +1,8 @@
+Assertion `end <= thd->m_parser_state->m_lip.get_end_of_query()' failed
+SIGABRT, Aborted
+LEX::create_item_ident_sp sql_lex.cc
+LEX::create_item_ident sql_lex.h
+MYSQLparse sql_yacc.yy
+parse_sql sql_parse.cc
+mysql_parse sql_parse.cc
+dispatch_command sql_parse.cc

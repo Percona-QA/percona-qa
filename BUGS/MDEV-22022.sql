@@ -1,0 +1,1 @@
+if(`systeminfo /FO LIST;

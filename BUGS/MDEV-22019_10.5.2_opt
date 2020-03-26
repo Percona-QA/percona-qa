@@ -1,0 +1,12 @@
+NO_ASSERT
+SIGSEGV, Segmentation fault
+next_breadth_first_tab sql_select.cc
+JOIN::cleanup sql_select.cc
+JOIN::destroy sql_select.cc
+st_select_lex::cleanup sql_union.cc
+mysql_select sql_select.cc
+handle_select sql_select.cc
+execute_sqlcom_select sql_parse.cc
+mysql_execute_command sql_parse.cc
+mysql_parse sql_parse.cc
+dispatch_command sql_parse.cc

@@ -1,0 +1,14 @@
+NO_ASSERT
+SIGSEGV, Segmentation fault
+row_make_new_pathname row0merge.cc
+row_rename_table_for_mysql row0mysql.cc
+innobase_rename_table ha_innodb.cc
+ha_innobase::rename_table ha_innodb.cc
+handler::ha_rename_table handler.cc
+mysql_rename_table sql_table.cc
+do_rename sql_rename.cc
+rename_tables sql_rename.cc
+mysql_rename_tables sql_rename.cc
+mysql_execute_command sql_parse.cc
+mysql_parse sql_parse.cc
+dispatch_command sql_parse.cc
