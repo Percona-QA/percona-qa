@@ -1,0 +1,1 @@
+./gendirs.sh | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"

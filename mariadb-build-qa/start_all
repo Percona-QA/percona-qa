@@ -1,0 +1,1 @@
+./gendirs.sh | xargs -I{} echo "cd {}; ./start; cd .." | xargs -I{} sh -c "{}"

@@ -1,0 +1,2 @@
+ps -e | grep mysqld | grep -v grep 
+echo "Running count: $(ps -e | grep mysqld | grep -v grep | wc -l)"

@@ -1,0 +1,12 @@
+if [ ! -r ./in.sql ]; then
+  echo "./in.sql does not exist!"
+  exit 1
+fi
+if [ -z "${1}" ]; then
+  echo "This script expects one paramater; the bug to search for after testing of in.sql is complete"
+  exit 1
+fi
+./all_all
+./copy_in.sql_all
+./gendirs.sh | xargs -I{} echo "cd {}; ./test; cd .." | xargs -I{} sh -c "{}"
+./findbug+ "${1}"

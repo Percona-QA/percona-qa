@@ -1,0 +1,18 @@
+TARGET=~/mariadb-qa/mariadb-build-qa
+mkdir -p ${TARGET}
+
+cp all_all ${TARGET}
+cp buildall_debug.sh ${TARGET}
+cp buildall_opt.sh ${TARGET}
+cp clone.sh ${TARGET}
+cp cloneall.sh ${TARGET}
+cp copy_in.sql_all ${TARGET}
+cp github_backup ${TARGET}
+cp count_all ${TARGET}
+cp findbug ${TARGET}
+cp findbug+ ${TARGET}
+cp gendirs.sh ${TARGET}
+cp start_all ${TARGET}
+cp startup_all ${TARGET}
+cp stop_all ${TARGET}
+cp test_all ${TARGET}

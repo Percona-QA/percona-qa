@@ -1,0 +1,4 @@
+if [ -z "${1}" ]; then
+  echo "This script expects a bug search string as input!"
+fi
+grep "${1}" */log/master.err

@@ -1,0 +1,1 @@
+./gendirs.sh | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -I{} sh -c "{}"

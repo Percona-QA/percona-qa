@@ -1,0 +1,3 @@
+./gendirs.sh | xargs -I{} echo "cd {}; ./stop >/dev/null 2>&1 ; cd .." | xargs -I{} sh -c "{}"
+echo "Remaining live processes:"
+ps -ef | grep mysqld | grep -v grep
