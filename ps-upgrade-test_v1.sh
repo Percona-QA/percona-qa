@@ -129,12 +129,13 @@ if [ -z $ROOT_FS ]; then
   ROOT_FS=${WORKDIR}
 fi
 
-#Cleanup
-if [ -d $WORKDIR/$BUILD_NUMBER ]; then
-  rm -r $WORKDIR/$BUILD_NUMBER
-fi
+WORKDIR="${ROOT_FS}/${BUILD_NUMBER}-${TESTCASE}"
 
-WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
+#Cleanup
+if [ -d ${WORKDIR} ]; then
+  rm -r ${WORKDIR}
+fi
+mkdir -p ${WORKDIR}/logs
 
 if [ -z ${SDURATION} ]; then
   SDURATION=100
@@ -207,12 +208,12 @@ sysbench_run(){
 }
 
 cleanup(){
-  tar cvzfP $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+  tar cvzfP $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $ROOT_FS/*/logs || true
 }
 
 echoit(){
   echo "[$(date +'%T')] $1"
-  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/upgrade_testing.log; fi
+  if [ "${WORKDIR}" != "" ]; then echo "[$(date +'%T')] $1" >> ${WORKDIR}/logs/upgrade_testing.log; fi
 }
 
 if [ "$ENCRYPTION" == 1 ];then
@@ -266,22 +267,19 @@ else
   fi
 fi
 
-# print mysql and mysqld versions for debugging
-echoit "##### PS lower version #####"
-$LOWER_BASEDIR/bin/mysql --version
-$LOWER_BASEDIR/bin/mysqld --version
-echoit "##### PS upper version #####"
-$UPPER_BASEDIR/bin/mysql --version
-$UPPER_BASEDIR/bin/mysqld --version
-
-WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
-
 export MYSQL_VARDIR="$WORKDIR/mysqldir"
 mkdir -p $MYSQL_VARDIR
-mkdir -p $WORKDIR/logs
 
 mysqldatadir="${MYSQL_VARDIR}/mysqldata"
 mkdir -p $mysqldatadir
+
+# print mysql and mysqld versions for debugging
+echoit "##### PS lower version #####"
+echoit "$($LOWER_BASEDIR/bin/mysql --version)"
+echoit "$($LOWER_BASEDIR/bin/mysqld --version)"
+echoit "##### PS upper version #####"
+echoit "$($UPPER_BASEDIR/bin/mysql --version)"
+echoit "$($UPPER_BASEDIR/bin/mysqld --version)"
 
 function create_emp_db()
 {
