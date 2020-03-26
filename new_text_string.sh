@@ -38,7 +38,13 @@ gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdb1 2>&1 << EOF
 EOF
 
 # Signal catch
-grep 'Program terminated with' /tmp/${RANDF}.gdb1 | grep -o 'with signal.*' | sed 's|with signal ||;s|\.$||' > /tmp/${RANDF}.gdb3
+if grep -E --binary-files=text -iq 'Program terminated with' /tmp/${RANDF}.gdb1; then
+  grep 'Program terminated with' /tmp/${RANDF}.gdb1 | grep -o 'with signal.*' | sed 's|with signal ||;s|\.$||' | head -n1 > /tmp/${RANDF}.gdb3
+elif grep -E --binary-files=text -iq '(sig=[0-9]\+)' /tmp/${RANDF}.gdb1; then
+  grep '(sig=[0-9]\+)' /tmp/${RANDF}.gdb1 | grep -o '[^ ]\+ (sig=[0-9]\+)' | head -n1 > /tmp/${RANDF}.gdb3
+else
+  echo "NO_SIGNAL" > /tmp/${RANDF}.gdb3
+fi
 rm -f /tmp/${RANDF}.gdb1
 
 # Stack catch
