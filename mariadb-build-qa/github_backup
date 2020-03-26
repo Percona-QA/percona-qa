@@ -2,7 +2,7 @@ TARGET=~/mariadb-qa/mariadb-build-qa
 mkdir -p ${TARGET}
 
 cp all_all ${TARGET}
-cp buildall_debug.sh ${TARGET}
+cp buildall_dbg.sh ${TARGET}
 cp buildall_opt.sh ${TARGET}
 cp clone.sh ${TARGET}
 cp cloneall.sh ${TARGET}

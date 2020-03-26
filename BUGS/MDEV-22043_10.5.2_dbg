@@ -1,0 +1,9 @@
+Assertion `0' failed
+SIGABRT, Aborted
+my_wc_to_printable_generic ctype.c
+my_convert_using_func ctype.c
+convert_error_message sql_error.cc
+net_send_error_packet protocol.cc
+Protocol::send_error protocol.cc
+Protocol::end_statement protocol.cc
+dispatch_command sql_parse.cc

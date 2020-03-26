@@ -1,0 +1,5 @@
+next_breadth_first_tab|JOIN::cleanup|JOIN::destroy                                  ## MDEV-22019
+LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse                         ## MDEV-22022
+row_make_new_pathname|row_rename_table_for_mysql|innobase_rename_table        ## Fixed MDEV-21983
+my_wc_to_printable_generic|my_convert_using_func|convert_error_message              ## MDEV-22043
+MDL_key::mdl_key_init|MDL_request::init_with_source|lock_object_name                ## MDEV-22044

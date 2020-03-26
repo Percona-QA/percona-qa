@@ -9,8 +9,12 @@ echo "Current testcases in /dev/shm:"
 cd /dev/shm; OUT=$(ls_exec); echo $OUT | sed 's| \([0-9]\)|\n   \1|g;s|^|   |'
 echo ""
 
-echo "Current testcases in /sda:"
-cd /sda; ls_exec
+echo "Current testcases in /data:"
+cd /data; ls_exec
+echo ""
+
+echo "Current testcases in /t:"
+cd /t; ls_exec
 echo ""
 
 if [ -r /tmp/pqr_status.cnt ]; then

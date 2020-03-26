@@ -7,19 +7,19 @@ fi
 rm -f /tmp/pri.t /tmp/sec.t
 
 # Generate full list
-ls | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pe][tb][u]*[g]*|mysql-[\.0-9]+-[od][pe][tb][u]*[g]*' | sort -u > /tmp/pri.t
+ls | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 
 # Generate bug list
-./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pe][tb][u]*[g]*|mysql-[\.0-9]+-[od][pe][tb][u]*[g]*' | sort -u > /tmp/sec.t
+./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
 
 # Output bug-present-in list
 echo "Bug confirmed present in:"
-cat /tmp/sec.t | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-debug| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''
+cat /tmp/sec.t | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-dbg| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''
 
 # Bug strings for bug-present-in list
-echo -e "\nBug strings for this list:"
-./findbug "innobase_rename_table" | sed 's|:.*||' | xargs -I{} echo "echo {}; ~/mariadb-qa/text_string.sh {}" | xargs -I{} bash -c "{}"
+#echo -e "\nBug strings for this list:"
+#./findbug "$1" | sed 's|:.*||' | xargs -I{} echo "echo {}; ~/mariadb-qa/text_string.sh {}" | xargs -I{} bash -c "{}"
 
 # Compile/output bug-not-present-in list
 echo -e "\nBug confirmed not present in:"
-diff /tmp/pri.t /tmp/sec.t | grep '<' | sed 's|^< ||' | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-debug| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''
+diff /tmp/pri.t /tmp/sec.t | grep '<' | sed 's|^< ||' | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-dbg| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''
