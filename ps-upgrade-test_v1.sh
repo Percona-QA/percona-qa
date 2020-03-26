@@ -268,11 +268,11 @@ fi
 
 # print mysql and mysqld versions for debugging
 echoit "##### PS lower version #####"
-echoit "$($LOWER_BASEDIR/bin/mysql --version)"
-echoit "$($LOWER_BASEDIR/bin/mysqld --version)"
+$LOWER_BASEDIR/bin/mysql --version
+$LOWER_BASEDIR/bin/mysqld --version
 echoit "##### PS upper version #####"
-echoit "$($UPPER_BASEDIR/bin/mysql --version)"
-echoit "$($UPPER_BASEDIR/bin/mysqld --version)"
+$UPPER_BASEDIR/bin/mysql --version
+$UPPER_BASEDIR/bin/mysqld --version
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
