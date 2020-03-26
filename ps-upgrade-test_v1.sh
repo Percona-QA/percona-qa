@@ -266,6 +266,14 @@ else
   fi
 fi
 
+# print mysql and mysqld versions for debugging
+echoit "##### PS lower version #####"
+echoit "$($LOWER_BASEDIR/bin/mysql --version)"
+echoit "$($LOWER_BASEDIR/bin/mysqld --version)"
+echoit "##### PS upper version #####"
+echoit "$($UPPER_BASEDIR/bin/mysql --version)"
+echoit "$($UPPER_BASEDIR/bin/mysqld --version)"
+
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 
 export MYSQL_VARDIR="$WORKDIR/mysqldir"
@@ -492,7 +500,7 @@ function mysql_downgrade_datacheck(){
 
   #Stop mysqld processes for lower and upper version
   ${LOWER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/mysql_lower_down.sock shutdown
-  ${UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/mysql_upper.sock  shutdown
+  ${UPPER_BASEDIR}/bin/mysqladmin -uroot --socket=$WORKDIR/mysql_upper.sock shutdown
 
   #Clean data dir
   rm -fr ${MYSQL_VARDIR}/*
