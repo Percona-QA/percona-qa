@@ -1,8 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-PORT=$[$RANDOM % 10000 + 10000]
-MTRT=$[$RANDOM % 100 + 700]
+PORT=$[ ${RANDOM} % 10000 + 10000]
+MTRT=$[ ${RANDOM} % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 ADDR="127.0.0.1"
@@ -40,7 +40,7 @@ fi
 BIN=
 if [ -r ${PWD}/bin/mysqld-debug ]; then BIN="${PWD}/bin/mysqld-debug"; fi  # Needs to come first so it's overwritten in next line if both exist
 if [ -r ${PWD}/bin/mysqld ]; then BIN="${PWD}/bin/mysqld"; fi
-if [ "${BIN}" == "" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; fi
+if [ -z "${BIN}" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; fi
 MID=
 if [ -r ${PWD}/scripts/mysql_install_db ]; then MID="${PWD}/scripts/mysql_install_db"; fi
 if [ -r ${PWD}/bin/mysql_install_db ]; then MID="${PWD}/bin/mysql_install_db"; fi
@@ -48,8 +48,22 @@ START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
 INIT_OPT="--no-defaults --initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
 INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
-if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
-  if [ "${MID}" == "" ]; then
+if [ -z "${VERSION_INFO}" ]; then VERSION_INFO="NA"; fi
+VERSION_INFO_2=$(${BIN} --version | grep 'MariaDB' | grep -oe '10\.[1-5]' | head -n1)
+if [ -z "${VERSION_INFO_2}" ]; then VERSION_INFO_2="NA"; fi
+
+if [ "${VERSION_INFO_2}" == "10.1" -o "${VERSION_INFO_2}" == "10.2" -o "${VERSION_INFO_2}" == "10.3" ]; then
+  VERSION_INFO="5.1"
+  INIT_TOOL="${PWD}/scripts/mysql_install_db"
+  INIT_OPT="--no-defaults --force"
+  START_OPT="--core"
+elif [ "${VERSION_INFO_2}" == "10.4" -o "${VERSION_INFO_2}" == "10.5" ]; then
+  VERSION_INFO="5.6"
+  INIT_TOOL="${PWD}/scripts/mariadb-install-db"
+  INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
+  START_OPT="--core-file"
+elif [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
+  if [ -z "${MID}" ]; then
     echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
     exit 1
   fi
@@ -83,7 +97,7 @@ if [[ $GRP_RPL -eq 1 ]];then
   echo -e "GR_START_TIMEOUT=300" >> ./start_group_replication
   echo -e "BUILD=\$(pwd)\n" >> ./start_group_replication
   echo -e "touch ./stop_group_replication " >> ./start_group_replication
-  echo -e "if [ -z \$NODES ]; then" >> ./start_group_replication
+  echo -e "if [ -z \"\$NODES\" ]; then" >> ./start_group_replication
   echo -e "  echo \"No valid parameter is passed. Please indicate how many nodes to start. Please retry.\"" >> ./start_group_replication
   echo -e "  echo \"Usage example:\"" >> ./start_group_replication
   echo -e "  echo \"   $./start_group_replication 2\"" >> ./start_group_replication
@@ -186,23 +200,23 @@ mkdir -p data data/mysql log
 if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
 else
-  TOKUDB=""
+  TOKUDB=
 fi
 if [ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]; then
   ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"
 else
-  ROCKSDB=""
+  ROCKSDB=
 fi
 
-if [[ ! -z $TOKUDB ]]; then
+if [[ ! -z "$TOKUDB" ]]; then
   LOAD_TOKUDB_INIT_FILE="${SCRIPT_PWD}/TokuDB.sql"
 else
-  LOAD_TOKUDB_INIT_FILE=""
+  LOAD_TOKUDB_INIT_FILE=
 fi
-if [[ ! -z $ROCKSDB ]];then
+if [[ ! -z "$ROCKSDB" ]];then
   LOAD_ROCKSDB_INIT_FILE="${SCRIPT_PWD}/MyRocks.sql"
 else
-  LOAD_ROCKSDB_INIT_FILE=""
+  LOAD_ROCKSDB_INIT_FILE=
 fi
 
 echo 'MYEXTRA_OPT="$*"' > start
@@ -306,15 +320,15 @@ tail -n1 start >> start_gypsy
 echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;./cl;./stop;tail log/master.err" > setup
-if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then
   echo "./start; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
-  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+  if [ ! -z "$LOAD_ROCKSDB_INIT_FILE" ] ; then
     echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> myrocks_tokudb_init
   else
     echo "./stop " >> myrocks_tokudb_init
   fi
 else
-  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+  if [[ ! -z "$LOAD_ROCKSDB_INIT_FILE" ]];then
     echo "./start; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop" > myrocks_tokudb_init
   fi
 fi
@@ -361,15 +375,15 @@ echo "./stop 2>/dev/null;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop
 echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
 
 # RV/RS discussed this code 19/12/18 and decided we should disable and ultimately remove it. There is myrocks_tokudb_init already, which can do the same if needed (i.e. load extra TokuDB and RocksDB plugins). The main reason to remove this code is that loading these extra plugins always by defaut will make --init-file=...plugins_80.sql not work with errors like 'Function 'tokudb_file_map' already exists.' which can affect issue reproducibility (as not all plugins are loaded), or even hide bugs with plugins_80.sql if there are any (when it's used with ./start).
-#if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
+#if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then
 #  echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE} ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ;" >> wipe
-#  if [ ! -z $LOAD_ROCKSDB_INIT_FILE ] ; then
+#  if [ ! -z "$LOAD_ROCKSDB_INIT_FILE" ] ; then
 #    echo " ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ; ./stop " >> wipe
 #  else
 #    echo "./stop" >> wipe
 #  fi
 #else
-#  if [[ ! -z $LOAD_ROCKSDB_INIT_FILE ]];then
+#  if [[ ! -z "$LOAD_ROCKSDB_INIT_FILE" ]];then
 #    echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_ROCKSDB_INIT_FILE} ;${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
 #  else
 #    echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
@@ -394,11 +408,17 @@ echo "$INIT_TOOL ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
 
 echo 'MYEXTRA_OPT="$*"' > all
+echo 'rm -f ready.flag  # Remove ready flag' >> all
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
+echo 'touch ready.flag  # Set ready flag' >> all
 echo 'MYEXTRA_OPT="$*"' > all_stbe
+echo 'rm -f ready.flag  # Remove ready flag' >> all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
+echo 'touch ready.flag  # Set ready flag' >> all_stbe
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
+echo 'rm -f ready.flag  # Remove ready flag' >> all_no_cl
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
+echo 'touch ready.flag  # Set ready flag' >> all_no_cl
 chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1

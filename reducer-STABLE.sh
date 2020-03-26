@@ -39,9 +39,10 @@ TEXT="somebug"                  # The text string you want reducer to search for
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
-BASEDIR="/sda/percona-server-5.7.10-1rc1-linux-x86_64-debug"             # Path to the MySQL BASE directory to be used
+MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
+BASEDIR="/sda/PS051018-percona-server-8.0.12-1-linux-x86_64-debug"  # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
-SCRIPT_PWD=$(cd `dirname $0` && pwd) # script location to access storage engine plugin sql file.
+SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
@@ -376,6 +377,36 @@ SPECIAL_MYEXTRA_OPTIONS=
 # SE Removal approach; 1) If the engine is referred to by .so reference in MYEXTRA, reducer.sh uses it, but reducer.sh ensure the engine .so file exists
 #                      2) Any reference to the engine is removed from MYEXTRA and stored in two variables TOKUDB/ROCKSDB to allow more control/testcase reducability
 #                      3) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
+
+MYSQL_VERSION=$(${BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+normalize_version(){
+  local major=0
+  local minor=0
+  local patch=0
+  
+  # Only parses purely numeric version numbers, 1.2.3
+  # Everything after the first three values are ignored
+  if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    patch=${BASH_REMATCH[3]}
+  fi
+  printf %02d%02d%02d $major $minor $patch
+}
+
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+check_for_version()
+{
+  local local_version_str="$( normalize_version $1 )"
+  local required_version_str="$( normalize_version $2 )"
+  
+  if [[ "$local_version_str" < "$required_version_str" ]]; then
+    return 1
+  else
+    return 0
+  fi
+}
 TOKUDB=
 ROCKSDB=
 if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
@@ -484,17 +515,22 @@ fi
 BINLOG=
 if [[ "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
   if [[ ! "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
-    echo "Error: --server-id is present in MYEXTRA whereas --log-bin is not. Please fix this."
-    echo "Terminating now."
-    exit 1
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0-9]' | head -n1)" =~ ^8.[0-9]$ ]]; then  # version is not 8.0 (--log-bin is not required as it is default already (8.0 has binary logging enabled by default))
+      echo "Error: --server-id is present in MYEXTRA whereas --log-bin is not. Please fix this."
+      echo "Terminating now."
+      exit 1
+    else
+      echo "Warning: --server-id is present in MYEXTRA whereas --log-bin is not. This is a valid setup for 8.0 in which binary logging is enabled by default already. Still, reduction may fail in STAGE9 as reducer has not been updated yet to handle this situation. As a workaround, add --log-bin to MYEXTRA, or simply stop at STAGE8 reduction, or add this functionality to STAGE9 and please push it back to the repository"
+      # To add this functionality, it is likely required to just handle the --server-id option removal using the BINLOG variable whilst setting --log-bin=0 at the same time or something - and this would be a good improvement for 8.0 (and beyond) testcase reduction in any case, as it would show/prove whetter it is necesary to have binlog on or not for a given testcase
+    fi
   fi
 fi
 if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
-  if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0]' | head -n1)" =~ ^5.[156]$ ]]; then  # version is 5.7 or 8.0 and NOT 5.1, 5.5 or 5.6, i.e. --server-id is required
+  if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0-9]' | head -n1)" =~ ^5.[156]$ ]]; then  # version is 5.7 or 8.0 and NOT 5.1, 5.5 or 5.6, i.e. --server-id is required
     if [[ ! "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
       echo "Error: The version of mysqld is 5.7 or 8.0 and a --bin-log option was passed in MYEXTRA, yet no --server-id option was found whereas this is required for 5.7 and 8.0."
       echo "Terminating now."
-      exit 1
+      # exit 1   # temp hack, needs proper MariaDB check
     fi
   fi
   BINLOG="$(echo "${MYEXTRA}" | grep -o "\-\-log[-_]bin[^ ]*" | head -n1)"  # Grep all text including and after '--log[-_]bin' upto a space
@@ -571,12 +607,12 @@ ctrl_c(){
   echo_out "[Abort] End of dump stack"
   if [ $PXC_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
-    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   fi
   if [ $GRP_RPL_MOD -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining Group Replication nodes are terminated and removed"
-    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   fi
   echo_out "[Abort] Ensuring any remaining processes are terminated"
@@ -958,7 +994,7 @@ set_internal_options(){  # Internal options: do not modify!
   # It would be good if we could disable OS core file generation without disabling mysqld core file generation, but for the moment it looks like
   # ulimit -c 0 disables ALL core file generation, both OS and mysqld, so instead, ftm, reducer checks for "CORE" in MYEXTRA (uppercase-ed via ^^)
   # and if present reducer does not disable core file generation (OS nor mysqld)
-  if [[ "${MYEXTRA^^}" != *"CORE"* ]]; then
+  if [[ "${MYEXTRA^^}" != *"CORE"* ]]; then  # ^^ = Uppercase MYEXTRA contents before compare
     ulimit -c 0 >/dev/null
   fi
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }')
@@ -1416,6 +1452,7 @@ init_workdir_and_files(){
   mkdir $WORKD/data $WORKD/tmp
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
+  echo_out "[Init] Reducer: $SCRIPT_PWD/$(basename "$0")"  # With thanks (basename), https://stackoverflow.com/a/192337/1208218
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
   if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_OR_SS_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
@@ -1481,13 +1518,13 @@ init_workdir_and_files(){
     fi
   fi
   if [ $PXC_MOD -eq 1 ]; then
-    echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
-    echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
-    echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
+    echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node1/node1_socket.sock"
+    echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node2/node2_socket.sock"
+    echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node3/node3_socket.sock"
   elif [ $GRP_RPL_MOD -eq 1 ]; then
-    echo_out "[Init] Group Replication Node #1 Client: $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock"
-    echo_out "[Init] Group Replication Node #2 Client: $BASEDIR/bin/mysql -uroot -S${node2}/node2_socket.sock"
-    echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S${node3}/node3_socket.sock"
+    echo_out "[Init] Group Replication Node #1 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node1/node1_socket.sock"
+    echo_out "[Init] Group Replication Node #2 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node2/node2_socket.sock"
+    echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node3/node3_socket.sock"
   else
     echo_out "[Init] Server: ${BIN} (as $MYUSER)"
     if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
@@ -1570,6 +1607,7 @@ init_workdir_and_files(){
     echo_out "[Init] Using the pquery client for SQL replay"
   fi
   if [ -n "$MYEXTRA" -o -n "$SPECIAL_MYEXTRA_OPTIONS" ]; then echo_out "[Init] Passing the following additional options to mysqld: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA"; fi
+  if [ "$MYINIT" != "" ]; then echo_out "[Init] Passing the following additional options to mysqld initialization: $MYINIT"; fi
   if [ $MODE -ge 6 ]; then
     if [ $TS_TRXS_SETS -eq 1 ]; then echo_out "[Init] ThreadSync: using last transaction set (accross threads) only"; fi
     if [ $TS_TRXS_SETS -gt 1 ]; then echo_out "[Init] ThreadSync: using last $TS_TRXS_SETS transaction sets (accross threads) only"; fi
@@ -1623,17 +1661,23 @@ init_workdir_and_files(){
       if [ -r ${BASEDIR}/scripts/mysql_install_db ]; then MID="${BASEDIR}/scripts/mysql_install_db"; fi
       if [ -r ${BASEDIR}/bin/mysql_install_db ]; then MID="${BASEDIR}/bin/mysql_install_db"; fi
       START_OPT="--core-file"           # Compatible with 5.6,5.7,8.0
-      INIT_OPT="--initialize-insecure"  # Compatible with     5.7,8.0 (mysqld init)
+      INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}"  # Compatible with     5.7,8.0 (mysqld init)
       INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
       VERSION_INFO=$(${BIN} --version | grep -E --binary-files=text -oe '[58]\.[01567]' | head -n1)
+      VERSION_INFO_2=$(${BIN} --version | grep -oe 'MariaDB' | head -n1)  # temp hack
       if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
         if [ "${MID}" == "" ]; then
           echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
           exit 1
         fi
         INIT_TOOL="${MID}"
-        INIT_OPT="--no-defaults --force"
+        INIT_OPT="--no-defaults --force ${MYINIT}"
         START_OPT="--core"
+      elif [ "${VERSION_INFO_2}" == "MariaDB" ]; then
+        VERSION_INFO="5.6"
+        INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
+        INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
+        START_OPT="--core-file"
       elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
         echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
       fi
@@ -1676,15 +1720,15 @@ init_workdir_and_files(){
       stop_mysqld_or_pxc
     elif [[ $PXC_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.7" ]; then
-        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-      elif [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" == "5.6" ]; then
-        MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
+      if check_for_version $MYSQL_VERSION "5.7.0" ; then
+        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
+      else
+        MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --force ${MYINIT} --basedir=${BASEDIR}"
       fi
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
-      if [ "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+      if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
         mkdir -p $node1 $node2 $node3
       fi
       ${MID} --datadir=$node1  > ${WORKD}/startup_node1_error.log 2>&1 || exit 1;
@@ -1696,7 +1740,7 @@ init_workdir_and_files(){
       cp -a $WORKD/node3/* $WORKD/node3.init/
     elif [[ $GRP_RPL_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard Group Replication working template (without using MYEXTRA options)"
-      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
@@ -1734,8 +1778,8 @@ generate_run_scripts(){
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
   echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mysql_install_db\`" >> $WORK_INIT
   echo "VERSION=\"\`\$BIN --version | grep -E --binary-files=text -oe '[58]\.[15670]' | head -n1\`\"" >> $WORK_INIT
-  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--initialize-insecure'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--force'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
-  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then \$BIN  --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; else \$MID --no-defaults --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data \$MID_OPTIONS; fi" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--no-defaults --initialize-insecure ${MYINIT}'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--no-defaults --force ${MYINIT}'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force';else MID_OPTIONS=''; fi" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then \$BIN \${MID_OPTIONS} --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data; else \$MID \${MID_OPTIONS} --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data; fi" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
     echo_out "[Not implemented yet] MODE6 or higher does not auto-generate a $WORK_RUN file yet"
@@ -1786,10 +1830,10 @@ generate_run_scripts(){
   fi
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_GDB
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_GDB
-  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*)" >> $WORK_GDB
+  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core*)" >> $WORK_GDB
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_PARSE_CORE
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_PARSE_CORE
-  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core.*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
+  echo "gdb \${BASEDIR}/bin/mysqld \$(ls /dev/shm/${EPOCH}/data/core*) >/dev/null 2>&1 <<EOF" >> $WORK_PARSE_CORE
   echo -e "  set auto-load safe-path /\n  set libthread-db-search-path /usr/lib/\n  set trace-commands on\n  set pagination off\n  set print pretty on\n  set print array on\n  set print array-indexes on\n  set print elements 4096\n  set logging file ${EPOCH}_FULL.gdb\n  set logging on\n  thread apply all bt full\n  set logging off\n  set logging file ${EPOCH}_STD.gdb\n  set logging on\n  thread apply all bt\n  set logging off\n  quit\nEOF" >> $WORK_PARSE_CORE
   echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" > $WORK_STOP
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_STOP
@@ -1800,7 +1844,7 @@ generate_run_scripts(){
   echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_CL
   echo "echo \"Connecting to mysqld with socket -S/dev/shm/${EPOCH}/socket.sock test using the mysql CLI client...\"" >> $WORK_CL
   echo "\${BASEDIR}/bin/mysql -uroot -S/dev/shm/${EPOCH}/socket.sock \$(ls -d /dev/shm/${EPOCH}/data/test 2>/dev/null | grep -o 'test')" >> $WORK_CL
-  echo -e "The attached tarball (${EPOCH}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
+  echo -e "To replay, the attached tarball (${EPOCH}_bug_bundle.tar.gz) gives the testcase as an exact match of our system, including some handy utilities\n" > $WORK_HOW_TO_USE
   echo "$ vi ${EPOCH}_mybase         # STEP1: Update the base path in this file (usually the only change required!). If you use a non-binary distribution, please update SOURCE_DIR location also" >> $WORK_HOW_TO_USE
   echo "$ ./${EPOCH}_init            # STEP2: Initializes the data dir" >> $WORK_HOW_TO_USE
   if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
@@ -1808,7 +1852,7 @@ generate_run_scripts(){
   else
     echo "$ ./${EPOCH}_start           # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
   fi
-  echo "$ ./${EPOCH}_cl              # STEP4: To check mysqld is up" >> $WORK_HOW_TO_USE
+  echo "$ ./${EPOCH}_cl              # STEP4: To check mysqld is up (repeat if necessary)" >> $WORK_HOW_TO_USE
   if [ $PQUERY_MOD -eq 1 ]; then
     echo "$ ./${EPOCH}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
     echo "$ ./${EPOCH}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
@@ -1881,6 +1925,8 @@ start_mysqld_or_valgrind_or_pxc(){
           echo "Terminating now."
           exit 1
         fi
+      #else  # Ref discussion RV/RS 27 Nov 19 via 1:1 (RV;should be covered in SQL, RS; issue seen)
+      #  ${BASEDIR}/bin/mysql -uroot -S$WORKD/socket.sock -e "create database if not exists test" > /dev/null 2>&1
       fi
     fi
   fi
@@ -1888,6 +1934,28 @@ start_mysqld_or_valgrind_or_pxc(){
 }
 
 start_pxc_main(){
+  SUSER=root
+  SPASS=
+  # Creating default my.cnf file
+  rm -rf ${WORKD}/my.cnf
+  echo "[mysqld]" > ${WORKD}/my.cnf
+  echo "basedir=${BASEDIR}" >> ${WORKD}/my.cnf
+  echo "wsrep-debug=1" >> ${WORKD}/my.cnf
+  echo "innodb_file_per_table" >> ${WORKD}/my.cnf
+  echo "innodb_autoinc_lock_mode=2" >> ${WORKD}/my.cnf
+  if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+    echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKD}/my.cnf
+    echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
+  else
+    echo "pxc_encrypt_cluster_traffic=OFF" >> ${WORKD}/my.cnf
+    echo "log-error-verbosity=3" >> ${WORKD}/my.cnf
+  fi
+  echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
+  echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKD}/my.cnf
+  echo "core-file" >> ${WORKD}/my.cnf
+  echo "log-output=none" >> ${WORKD}/my.cnf
+  echo "wsrep_slave_threads=2" >> ${WORKD}/my.cnf
+
   ADDR="127.0.0.1"
   RPORT=$(( RANDOM%21 + 10 ))
   RBASE1="$(( RPORT*1000 ))"
@@ -1902,29 +1970,21 @@ start_pxc_main(){
   RADDR3="$ADDR:$(( RBASE3 + 7 ))"
   LADDR3="$ADDR:$(( RBASE3 + 8 ))"
 
-  SUSER=root
-  SPASS=
-
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.1 \
-    --basedir=${BASEDIR} --datadir=$node1 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+  ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.1 \
+    --datadir=$node1 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema  $MYEXTRA  \
     --wsrep_cluster_address=gcomm:// \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPTIONS" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --wsrep_node_address=$ADDR  \
     --log-error=$node1/error.log \
-    --socket=$node1/node1_socket.sock --log-output=none \
-    --port=$RBASE1 --server-id=1 --wsrep_slave_threads=2 > $node1/error.log 2>&1 &
+    --socket=$node1/node1_socket.sock \
+    --port=$RBASE1 --server-id=1 > $node1/error.log 2>&1 &
 
   echo_out "Waiting for node-1 to start ....."
   MPID="$!"
-  while true ; do
-    sleep 10
+  for X in $(seq 1 120); do
+    sleep 1
     if grep -E --binary-files=text -qi "Synchronized with group, ready for connections" $node1/error.log ; then
      break
     fi
@@ -1935,28 +1995,22 @@ start_pxc_main(){
       exit 1
     fi
   done
-  sleep 10
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.2 \
-    --basedir=${BASEDIR} --datadir=$node2 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+  ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.2 \
+    --datadir=$node2 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema $MYEXTRA  \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR3 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR2;$WSREP_PROVIDER_OPTIONS" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --wsrep_node_address=$ADDR \
     --log-error=$node2/error.log \
-    --socket=$node2/node2_socket.sock --log-output=none \
-    --port=$RBASE2 --server-id=2 --wsrep_slave_threads=2 > $node2/error.log 2>&1 &
+    --socket=$node2/node2_socket.sock \
+    --port=$RBASE2 --server-id=2 > $node2/error.log 2>&1 &
 
   echo_out "Waiting for node-2 to start ....."
   MPID="$!"
-  while true ; do
-    sleep 10
+  for X in $(seq 1 120); do
+    sleep 1
     if grep -E --binary-files=text -qi "Synchronized with group, ready for connections" $node2/error.log ; then
      break
     fi
@@ -1967,29 +2021,23 @@ start_pxc_main(){
       exit 1
     fi
   done
-  sleep 10
 
-  ${BASEDIR}/bin/mysqld --no-defaults --defaults-group-suffix=.3 \
-    --basedir=${BASEDIR} --datadir=$node3 \
-    --loose-debug-sync-timeout=600 --skip-performance-schema \
-    --innodb_file_per_table $MYEXTRA --innodb_autoinc_lock_mode=2 --innodb_locks_unsafe_for_binlog=1 \
-    --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+  ${BASEDIR}/bin/mysqld --defaults-file=${WORKD}/my.cnf --defaults-group-suffix=.3 \
+    --datadir=$node3 \
+    --loose-debug-sync-timeout=600 --skip-performance-schema $MYEXTRA  \
     --wsrep_cluster_address=gcomm://$LADDR1,gcomm://$LADDR2 \
     --wsrep_node_incoming_address=$ADDR \
     --wsrep_provider_options="gmcast.listen_addr=tcp://$LADDR3;$WSREP_PROVIDER_OPTIONS" \
-    --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-    --wsrep_node_address=$ADDR --innodb_flush_method=O_DIRECT \
-    --core-file --loose-new --sql-mode=no_engine_substitution \
-    --loose-innodb --secure-file-priv= --loose-innodb-status-file=1 \
+    --wsrep_node_address=$ADDR  \
     --log-error=$node3/error.log \
-    --socket=$node3/node3_socket.sock --log-output=none \
-    --port=$RBASE3 --server-id=3 --wsrep_slave_threads=2 > $node3/error.log 2>&1 &
+    --socket=$node3/node3_socket.sock \
+    --port=$RBASE3 --server-id=3  > $node3/error.log 2>&1 &
 
   # ensure that node-3 has started and has joined the group post SST
   echo_out "Waiting for node-3 to start ....."
   MPID="$!"
-  while true ; do
-    sleep 10
+  for X in $(seq 1 120); do
+    sleep 1
     if grep -E --binary-files=text -qi "Synchronized with group, ready for connections" $node3/error.log ; then
      ${BASEDIR}/bin/mysql -uroot -S$node1/node1_socket.sock -e "create database if not exists test" > /dev/null 2>&1
      break
@@ -2004,12 +2052,12 @@ start_pxc_main(){
 
   CLUSTER_UP=0
   if $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
-    if [ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ `$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ `$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ `$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_cluster_size'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_cluster" | awk '{print $2}'` -eq 3 ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ "`$BASEDIR/bin/mysql -uroot --socket=${node1}/node1_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ "`$BASEDIR/bin/mysql -uroot --socket=${node2}/node2_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
+    if [[ "`$BASEDIR/bin/mysql -uroot --socket=${node3}/node3_socket.sock -e"show global status like 'wsrep_local_state_comment'" | sed 's/[| \t]\+/\t/g' | grep -E --binary-files=text "wsrep_local" | awk '{print $2}'`" == "Synced" ]]; then CLUSTER_UP=$[ $CLUSTER_UP + 1]; fi
   fi
 }
 
@@ -2200,7 +2248,7 @@ start_valgrind_mysqld_main(){
   echo $JE4 >> $WORK_START_VALGRIND
   echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o  -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \
-       \$BIN --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
+       \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp \
        --pid-file=$WORKD/pid.pid --log-error=$WORKD/error.log.out \
        --socket=$WORKD/socket.sock $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/error.log.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START_VALGRIND
@@ -2540,7 +2588,7 @@ cleanup_and_save(){
     fi
   else
     if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-      (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+      (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
     cp -f $WORKT $WORKF
@@ -2553,9 +2601,23 @@ cleanup_and_save(){
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
       if [ -s $WORKO ]; then
-        sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+        if [ "${MYINIT}" == "" ]; then
+          sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" $WORKO
+        else
+          sed -i "1 i\# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED    mysqld initialization options required: ${MYINIT}" $WORKO
+        fi
       else
-        echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" > $WORKO
+        if [ "${MYINIT}" == "" ]; then
+          echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED" > $WORKO
+        else
+          echo "# mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED    mysqld initialization options required: ${MYINIT}" > $WORKO
+        fi
+      fi
+    elif [ "${MYINIT}" != "" ]; then
+      if [ -s $WORKO ]; then
+        sed -i "1 i\# mysqld initialization options required: ${MYINIT}" $WORKO
+      else
+        echo "# mysqld initialization options required: ${MYINIT}" > $WORKO
       fi
     fi
     MYSQLD_OPTIONS_REQUIRED=
@@ -2894,7 +2956,7 @@ stop_mysqld_or_pxc(){
   SHUTDOWN_TIME_START=$(date +'%s')
   MODE0_MIN_SHUTDOWN_TIME=$[ $TIMEOUT_CHECK + 10 ]
   if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
-    (ps -ef | grep -E --binary-files=text 'node1_socket\|node2_socket\|node3_socket' | grep -E --binary-files=text -v grep -E --binary-files=text | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
+    (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
     if [ ${FORCE_KILL} -eq 1 -a ${MODE} -ne 0 ]; then  # In MODE=0 we may be checking for shutdown hang issues, so do not kill mysqld
@@ -2982,7 +3044,10 @@ finish(){
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
     MYSQLD_OPTIONS_REQUIRED=$(echo "$SPECIAL_MYEXTRA_OPTIONS $MYEXTRA" | sed "s|[ \t]\+| |g")
     if [ "$(echo "$MYSQLD_OPTIONS_REQUIRED" | sed 's| ||g')" != "" ]; then
-      echo_out "[Finish] mysqld options required for replay: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA (the testcase will not reproduce the issue without these options passed to mysqld)"
+      echo_out "[Finish] mysqld options required for replay: $MYSQLD_OPTIONS_REQUIRED (the testcase will not reproduce the issue without these options passed to mysqld)"
+    fi
+    if [ "${MYINIT}" == "" ]; then
+      echo_out "[Finish] mysqld initialization options reqd: $MYINIT (the testcase will not reproduce the issue without these options passed to mysqld initialization)"
     fi
     MYSQLD_OPTIONS_REQUIRED=
     if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
@@ -3867,189 +3932,191 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
   # ) ENGINE=abc;
 
   COUNTTABLES=$(grep -E --binary-files=text "CREATE[\t ]*TABLE" $WORKF | wc -l)
-  for t in $(eval echo {$COUNTTABLES..1}); do  # Reverse order process all tables
-    # the '...\n/2' sed is a precaution against multiple CREATE TABLEs on one line (it replaces the second occurence)
-    TABLENAME=$(grep -E --binary-files=text -m$t "CREATE[\t ]*TABLE" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*TABLE/\n/2' \
-      | head -n1 | sed -e 's/CREATE[\t ]*TABLE[\t ]*\(.*\)[\t ]*(/\1/' -e 's/ .*//1' -e 's/(.*//1')
+  if [ ${COUNTTABLES} -ge 1 ]; then
+    for t in $(eval echo {$COUNTTABLES..1}); do  # Reverse order process all tables
+      # the '...\n/2' sed is a precaution against multiple CREATE TABLEs on one line (it replaces the second occurence)
+      TABLENAME=$(grep -E --binary-files=text -m$t "CREATE[\t ]*TABLE" $WORKF | tail -n1 | sed -e 's/CREATE[\t ]*TABLE/\n/2' \
+        | head -n1 | sed -e 's/CREATE[\t ]*TABLE[\t ]*\(.*\)[\t ]*(/\1/' -e 's/ .*//1' -e 's/(.*//1')
 
-    # Check if this table ($TABLENAME) is references in aother INSERT..INTO..$TABLENAME2..SELECT..$TABLENAME line.
-    # If so, reducer does not need to process this table since it will be processed later when reducer gets to the table $TABLENAME2
-    # This is basically an optimization to avoid x (number of colums) unnecessary restarts which will definitely fail:
-    # Example: CREATE TABLE t1 (id INT); INSERT INTO t1 VALUES (1); CREATE TABLE t2 (id2 INT): INSERT INTO t2 SELECT * FROM t1;
-    # One cannot remove t1.id because t2 has the same number of columsn and does a select from t1
-    if grep -E --binary-files=text -qi "INSERT.*INTO.*SELECT.*FROM.*$TABLENAME" $WORKF; then
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Skipping column reduction for table '$TABLENAME' as it is present in a INSERT..SELECT..$TABLENAME. This will be/has been reduced elsewhere"
-      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Will now try and simplify the column names of this table ('$TABLENAME') to more uniform names"
-      COLUMN=1
-      COLS=$(cat $WORKF | awk "/CREATE.*TABLE.*$TABLENAME/,/;/" | sed 's/^ \+//' | grep -E --binary-files=text -vi "CREATE|ENGINE|^KEY|^PRIMARY|;" | sed 's/ .*$//' | grep -E --binary-files=text -v "\(|\)")
-      COUNTCOLS=$(printf "%b\n" "$COLS" | wc -l)
-      for COL in $COLS; do
-        if [ "$COL" != "c$C_COL_COUNTER" ]; then
-          # Try and rename column now to cx to make testcase cleaner
-          if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Now attempting to rename column '$COL' to a more uniform 'c$C_COL_COUNTER'"; fi
-          sed -e "s/$COL/c$C_COL_COUNTER/g" $WORKF > $WORKT
-          C_COL_COUNTER=$[$C_COL_COUNTER+1]
-          run_and_check
-          if [ $? -eq 1 ]; then
-            # This column was removed, reducing column count
-            COUNTCOLS=$[$COUNTCOLS-1]
-          fi
-          COLUMN=$[$COLUMN+1]
-          LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-          SIZEF=`stat -c %s $WORKF`
-        else
-          if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Not renaming column '$COL' as it's name is already optimal"; fi
-        fi
-      done
-    else
-      NUMOFINVOLVEDTABLES=1
-
-      # Check if there are INSERT..INTO..$TABLENAME..SELECT..$TABLENAME2 lines. If so, fetch $TABLENAME2 etc.
-      TEMPTABLENAME=$TABLENAME
-      while grep -E --binary-files=text -qi "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF; do
-        NUMOFINVOLVEDTABLES=$[$NUMOFINVOLVEDTABLES+1]
-        # the '...\n/2' sed is a precaution against multiple INSERT INTOs on one line (it replaces the second occurence)
-        export TABLENAME$NUMOFINVOLVEDTABLES=$(grep -E --binary-files=text "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF | tail -n1 | sed -e 's/INSERT.*INTO/\n/2' \
-          | head -n1 | sed -e "s/INSERT.*INTO.*$TEMPTABLENAME.*SELECT.*FROM[\t ]*\(.*\)/\1/" -e 's/ //g;s/;//g')
-        TEMPTABLENAME=$(eval echo $(echo '$TABLENAME'"$NUMOFINVOLVEDTABLES"))
-      done
-
-      COLUMN=1
-      COLS=$(cat $WORKF | awk "/CREATE.*TABLE.*$TABLENAME/,/;/" | sed 's/^ \+//' | grep -E --binary-files=text -vi "CREATE|ENGINE|^KEY|^PRIMARY|;" | sed 's/ .*$//' | grep -E --binary-files=text -v "\(|\)")
-      COUNTCOLS=$(printf "%b\n" "$COLS" | wc -l)
-      # The inner loop below is called for each table (= each trial) and processes all columns for the table in question
-      # So the hierarchy is: reducer > STAGE6 > TRIAL x (various tables) > Column y of table x
-      for COL in $COLS; do
-        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Trying to eliminate column '$COL' in table '$TABLENAME'"
-
-        # Eliminate the column from the correct CREATE TABLE table (this will match the first occurence of that column name in the correct CREATE TABLE)
-        # This sed presumes that each column is on one line, by itself, terminated by a comma (can be improved upon as per the above remark note)
-        WORKT2=`echo $WORKT | sed 's/$/.2/'`
-        sed -e "/CREATE.*TABLE.*$TABLENAME/,/^[ ]*$COL.*,/s/^[ ]*$COL.*,//1" $WORKF | grep -E --binary-files=text -v "^$" > $WORKT2  # Remove the column from table defintion
-        # Write the testcase with removed column table definition to WORKT as well in case there are no INSERT removals
-        # (and hence $WORKT will not be replaced with $WORKT2 anymore below, so reducer does it here as a harmless, but potentially needed, precaution)
-        cp -f $WORKT2 $WORKT
-
-        # If present, the script also need to drop the same column from the INSERT for that table, otherwise the testcase will definitely fail (incorrect INSERT)
-        # Small limitation 1: ,',', (a comma inside a txt string) is not handled correctly. Column elimination will work, but only upto this occurence (per table)
-        # Small limitation 2: INSERT..INTO..SELECT <specific columns> does not work. SELECT * in such cases is handled. You could manually edit the testcase.
-
-        for c in $(eval echo {1..$NUMOFINVOLVEDTABLES}); do
-          if   [ $c -eq 1 ]; then
-            # We are now processing any INSERT..INTO..$TABLENAME..VALUES reductions
-            # Noth much is required here. In effect, this is what happens here:
-            # CREATE TABLE t1 (id INT);
-            # INSERT INTO t1 VALUES (1);
-            # reducer will try and eliminate "(1)" (after "id" was removed from the table defintion above already)
-            # Note that this will also run (due to the for loop) for a NUMOFINVOLVEDTABLES=2+ run - i.e. if an INSERT..INTO..$TABLENAME..SELECT is detected,
-            # This run ensures that (see t1/t2 example below) that any additional INSERT INTO t2 VALUES (2) (besides the INSERT SELECT) are covered
-            TABLENAME_OLD=$TABLENAME
-          elif [ $c -ge 2 ]; then
-            # We are now processing any eliminations from other tables to ensure that INSERT..INTO..$TABLENAME..SELECT works for this table
-            # We do this by setting TABLENAME to $TABLENAME2 etc. In effect, this is what happens:
-            # CREATE TABLE t1 (id INT);
-            # INSERT INTO t1 VALUES (1);
-            # CREATE TABLE t2 (id2 INT):
-            # INSERT INTO t2 SELECT * FROM t1;
-            # reducer will try and eliminate "(1)" from table t1 (after "id2" was removed from the table defintion above already)
-            # An extra part (see * few lines lower) will ensure that "id" is also removed from t1
-            TABLENAME=$(eval echo $(echo '$TABLENAME'"$c"))   # Replace TABLENAME with TABLENAMEx thereby eliminating all "chained" columns
-            echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] INSERT..SELECT into this table from another one detected: removing corresponding column $COLUMN in table '$TABLENAME'"
-            WORKT3=`echo $WORKT | sed 's/$/.3/'`
-            COL_LINE=$[$(cat $WORKT2 | grep -E --binary-files=text -m1 -n "CREATE.*TABLE.*$TABLENAME" | awk -F":" '{print $1}') + $COLUMN]
-            cat $WORKT2 | sed -e "${COL_LINE}d" > $WORKT3  # (*) Remove the column from the connected table defintion
-            cp -f $WORKT3 $WORKT2
-            rm $WORKT3
-          else
-            echo "ASSERT: NUMOFINVOLVEDTABLES!=1||2: $NUMOFINVOLVEDTABLES!=1||2";
-            echo "Terminating now."
-            exit 1
-          fi
-
-          # First count how many actual INSERT rows there are
-          COUNTINSERTS=0
-          COUNTINSERTS=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
-            sed "s/;/,/;s/^[ ]*(/(\n/;s/)[ ,;]$/\n)/;s/)[ ]*,[ ]*(/\n/g" | \
-            grep -E --binary-files=text -v "^[ ]*[\(\)][ ]*$|INSERT"); do \
-            echo $INSERT; \
-            done | wc -l)
-
-          if [ $COUNTINSERTS -gt 0 ]; then
-            # Loop through each line within a single INSERT (ex: INSERT INTO t1 VALUES ('a',1),('b',2);), and through multiple INSERTs (ex: INSERT .. INSERT ..)
-            # And each time grab the "between ( and )" information and therein remove the n-th column ($COLUMN) value reducer is trying to remove. Then use a
-            # simple sed to replace the old "between ( and )" with the new "between ( and )" which contains one less column (the correct one which removed from
-            # the CREATE TABLE statement above also. Then re-test if the issue remains and swap files if this is the case, as usual.
-            if [ $c -ge 2 ]; then
-              echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Also removing $COUNTINSERTS INSERT..VALUES for column $COLUMN in table '$TABLENAME' to match column removal in said table"
-            else
-              echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Removing $COUNTINSERTS INSERT..VALUES for column '$COL' in table '$TABLENAME'"
-            fi
-            for i in $(eval echo {1..$COUNTINSERTS}); do
-              FROM=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
-                sed "s/;/,/;s/^[ ]*(/(\n/;s/)[ ,;]$/\n)/;s/)[ ]*,[ ]*(/\n/g" | \
-                grep -E --binary-files=text -v "^[ ]*[\(\)][ ]*$|INSERT"); do \
-                echo $INSERT; \
-                done | awk "{if(NR==$i) print "'$1}')
-
-              TO_DONE=0
-              TO=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
-                sed "s/;/,/;s/^[ ]*(/(\n/;s/)[ ,;]$/\n)/;s/)[ ]*,[ ]*(/\n/g" | \
-                grep -E --binary-files=text -v "^[ ]*[\(\)][ ]*$|INSERT"); do \
-                echo $INSERT | tr ',' '\n' | awk "{if(NR!=$COLUMN && $TO_DONE==0) print "'$1}'; echo "==>=="; \
-                done | tr '\n' ',' | sed 's/,==>==/\n/g' | sed 's/^,//' | awk "{if(NR==$i) print "'$1}')
-              TO_DONE=1
-
-              # Fix backslash issues (replace \ with \\) like 'you\'ve' - i.e. a single quote within single quoted INSERT values
-              # This insures the regex matches in the sed below against the original file: you\'ve > you\\'ve (here) > you\'ve (in the sed)
-              FROM=$(echo $FROM | sed 's|\\|\\\\|g')
-              TO=$(echo $TO | sed 's|\\|\\\\|g')
-
-              # The actual replacement
-              cat $WORKT2 | sed "s/$FROM/$TO/" > $WORKT
-              cp -f $WORKT $WORKT2
-
-              #DEBUG
-              #echo_out "i: |$i|";echo_out "from: |$FROM|";echo_out "_to_: |$TO|";
-            done
-          fi
-          # DEBUG
-          #echo_out "c: |$c|";echo_out "COUNTINSERTS: |$COUNTINSERTS|";echo_out "COLUMN: |$COLUMN|";echo_out "diff: $(diff $WORKF $WORKT2)"
-          #read -p "pause"
-
-        done
-        rm $WORKT2
-        TABLENAME=$TABLENAME_OLD
-
-        if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi
-        run_and_check
-        if [ $? -eq 0 ]; then
+      # Check if this table ($TABLENAME) is references in aother INSERT..INTO..$TABLENAME2..SELECT..$TABLENAME line.
+      # If so, reducer does not need to process this table since it will be processed later when reducer gets to the table $TABLENAME2
+      # This is basically an optimization to avoid x (number of colums) unnecessary restarts which will definitely fail:
+      # Example: CREATE TABLE t1 (id INT); INSERT INTO t1 VALUES (1); CREATE TABLE t2 (id2 INT): INSERT INTO t2 SELECT * FROM t1;
+      # One cannot remove t1.id because t2 has the same number of columsn and does a select from t1
+      if grep -E --binary-files=text -qi "INSERT.*INTO.*SELECT.*FROM.*$TABLENAME" $WORKF; then
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Skipping column reduction for table '$TABLENAME' as it is present in a INSERT..SELECT..$TABLENAME. This will be/has been reduced elsewhere"
+        echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Will now try and simplify the column names of this table ('$TABLENAME') to more uniform names"
+        COLUMN=1
+        COLS=$(cat $WORKF | awk "/CREATE.*TABLE.*$TABLENAME/,/;/" | sed 's/^ \+//' | grep -E --binary-files=text -vi "CREATE|ENGINE|^KEY|^PRIMARY|;" | sed 's/ .*$//' | grep -E --binary-files=text -v "\(|\)")
+        COUNTCOLS=$(printf "%b\n" "$COLS" | wc -l)
+        for COL in $COLS; do
           if [ "$COL" != "c$C_COL_COUNTER" ]; then
-            LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-            SIZEF=`stat -c %s $WORKF`
-
-            # This column was not removed. Try and rename column now to cx to make testcase cleaner
-            if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Now attempting to rename this column ('$COL') to a more uniform 'c$C_COL_COUNTER'"; fi
+            # Try and rename column now to cx to make testcase cleaner
+            if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Now attempting to rename column '$COL' to a more uniform 'c$C_COL_COUNTER'"; fi
             sed -e "s/$COL/c$C_COL_COUNTER/g" $WORKF > $WORKT
             C_COL_COUNTER=$[$C_COL_COUNTER+1]
             run_and_check
+            if [ $? -eq 1 ]; then
+              # This column was removed, reducing column count
+              COUNTCOLS=$[$COUNTCOLS-1]
+            fi
+            COLUMN=$[$COLUMN+1]
+            LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+            SIZEF=`stat -c %s $WORKF`
           else
             if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Not renaming column '$COL' as it's name is already optimal"; fi
           fi
+        done
+      else
+        NUMOFINVOLVEDTABLES=1
 
-          # Only advance the column number if there was no issue showing, otherwise stay on the same column (If the issue does show,
-          # the script will remove the current column and shift all other columns down by one, hence it has to stay in the same
-          # place as this will contain the next column)
-          COLUMN=$[$COLUMN+1]
-        else
-          # This column was removed, reducing column count
-          COUNTCOLS=$[$COUNTCOLS-1]
-        fi
-        LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-        SIZEF=`stat -c %s $WORKF`
-      done
-    fi
-    TRIAL=$[$TRIAL+1]
-  done
+        # Check if there are INSERT..INTO..$TABLENAME..SELECT..$TABLENAME2 lines. If so, fetch $TABLENAME2 etc.
+        TEMPTABLENAME=$TABLENAME
+        while grep -E --binary-files=text -qi "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF; do
+          NUMOFINVOLVEDTABLES=$[$NUMOFINVOLVEDTABLES+1]
+          # the '...\n/2' sed is a precaution against multiple INSERT INTOs on one line (it replaces the second occurence)
+          export TABLENAME$NUMOFINVOLVEDTABLES=$(grep -E --binary-files=text "INSERT.*INTO.*$TEMPTABLENAME.*SELECT" $WORKF | tail -n1 | sed -e 's/INSERT.*INTO/\n/2' \
+            | head -n1 | sed -e "s/INSERT.*INTO.*$TEMPTABLENAME.*SELECT.*FROM[\t ]*\(.*\)/\1/" -e 's/ //g;s/;//g')
+          TEMPTABLENAME=$(eval echo $(echo '$TABLENAME'"$NUMOFINVOLVEDTABLES"))
+        done
+
+        COLUMN=1
+        COLS=$(cat $WORKF | awk "/CREATE.*TABLE.*$TABLENAME/,/;/" | sed 's/^ \+//' | grep -E --binary-files=text -vi "CREATE|ENGINE|^KEY|^PRIMARY|;" | sed 's/ .*$//' | grep -E --binary-files=text -v "\(|\)")
+        COUNTCOLS=$(printf "%b\n" "$COLS" | wc -l)
+        # The inner loop below is called for each table (= each trial) and processes all columns for the table in question
+        # So the hierarchy is: reducer > STAGE6 > TRIAL x (various tables) > Column y of table x
+        for COL in $COLS; do
+          echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Trying to eliminate column '$COL' in table '$TABLENAME'"
+
+          # Eliminate the column from the correct CREATE TABLE table (this will match the first occurence of that column name in the correct CREATE TABLE)
+          # This sed presumes that each column is on one line, by itself, terminated by a comma (can be improved upon as per the above remark note)
+          WORKT2=`echo $WORKT | sed 's/$/.2/'`
+          sed -e "/CREATE.*TABLE.*$TABLENAME/,/^[ ]*$COL.*,/s/^[ ]*$COL.*,//1" $WORKF | grep -E --binary-files=text -v "^$" > $WORKT2  # Remove the column from table defintion
+          # Write the testcase with removed column table definition to WORKT as well in case there are no INSERT removals
+          # (and hence $WORKT will not be replaced with $WORKT2 anymore below, so reducer does it here as a harmless, but potentially needed, precaution)
+          cp -f $WORKT2 $WORKT
+
+          # If present, the script also need to drop the same column from the INSERT for that table, otherwise the testcase will definitely fail (incorrect INSERT)
+          # Small limitation 1: ,',', (a comma inside a txt string) is not handled correctly. Column elimination will work, but only upto this occurence (per table)
+          # Small limitation 2: INSERT..INTO..SELECT <specific columns> does not work. SELECT * in such cases is handled. You could manually edit the testcase.
+
+          for c in $(eval echo {1..$NUMOFINVOLVEDTABLES}); do
+            if   [ $c -eq 1 ]; then
+              # We are now processing any INSERT..INTO..$TABLENAME..VALUES reductions
+              # Noth much is required here. In effect, this is what happens here:
+              # CREATE TABLE t1 (id INT);
+              # INSERT INTO t1 VALUES (1);
+              # reducer will try and eliminate "(1)" (after "id" was removed from the table defintion above already)
+              # Note that this will also run (due to the for loop) for a NUMOFINVOLVEDTABLES=2+ run - i.e. if an INSERT..INTO..$TABLENAME..SELECT is detected,
+              # This run ensures that (see t1/t2 example below) that any additional INSERT INTO t2 VALUES (2) (besides the INSERT SELECT) are covered
+              TABLENAME_OLD=$TABLENAME
+            elif [ $c -ge 2 ]; then
+              # We are now processing any eliminations from other tables to ensure that INSERT..INTO..$TABLENAME..SELECT works for this table
+              # We do this by setting TABLENAME to $TABLENAME2 etc. In effect, this is what happens:
+              # CREATE TABLE t1 (id INT);
+              # INSERT INTO t1 VALUES (1);
+              # CREATE TABLE t2 (id2 INT):
+              # INSERT INTO t2 SELECT * FROM t1;
+              # reducer will try and eliminate "(1)" from table t1 (after "id2" was removed from the table defintion above already)
+              # An extra part (see * few lines lower) will ensure that "id" is also removed from t1
+              TABLENAME=$(eval echo $(echo '$TABLENAME'"$c"))   # Replace TABLENAME with TABLENAMEx thereby eliminating all "chained" columns
+              echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] INSERT..SELECT into this table from another one detected: removing corresponding column $COLUMN in table '$TABLENAME'"
+              WORKT3=`echo $WORKT | sed 's/$/.3/'`
+              COL_LINE=$[$(cat $WORKT2 | grep -E --binary-files=text -m1 -n "CREATE.*TABLE.*$TABLENAME" | awk -F":" '{print $1}') + $COLUMN]
+              cat $WORKT2 | sed -e "${COL_LINE}d" > $WORKT3  # (*) Remove the column from the connected table defintion
+              cp -f $WORKT3 $WORKT2
+              rm $WORKT3
+            else
+              echo "ASSERT: NUMOFINVOLVEDTABLES!=1||2: $NUMOFINVOLVEDTABLES!=1||2";
+              echo "Terminating now."
+              exit 1
+            fi
+  
+            # First count how many actual INSERT rows there are
+            COUNTINSERTS=0
+            COUNTINSERTS=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
+              sed "s/;/,/;s/^[ ]*(/(\n/;s/)[ ,;]$/\n)/;s/)[ ]*,[ ]*(/\n/g" | \
+              grep -E --binary-files=text -v "^[ ]*[\(\)][ ]*$|INSERT"); do \
+              echo $INSERT; \
+              done | wc -l)
+
+            if [ $COUNTINSERTS -gt 0 ]; then
+              # Loop through each line within a single INSERT (ex: INSERT INTO t1 VALUES ('a',1),('b',2);), and through multiple INSERTs (ex: INSERT .. INSERT ..)
+              # And each time grab the "between ( and )" information and therein remove the n-th column ($COLUMN) value reducer is trying to remove. Then use a
+              # simple sed to replace the old "between ( and )" with the new "between ( and )" which contains one less column (the correct one which removed from
+              # the CREATE TABLE statement above also. Then re-test if the issue remains and swap files if this is the case, as usual.
+              if [ $c -ge 2 ]; then
+                echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Also removing $COUNTINSERTS INSERT..VALUES for column $COLUMN in table '$TABLENAME' to match column removal in said table"
+              else
+                echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Removing $COUNTINSERTS INSERT..VALUES for column '$COL' in table '$TABLENAME'"
+              fi
+              for i in $(eval echo {1..$COUNTINSERTS}); do
+                FROM=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
+                  sed "s/;/,/;s/^[ ]*(/(\n/;s/)[ ,;]$/\n)/;s/)[ ]*,[ ]*(/\n/g" | \
+                  grep -E --binary-files=text -v "^[ ]*[\(\)][ ]*$|INSERT"); do \
+                  echo $INSERT; \
+                  done | awk "{if(NR==$i) print "'$1}')
+
+                TO_DONE=0
+                TO=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
+                  sed "s/;/,/;s/^[ ]*(/(\n/;s/)[ ,;]$/\n)/;s/)[ ]*,[ ]*(/\n/g" | \
+                  grep -E --binary-files=text -v "^[ ]*[\(\)][ ]*$|INSERT"); do \
+                  echo $INSERT | tr ',' '\n' | awk "{if(NR!=$COLUMN && $TO_DONE==0) print "'$1}'; echo "==>=="; \
+                  done | tr '\n' ',' | sed 's/,==>==/\n/g' | sed 's/^,//' | awk "{if(NR==$i) print "'$1}')
+                TO_DONE=1
+
+                # Fix backslash issues (replace \ with \\) like 'you\'ve' - i.e. a single quote within single quoted INSERT values
+                # This insures the regex matches in the sed below against the original file: you\'ve > you\\'ve (here) > you\'ve (in the sed)
+                FROM=$(echo $FROM | sed 's|\\|\\\\|g')
+                TO=$(echo $TO | sed 's|\\|\\\\|g')
+
+                # The actual replacement
+                cat $WORKT2 | sed "s/$FROM/$TO/" > $WORKT
+                cp -f $WORKT $WORKT2
+
+                #DEBUG
+                #echo_out "i: |$i|";echo_out "from: |$FROM|";echo_out "_to_: |$TO|";
+              done
+            fi
+            # DEBUG
+            #echo_out "c: |$c|";echo_out "COUNTINSERTS: |$COUNTINSERTS|";echo_out "COLUMN: |$COLUMN|";echo_out "diff: $(diff $WORKF $WORKT2)"
+            #read -p "pause"
+
+          done
+          rm $WORKT2
+          TABLENAME=$TABLENAME_OLD
+
+          if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi
+          run_and_check
+          if [ $? -eq 0 ]; then
+            if [ "$COL" != "c$C_COL_COUNTER" ]; then
+              LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+              SIZEF=`stat -c %s $WORKF`
+
+              # This column was not removed. Try and rename column now to cx to make testcase cleaner
+              if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Now attempting to rename this column ('$COL') to a more uniform 'c$C_COL_COUNTER'"; fi
+              sed -e "s/$COL/c$C_COL_COUNTER/g" $WORKF > $WORKT
+              C_COL_COUNTER=$[$C_COL_COUNTER+1]
+              run_and_check
+            else
+              if [ -f $WORKD/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Not renaming column '$COL' as it's name is already optimal"; fi
+            fi
+
+            # Only advance the column number if there was no issue showing, otherwise stay on the same column (If the issue does show,
+            # the script will remove the current column and shift all other columns down by one, hence it has to stay in the same
+            # place as this will contain the next column)
+            COLUMN=$[$COLUMN+1]
+          else
+            # This column was removed, reducing column count
+            COUNTCOLS=$[$COUNTCOLS-1]
+          fi
+          LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+          SIZEF=`stat -c %s $WORKF`
+        done
+      fi
+      TRIAL=$[$TRIAL+1]
+    done
+  fi
 fi
 
 #STAGE7: Execute various final testcase cleanup sed's. Perform a check if the issue is still present for each replacement (set)
@@ -4216,14 +4283,26 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 151 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 152 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
     elif [ $TRIAL -eq 153 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 154 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 155 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 156 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 157 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 158 ]; then grep -E --binary-files=text -v "^#|^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 159 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 160 ]; then sed -e 's/[\t ]\+/ /g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 161 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 154 ]; then sed -e "s/;#;/;/" $WORKF > $WORKT
+    elif [ $TRIAL -eq 155 ]; then sed "s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 156 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 158 ]; then sed "s/;[ \t]\+#/;#/" $WORKF > $WORKT  # Remove any spaces/tabs before #EOL comments if present
+    elif [ $TRIAL -eq 159 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT  # Attempt to remove #EOL comments
+    elif [ $TRIAL -eq 160 ]; then sed "s/#[^#]\+$/;/" $WORKF > $WORKT  # Another attempt at removing #EOL comments
+    elif [ $TRIAL -eq 161 ]; then sed "s/#[^#]\+$/#/" $WORKF > $WORKT  # If previous attempts do not work, attempt shorter comments
+    elif [ $TRIAL -eq 162 ]; then sed -e 's/[ \t]\+$//' $WORKF > $WORKT  # Remove spaces at end of line
+    elif [ $TRIAL -eq 163 ]; then NOSKIP=1; sed -e 's|\([^;]\)$|\1;|' $WORKF > $WORKT  # Add ';' on lines that do not have it
+    elif [ $TRIAL -eq 164 ]; then NOSKIP=1; sed -e 's|#;|;#|' $WORKF > $WORKT  # Ref line above/below for combination effect
+    elif [ $TRIAL -eq 165 ]; then sed -e 's/;[ \t]*;/;/g' $WORKF > $WORKT  # Remove empty statements if possible
+    elif [ $TRIAL -eq 166 ]; then sed -e 's/[ \t]\+/ /g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 167 ]; then sed -e 's/  / /' $WORKF > $WORKT
+    elif [ $TRIAL -eq 168 ]; then sed -e 's/  / /' $WORKF > $WORKT
+    elif [ $TRIAL -eq 169 ]; then sed -e 's/  / /' $WORKF > $WORKT
+    elif [ $TRIAL -eq 170 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
+    elif [ $TRIAL -eq 171 ]; then grep -E --binary-files=text -v "^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 172 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 173 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -4336,14 +4415,25 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
 
   stage9_run(){
     STAGE9_CHK=0
+    SAVE_MYINIT=""
+    if [[ ${MYINIT_DROP} -eq 1 ]]; then
+      SAVE_MYINIT=${MYINIT}
+      MYINIT=""
+    fi
     STAGE9_NOT_STARTED_CORRECTLY=0
     SAVE_SPECIAL_MYEXTRA_OPTIONS=$SPECIAL_MYEXTRA_OPTIONS
     SPECIAL_MYEXTRA_OPTIONS=$(echo "$SPECIAL_MYEXTRA_OPTIONS" | sed "s|$STAGE9_FILTER||");
     run_and_check
     if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then  # Issue failed to reproduce, revert
       SPECIAL_MYEXTRA_OPTIONS=$SAVE_SPECIAL_MYEXTRA_OPTIONS
+      if [ "${SAVE_MYINIT}" != "" ]; then 
+        MYINIT=${SAVE_MYINIT}
+      fi
     else  # Issue reproduced, so leave SPECIAL_MYEXTRA_OPTIONS as-is (already filtered), and filter the same from WORK_START now too
       sed -i "s|$STAGE9_FILTER||" $WORK_START
+      if [ "${SAVE_MYINIT}" != "" ]; then 
+        sed -i "s|${MYINIT}||" $WORK_START
+      fi
     fi
     TRIAL=$[$TRIAL+1]
   }
@@ -4377,8 +4467,21 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing ONLY_FULL_GROUP_BY SQL Mode from startup options"
     STAGE9_FILTER="ONLY_FULL_GROUP_BY"  # In many cases, this can be successfully removed whereas --sql_mode= cannot (i.e. is required)
     stage9_run
-    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing SQL Mode from startup options"
-    STAGE9_FILTER="--sql_mode="
+    if [ $STAGE9_CHK -ne 0 -a $STAGE9_NOT_STARTED_CORRECTLY -ne 1 ];then  # Issue reproduced, now try and remove --sql_mode=
+      echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing SQL Mode (--sql_mode=) from startup options"
+      STAGE9_FILTER="--sql_mode="
+      stage9_run
+    fi
+  fi
+  if [ "${MYINIT}" != "" ]; then  # Try and drop both MYINIT and any matching options from MYEXTRA as well
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing MYINIT options from startup options & from mysqld initialization"
+    STAGE9_FILTER=$(echo ${MYINIT} | sed 's|^[ \t]\+||;s|[ \t]\+$||')
+    MYINIT_DROP=1
+    stage9_run
+  fi
+  if [ "${MYINIT}" != "" ]; then  # Previous one failed, so try MYINIT removal only
+    echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing MYINIT options from mysqld initialization"
+    MYINIT_DROP=1
     stage9_run
   fi
 fi

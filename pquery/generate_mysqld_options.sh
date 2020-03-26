@@ -32,12 +32,13 @@ echoit(){
 # Extract all options, their default values, and do some initial cleaning
 ./bin/mysqld --no-defaults --help --verbose 2>/dev/null | \
  sed '0,/Value (after reading options)/d' | \
- egrep -v "To see what values.*is using|mysqladmin.*instead of|^[ \t]*$|\-\-\-" \
+ egrep -v "To see what va.*is using|mysqladmin.*instead of|^[ \t]*$|\-\-\-" \
  > ${TEMP_FILE}
 
 # mysqld options excluded from list
 # RV/HM 18.07.2017 Temporarily added to EXCLUDED_LIST: --binlog-group-commit-sync-delay due to hang issues seen in 5.7 with startup like --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/hrvoje/percona-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047
-EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port --binlog-group-commit-sync-delay --innodb-directories --keyring-migration-destination --keyring-migration-host --keyring-migration-password --keyring-migration-port --keyring-migration-socket --keyring-migration-source --keyring-migration-user --mysqlx-socket --mysqlx-ssl-ca --mysqlx-bind-address --mysqlx-ssl-capath --mysqlx-ssl-cert --mysqlx-ssl-cipher --mysqlx-ssl-crl --mysqlx-ssl-crlpath --mysqlx-ssl-key --innodb-temp-tablespaces-dir )
+# RV 24/02/2020 Temporarily added to EXCLUDED_LIST: --gtid-pos-auto-engines  (add later)
+EXCLUDED_LIST=( --basedir --datadir --plugin-dir --lc-messages-dir --tmpdir --slave-load-tmpdir --bind-address --binlog-checksum --character-sets-dir --init-file --general-log-file --log-error --innodb-data-home-dir --event-scheduler --chroot --init-slave --init-connect --debug --default-time-zone --des-key-file --ft-stopword-file --innodb-page-size --innodb-undo-tablespaces --innodb-data-file-path --innodb-ft-aux-table --innodb-ft-server-stopword-table --innodb-ft-user-stopword-table --innodb-log-arch-dir --innodb-log-group-home-dir --log-bin-index --relay-log-index --report-host --report-password --report-user --secure-file-priv --slave-skip-errors --ssl-ca --ssl-capath --ssl-cert --ssl-cipher --ssl-crl --ssl-crlpath --ssl-key --utility-user --utility-user-password --socket --socket-umask --innodb-trx-rseg-n-slots-debug --innodb-fil-make-page-dirty-debug --initialize --initialize-insecure --port --binlog-group-commit-sync-delay --innodb-directories --keyring-migration-destination --keyring-migration-host --keyring-migration-password --keyring-migration-port --keyring-migration-socket --keyring-migration-source --keyring-migration-user --mysqlx-socket --mysqlx-ssl-ca --mysqlx-bind-address --mysqlx-ssl-capath --mysqlx-ssl-cert --mysqlx-ssl-cipher --mysqlx-ssl-crl --mysqlx-ssl-crlpath --mysqlx-ssl-key --innodb-temp-tablespaces-dir --debug-dbug --feedback-http-proxy --feedback-send-retry-wait --feedback-send-timeout --feedback-url --feedback-user-info --gtid-pos-auto-engines --ignore-db-dirs --innodb-file-format )
 # Create a file (${OUTPUT_FILE}) with all options/values intelligently handled and included
 rm -Rf ${OUTPUT_FILE}
 touch ${OUTPUT_FILE}
@@ -54,7 +55,14 @@ while read line; do
   if [[ " ${EXCLUDED_LIST[@]} " =~ " ${OPTION} " ]]; then 
     echoit "  > Option '${OPTION}' is logically excluded from being handled by this script..."
   elif [ "${OPTION}" == "--enforce-storage-engine" ]; then
-    echoit "  > Adding possible values InnoDB, MyISAM, TokuDB, CSV, MERGE, MEMORY, BLACKHOLE for option '${OPTION}' to the final list..."   # There are more...
+    echoit "  > Adding possible values MariaDB, InnoDB, MyISAM, TokuDB, CSV, MERGE, MEMORY, BLACKHOLE for option '${OPTION}' to the final list..."   # There are more...
+    echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+    echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
     echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
     echo "${OPTION}=MyISAM" >> ${OUTPUT_FILE}
     echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
@@ -471,15 +479,15 @@ while read line; do
     echoit "  > Adding possible values FILE, TABLE for option '${OPTION}' to the final list..."
     echo "${OPTION}=FILE" >> ${OUTPUT_FILE}
     echo "${OPTION}=TABLE" >> ${OUTPUT_FILE}
-  elif [ "${OPTION}" == "--default-storage-engine" ]; then
-    echoit "  > Adding possible values InnoDB, MEMORY, MyISAM, TokuDB, RocksDB for option '${OPTION}' to the final list..."
+  elif [ "${OPTION}" == "--default-storage-engine" -o "${OPTION}" == "--default-tmp-storage-engine" ]; then
+    echoit "  > Adding possible values MariaDB InnoDB, MEMORY, MyISAM, TokuDB, RocksDB for option '${OPTION}' to the final list..."
     if [[ $IS_PXC -eq 1 ]]; then 
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}  # More times MariaDB to increase random selection frequency
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # Idem
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
@@ -487,11 +495,12 @@ while read line; do
       echo "${OPTION}=TokuDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
     else
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # More times InnoDB to increase random selection frequency
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
-      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}  # More times MariaDB to increase random selection frequency
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=MariaDB" >> ${OUTPUT_FILE}
+      echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}   # Idem
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=InnoDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=MEMORY" >> ${OUTPUT_FILE}
@@ -504,6 +513,14 @@ while read line; do
       echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
       echo "${OPTION}=RocksDB" >> ${OUTPUT_FILE}
     fi
+  elif [ "${OPTION}" == "--default-regex-flags" ]; then
+    echo "${OPTION}=DOTALL" >> ${OUTPUT_FILE}
+    echo "${OPTION}=DUPNAMES" >> ${OUTPUT_FILE}
+    echo "${OPTION}=EXTENDED" >> ${OUTPUT_FILE}
+    echo "${OPTION}=EXTENDED_MORE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=EXTRA" >> ${OUTPUT_FILE}
+    echo "${OPTION}=MULTILINE" >> ${OUTPUT_FILE}
+    echo "${OPTION}=GREEDY" >> ${OUTPUT_FILE}
   elif [ "${OPTION}" == "--log-error-suppression-list" ]; then
     echoit "  > Adding possible values ER_SERVER_SHUTDOWN_COMPLETE,MY-000001,000001,MY-01,01 for option '${OPTION}' to the final list..."
     echo "${OPTION}=ER_SERVER_SHUTDOWN_COMPLETE" >> ${OUTPUT_FILE}
@@ -549,7 +566,7 @@ while read line; do
     echo "${OPTION}=1125899906842624" >> ${OUTPUT_FILE}
   elif [ "${VALUE}" == "" -o "${VALUE}" == "(No" ]; then
     echoit "  > Assert: Option '${OPTION}' is blank by default and not programmed into the script yet, please cover this in the script..."
-    exit 1
+#    exit 1
   else
     echoit "  > ${OPTION} IS NOT COVERED YET, PLEASE ADD!!!"
     #exit 1

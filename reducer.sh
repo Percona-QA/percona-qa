@@ -345,7 +345,7 @@ TS_VARIABILITY_SLEEP=1
 #    esac
 #    shift
 #   done
-# - Optimization: let 'Waiting for any forked subreducer threads to find a shorter file (Issue is sporadic: this will take time)' work for 30 minutes
+# - Optimization: let 'Waiting for any forked subreducer threads to find a shorter file (Issue is deemed to be sporadic: this will take time)' work for 30 minutes
 #   or so, depending on file size. If no issue is found by then, restart or increase number of threads by 5.
 
 # ======== Internal variable Reference
@@ -530,7 +530,7 @@ if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
     if [[ ! "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
       echo "Error: The version of mysqld is 5.7 or 8.0 and a --bin-log option was passed in MYEXTRA, yet no --server-id option was found whereas this is required for 5.7 and 8.0."
       echo "Terminating now."
-      exit 1
+      # exit 1   # temp hack, needs proper MariaDB check
     fi
   fi
   BINLOG="$(echo "${MYEXTRA}" | grep -o "\-\-log[-_]bin[^ ]*" | head -n1)"  # Grep all text including and after '--log[-_]bin' upto a space
@@ -1160,7 +1160,7 @@ multi_reducer(){
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] All verification subreducer threads have finished/terminated"
   else
     # Wait for one of the forked processes to find a better reduction file
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for any forked simplifation subreducer threads to find a shorter file (Issue is sporadic: this will take time)"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for any forked simplifation subreducer threads to find a shorter file (Issue is deemed to be sporadic: this will take time)"
     FOUND_VERIFIED=0
     while [ $FOUND_VERIFIED -eq 0 ]; do
       for t in $(eval echo {1..$MULTI_THREADS}); do
@@ -1664,6 +1664,7 @@ init_workdir_and_files(){
       INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}"  # Compatible with     5.7,8.0 (mysqld init)
       INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
       VERSION_INFO=$(${BIN} --version | grep -E --binary-files=text -oe '[58]\.[01567]' | head -n1)
+      VERSION_INFO_2=$(${BIN} --version | grep -oe 'MariaDB' | head -n1)  # temp hack
       if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
         if [ "${MID}" == "" ]; then
           echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
@@ -1672,6 +1673,11 @@ init_workdir_and_files(){
         INIT_TOOL="${MID}"
         INIT_OPT="--no-defaults --force ${MYINIT}"
         START_OPT="--core"
+      elif [ "${VERSION_INFO_2}" == "MariaDB" ]; then
+        VERSION_INFO="5.6"
+        INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
+        INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
+        START_OPT="--core-file"
       elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
         echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
       fi
@@ -4432,32 +4438,32 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
     TRIAL=$[$TRIAL+1]
   }
 
-  if [[ ! -z $TOKUDB ]] ;then
+  if [[ ! -z "$TOKUDB" ]] ;then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing TokuDB storage engine from startup options"
     STAGE9_FILTER=$TOKUDB
     stage9_run
   fi
-  if [[ ! -z $ROCKSDB ]];then
+  if [[ ! -z "$ROCKSDB" ]];then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing RocksDB storage engine from startup options"
     STAGE9_FILTER=$ROCKSDB
     stage9_run
   fi
-  if [[ ! -z $BL_ENCRYPTION ]];then
+  if [[ ! -z "$BL_ENCRYPTION" ]];then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing Binary Logs encryption from startup options"
     STAGE9_FILTER=$BL_ENCRYPTION
     stage9_run
   fi
-  if [[ ! -z $KF_ENCRYPTION ]];then
+  if [[ ! -z "$KF_ENCRYPTION" ]];then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing Keyring File encryption from startup options"
     STAGE9_FILTER=$KF_ENCRYPTION
     stage9_run
   fi
-  if [[ ! -z $BINLOG ]];then
+  if [[ ! -z "$BINLOG" ]];then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing Binary logging from startup options"
     STAGE9_FILTER=$BINLOG
     stage9_run
   fi
-  if [[ ! -z  $ONLYFULLGROUPBY ]];then
+  if [[ ! -z "$ONLYFULLGROUPBY" ]];then
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Removing ONLY_FULL_GROUP_BY SQL Mode from startup options"
     STAGE9_FILTER="ONLY_FULL_GROUP_BY"  # In many cases, this can be successfully removed whereas --sql_mode= cannot (i.e. is required)
     stage9_run

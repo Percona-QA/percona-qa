@@ -2,6 +2,8 @@
 # Created by Roel Van de Paar, Percona LLC
 
 RND_DELAY_FUNCTION=0     # If set to 1, insert random delays after starting a new repetition in a thread. This may help to decrease locking issues.
+RND_REPLAY_ORDER=1       # If set to 1, the tool will shuffle the input SQL in various ways 
+REPORT_END_THREAD=0      # If set to 1, report the outcome of ended threads (slows things down considerably) 
 
 if [ "" == "$5" ]; then
   echo "This script expects exactly 5 options. Execute as follows:"
@@ -23,6 +25,7 @@ if [ "" == "$5" ]; then
   exit 1
 fi
 
+RANDOM=$(date +%s%N | cut -b14-19)
 EXE_TODO=$[$1 * $2]
 EXE_DONE=0
 echo "===== Total planned executions:"
@@ -55,7 +58,12 @@ for (( ; ; )); do
       if [ ${RPT_LEFT[$thread]} -ne 0 ]; then
         REPETITION=$[ $2 - ${RPT_LEFT[$thread]} + 1 ]
         echo -n "Thread: $thread | Repetition: ${REPETITION}/$2 | "
-        CLI_CMD="$4 -uroot -S$5 -f < $3 > multirun.$thread 2>&1"
+	if [ $RND_REPLAY_ORDER -eq 1 ]; then
+          shuf --random-source=/dev/urandom $3 > /tmp/tmp_mr.sql
+          CLI_CMD="$4 -uroot -S$5 -f < /tmp/tmp_mr.sql > multirun.$thread 2>&1"
+        else
+          CLI_CMD="$4 -uroot -S$5 -f < $3 > multirun.$thread 2>&1"
+	fi
         # For testing: CLI_CMD="sleep $[ $RANDOM % 10 ]"
         eval ${CLI_CMD} &
         PID[$thread]=$!
@@ -80,7 +88,9 @@ for (( ; ; )); do
       fi
     else
       if [ -z "`ps -p ${PID[$thread]} | awk '{print $1}' | grep -v 'PID'`" ]; then
-        echo -e "\t\t\t\t\t\t   Thread: $thread | Repetition: $[ $2 - ${RPT_LEFT[$thread]} ]/$2 | [PID: ${PID[$thread]}] Ended!"
+        if [ ${REPORT_END_THREAD} -eq 1 ]; then
+          echo -e "\t\t\t\t\t\t   Thread: $thread | Repetition: $[ $2 - ${RPT_LEFT[$thread]} ]/$2 | [PID: ${PID[$thread]}] Ended!"
+	fi
         EXE_DONE=$[ $EXE_DONE + 1 ]
         PID[$thread]=0
       fi
