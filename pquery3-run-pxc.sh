@@ -904,7 +904,7 @@ pquery_test(){
     SEED=$(shuf -i 100-200 -n 1)
     cat ${PQUERY_CONFIG} \
         | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
-        | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+        | sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
         > ${RUNDIR}/${TRIAL}/pquery.cfg
 		${PQUERY_BIN} --config-file ${RUNDIR}/${TRIAL}/pquery.cfg --sql-file=${SCRIPT_PWD}/pquery/grammer.sql --log-all-queries  --threads $THREADS --tables $TABLES --records $RECORDS --seed $SEED --no-tbs  --no-enc -k >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
     PQPID="$!"
@@ -952,7 +952,7 @@ pquery_test(){
   sleep 2  # Delay to ensure core was written completely (if any)
   # NOTE**: Do not kill PQPID here/before shutdown. The reason is that pquery may still be writing queries it's executing to the log. The only way to halt pquery properly is by
   # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was reached,
-  # and if there is no core/Valgrind issue and there is no output of percona-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
+  # and if there is no core/Valgrind issue and there is no output of mariadb-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
   # generated, text_string.sh will still produce output in case the server crashed based on the information in the error log), then we do not need to save this trial (as it is a
   # standard occurence for this to happen). If however we saw 250 queries failed before the timeout was complete, then there may be another problem and the trial should be saved.
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then

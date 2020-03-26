@@ -60,7 +60,7 @@ MUTEX=/tmp/pge_${RANDOMMUTEX}_IN_PROGRESS_MUTEX
 
 # Check that this is not being executed from the SCRIPT_PWD (which would mess up the real reducer.sh
 if [ "${PWD}" == "${SCRIPT_PWD}" ]; then
-  echo "Assert: you cannot execute this script from within percona-qa. Please change to the pquery-run.sh work directory!"
+  echo "Assert: you cannot execute this script from within mariadb-qa. Please change to the pquery-run.sh work directory!"
   exit 1
 elif [ ! -r ./pquery-run.log ]; then
   if [ "$1" != "force" ]; then

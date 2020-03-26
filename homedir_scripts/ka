@@ -1,1 +1,1 @@
-~/percona-qa/kill_all_procs.sh
+~/mariadb-qa/kill_all_procs.sh

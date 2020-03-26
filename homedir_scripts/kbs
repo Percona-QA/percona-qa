@@ -1,1 +1,1 @@
-grep "$*" ~/percona-qa/known_bugs.strings
+grep "$*" ~/mariadb-qa/known_bugs.strings

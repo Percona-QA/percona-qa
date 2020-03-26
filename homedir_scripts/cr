@@ -1,2 +1,2 @@
-~/percona-qa/pquery-clean-known.sh 
-~/percona-qa/pquery-results.sh scan
+~/mariadb-qa/pquery-clean-known.sh 
+~/mariadb-qa/pquery-results.sh scan

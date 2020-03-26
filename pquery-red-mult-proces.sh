@@ -35,4 +35,4 @@ else
 fi
 chmod +x ./go
 echo "Start screen session, then execute:  ./go to run all reducers in this directory.Check go.log to analyze the outcome of the various reducer<nr>.sh scripts"
-echo "Note: remember to run ~/percona-qa/clean-connects.sh if this is an older pquery-run.sh (with main-new.sql) run"
+echo "Note: remember to run ~/mariadb-qa/clean-connects.sh if this is an older pquery-run.sh (with main-new.sql) run"

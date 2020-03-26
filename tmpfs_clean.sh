@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 if [ "${1}" != "1" ]; then
-  echo "(!) Script not armed! To arm it, include the number 1 behind it, e.g.: $ ~/percona-qa/tmpfs_clean.sh 1"
+  echo "(!) Script not armed! To arm it, include the number 1 behind it, e.g.: $ ~/mariadb-qa/tmpfs_clean.sh 1"
   echo "(!) This will enable actual tmpfs cleanup. Now executing a trial run only - no actual changes are made!"
   ARMED=0
 else

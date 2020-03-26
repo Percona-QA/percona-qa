@@ -1,2 +1,2 @@
-~/percona-qa/pquery-results.sh scan
-#~/percona-qa/pquery-results.sh $1  # Alternative implementation if you want to have non-scan output by default, but still be able to use 'scan' as option to ~/pr i.e. ~/pr scan
+~/mariadb-qa/pquery-results.sh scan
+#~/mariadb-qa/pquery-results.sh $1  # Alternative implementation if you want to have non-scan output by default, but still be able to use 'scan' as option to ~/pr i.e. ~/pr scan

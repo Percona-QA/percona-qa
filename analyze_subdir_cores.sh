@@ -13,7 +13,7 @@ if [ "$1" == "" ]; then
   else
     echo "This script analyzes core files in subdirectories and writes output to gdb_<core file name>_STD/_FULL.txt."
     echo "It expects one parameter: a full path pointer to the binary used to generate these core dumps. For example:"
-    echo "$ cd my_work_dir; <your_percona-qa_path>/analyze_subdir_cores.sh /ssd/Percona-Server-5.6.14-rel62.0-508-debug.Linux.x86_64/bin/mysqld"
+    echo "$ cd my_work_dir; <your_mariadb-qa_path>/analyze_subdir_cores.sh /ssd/Percona-Server-5.6.14-rel62.0-508-debug.Linux.x86_64/bin/mysqld"
     exit 1
   fi
 else

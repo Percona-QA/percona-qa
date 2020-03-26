@@ -1,1 +1,1 @@
-~/percona-qa/pquery-del-trial.sh $1
+~/mariadb-qa/pquery-del-trial.sh $1

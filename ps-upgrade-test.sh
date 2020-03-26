@@ -2,8 +2,8 @@
 # Created by Ramesh Sivaraman, Percona LLC
 # This will help us to test PS upgrade
 # Usage example:
-# $ ~/percona-qa/ps_upgrade.sh <workdir> <lower_basedir> <upper_basedir>"
-# $ ~/percona-qa/ps_upgrade.sh /qa/workdir percona-server-5.7.22-22-linux-x86_64-debug percona-server-8.0.12-1-linux-x86_64-debug"
+# $ ~/mariadb-qa/ps_upgrade.sh <workdir> <lower_basedir> <upper_basedir>"
+# $ ~/mariadb-qa/ps_upgrade.sh /qa/workdir percona-server-5.7.22-22-linux-x86_64-debug percona-server-8.0.12-1-linux-x86_64-debug"
 
 # Bash internal configuration
 #

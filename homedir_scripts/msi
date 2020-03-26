@@ -1,4 +1,4 @@
 PAT=$(cat ms | grep 'PAT=' | sed 's|PAT=||')
-~/percona-qa/text_string.sh ${PAT}/log/master.err
+~/mariadb-qa/text_string.sh ${PAT}/log/master.err
 echo "vi ${PAT}/log/master.err"
 echo "gdb ${PAT}/bin/mysqld ${PAT}/data/core"

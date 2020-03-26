@@ -1345,14 +1345,14 @@ pquery_test(){
             if [[ ${PXC_CLUSTER_RUN} -eq 1 ]];then
               cat ${PXC_CLUSTER_CONFIG} \
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
-                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                | sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
               ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
               PQPID="$!"
             elif [[ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]];then
               cat ${GRP_RPL_CLUSTER_CONFIG} \
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
-                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                | sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
               ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
               PQPID="$!"
@@ -1369,7 +1369,7 @@ pquery_test(){
             if [[ ${PXC_CLUSTER_RUN} -eq 1 ]];then
               cat ${PXC_CLUSTER_CONFIG} \
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
-                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                | sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
               echoit "${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg"
               ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
@@ -1377,7 +1377,7 @@ pquery_test(){
             elif [[ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]];then
               cat ${GRP_RPL_CLUSTER_CONFIG} \
                 | sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
-                | sed -e "s|\/home\/ramesh\/percona-qa|${SCRIPT_PWD}|" \
+                | sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
                 > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
               ${PQUERY_BIN} --config-file=${RUNDIR}/${TRIAL}/pquery-cluster.cfg >${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
               PQPID="$!"
@@ -1436,7 +1436,7 @@ pquery_test(){
             echoit "$(grep -i "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log)"
             echoit "Assert: There was an error loading the shared/dynamic libssl library linked to from within pquery. You may want to try and install a package similar to libssl-dev. If that is already there, try instead to build pquery on this particular machine. Sometimes there are differences seen between Centos and Ubuntu. Perhaps we need to have a pquery build for each of those separately."
 	      else
-            echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
+            echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/mariadb-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in mariadb-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
 	      fi
           exit 1
         fi
@@ -1517,7 +1517,7 @@ pquery_test(){
   sleep 2  # Delay to ensure core was written completely (if any)
   # NOTE**: Do not kill PQPID here/before shutdown. The reason is that pquery may still be writing queries it's executing to the log. The only way to halt pquery properly is by
   # actually shutting down the server which will auto-terminate pquery due to 250 consecutive queries failing. If 250 queries failed and ${PQUERY_RUN_TIMEOUT}s timeout was reached,
-  # and if there is no core/Valgrind issue and there is no output of percona-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
+  # and if there is no core/Valgrind issue and there is no output of mariadb-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
   # generated, text_string.sh will still produce output in case the server crashed based on the information in the error log), then we do not need to save this trial (as it is a
   # standard occurence for this to happen). If however we saw 250 queries failed before the timeout was complete, then there may be another problem and the trial should be saved.
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then

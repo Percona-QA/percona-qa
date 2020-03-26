@@ -68,7 +68,7 @@ while read line; do
 done < ${STRINGS_FILE}
 
 # Other cleanups
-grep "CT NAME_CONST('a', -(1 [ANDOR]\+ 2)) [ANDOR]\+ 1" */log/master.err 2>/dev/null | sed 's|/.*||' | xargs -I{} ~/percona-qa/pquery-del-trial.sh {}  #http://bugs.mysql.com/bug.php?id=81407
+grep "CT NAME_CONST('a', -(1 [ANDOR]\+ 2)) [ANDOR]\+ 1" */log/master.err 2>/dev/null | sed 's|/.*||' | xargs -I{} ~/mariadb-qa/pquery-del-trial.sh {}  #http://bugs.mysql.com/bug.php?id=81407
 
 if [ ${REACH} -eq 0 ]; then  # Avoid normal output if this is an automated run (REACH=1)
   if [ -d ./bundles ]; then

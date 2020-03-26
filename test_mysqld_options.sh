@@ -19,7 +19,7 @@ if [ ! -r ./bin/mysqld ]; then
   if [ ! -r ./mysqld ]; then
     echo "This script quickly tests or generates all mysqld options using various option values in combination therewith"
     echo "Note that - when using testing mode (i.e. TEST_OR_GENERATE=0), it expects cores to be written to /cores/core.pid. Location can be changed in-script, but not filename"
-    echo "To set your server up in this way (in terms of corefile generation), see core file setting part of setup_server.sh, available at lp:percona-qa"
+    echo "To set your server up in this way (in terms of corefile generation), see core file setting part of setup_server.sh, available at lp:mariadb-qa"
     echo "Error: no ./bin/mysqld or ./mysqld found!"
     exit 1
   else

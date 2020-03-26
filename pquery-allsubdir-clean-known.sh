@@ -5,4 +5,4 @@
 
 echo "Processing subdirs in background..."
 ls -d [0-9][0-9][0-9][0-9][0-9][0-9] | \
- xargs -I{} sh -c 'cd {};~/percona-qa/pquery-clean-known.sh &'
+ xargs -I{} sh -c 'cd {};~/mariadb-qa/pquery-clean-known.sh &'

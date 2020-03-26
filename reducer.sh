@@ -67,8 +67,8 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
-USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (percona-qa) instead of searching the entire error log. No effect otherwise
-TEXT_STRING_LOC=~/percona-qa/text_string.sh  # text_string.sh binary in percona-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/percona-qa.git
+USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (mariadb-qa) instead of searching the entire error log. No effect otherwise
+TEXT_STRING_LOC=~/mariadb-qa/text_string.sh  # text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -83,7 +83,7 @@ PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (default=0), unless you fully un
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI
 PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=~/percona-qa/pquery/pquery  # The pquery binary in percona-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/percona-qa.git
+PQUERY_LOC=~/mariadb-qa/pquery/pquery  # The pquery binary in mariadb-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
 
 # === Other options             # The options are not often changed
 CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
@@ -141,11 +141,11 @@ TS_VARIABILITY_SLEEP=1
 #   Can contain extended grep (i.e. grep -E --binary-files=text or egrep)+regex syntax like "^ERROR|some_other_string". Remember this is regex: specify | as \| etc.
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
 # - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
-# - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
+# - PQUERY_LOC: Location of the pquery binary (ref ~/mariadb-qa/pquery/pquery[-ms])
 # - PQUERY_EXTRA_OPTIONS: Extra options to pquery which will be added to the pquery command line. This is used for query correctness trials
 # - PXC_MOD: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
 # - GRP_RPL_MOD: 1: bring up 3 node Group Replication instead of default server, 0: use default non-cluster server (mysqld)
-#   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
+#   see lp:/mariadb-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/mariadb-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0,
 #   SPORADIC=0, FORCE_SKIPV=0, SKIPV=1, MYEXTRA="", MULTI_THREADS=0
 # - PXC_ISSUE_NODE: This indicates which node you would like to be checked for presence of the issue. 0 = Any node. Valid options: 0, 1, 2, or 3. Only works
@@ -190,7 +190,7 @@ TS_VARIABILITY_SLEEP=1
 #   earlier) Example; if you set MULTI_THREADS to 10 and MULTI_THREADS_INCREASE to 10, then the sequence (if no single reproduce can be established) will be:
 #   10->20->30->40->50->Issue declared non-reproducible and program end. By this stage, the testcase has executed 6 verify levels *(10+20+30+40+50)=900 times.
 #   Still, even in this case there are methods that can be employed to let the testcase reproduce. For further ideas what to do in these cases, see;
-#   http://bazaar.launchpad.net/~percona-core/percona-qa/trunk/view/head:/reproducing_and_simplification.txt
+#   http://bazaar.launchpad.net/~percona-core/mariadb-qa/trunk/view/head:/reproducing_and_simplification.txt
 # - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3, unless it was set to a non-default number (i.e. !=90 - to enable
 #   reduction of issues via MULTI until a given amount of lines is reached, which is handy for tools like pquery-reach.sh where a mix of sporadic and
 #   non-sporadic issues may be seen). MULTI reducer mode is used after verify, even if issue is found to seemingly not be sporadic (i.e. all verify 
@@ -287,7 +287,7 @@ TS_VARIABILITY_SLEEP=1
 #     may be needed to replay (partly "again", but this time with the least changed SQL file) the same SQL with each replay option. This would thus result in
 #     reducer needing a bit more time to do the VERIFY stage, but likely with good improved bug reproducibility. Untill this functionality is implemented,
 #     see the following file/page for reproducing & simplification ideas, which (if all followed diligently) usually result in bugs becoming reproducible;
-#     http://bazaar.launchpad.net/~percona-core/percona-qa/trunk/view/head:/reproducing_and_simplification.txt
+#     http://bazaar.launchpad.net/~percona-core/mariadb-qa/trunk/view/head:/reproducing_and_simplification.txt
 # - PXC Node work: rm -Rf's in other places (non-supported subreducers for example) will need sudo. Also test for sudo working correctly upfront
 # - Add a MYEXRA simplificator at end (extra stage) so that mysqld options are minimal
 # - Improve ";" work in STAGE4 (";" sometimes missing from results - does not affect reproducibility)
@@ -414,7 +414,7 @@ if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
     ROCKSDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_rocksdb.so" | head -n1)"  # Grep all text including and after ' --plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_rocksdb.so' for that option
     MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${ROCKSDB}||g")"
     # The below issues should never happen in the Percona pquery framework as we simply use;
-    # --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --init-file=/home/roel/percona-qa/plugins_57.sql
+    # --plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=rocksdb=ha_rocksdb.so --init-file=/home/roel/mariadb-qa/plugins_57.sql
     # And the init-file loads any other required plugins using the same .so file. These options (in MYEXTRA) are not complex and easy too parse as per below -
     # and this is handled fine by the code here. It would only happen if someone used a complex string like the one shown in https://jira.percona.com/browse/DOC-444
     if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
@@ -985,7 +985,7 @@ remove_dropc(){
 }
 
 set_internal_options(){  # Internal options: do not modify!
-  # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see percona-qa/setup_server.sh for an example)
+  # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see mariadb-qa/setup_server.sh for an example)
   ulimit -u 4000  2>/dev/null  # Attempt to raise it to 4000
   ulimit -u 10000 2>/dev/null  # Attempt to raise it even higher, if it fails, but the previous one worked, then that one is still used
   ulimit -u 20000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
@@ -3133,7 +3133,7 @@ verify_not_found(){
     EXTRA_PATH=""
   fi
   echo_out "$ATLEASTONCE [Stage $STAGE] Initial verify of the issue: fail. Bug/issue is not present under given conditions, or is very sporadic. Terminating."
-  echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc. and also reference 'reproducing_and_simplification.txt' in percona-qa for many additional reproduction/simplification ideas):"
+  echo_out "[Finish] Verification failed. It may help to check the following files to get an idea as to why this run did not reproduce the issue (if these files do not give any further hints, please check variable/initialization differences, enviroment differences etc. and also reference 'reproducing_and_simplification.txt' in mariadb-qa for many additional reproduction/simplification ideas):"
   WORKDIR_COPY_SUCCESS=0  # Defensive programming, not required (as copy_workdir_to_tmp sets it)
   copy_workdir_to_tmp
   if [ $WORKDIR_COPY_SUCCESS -eq 0 ]; then
