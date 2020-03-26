@@ -7,7 +7,7 @@ ROOT_DIR=$(cd $(dirname $0)/../../../../../percona-qa; pwd -P)
 SOURCE_IMAGE=${1:-ubuntu:bionic}
 UPGRADE_TEST=${2:-non_partition_test}
 UPGRADE_FROM=${3:-5.7}
-TEST_WORKDIR=${4:-/mnt/ps-upgrade-test}
+TEST_WORKDIR=${4:-${HOME}/ps-upgrade-test}
 PIPELINE_BUILD_NUMBER="$(cat PIPELINE_BUILD_NUMBER)"
 
 PS_UPPER_DIR="ps-upper"
