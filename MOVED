@@ -1,5 +1,0 @@
-Previously in the directory ./docker, Percona QA PXC Docker has been moved to https://github.com/percona/pxc-docker
-Previously in the directory ./packaging-testing, Packaging Testing code has been moved to https://github.com/Percona-QA/packaging-testing
-Previously in the directory ./tokutek, all Toku* testing code has been moved to https://github.com/Percona-QA/toku-qa
-Previously in the directory ./ext, the external (customer related) scripts have been moved to https://github.com/Percona-QA/custom-external
-The old RQG files/scripts previously present in this directory are deprecated and has been moved to https://github.com/Percona-QA/OLD_RQG
