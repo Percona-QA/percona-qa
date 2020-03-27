@@ -41,9 +41,9 @@
         - replication_test_gtid
         - replication_test_mts
         - replication_test
-        - replication_test_gtid_keyfile
-        - replication_test_mts_keyfile
-        - replication_test_keyfile
+        - replication_test_gtid_enc_file
+        - replication_test_mts_enc_file
+        - replication_test_enc_file
         description: Select tests to run
     axes:
       - axis:
