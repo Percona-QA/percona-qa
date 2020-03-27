@@ -476,7 +476,7 @@ if [ ${QC} -eq 0 ]; then
         add_select_ones_to_trace
         add_select_sleep_to_trace
         remove_non_sql_from_trace
-        TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
+        TEXT=`${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
         echo "* TEXT variable set to: \"${TEXT}\""
         if [ "${MULTI}" == "1" ]; then
            if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
@@ -589,7 +589,7 @@ if [ ${QC} -eq 0 ]; then
         fi
         # if not a valgrind run process everything, if it is valgrind run only if there's a core
         if [ ! -r ./${TRIAL}/VALGRIND ] || [ -r ./${TRIAL}/VALGRIND -a "$CORE" != "" ]; then
-          TEXT=`${SCRIPT_PWD}/text_string.sh ./${TRIAL}/log/master.err`
+          TEXT=`${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/log/master.err`
           echo "* TEXT variable set to: \"${TEXT}\""
           if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
             auto_interleave_failing_sql

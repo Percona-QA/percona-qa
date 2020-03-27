@@ -1,0 +1,4 @@
+while true; do
+  ps -ef | tee -a ~/ps_1sec.log
+  sleep 0.5
+done
