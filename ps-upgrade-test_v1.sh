@@ -129,7 +129,13 @@ if [ -z $ROOT_FS ]; then
   ROOT_FS=${WORKDIR}
 fi
 
-WORKDIR="${ROOT_FS}/${BUILD_NUMBER}-${TESTCASE}"
+if [ ${ENCRYPTION} -eq 1 ]; then
+  FULL_TESTCASE="${TESTCASE}_enc_${KEYRING_PLUGIN}"
+else
+  FULL_TESTCASE="${TESTCASE}"
+fi
+
+WORKDIR="${ROOT_FS}/${BUILD_NUMBER}-${FULL_TESTCASE}"
 
 #Cleanup
 if [ -d ${WORKDIR} ]; then
@@ -351,12 +357,17 @@ function generate_cnf(){
   echo "socket=$WORKDIR/$ARGS.sock" >> $WORKDIR/$ARGS.cnf
   echo "log-output=none" >> $WORKDIR/$ARGS.cnf
   if [[ "$ENCRYPTION" == 1 ]];then
-    echo "encrypt_binlog" >> $WORKDIR/$ARGS.cnf
+    if check_for_version $MYSQL_VERSION "8.0.14" ; then
+      echo "encrypt_binlog=ON" >> $WORKDIR/$ARGS.cnf
+      echo "innodb_encrypt_tables=ON" >> $WORKDIR/$ARGS.cnf
+    else
+      echo "binlog_encryption=ON" >> $WORKDIR/$ARGS.cnf
+      echo "default_table_encryption=ON" >> $WORKDIR/$ARGS.cnf
+    fi
     echo "master_verify_checksum=on" >> $WORKDIR/$ARGS.cnf
     echo "binlog_checksum=crc32" >> $WORKDIR/$ARGS.cnf
     echo "innodb_temp_tablespace_encrypt=ON" >> $WORKDIR/$ARGS.cnf
     echo "encrypt-tmp-files=ON" >> $WORKDIR/$ARGS.cnf
-    echo "innodb_encrypt_tables=ON" >> $WORKDIR/$ARGS.cnf
     if check_for_version $MYSQL_VERSION "5.7.23" ; then
       echo "innodb_sys_tablespace_encrypt=ON" >> $WORKDIR/$ARGS.cnf
     fi
@@ -756,12 +767,19 @@ function replication_test(){
   echo "log-output=none" >> $WORKDIR/mysql_master.cnf
 
   if [[ "$ENCRYPTION" == 1 ]];then
-    echo "encrypt_binlog" >> $WORKDIR/mysql_master.cnf
+    if check_for_version $MYSQL_VERSION "8.0.14" ; then
+      echo "encrypt_binlog=ON" >> $WORKDIR/mysql_master.cnf
+      echo "innodb_encrypt_tables=ON" >> $WORKDIR/mysql_master.cnf
+      ENC_VER_SPECIFIC_OPT="--encrypt_binlog=ON --innodb_encrypt_tables=ON"
+    else
+      echo "binlog_encryption=ON" >> $WORKDIR/mysql_master.cnf
+      echo "default_table_encryption=ON" >> $WORKDIR/mysql_master.cnf
+      ENC_VER_SPECIFIC_OPT="--encrypt_binlog=ON --default_table_encryption=ON"
+    fi
     echo "master_verify_checksum=on" >> $WORKDIR/mysql_master.cnf
     echo "binlog_checksum=crc32" >> $WORKDIR/mysql_master.cnf
     echo "innodb_temp_tablespace_encrypt=ON" >> $WORKDIR/mysql_master.cnf
     echo "encrypt-tmp-files=ON" >> $WORKDIR/mysql_master.cnf
-    echo "innodb_encrypt_tables=ON" >> $WORKDIR/mysql_master.cnf
     if check_for_version $MYSQL_VERSION "5.7.23" ; then
       echo "innodb_sys_tablespace_encrypt=ON" >> $WORKDIR/mysql_master.cnf
     fi
@@ -773,7 +791,7 @@ function replication_test(){
       fi
 
       #Set slave encryption options for keyring file
-      SLAVE_ENCRYPT_OPTIONS="--encrypt_binlog=ON --master_verify_checksum=ON --binlog_checksum=crc32 --innodb_temp_tablespace_encrypt=ON --encrypt-tmp-files=ON --innodb_encrypt_tables=ON --early-plugin-load=keyring_file.so --keyring_file_data=$mysql_slave_datadir/keyring --innodb_sys_tablespace_encrypt=ON"
+        SLAVE_ENCRYPT_OPTIONS="${ENC_VER_SPECIFIC_OPT} --master_verify_checksum=ON --binlog_checksum=crc32 --innodb_temp_tablespace_encrypt=ON --encrypt-tmp-files=ON --early-plugin-load=keyring_file.so --keyring_file_data=$mysql_slave_datadir/keyring --innodb_sys_tablespace_encrypt=ON"
 
     elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
       echo "early-plugin-load=keyring_vault.so" >> $WORKDIR/mysql_master.cnf
@@ -783,7 +801,7 @@ function replication_test(){
       fi
 
       #Set slave encryption options for keyring vault
-      SLAVE_ENCRYPT_OPTIONS="--encrypt_binlog=ON --master_verify_checksum=ON --binlog_checksum=crc32 --innodb_temp_tablespace_encrypt=ON --encrypt-tmp-files=ON --innodb_encrypt_tables=ON --early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
+      SLAVE_ENCRYPT_OPTIONS="${ENC_VER_SPECIFIC_OPT} --master_verify_checksum=ON --binlog_checksum=crc32 --innodb_temp_tablespace_encrypt=ON --encrypt-tmp-files=ON --early-plugin-load=keyring_vault.so --keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf --innodb_sys_tablespace_encrypt=ON"
     fi
   fi
 
@@ -857,6 +875,8 @@ function replication_test(){
 
   #Upgrade MySQL $mysql_lower_VERSION slave to $MYSQL_UPPER_VERSION for replication test
   echoit "Upgrade MySQL slave"
+  SLAVE_ENCRYPT_OPTIONS="${SLAVE_ENCRYPT_OPTIONS/encrypt_binlog/binlog_encryption}"
+  SLAVE_ENCRYPT_OPTIONS="${SLAVE_ENCRYPT_OPTIONS/innodb_encrypt_tables/default_table_encryption}"
 
   $LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/mysql_slave.sock -u root shutdown
 
@@ -891,6 +911,10 @@ function replication_test(){
   echoit "Upgrade MySQL master"
 
   $LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/mysql_master.sock -u root shutdown
+
+  # Fix config for upper version
+  sed -i 's/encrypt_binlog/binlog_encryption/g' $WORKDIR/mysql_master.cnf
+  sed -i 's/innodb_encrypt_tables/default_table_encryption/g' $WORKDIR/mysql_master.cnf
 
   ${UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/mysql_master.cnf --basedir=${UPPER_BASEDIR} > $WORKDIR/logs/mysql_master.err 2>&1 &
 
