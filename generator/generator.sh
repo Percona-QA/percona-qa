@@ -345,7 +345,7 @@ selectq()   {  # Select Query. Do not use 'select' as select is a reserved syste
 query(){
   #FIXEDTABLE1=`table`  # A fixed table name: this can be used in queries where a unchanging table name is required to ensure the query works properly. For example, SELECT t1.c1 FROM t1;
   #FIXEDTABLE2=${FIXEDTABLE1}; while [ "${FIXEDTABLE1}" -eq "${FIXEDTABLE2}" ]; do FIXEDTABLE2=`table`; done  # A secondary fixed table, different from the first fixed table
-  case $[$RANDOM % 39 + 1] in
+  case $[$RANDOM % 99 + 1] in
     # Frequencies for CREATE (1-3), INSERT (4-7), and DROP (8) statements are well tuned, please do not change these case ranges
     # Most other statements have been frequency tuned also, but not to the same depth. If you find bugs (for example too many errors because of frequency), please fix them
     # Possible expansions for partitoning (partitioning tree starts down from `partionby`)
@@ -551,7 +551,7 @@ query(){
           esac;;
         *) echo "Assert: invalid random case selection in nested query calls case";;
       esac;;
-2[4-8]) case $[$RANDOM % 24 + 1] in  # XA (complete)
+    2[4-8]) case $[$RANDOM % 24 + 1] in  # XA (complete)
         # Frequencies for XA: COMMIT (1-9), START/BEGIN (10), END (11-17), PREPARE (19), RECOVER (20), and ROLLBACK (21-24) statements are well tuned, please do not change these case ranges
     [1-9]) echo "XA COMMIT `xid` `onephase`";;
        10) case $[$RANDOM % 2 + 1] in
@@ -577,7 +577,7 @@ query(){
         5) echo "TRUNCATE TABLE `table`";;
         *) echo "Assert: invalid random case selection in repair/optimize/analyze/rename/truncate table case";;
       esac;;
-3[0-1]) case $[$RANDOM % 7 + 1] in  # Transactions (complete, except review/add in different section?; http://dev.mysql.com/doc/refman/5.7/en/begin-end.html)
+    3[0-1]) case $[$RANDOM % 7 + 1] in  # Transactions (complete, except review/add in different section?; http://dev.mysql.com/doc/refman/5.7/en/begin-end.html)
         1) echo "START TRANSACTION `trxopt`";;
         2) echo "BEGIN `work`";;
     [3-4]) echo "COMMIT `work` `chain` `release`";;  # Excludes `COMMIT...RELEASE` SQL, as this drops client connection (`release` only produces 'NO RELEASE' in a percentage of queries)
@@ -598,7 +598,7 @@ query(){
         3) echo "RELEASE SAVEPOINT sp`n2`";;
         *) echo "Assert: invalid random case selection in savepoint case";;
       esac;;
-3[4-5]) case $[$RANDOM % 13 + 1] in  # P_S (in progress) | To check: TRUNCATE of tables does not seem to work: bug? https://dev.mysql.com/doc/refman/5.7/en/setup-timers-table.html
+    3[4-5]) case $[$RANDOM % 13 + 1] in  # P_S (in progress) | To check: TRUNCATE of tables does not seem to work: bug? https://dev.mysql.com/doc/refman/5.7/en/setup-timers-table.html
     [1-2]) case $[$RANDOM % 5 + 1] in  # Enabling and truncating
           1) echo "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES'";;
           2) echo "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES'";;
@@ -623,7 +623,7 @@ query(){
           esac;;
         *) echo "Assert: invalid random case selection in P_S case";;
       esac;;
-3[6-7]) case $[$RANDOM % 7 + 1] in  # Calling & setup of functions and procedures (complete)
+    3[6-7]) case $[$RANDOM % 7 + 1] in  # Calling & setup of functions and procedures (complete)
       [1-2]) echo "SET @`ac`=`data`";;
           3) echo "CALL `proc`(@`ac`)";;
           4) echo "CALL `proc`(@`ac`,@`ac`)";;
@@ -646,13 +646,15 @@ query(){
           esac;;
           *) echo "Assert: invalid random case selection in func,proc case";;
         esac;;
-3[8-9]) case $[$RANDOM % 4 + 1] in  # Numeric functions: this should really become a callable function so that it can be used instead of `data` for example, etc.
+    3[8-9]) case $[$RANDOM % 4 + 1] in  # Numeric functions: this should really become a callable function so that it can be used instead of `data` for example, etc.
          1) echo "SELECT `fullnrfunc`";;
          2) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          3) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          4) echo "SELECT (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`) `numsimple` (`fullnrfunc`)";;
          *) echo "Assert: invalid random case selection in numeric functions case";;
        esac;;
+    # RV-HIGH LOAD TESTER
+    [4-9][0-9]) echo "SET @@`globses`.OPTIMIZER_SWITCH=\"`optsw`=`onoff`\"";;
 
      # To add:
      # http://dev.mysql.com/doc/refman/5.7/en/get-diagnostics.html
@@ -680,7 +682,7 @@ FINAL_OUTFILE=$(echo ${OUTPUT_FILE} | sed 's|\.sql||')
 PIDS=
 if [ ${QUERIES_PER_THREAD} -gt 0 ]; then
   # Remove old output files & old temporary files (if any)
-  rm -f ${FINAL_OUTFILE}*.sql
+  #rm -f ${FINAL_OUTFILE}*.sql
   touch ${FINAL_OUTFILE}.sql
   if [ ! -r ${FINAL_OUTFILE}.sql ]; then 
     echo "Assert: ${FINAL_OUTFILE}.sql not present after 'touch ${FINAL_OUTFILE}.sql' command!"
