@@ -6,7 +6,21 @@ if [ -z "${1}" ]; then
   echo "This script expects one paramater; the bug to search for after testing of in.sql is complete"
   exit 1
 fi
+./gendirs.sh | xargs -I{} echo "rm -f {}/stopped.flag" | xargs -P30 -I{} sh -c "{}" &
 ./all_all
 ./copy_in.sql_all
-./gendirs.sh | xargs -I{} echo "cd {}; ./test; cd .." | xargs -I{} sh -c "{}"
+./gendirs.sh | xargs -I{} echo "cd {}; ./test; ./stop; cd .." | xargs -P30 -I{} sh -c "{}" &
+
+# Wait for runs to complete
+COUNT2=$(./gendirs.sh | wc -l)
+echo "Servers left testing: ${COUNT2}..."
+while [ $COUNT2 -ne 0 ]; do
+  COUNT=$(./gendirs.sh | xargs -I{} ls "{}/stopped.flag" 2>&1 | grep "No such file" | wc -l)
+  if [ ${COUNT2} -ne ${COUNT} ]; then
+    echo "Servers left to start: ${COUNT}..."
+    COUNT2=${COUNT}
+  fi
+  sleep 0.5
+done
+
 ./findbug+ "${1}"

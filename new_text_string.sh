@@ -3,6 +3,7 @@
 
 LATEST_CORE=$(ls -t data/*core* 2>/dev/null | head -n1)
 if [ -z "${LATEST_CORE}" ]; then
+  # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
   echo "No core file found in data/*core* - exiting"
   exit 1
 fi
@@ -44,21 +45,28 @@ gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdb1 2>&1 << EOF
 EOF
 
 touch /tmp/${RANDF}.gdb3
+TEXT=
 
 # Assertion catch
 # Assumes (which is valid for the pquery framework) that 1st assertion is also the last in the log
 ASSERT="$(grep --binary-files=text -om1 'Assertion.*failed.$' ${ERROR_LOG} | sed 's|\.$||' | head -n1)"
 if [ ! -z "${ASSERT}" ]; then
   echo "${ASSERT}" >> /tmp/${RANDF}.gdb3
+  TEXT="${ASSERT}"
 else
   echo "NO_ASSERT" >> /tmp/${RANDF}.gdb3
 fi
 
 # Signal catch
 if grep -E --binary-files=text -iq 'Program terminated with' /tmp/${RANDF}.gdb1; then
-  grep 'Program terminated with' /tmp/${RANDF}.gdb1 | grep --binary-files=text -o 'with signal.*' | sed 's|with signal ||;s|\.$||' | head -n1 >> /tmp/${RANDF}.gdb3
+  # sed 's|^\([^,]\+\),.*$|\1|' in the next line removes ", Segmentation fault" if "SIGSEGV" is present before it (and similar for other signals)
+  SIG="$(grep 'Program terminated with' /tmp/${RANDF}.gdb1 | grep --binary-files=text -o 'with signal.*' | sed 's|with signal ||;s|\.$||' | sed 's|^\([^,]\+\),.*$|\1|' | head -n1)"
+  echo "${SIG}" >> /tmp/${RANDF}.gdb3
+  TEXT="${TEXT}|${SIG}"
 elif grep -E --binary-files=text -iq '(sig=[0-9]+)' /tmp/${RANDF}.gdb1; then
-  grep --binary-files=text '(sig=[0-9]\+)' /tmp/${RANDF}.gdb1 | grep --binary-files=text -o '[^ ]\+ (sig=[0-9]\+)' | head -n1 >> /tmp/${RANDF}.gdb3
+  SIG="$(grep -o --binary-files=text '(sig=[0-9]\+)' /tmp/${RANDF}.gdb1 | sed 's|(||;s|)||' | head -n1)"
+  echo "${SIG}" >> /tmp/${RANDF}.gdb3
+  TEXT="${TEXT}|${SIG}"
 else
   echo "NO_SIGNAL" >> /tmp/${RANDF}.gdb3
 fi
@@ -86,5 +94,13 @@ if [ ${DC_CLEANED} -eq 0 ]; then
 fi
 rm -f /tmp/${RANDF}.gdb4
 
-cat /tmp/${RANDF}.gdb3
+# Grap first 4 frames, if they exist, and add to TEXT
+FRAMES="$(cat /tmp/${RANDF}.gdb3 | head -n4 | sed 's| [^ ]\+$||' | tr '\n' '|' | sed 's/|$/\n/')"
+if [ ! -z "${FRAMES}" ]; then
+  TEXT="${TEXT}|${FRAMES}"
+else
+  echo "Assert: No parsable frames?"
+  exit 1
+fi
+
 rm -f /tmp/${RANDF}.gdb3

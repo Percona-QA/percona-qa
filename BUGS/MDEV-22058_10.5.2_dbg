@@ -1,0 +1,8 @@
+Assertion `!is_set() || (m_status == DA_OK_BULK && is_bulk_op())' failed
+SIGABRT, Aborted
+Diagnostics_area::set_ok_status sql_error.cc
+my_ok sql_class.h
+mysql_sql_stmt_prepare sql_prepare.cc
+mysql_execute_command sql_parse.cc
+mysql_parse sql_parse.cc
+dispatch_command sql_parse.cc

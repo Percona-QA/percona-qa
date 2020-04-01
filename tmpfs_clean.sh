@@ -55,11 +55,20 @@ else
                           break
                         fi
                       done
-                      AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
-                      if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
-                        echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
-                        COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
-                        if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+		      if [ -z "${SUBDIR}" ]; then  # No subdir, if directory exists, then it is empty
+                        if [ -d ${DIR} ]; then
+    			  rmdir ${DIR}
+			else
+			  echo "Assert: script saw directory ${DIR} yet was unable to find any subdir in it, please check the contents of ls -la ${DIR} and improve script in this area."
+			  exit 1
+			fi
+		      else
+                        AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
+                        if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
+                          echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
+                          COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
+                          if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
+			fi
                       fi
                     fi
                   else
