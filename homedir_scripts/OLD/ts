@@ -1,0 +1,10 @@
+if [ "$1" == "" -a -r ./log/master.err ]; then
+  ~/mariadb-qa/text_string.sh ./log/master.err
+else
+  if [ -r "$1/log/master.err" ]; then
+    ~/mariadb-qa/text_string.sh $1/log/master.err
+  else
+    ~/mariadb-qa/text_string.sh $1
+  fi
+fi
+
