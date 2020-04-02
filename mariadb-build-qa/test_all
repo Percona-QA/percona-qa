@@ -17,7 +17,7 @@ echo "Servers left testing: ${COUNT2}..."
 while [ $COUNT2 -ne 0 ]; do
   COUNT=$(./gendirs.sh | xargs -I{} ls "{}/stopped.flag" 2>&1 | grep "No such file" | wc -l)
   if [ ${COUNT2} -ne ${COUNT} ]; then
-    echo "Servers left to start: ${COUNT}..."
+    echo "Servers left to end/stop: ${COUNT}..."
     COUNT2=${COUNT}
   fi
   sleep 0.5
