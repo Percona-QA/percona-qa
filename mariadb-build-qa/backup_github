@@ -10,13 +10,15 @@ cp buildall_opt.sh ${TARGET}
 cp clone.sh ${TARGET}
 cp cloneall.sh ${TARGET}
 cp copy_in.sql_all ${TARGET}
-cp github_backup ${TARGET}
+cp backup_github ${TARGET}
 cp count_all ${TARGET}
 cp findbug ${TARGET}
 cp findbug+ ${TARGET}
 cp gendirs.sh ${TARGET}
 cp start_all ${TARGET}
 cp startup_all ${TARGET}
+cp dbg ${TARGET}
+cp opt ${TARGET}
 cp stop_all ${TARGET}
 cp test_all ${TARGET}
 cp find_cores ${TARGET}
