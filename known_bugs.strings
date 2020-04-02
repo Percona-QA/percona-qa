@@ -1,6 +1,7 @@
-next_breadth_first_tab|JOIN::cleanup|JOIN::destroy                                  ## MDEV-22019
-LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse                         ## MDEV-22022
-# row_make_new_pathname|row_rename_table_for_mysql|innobase_rename_table      ## Fixed MDEV-21983
-my_wc_to_printable_generic|my_convert_using_func|convert_error_message              ## MDEV-22043
-MDL_key::mdl_key_init|MDL_request::init_with_source|lock_object_name                ## MDEV-22044
-Diagnostics_area::set_ok_status|my_ok|mysql_sql_stmt_prepare                        ## MDEV-22058
+# SIGSEGV|row_make_new_pathname|row_rename_table_for_mysql|innobase_rename_table|ha_innobase::rename_table                                                                        ## Fixed ## OPT MDEV-21983
+SIGSEGV|next_breadth_first_tab|JOIN::cleanup|JOIN::destroy|st_select_lex::cleanup                                                                                                          ## DBG MDEV-22019
+end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse|parse_sql                                                         ## DBG MDEV-22022
+0|SIGABRT|my_wc_to_printable_generic|my_convert_using_func|convert_error_message|net_send_error_packe                                                                                      ## DBG MDEV-22043
+strlen(name_arg) <= (64*3)|SIGABRT|MDL_key::mdl_key_init|MDL_request::init_with_source|lock_object_name|Sp_handler::sp_drop_routine                                                        ## DBG MDEV-22044
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_sql_stmt_prepare|mysql_execute_command                                           ## DBG MDEV-22058
+SIGSEGV|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock                                                                               ## OPT MDEV-22111

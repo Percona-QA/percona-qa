@@ -15,7 +15,7 @@ if [ -z "${ERROR_LOG}" ]; then
 fi
 
 RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
-RANDF=$(echo $RANDOM$RANDOM$RANDOM | sed 's|.\(.......\).*|\1|')  # Random 7 digits filenumber
+RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 rm -f /tmp/${RANDF}.gdb*
 gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdb1 2>&1 << EOF
@@ -49,7 +49,7 @@ TEXT=
 
 # Assertion catch
 # Assumes (which is valid for the pquery framework) that 1st assertion is also the last in the log
-ASSERT="$(grep --binary-files=text -om1 'Assertion.*failed.$' ${ERROR_LOG} | sed 's|\.$||' | head -n1)"
+ASSERT="$(grep --binary-files=text -om1 'Assertion.*failed.$' ${ERROR_LOG} | sed "s|\.$||;s|^Assertion [\`]||;s|['] failed$||" | head -n1)"
 if [ ! -z "${ASSERT}" ]; then
   TEXT="${ASSERT}"
 fi
