@@ -1,3 +1,6 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 MYEXTRA_OPT="$*"
 
 # Remove ready flags

@@ -1,3 +1,6 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 ./gendirs.sh | xargs -I{} echo "cd {}; ./stop >/dev/null 2>&1 ; cd .." | xargs -P30 -I{} sh -c "{}" &
 echo "Remaining live processes (includes ongoing runs!):"
 ps -ef | grep mysqld | grep -v grep

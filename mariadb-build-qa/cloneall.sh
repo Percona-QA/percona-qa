@@ -1,3 +1,6 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 rm -Rf 10.1
 rm -Rf 10.2
 rm -Rf 10.3

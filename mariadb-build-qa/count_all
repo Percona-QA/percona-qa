@@ -1,2 +1,5 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 ps -e | grep mysqld | grep -v grep 
 echo "Running count: $(ps -e | grep mysqld | grep -v grep | wc -l)"

@@ -1,1 +1,4 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 ./gendirs.sh | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"

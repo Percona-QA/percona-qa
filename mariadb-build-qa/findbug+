@@ -1,3 +1,6 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 if [ -z "${1}" ]; then
   echo "This script expects one paramater; the bug to search for after testing of in.sql is complete"
   echo "It also expects that test_all was already executed"

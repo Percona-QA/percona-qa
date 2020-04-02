@@ -1,3 +1,6 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
 TARGET=~/mariadb-qa/mariadb-build-qa
 mkdir -p ${TARGET}
 
@@ -16,3 +19,4 @@ cp start_all ${TARGET}
 cp startup_all ${TARGET}
 cp stop_all ${TARGET}
 cp test_all ${TARGET}
+cp find_cores ${TARGET}

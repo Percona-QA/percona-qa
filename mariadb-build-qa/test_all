@@ -1,14 +1,31 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+MYEXTRA_OPT="$*"
+
+rm -f test.result
+
 if [ ! -r ./in.sql ]; then
   echo "./in.sql does not exist!"
   exit 1
 fi
+
 if [ -z "${1}" ]; then
   echo "This script expects one paramater; the bug to search for after testing of in.sql is complete"
+  echo "Tip; one could use; ./test_all 'signal' which will match all crashes on all distributions"
   exit 1
 fi
+
+# Remove stopped.flag
 ./gendirs.sh | xargs -I{} echo "rm -f {}/stopped.flag" | xargs -P30 -I{} sh -c "{}" &
-./all_all
+
+# Startup all server fresh (clean data dir) (as background processes; end handling done by ./all_all)
+./all_all ${MYEXTRA_OPT}
+
+# Copy in.sql to all instances
 ./copy_in.sql_all
+
+# Run the test and stop the server (as background processes)
 ./gendirs.sh | xargs -I{} echo "cd {}; ./test; ./stop; cd .." | xargs -P30 -I{} sh -c "{}" &
 
 # Wait for runs to complete
@@ -23,4 +40,5 @@ while [ $COUNT2 -ne 0 ]; do
   sleep 0.5
 done
 
-./findbug+ "${1}"
+# Output results and save copy of reasy bug reporting (mariadb-qa/bug_report.sh)
+./findbug+ "${1}" | tee test.results
