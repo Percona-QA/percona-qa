@@ -1,1 +1,3 @@
-~/mariadb-qa/bug_report.sh
+rm -f report.log
+if [ -r report.log ]; then echo "Assert: report.log still present though this script tried to delete it!"; exit 1; fi
+~/mariadb-qa/bug_report.sh | tee report.log

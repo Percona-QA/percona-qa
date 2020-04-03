@@ -10,12 +10,6 @@ if [ ! -r ./in.sql ]; then
   exit 1
 fi
 
-if [ -z "${1}" ]; then
-  echo "This script expects one paramater; the bug to search for after testing of in.sql is complete"
-  echo "Tip; one could use; ./test_all 'signal' which will match all crashes on all distributions"
-  exit 1
-fi
-
 # Remove stopped.flag
 ./gendirs.sh | xargs -I{} echo "rm -f {}/stopped.flag" | xargs -P30 -I{} sh -c "{}" &
 
@@ -41,4 +35,5 @@ while [ $COUNT2 -ne 0 ]; do
 done
 
 # Output results and save copy of reasy bug reporting (mariadb-qa/bug_report.sh)
-./findbug+ "${1}" | tee test.results
+# The 'signal' is a bit rudimentary, but it will locate all crashes in all distributions
+./findbug+ 'signal' | tee test.results

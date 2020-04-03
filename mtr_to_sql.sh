@@ -87,6 +87,7 @@ egrep --binary-files=text -ih "^SELECT |^INSERT |^UPDATE |^DROP |^CREATE |^RENAM
   grep --binary-files=text -vi "drop table mysql.user;" | \
   grep --binary-files=text -vi "delete from mysql.user where user='root'" | \
   grep --binary-files=text -vi "[updatedelete]\+.*where user='root'" | \
+  grep --binary-files=text -vi "default_password_lifetime" | \
   grep --binary-files=text -vi "innodb[-_]track[-_]redo[-_]log[-_]now" | \
   grep --binary-files=text -vi "innodb[-_]log[-_]checkpoint[-_]now" | \
   grep --binary-files=text -vi "innodb[-_]purge[-_]stop[-_]now" | \
@@ -128,6 +129,7 @@ cat ${TESTS_PATH}/*/*.test ${TESTS_PATH}/*/*/*.test ${TESTS_PATH}/*/*/*/*.test $
   grep --binary-files=text -vi "innodb_trx_rseg_n_slots_debug" | \
   grep --binary-files=text -vi "innodb_spin_wait_delay" | \
   grep --binary-files=text -vi "innodb_replication_delay" | \
+  grep --binary-files=text -vi "default_password_lifetime" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "restart_server_args" | \
   grep --binary-files=text -vi "json_binary::parse_binary" | \
