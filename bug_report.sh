@@ -30,6 +30,12 @@ elif [ ${CORE_COUNT} -gt 1 ]; then
   exit 1
 fi
 
+echo 'Starting bug report generation for this SQL code (please check):'
+echo '----------------------------------------------------------------'
+cat in.sql
+echo '----------------------------------------------------------------'
+sleep 3
+
 RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 

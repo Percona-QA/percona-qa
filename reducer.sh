@@ -2075,7 +2075,7 @@ gr_start_main(){
   gr_startup_chk(){
     ERROR_LOG=$1
     if grep -E --binary-files=text -qi "ERROR. Aborting" $ERROR_LOG ; then
-      if grep -E --binary-files=text -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
+      if grep -E --binary-files=text -qi "TCP.IP port.*Address already in use" $ERROR_LOG ; then
         echo "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
       else
         echo "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."

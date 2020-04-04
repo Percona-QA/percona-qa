@@ -406,7 +406,8 @@ pxc_startup(){
   pxc_startup_chk(){
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
-      if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
+      if grep -qi "TCP.IP port.*Address already in use" $ERROR_LOG ; then
+
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
         removetrial
       else
@@ -601,7 +602,7 @@ gr_startup(){
   gr_startup_chk(){
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
-      if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
+      if grep -qi "TCP.IP port.*Address already in use" $ERROR_LOG ; then
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
         removetrial
       else
@@ -953,7 +954,7 @@ pquery_test(){
         if [ "${MPID2}" == "" ]; then echoit "Assert! ${MPID2} empty. Terminating!"; exit 1; fi
       fi
       if grep -qi "ERROR. Aborting" ${RUNDIR}/${TRIAL}/log/master.err; then
-        if grep -qi "TCP.IP port. Address already in use" ${RUNDIR}/${TRIAL}/log/master.err; then
+        if grep -qi "TCP.IP port.*Address already in use" ${RUNDIR}/${TRIAL}/log/master.err; then
           echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
           removetrial
         else

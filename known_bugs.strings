@@ -8,6 +8,10 @@ SIGSEGV|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_imp
 table->file->stats.records > 0 || error|SIGABRT|join_read_const_table|make_join_statistics|JOIN::optimize_inner|JOIN::optimize                                                             ## DBG MDEV-22117
 nr != 0|SIGABRT|handler::update_auto_increment|ha_innobase::write_row|handler::ha_write_row|write_record                                                                                   ## DBG MDEV-22118 
 SIGSEGV|Binary_string::copy_printable_hhhh|Protocol::store_warning|mysqld_show_warnings|mysql_execute_command                                                                              ## OPT MDEV-22130
+SIGSEGV|handle_grant_table|handle_grant_data|mysql_create_user|mysql_execute_command                                                                                                       ## OPT MDEV-22133
+SIGSEGV|__strlen_avx2|my_strdup|Session_sysvars_tracker::init|plugin_thdvar_init
+                                                                                  ## OPT MDEV-22134
+
 
 
 

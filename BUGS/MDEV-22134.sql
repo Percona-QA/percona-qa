@@ -1,0 +1,3 @@
+CHANGE MASTER TO MASTER_HOST='h', MASTER_USER='u';
+SET @@GLOBAL.session_track_system_variables=NULL;
+START SLAVE IO_THREAD;
