@@ -10,7 +10,8 @@ nr != 0|SIGABRT|handler::update_auto_increment|ha_innobase::write_row|handler::h
 SIGSEGV|Binary_string::copy_printable_hhhh|Protocol::store_warning|mysqld_show_warnings|mysql_execute_command                                                                              ## OPT MDEV-22130
 SIGSEGV|handle_grant_table|handle_grant_data|mysql_create_user|mysql_execute_command                                                                                                       ## OPT MDEV-22133
 SIGSEGV|__strlen_avx2|my_strdup|Session_sysvars_tracker::init|plugin_thdvar_init
-                                                                                  ## OPT MDEV-22134
+                                                                                     ## OPT MDEV-22134
+state_ == s_exec || state_ == s_quitting|SIGABRT|wsrep::client_state::disable_streaming|wsrep_trx_fragment_size_update|sys_var::update|set_var::update                                     ## OPT MDEV-22148
 
 
 

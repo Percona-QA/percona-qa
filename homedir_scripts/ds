@@ -1,0 +1,12 @@
+COUNT=0
+while true; do 
+  COUNT=$[ ${COUNT} + 1 ]
+  clear
+  df -h | grep -vE "/snap/|/run/|/cgroup|/efi|udev|/run" 
+  echo -n "${COUNT}/30"
+  sleep 2
+  if [ ${COUNT} -ge 30 ]; then
+    ~/mariadb-qa/tmpfs_clean.sh 1
+    COUNT=0
+  fi
+done
