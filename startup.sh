@@ -421,6 +421,7 @@ echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo 'rm -f ready.flag  # Remove ready flag' >> all_no_cl
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
 echo 'touch ready.flag  # Set ready flag' >> all_no_cl
+if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
 chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1

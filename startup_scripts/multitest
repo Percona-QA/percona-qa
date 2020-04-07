@@ -1,0 +1,90 @@
+#!/bin/bash
+
+if [ -z "${1}" ]; then
+  echo "This script expects one parameter; the directory where the .sql testcases are stored."
+  echo "These testcases will be executed one-by-one, and the results will be stored in multitest.log"
+else
+  TC_DIR="${1}"
+  TC_DIR="$(echo "${TC_DIR}" | sed 's|/$||g')"
+fi
+
+if [ ! -d "${TC_DIR}" ]; then 
+  echo "${TC_DIR} does not exist!"
+  exit 1
+fi
+
+if [ ! -r ~/mariadb-qa/new_text_string.sh ]; then 
+  echo "Required ~/mariadb-qa/new_text_string.sh missing!"
+  exit 1
+fi
+
+if [ ! ./bin/mysqld ]; then
+  echo "This is not a BASE directory! i.e. there is no ./bin/mysqld"
+  exit 1
+fi
+
+if [ ! -r ./all_no_cl ]; then 
+  echo "Required ./all_no_cl missing! Please execute ~/mariadb-qa/startup.sh"
+  exit 1
+fi
+
+if [ ! -r ./test ]; then 
+  echo "Required ./test missing! Please execute ~/mariadb-qa/startup.sh"
+  exit 1
+fi
+
+if [ $(ls ${TC_DIR}/*.sql 2>/dev/null | wc -l) -eq 0 ]; then
+  echo "Assert: no testcases found at ${TC_DIR}/*.sql"
+  exit 1
+fi
+
+if [ "$(grep -o 'in.sql' ./test 2>/dev/null | head -n1)" != 'in.sql' ]; then
+  echo "Assert: ./test does not point to using ./in.sql as a testfile, please fix it (was likely changed manually after startup.sh was run originally)"
+  exit 1
+fi
+
+RANDOM=$(date +%s%N | cut -b14-19)  # RANDOM: Random entropy pool init
+FILENR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
+
+rm -f multitest.log in.sql
+touch multitest.log
+if [ ! -r ./multitest.log ]; then echo "Assert: executed 'touch multitest.log' yet multitest.log does not exist afterwards"; exit 1; fi
+ls -v ${TC_DIR}/*.sql >> /tmp/multitest.${FILENR}
+LINE=1
+while true; do
+  TC="$(sed -n ${LINE}p /tmp/multitest.${FILENR})"
+  LINE=$[ ${LINE} + 1 ]
+  if [ -z "${TC}" ]; then 
+    break
+  fi
+  echo "Now testing: ${TC}"
+  echo "------------------- ${TC}" >> multitest.log
+  cp "${TC}" ./in.sql
+  ./all_no_cl --log-bin --sql_mode=ONLY_FULL_GROUP_BY  # Setting some often-required options
+  ./test
+  CORE=$(ls -t data/*core* 2>/dev/null | head -n1)
+  if [ -z "${CORE}" ]; then
+    if [ -r ./log/master.err ]; then 
+      if [ ! -z "$(grep -i "ERROR" ./log/master.err 2>/dev/null)" ]; then
+        echo "No core found! Proceeding to next testcase, but including any ERRORs from error log in multitest.log for further review"
+        echo "No core found! Proceeding to next testcase, but including any ERRORs from error log here:" >> multitest.log
+        grep -i "ERROR" ./log/master.err >> multitest.log
+      else
+        echo "No core found, nor any ERROR's in the error log! Proceeding to next testcase!"
+        echo "No core found, nor any ERROR's in the error log! Proceeding to next testcase!" >> multitest.log
+      fi
+    else
+      echo "Assert: ./log/master.err not found. This should not happen. Please check environment setup."
+      exit 1
+    fi
+  else
+    ~/mariadb-qa/new_text_string.sh | sed 's|^|  |' >> multitest.log
+    if [ ${?} -eq 1 ]; then 
+      echo "Assert: ~/mariadb-qa/new_text_string.sh returned a non-zero exit code, please check output and restar script! This should not happen."
+      exit 1
+    fi
+  fi
+  ./kill
+done
+
+echo -e "\nDone! log: multitest.log"
