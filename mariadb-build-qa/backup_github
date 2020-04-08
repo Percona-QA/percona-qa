@@ -3,7 +3,9 @@
 
 TARGET=~/mariadb-qa/mariadb-build-qa
 mkdir -p ${TARGET}
+SCRIPT_PWD="$(cd `dirname $0` && pwd)"
 
+cd ${SCRIPT_PWD}
 cp all_all ${TARGET}
 cp buildall_dbg.sh ${TARGET}
 cp buildall_opt.sh ${TARGET}
@@ -22,3 +24,9 @@ cp opt ${TARGET}
 cp stop_all ${TARGET}
 cp test_all ${TARGET}
 cp find_cores ${TARGET}
+cp untar ${TARGET}
+
+cd ~/mariadb-qa/mariadb-build-qa
+git add *
+cd ~/mariadb-qa/BUGS
+git add MDEV*.sql

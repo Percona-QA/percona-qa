@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+MYEXTRA_OPT="$*"
+
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from a basedir which had the SQL executed against it an crashed"
   exit 1
@@ -44,7 +46,7 @@ if [ -r ../in.sql ]; then echo "Assert: ../in.sql still available after it was r
 cp in.sql ..
 if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy attempt!"; exit 1; fi
 cd ..
-./test_all
+./test_all ${MYEXTRA_OPT}
 cd -
 
 SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"

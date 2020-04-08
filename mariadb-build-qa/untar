@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ -z "${1}" ]; then
+  echo "Please pass a tar file to use"
+fi
+
+NAME=$(echo "${1}" | sed 's|\.tar\.gz$||')
+NAME2=$(echo "${NAME}" | sed 's|^[A-Z][A-Z][0-9]\+-||')
+
+tar -xf ${1} 
+mv ${NAME2} ${NAME}
+rm -f ${1}
