@@ -826,7 +826,7 @@ function replication_test(){
   $LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/mysql_master.sock -u root shutdown
 
   sleep 10
-  cp -r $mysql_master_datadir/* ${MYSQL_VARDIR}/mysql_slave
+  cp -a $mysql_master_datadir/* ${MYSQL_VARDIR}/mysql_slave
   rm -rf ${MYSQL_VARDIR}/mysql_slave/auto.cnf
 
   #Start master

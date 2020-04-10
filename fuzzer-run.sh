@@ -19,7 +19,7 @@ BASE_BIN="$(echo "${BASEDIR}/bin/mysql_embedded")"  # Only use the embedded serv
 #  char cmdex[80];
 #  strcpy(cmdex, "sh -c 'b=$(echo \"");
 #  strcat(cmdex, my_progname);
-#  strcat(cmdex, "\" | sed \"s|.*/||\"); rm -Rf $b; cp -r data $b'");
+#  strcat(cmdex, "\" | sed \"s|.*/||\"); rm -Rf $b; cp -a data $b'");
 #  system(cmdex);
 # This will copy the directory 'data' (which is made as a template below) to mysqld0, mysqld1, etc. WHEN the mysqld binary is
 # renamed to mysqld0 before runnig it, etc. If the mysql_embedded binary is used it will be mysql_embedded 0 etc.
@@ -30,7 +30,7 @@ BASE_BIN="$(echo "${BASEDIR}/bin/mysql_embedded")"  # Only use the embedded serv
 #  char cmdex[80];
 #  strcpy(cmdex, "sh -c 'b=$(echo \"");
 #  strcat(cmdex, argv[0]);
-#  strcat(cmdex, "\" | sed \"s|.*/||\"); rm -Rf $b; cp -r data $b'");
+#  strcat(cmdex, "\" | sed \"s|.*/||\"); rm -Rf $b; cp -a data $b'");
 #  system(cmdex);
 # This is for mysql_embedded
 
@@ -102,7 +102,7 @@ fi
 # TERMINAL 1 (master)
 if [ "${1}" == "M" ]; then
   #rm -Rf ./data0
-  #cp -r ./data_TEMPLATE ./mysqld0 # Now handled inside mysqld by hack of mysqld_main (ref notes above)
+  #cp -a ./data_TEMPLATE ./mysqld0 # Now handled inside mysqld by hack of mysqld_main (ref notes above)
   cp -f ${BASE_BIN} ${BASE_BIN}0
   echo "Starting master with id fuzzer0 (mysqld0)..."
   rm -f ${BASEDIR}/${BINARY}${FUZZER}/general${FUZZER}  # General log file (useful for debugging)
@@ -116,7 +116,7 @@ fi
 if [ "${1}" == "S" ]; then
   for FUZZER in $(seq 1 ${FUZZERS}); do
     #rm -Rf ./data${FUZZER}
-    #cp -r ./data_TEMPLATE ./mysqld${FUZZER} # Now handled inside mysqld by hack of mysqld_main (ref notes above)
+    #cp -a ./data_TEMPLATE ./mysqld${FUZZER} # Now handled inside mysqld by hack of mysqld_main (ref notes above)
     cp -f ${BASE_BIN} ${BASE_BIN}${FUZZER}
     echo "Starting slave with id fuzzer${FUZZER} (mysqld${FUZZER})..."
     rm -f ${BASEDIR}/${BINARY}${FUZZER}/general${FUZZER}  # General log file (useful for debugging)

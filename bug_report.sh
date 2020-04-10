@@ -23,6 +23,19 @@ if [ ! -r log/master.err ]; then
   exit 1
 fi
 
+echo 'Starting bug report generation for this SQL code (please check):'
+echo '----------------------------------------------------------------'
+cat in.sql
+echo '----------------------------------------------------------------'
+sleep 1
+
+RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
+RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
+
+./stop
+./all_no_cl ${MYEXTRA_OPT}
+./test
+
 CORE_COUNT=$(ls data/*core* 2>/dev/null | wc -l)
 if [ ${CORE_COUNT} -eq 0 ]; then
   echo "Assert: no cores found at data/*core*, please run this from a basedir which had the SQL executed against it an crashed"
@@ -31,15 +44,6 @@ elif [ ${CORE_COUNT} -gt 1 ]; then
 	echo "Assert: too many (${CORE_COUNT}) cores found at data/*core*, please run this from a freshly initited (./all) basedir which had the SQL executed against it an crashed"
   exit 1
 fi
-
-echo 'Starting bug report generation for this SQL code (please check):'
-echo '----------------------------------------------------------------'
-cat in.sql
-echo '----------------------------------------------------------------'
-sleep 3
-
-RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
-RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 rm -f ../in.sql
 if [ -r ../in.sql ]; then echo "Assert: ../in.sql still available after it was removed!"; exit 1; fi

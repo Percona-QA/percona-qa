@@ -487,7 +487,7 @@ function rpl_test(){
   rm -rf ${MYSQL_VARDIR}/ps_slave
   mkdir ${MYSQL_VARDIR}/ps_slave
   ps_slave_datadir="${MYSQL_VARDIR}/ps_slave"
-  cp -r $ps_master_datadir/* ${MYSQL_VARDIR}/ps_slave
+  cp -a $ps_master_datadir/* ${MYSQL_VARDIR}/ps_slave
   rm -rf ${MYSQL_VARDIR}/ps_slave/auto.cnf
 
   #Start master

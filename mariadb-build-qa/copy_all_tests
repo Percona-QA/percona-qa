@@ -1,9 +1,17 @@
+#!/bin/bash
+
+if [ ! -d ./TESTCASES ]; then
+  mkdir -p ./TESTCASES
+fi
+
 LAST=$(cd TESTCASES; ls -1v *.sql 2>/dev/null | grep -v READY | grep -v DOES_NOT_REPRODUCE | grep -v in.sql | tail -n1 | sed 's|.sql||')
+
 if [ -z "${LAST}" ]; then
   LAST=0
 fi
-find . | grep "_out$" | cat -n | while read n f; do 
+
+find . 2>/dev/null | grep "_out$" | cat -n | while read n f; do 
   n=$[ ${n} + ${LAST} ] 
-  cp -n "$f" "./COPY/$n.sql"
-  echo "Copied $f to ./COPY/$n.sql..."
+  cp -n "$f" "./TESTCASES/$n.sql"
+  echo "Copied $f to ./TESTCASES/$n.sql..."
 done

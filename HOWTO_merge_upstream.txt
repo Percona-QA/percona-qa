@@ -1,0 +1,7 @@
+cd ..
+cp -a mariadb-qa mariadb-qa.copy
+cd mariadb-qa
+git remote add upstream https://github.com/Percona-QA/percona-qa.git
+git fetch upstream
+git pull upstream master
+git push

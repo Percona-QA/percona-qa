@@ -187,7 +187,7 @@ while true; do
           # Early copy time
           if [ ${EARLYCOPY} -eq 1 ]; then
             echoit "Preliminary copy of the work directory (${WORKDIR}) to the copy directory (${COPYDIR}) for safety..."
-            cp -r ${WORKDIR} ${COPYDIR} 
+            cp -a ${WORKDIR} ${COPYDIR} 
           fi
           echoit "=================================================================================================================="
           ${PQR_WORKDIR}/reducer1.sh | tee -a ${PQUERY_REACH_LOG}
@@ -205,7 +205,7 @@ while true; do
             echoit "Copying the work directory (${WORKDIR}) to the copy directory (${COPYDIR})..."
           fi
           COPY_RESULT=0
-          cp -rf ${WORKDIR} ${COPYDIR} 
+          cp -af ${WORKDIR} ${COPYDIR} 
           if [ $? -eq 0 ]; then
             COPY_RESULT=1
             echoit "Removing work directory (${WORKDIR})..."

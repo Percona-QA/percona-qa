@@ -225,7 +225,7 @@ cleanup(){
   cp -f ${PS_BASEDIR}/*.cnf $WORKDIR/logs
   if [ -d "$WORKDIR/vault" ]; then
     rm -f $WORKDIR/vault/vault
-    cp -rf $WORKDIR/vault $WORKDIR/logs
+    cp -af $WORKDIR/vault $WORKDIR/logs
   fi
   tar czf $ROOT_FS/results-${BUILD_NUMBER}${TEST_DESCRIPTION:-}.tar.gz $WORKDIR/logs || true
 }

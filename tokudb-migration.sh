@@ -136,7 +136,7 @@ timeout --signal=9 20s ${BASEDIR_55}/bin/mysqladmin -uroot --socket=${BASEDIR_55
 
 find ${BASEDIR_55}/data -type f -name "*toku*" | xargs cp -t ${WORKDIR}/tokudb_files
 
-cp -r ${BACKP_DIR}/$BACKUP_LOC/* ${BASEDIR_56}/data
+cp -a ${BACKP_DIR}/$BACKUP_LOC/* ${BASEDIR_56}/data
 
 export LD_PRELOAD=""
 #Start 56 server without TokuDB plugin
@@ -173,7 +173,7 @@ stop_mysql_56
 
 rm -Rf ${BASEDIR_56}/data/*toku*
 
-cp -r  ${WORKDIR}/tokudb_files/* ${BASEDIR_56}/data/
+cp -a  ${WORKDIR}/tokudb_files/* ${BASEDIR_56}/data/
 echoit "Starting server with --tokudb-strip-frm-data=TRUE for tokudb data migration."
 MYEXTRA="--plugin-load=tokudb=ha_tokudb.so --tokudb-strip-frm-data=TRUE"
 start_mysql_56 ${MYEXTRA}

@@ -31,7 +31,7 @@ if [ -z $2 ]; then
   exit 1
 else
   mkdir -p $BIG_DIR/$1
-  cp -r $BIG_DIR/$2 $BIG_DIR/$1
+  cp -a $BIG_DIR/$2 $BIG_DIR/$1
   export BUILD_NUMBER=$1
   export DB_DIR=$BIG_DIR/$1/$2
   mkdir -p $BIG_DIR/$1/logs
@@ -173,12 +173,12 @@ function start_ps(){
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
 
   if [ -d ${WS_DATADIR}/psdata_${DATASIZE} ]; then
-    cp -r ${WS_DATADIR}/psdata_${DATASIZE} ${DB_DIR}/psdata
+    cp -a ${WS_DATADIR}/psdata_${DATASIZE} ${DB_DIR}/psdata
     start_ps_node
   else
     mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_ps_node startup
-    cp -r ${WS_DATADIR}/psdata_${DATASIZE} ${DB_DIR}/psdata
+    cp -a ${WS_DATADIR}/psdata_${DATASIZE} ${DB_DIR}/psdata
     start_ps_node
   fi
 }
