@@ -11,9 +11,9 @@
     properties:
     - build-discarder:
         days-to-keep: -1
-        num-to-keep: 50
+        num-to-keep: 20
         artifact-days-to-keep: -1
-        artifact-num-to-keep: 50
+        artifact-num-to-keep: 20
     parameters:
     - string:
         name: GIT_REPO
@@ -41,9 +41,9 @@
         - replication_test_gtid
         - replication_test_mts
         - replication_test
-        - replication_test_gtid_keyfile
-        - replication_test_mts_keyfile
-        - replication_test_keyfile
+        - replication_test_gtid_enc_file
+        - replication_test_mts_enc_file
+        - replication_test_enc_file
         description: Select tests to run
     axes:
       - axis:
@@ -105,4 +105,4 @@
         percona-qa/ps-tests/jenkins/ps80/test-binary-upgrade/run-test.sh ${DOCKER_OS} ${UPGRADE_TEST} ${UPGRADE_FROM} ${WORKSPACE}/ps-upgrade-test
     publishers:
     - archive:
-        artifacts: "PIPELINE_BUILD_NUMBER, public_url"
+        artifacts: "PIPELINE_BUILD_NUMBER, public_url, ps-upgrade-test/*.tar.gz"

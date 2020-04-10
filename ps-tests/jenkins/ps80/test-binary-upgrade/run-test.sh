@@ -7,7 +7,7 @@ ROOT_DIR=$(cd $(dirname $0)/../../../../../percona-qa; pwd -P)
 SOURCE_IMAGE=${1:-ubuntu:bionic}
 UPGRADE_TEST=${2:-non_partition_test}
 UPGRADE_FROM=${3:-5.7}
-TEST_WORKDIR=${4:-/mnt/ps-upgrade-test}
+TEST_WORKDIR=${4:-${HOME}/ps-upgrade-test}
 PIPELINE_BUILD_NUMBER="$(cat PIPELINE_BUILD_NUMBER)"
 
 PS_UPPER_DIR="ps-upper"
@@ -74,13 +74,13 @@ docker run --rm \
     if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test
     fi
-    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_gtid_keyfile" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_gtid_enc_file" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test_gtid -e -k file
     fi
-    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_mts_keyfile" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_mts_enc_file" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test_mts -e -k file
     fi
-    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_keyfile" ]; then
+    if [ "${UPGRADE_TEST}" = "all" -o "${UPGRADE_TEST}" = "replication_test_enc_file" ]; then
       /tmp/percona-qa/ps-upgrade-test_v1.sh -w /tmp/workdir -l /tmp/workdir/${PS_LOWER_DIR} -u /tmp/workdir/${PS_UPPER_DIR} -t replication_test -e -k file
     fi
 "
