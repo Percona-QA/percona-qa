@@ -1,6 +1,11 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+FRAMESONLY=0
+if [ "${1}" == "FRAMESONLY" ]; then  # Used in automation, ref mass_bug_report.sh
+  FRAMESONLY=1
+fi
+
 LATEST_CORE=$(ls -t data/*core* 2>/dev/null | head -n1)
 if [ -z "${LATEST_CORE}" ]; then
   # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
@@ -91,7 +96,11 @@ rm -f /tmp/${RANDF}.gdb4
 FRAMES="$(cat /tmp/${RANDF}.gdb3 | head -n4 | sed 's| [^ ]\+$||' | tr '\n' '|' | sed 's/|$/\n/')"
 rm -f /tmp/${RANDF}.gdb3
 if [ ! -z "${FRAMES}" ]; then
-  if [ -z "${TEXT}" ]; then TEXT="${FRAMES}"; else TEXT="${TEXT}|${FRAMES}"; fi
+  if [ ${FRAMESONLY} -eq 1 -o -z "${TEXT}" ]; then
+    TEXT="${FRAMES}"
+  else
+    TEXT="${TEXT}|${FRAMES}"
+  fi
 else
   echo "Assert: No parsable frames?"
   exit 1

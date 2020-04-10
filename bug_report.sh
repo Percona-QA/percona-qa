@@ -2,6 +2,7 @@
 # Created by Roel Van de Paar, MariaDB
 
 MYEXTRA_OPT="$*"
+SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from a basedir which had the SQL executed against it an crashed"
@@ -23,11 +24,6 @@ if [ ! -r ./in.sql ]; then
   exit 1
 fi
 
-if [ ! -r log/master.err ]; then
-  echo "Assert: log/master.err not available, please run this from a basedir which had the SQL executed against it an crashed"
-  exit 1
-fi
-
 echo 'Starting bug report generation for this SQL code (please check):'
 echo '----------------------------------------------------------------'
 cat in.sql
@@ -37,7 +33,12 @@ sleep 1
 RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
-./all_no_cl ${MYEXTRA_OPT}
+grep 'mysqld options required for replay:' ./in.sql | sed 's|.*mysqld options required for replay:[ ]||' > /tmp/options_bug_report.${RANDF}
+echo ${MYEXTRA_OPT} >> /tmp/options_bug_report.${RANDF}
+MYEXTRA_OPT_CLEANED=$(cat /tmp/options_bug_report.${RANDF} | sed 's|  | |g' | tr ' ' '\n' | sort -u | tr '\n' ' ')
+echo "Using the following options: ${MYEXTRA_OPT_CLEANED}"
+
+./all_no_cl ${MYEXTRA_OPT_CLEANED}
 ./test
 ./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
 
@@ -61,7 +62,7 @@ cp in.sql ..
 if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy attempt!"; exit 1; fi
 cd ..
 echo "Testing all..."
-./test_all ${MYEXTRA_OPT}
+./test_all ${MYEXTRA_OPT_CLEANED}
 CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
 cd -
 
@@ -90,11 +91,13 @@ if [ -r ../test.results ]; then
 fi
 echo '-------------------- /BUG REPORT --------------------'
 echo "TOTAL CORES SEEN ACCROSS ALL VERSIONS: ${CORE_COUNT_ALL}"
-echo 'Remember to action:'
-echo '1) If no engine is specified, add ENGINE=InnoDB'
-echo '2) Double check noformat version strings (10.5 default)'
-echo '3) Add bug to known.strings as;'
-~/t
-cp in.sql ~/mariadb-qa/BUGS/in.sql
-echo '5) This script copied in.sql to ~/mariadb-qa/BUGS/in.sql, rename as follows;'
-echo 'mv ~/mariadb-qa/BUGS/in.sql ~/mariadb-qa/BUGS/MDEV-22000.sql'
+if [ ${CORE_COUNT_ALL} -gt 0 ]; then
+  echo 'Remember to action:'
+  echo '1) If no engine is specified, add ENGINE=InnoDB'
+  echo '2) Double check noformat version strings for non-10.5 issues'
+  echo '3) Add bug to known.strings'
+  echo '4) Check for duplicates before logging bug:'
+  FIRSTFRAME=$(${SCRIPT_PWD}/new_text_string.sh FRAMESONLY | sed 's/|.*//')
+  echo "https://jira.mariadb.org/browse/MDEV-0?jql=text%20~%20%22%5C%22${FIRSTFRAME}%5C%22%22"  # Chrome/FF will automatically translate non-url chars in the FIRSTFRAME var
+  echo "https://www.google.com/search?q=site%3Amariadb.org+%22${FIRSTFRAME}%22"  # Idem
+fi
