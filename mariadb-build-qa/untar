@@ -5,7 +5,7 @@ if [ -z "${1}" ]; then
 fi
 
 NAME=$(echo "${1}" | sed 's|\.tar\.gz$||')
-NAME2=$(echo "${NAME}" | sed 's|^[A-Z][A-Z][0-9]\+-||')
+NAME2=$(echo "${NAME}" | sed 's|^[A-Z][A-Z][0-9]\+-||;s|-[do][bp][gt]$||')
 
 tar -xf ${1} 
 mv ${NAME2} ${NAME}

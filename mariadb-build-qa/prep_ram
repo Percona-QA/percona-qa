@@ -1,0 +1,11 @@
+#!/bin/bash
+
+BASEDIR=MD080420-mariadb-10.5.3-linux-x86_64   # without -opt and -dbg
+cp -r ${BASEDIR}-opt /ram
+cp -r ${BASEDIR}-dbg /ram
+cd /ram/${BASEDIR}-opt
+~/mariadb-qa/startup.sh
+cd /ram/${BASEDIR}-dbg
+~/mariadb-qa/startup.sh
+echo "cd ${BASEDIR}-opt" > /ram/opt
+echo "cd ${BASEDIR}-dbg" > /ram/dbg

@@ -1,0 +1,16 @@
+#!/bin/bash 
+screen -ls | grep "pr" | sed 's|\.pr.*$||;s|[\t ]||g' | xargs -I{} kill -9 {}
+sleep 3
+screen -wipe 2>&1 >/dev/null
+echo "Runs terminated... waiting 600 seconds for pquery-go-expert's to catch up..."
+echo -n '0... '
+sleep 100; echo -n '100... '
+sleep 100; echo -n '200... '
+sleep 100; echo -n '300... '
+sleep 100; echo -n '400... '
+sleep 100; echo -n '500... '
+sleep 100; echo '600... Done!'
+screen -ls | grep "ge" | sed 's|\.ge.*$||;s|[\t ]||g' | xargs -I{} kill -9 {}
+sleep 3
+screen -wipe 2>&1 >/dev/null
+echo "pquery-go-expert's terminated... All done!"

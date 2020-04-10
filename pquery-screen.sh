@@ -1,1 +1,2 @@
-screen -d -r s$1
+screen -d -r $1
+screen -ls

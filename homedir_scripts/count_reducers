@@ -1,0 +1,1 @@
+ps -ef | grep -o 'reducer[0-9]\+.sh' | sort -u | wc -l

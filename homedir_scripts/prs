@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 ls_exec(){
-  ls -ld [0-9]* | sed 's|.*..:.. ||' | sort | xargs -I{} echo 'wc -l ${PWD}/{}/*/*.sql_out* ${PWD}/{}/*/*/*.sql_out* ${PWD}/{}/*/*/*/*.sql_out* 2>/dev/null' | xargs -I{} sh -c '{} | grep -vE "\.prev|total|subreducer" | sed "s|^[ ]*|   |"'
+  ls -ld [0-9]* 2>/dev/null | sed 's|.*..:.. ||' | sort | xargs -I{} echo 'wc -l ${PWD}/{}/*/*.sql_out* ${PWD}/{}/*/*/*.sql_out* ${PWD}/{}/*/*/*/*.sql_out* 2>/dev/null' | xargs -I{} sh -c '{} | grep -vE "\.prev|total|subreducer" | sed "s|^[ ]*|   |"'
 }
 
 if [ -d /dev/shm ]; then
