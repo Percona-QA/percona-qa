@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+# Possible improvement; grep mysqld options required form sql file!
+
 MYEXTRA_OPT="$*"
 TESTCASES_DIR=/test/TESTCASES
 RUN_BASEDIR=${PWD}
@@ -15,10 +17,11 @@ if [ ! -r bin/mysqld ]; then
   exit 1
 fi
 
-if [ "$(echo "${PWD}" | grep -o 'opt$')" == "opt" ]; then
-  echo "Likely mistake; this script is being executed from an optimized build directory, however normally a solid subset of the testcases will require a debug build, so this script will wait 5 seconds now to CTRL+C if necessary..."
-  sleep 5
-fi
+#The script now executes against all directories as listed by ./gendirs.sh, so this is no longer strictly required.
+#if [ "$(echo "${PWD}" | grep -o 'opt$')" == "opt" ]; then
+#  echo "Likely mistake; this script is being executed from an optimized build directory, however normally a solid subset of the testcases will require a debug build, so this script will wait 5 seconds now to CTRL+C if necessary..."
+#  sleep 5
+#fi
 
 if [ ! -d "${TESTCASES_DIR}" ]; then
   echo "Assert: '${TESTCASES_DIR}' (set in script) is not a valid directory, or cannot be read by this script."
@@ -30,7 +33,7 @@ RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDFL=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 LIST="/tmp/list_of_testcases.${RANDFL}"
-ls ${TESTCASES_DIR}/*.sql 2>/dev/null > ${LIST}
+ls ${TESTCASES_DIR}/*.sql 2>/dev/null | grep -v 'result' > ${LIST}
 NR_OF_TESTCASES=$(wc -l ${LIST} | sed 's| .*||')
 
 if [ ${NR_OF_TESTCASES} -eq 0 ]; then
@@ -44,7 +47,7 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
   sleep 1
   cd ${RUN_BASEDIR}  # Defensive coding only
   cp ${TESTCASE} ./in.sql
-  ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.result
+  timeout -k300 -s9 300s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.result
   rm -f ${TESTCASE}.result.NOCORE
   if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.result; then
     touch ${TESTCASE}.result.NOCORE
@@ -52,3 +55,4 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
 done
 
 rm -f /tmp/list_of_testcases.${RANDFL}
+echo "Done! Please check ${TESTCASES_DIR}/*result* files. A '{testcase}.sql.result.NOCORE' flag file was added for issues which did not reproduce on any basedir as seen by ./gendirs.sh"

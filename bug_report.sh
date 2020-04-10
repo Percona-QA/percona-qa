@@ -37,9 +37,9 @@ sleep 1
 RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
-./stop
 ./all_no_cl ${MYEXTRA_OPT}
 ./test
+./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
 
 CORE_COUNT=$(ls data/*core* 2>/dev/null | wc -l)
 if [ ${CORE_COUNT} -eq 0 ]; then
@@ -60,8 +60,9 @@ if [ -r ../in.sql ]; then echo "Assert: ../in.sql still available after it was r
 cp in.sql ..
 if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy attempt!"; exit 1; fi
 cd ..
+echo "Testing all..."
 ./test_all ${MYEXTRA_OPT}
-CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/bin/*core*" 2>/dev/null | xargs -I{} bash -c "{}" | wc -l)
+CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
 cd -
 
 SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"
