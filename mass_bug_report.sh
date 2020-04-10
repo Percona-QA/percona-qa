@@ -45,8 +45,8 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
   cd ${RUN_BASEDIR}  # Defensive coding only
   cp ${TESTCASE} ./in.sql
   ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.result
-  rm ${TESTCASE}.result.NOCORE
-  if grep -q "no cores found" ${TESTCASE}.result; then
+  rm -f ${TESTCASE}.result.NOCORE
+  if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.result; then
     touch ${TESTCASE}.result.NOCORE
   fi
 done

@@ -13,6 +13,11 @@ if [ ! -r ../test_all ]; then
   exit 1
 fi
 
+if [ ! -r ../gendirs.sh ]; then
+  echo "Assert: ../gendirs.sh not available - incorrect setup or structure"
+  exit 1
+fi
+
 if [ ! -r ./in.sql ]; then
   echo "Assert: ./in.sql not available - incorrect setup or structure"
   exit 1
@@ -38,11 +43,16 @@ RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Ra
 
 CORE_COUNT=$(ls data/*core* 2>/dev/null | wc -l)
 if [ ${CORE_COUNT} -eq 0 ]; then
-  echo "Assert: no cores found at data/*core*, please run this from a basedir which had the SQL executed against it an crashed"
-  exit 1
+  echo "INFO: no cores found at data/*core*"
 elif [ ${CORE_COUNT} -gt 1 ]; then
-	echo "Assert: too many (${CORE_COUNT}) cores found at data/*core*, please run this from a freshly initited (./all) basedir which had the SQL executed against it an crashed"
+  echo "Assert: too many (${CORE_COUNT}) cores found at data/*core*, this should not happen (as ./all_no_cl was used which should have created a clean data directory)"
   exit 1
+else
+  gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdba 2>&1 << EOF
+   set pagination off
+   bt
+   quit
+EOF
 fi
 
 rm -f ../in.sql
@@ -51,16 +61,11 @@ cp in.sql ..
 if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy attempt!"; exit 1; fi
 cd ..
 ./test_all ${MYEXTRA_OPT}
+CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/bin/*core*" 2>/dev/null | xargs -I{} bash -c "{}" | wc -l)
 cd -
 
 SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"
 SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
-
-gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdba 2>&1 << EOF
-  set pagination off
-  bt
-  quit
-EOF
 
 echo '-------------------- BUG REPORT --------------------'
 echo '{noformat}'
@@ -83,6 +88,7 @@ if [ -r ../test.results ]; then
   cat ../test.results
 fi
 echo '-------------------- /BUG REPORT --------------------'
+echo "TOTAL CORES SEEN ACCROSS ALL VERSIONS: ${CORE_COUNT_ALL}"
 echo 'Remember to action:'
 echo '1) If no engine is specified, add ENGINE=InnoDB'
 echo '2) Double check noformat version strings (10.5 default)'
