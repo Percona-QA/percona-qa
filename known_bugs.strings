@@ -17,7 +17,7 @@ SIGSEGV|ha_innobase::cmp_ref|queue_insert|merge_buffers|merge_index           ##
 m_buffer_end == __null || end <= m_buffer_end|SIGABRT|Merge_chunk::set_buffer_end|merge_buffers|merge_index|Unique::merge                                                       ## DBG MDEV-22187
 !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                               ## Patch pending ## DBG MDEV-22062
 SIGABRT|ib::fatal_or_error::~fatal_or_error|ut_allocator<unsigned char, true>::allocate|buf_pool_t::create|srv_start                                                            ## OPT MDEV-22219
-
+marked_for_read()|SIGABRT|Field_blob::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                                                         ## DBG MDEV-21804
 
 
 ###### FIXED BUGS ######

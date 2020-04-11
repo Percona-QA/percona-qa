@@ -3,6 +3,6 @@
 
 MYEXTRA_OPT="$*"
 
-./gendirs.sh | xargs -I{} echo "cd {}; ./start ${MYEXTRA_OPT}; cd .." | xargs -P50 -I{} sh -c "{}"
+./gendirs.sh | xargs -I{} echo "cd {}; ./start ${MYEXTRA_OPT}" | xargs -P50 -I{} sh -c "{}"
 
 sync

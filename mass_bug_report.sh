@@ -15,6 +15,11 @@ if [ ! -r ./all_no_cl ]; then
   exit 1
 fi
 
+if [ ! -r ../kill_all ]; then
+  echo "Assert: ../ikill_all not available, wrong infrastructure setup, please copy contents of ${SCRIPT_PWD}/mariadb-build-qa to .."
+  exit 1
+fi
+
 if [ "$(echo "${PWD}" | grep -o 'opt$')" == "opt" ]; then
   echo "Possible mistake; this script is being executed from an optimized build directory, however normally a solid subset of the testcases will require a debug build, and this script will use the current BASEDIR as the authorative source for prodicing the gdb backtrace displayed in the bug report. IOW, if there are debug-only testcases in ${TESTCASES_DIR} then there will likely not be any proper statck traces produced for those. To avoid this issue, simply CTRL+C now and run this script again from a debug build. This script will wait 5 seconds now to CTRL+C if necessary..."
   sleep 5
@@ -50,6 +55,7 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
   cp ${TESTCASE} ./in.sql
   MAX_DURATION=900  # 15 Minutes, normal runtime (if not OOM) is <= 1 min with ~20 instances
   timeout -k${MAX_DURATION} -s9 ${MAX_DURATION}s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.report
+  ../kill_all  # If bug_report was halted, this will stop all running instaces
   if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.report; then
     touch ${TESTCASE}.report.NOCORE
   fi

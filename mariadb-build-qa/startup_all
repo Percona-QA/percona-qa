@@ -9,3 +9,5 @@ fi
 ./gendirs.sh | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -P50 -I{} sh -c "{}"
 
 sync
+
+echo "Complete! The information above (on ./all) refers to the script which were created INSIDE the base directories, i.e. you can do: cd somebasedir; ./all"

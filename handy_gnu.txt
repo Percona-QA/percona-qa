@@ -265,6 +265,11 @@
           This will     work: $ if [[ "a-b" == *"a"[-_]"b"* ]]; then echo "yes"; fi  # With thanks, http://wiki.bash-hackers.org/syntax/pattern
 # Gotcha: sh -x != bash -x. If you use sh -x instead of bash -x to see the debug output of a complex script, you may see errors like this:
   ./script.sh: 5: ./script.sh: [[: not found  # The reason is that sh -x cannot handle "[[" if statements whereas bash -x can
+# Consider difference between
+for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -I{} bash -c "{}"
+# And the next line. The first one will run sequentially, whereas the -P10 version will start 10 threads at once
+for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -P10 -I{} bash -c "{}"
+
 
 # ------ GNU 'screen' usage ------
 # Want to scroll inside a screen session? 

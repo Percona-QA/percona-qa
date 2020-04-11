@@ -317,9 +317,9 @@ echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/ge
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
 tail -n1 start >> start_valgrind
 tail -n1 start >> start_gypsy
-echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
+echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown;./kill >/dev/null 2>&1" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
-echo "./init;./start;./cl;./stop;tail log/master.err" > setup
+echo "./init;./start;./cl;./stop;./kill >/dev/null 2>&1;tail log/master.err" > setup
 if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then
   echo "./start; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
   if [ ! -z "$LOAD_ROCKSDB_INIT_FILE" ] ; then
@@ -369,7 +369,7 @@ elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.
   fi
 fi
 
-echo "./stop 2>/dev/null;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop" > sysbench_measure
+echo "./stop 2>/dev/null;./kill >/dev/null 2>&1;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop;./kill >/dev/null 2>&1;" > sysbench_measure
 
 # Replacement for code below which was disabled. RV/RS considered it necessary to leave this to make it easier to use start and immediately have the test db available so it can be used for quick access. It also does not affect using --init-file=...plugins_80.sql 
 echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
@@ -402,17 +402,17 @@ echo 'fi' >> gdb
 
 echo 'sudo pmm-admin config --server $(ifconfig | grep -A1 "^en" | grep -v "^en" | sed "s|.*inet ||;s| .*||")' > pmm_os_agent
 echo 'sudo pmm-admin add mysql $(echo ${PWD} | sed "s|/|-|g;s|^-\+||") --socket=${PWD}/socket.sock --user=root --query-source=perfschema' > pmm_mysql_agent
-echo "./stop >/dev/null 2>&1" > init
+echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1" > init
 echo "rm -Rf ${PWD}/data" >> init
 echo "$INIT_TOOL ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
 
 echo 'MYEXTRA_OPT="$*"' > all
-echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
+echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
 echo 'MYEXTRA_OPT="$*"' > all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
-echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
+echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
 if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
 chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
@@ -422,6 +422,6 @@ if [[ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]] || [[ -r ${PWD}/lib/mysql/plugi
   echo "Enabling additional TokuDB/ROCKSDB engine plugin items if exists"
   ./myrocks_tokudb_init
 fi
-echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;wipe;start;cl)"
+echo "Done! To get a fresh instance at any time, execute: ./all (executes: stop;kill;wipe;start;cl)"
 echo "      To get a fresh instance now, execute: ./start then wait 3 seconds and execute ./cl"
 exit 0

@@ -3,6 +3,6 @@
 
 # If you execute mysqladmin shutdown when connecting to a local server using a Unix socket file, mysqladmin waits until the server's process ID file has been removed, to ensure that the server has stopped properly.  -- https://dev.mysql.com/doc/refman/8.0/en/mysqladmin.html
 
-./gendirs.sh | xargs -I{} echo "cd {}; ./stop >/dev/null 2>&1 ; cd .." | xargs -P50 -I{} sh -c "{}"
+./gendirs.sh | xargs -I{} echo "cd {}; ./stop >/dev/null 2>&1; ./kill >/dev/null 2>&1" | xargs -P50 -I{} sh -c "{}"
 
 sync
