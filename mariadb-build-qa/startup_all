@@ -1,1 +1,11 @@
-./gendirs.sh | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -I{} sh -c "{}"
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+if [ ! -r ~/mariadb-qa/startup.sh ]; then
+  echo "Assert: incorrect infrastructure setup! Please make ~/mariadb-qa/startup.sh to be available"
+  exit 1
+fi
+
+./gendirs.sh | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -P50 -I{} sh -c "{}"
+
+sync

@@ -1,0 +1,8 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+# The ./kill script ensures the correct PID is selected (via random PORT= assignment)
+
+./gendirs.sh | xargs -I{} echo "cd {}; ./kill; cd .." | xargs -P50 -I{} sh -c "{}"
+
+sync

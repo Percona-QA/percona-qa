@@ -10,29 +10,19 @@ if [ ! -r ./in.sql ]; then
   exit 1
 fi
 
-# Remove stopped.flag
-./gendirs.sh | xargs -I{} echo "rm -f {}/stopped.flag" | xargs -P30 -I{} sh -c "{}" &
-
 # Startup all server fresh (clean data dir) (as background processes; end handling done by ./all_all)
 ./all_all ${MYEXTRA_OPT}
 
 # Copy in.sql to all instances
 ./copy_in.sql_all
 
-# Run the test and stop the server (as background processes)
-./gendirs.sh | xargs -I{} echo "cd {}; ./test; ./stop; cd .." | xargs -P30 -I{} sh -c "{}" &
+# Run the test and stop the servers
+./gendirs.sh | xargs -I{} echo "cd {}; ./test; rm -f {}/stopped.flag; ./stop; cd .." | xargs -P50 -I{} sh -c "{}"
 
-# Wait for runs to complete
-COUNT2=$(./gendirs.sh | wc -l)
-echo "Servers left testing: ${COUNT2}..."
-while [ $COUNT2 -ne 0 ]; do
-  COUNT=$(./gendirs.sh | xargs -I{} ls "{}/stopped.flag" 2>&1 | grep "No such file" | wc -l)
-  if [ ${COUNT2} -ne ${COUNT} ]; then
-    echo "Servers left to end/stop: ${COUNT}..."
-    COUNT2=${COUNT}
-  fi
-  sleep 0.5
-done
+# Ensure servers are gone
+./kill_all
+
+sync
 
 # Output results and save copy of reasy bug reporting (mariadb-qa/bug_report.sh)
 # The 'signal' is a bit rudimentary, but it will locate all crashes in all distributions

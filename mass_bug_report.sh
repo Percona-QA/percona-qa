@@ -5,11 +5,6 @@ MYEXTRA_OPT="$*"  # Note that this is in addition to any '# mysqld options requi
 TESTCASES_DIR=/test/TESTCASES/new
 RUN_BASEDIR=${PWD}
 
-echo "--------------------------------------------------------------------------------------------"
-echo "** IMPORTANT NOTE: ** This script uses kill_all_procs.sh regularly, so please make sure that this server is not doing any ongoing pquery runs! Sleeping 5 seconds to allow pressing CTRL+C if needbe!"
-echo "--------------------------------------------------------------------------------------------"
-sleep 5
-
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from any basedir, preferably the most recent build/the latest version used for the intial testrun, as the backtrace and version/revision used in the bug reports will be based on this base directory"
   exit 1
@@ -48,9 +43,6 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
   cp ${TESTCASE} ./in.sql
   MAX_DURATION=900  # 15 Minutes, normal runtime (if not OOM) is <= 1 min with ~20 instances
   timeout -k${MAX_DURATION} -s9 ${MAX_DURATION}s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.result
-  ${SCRIPT_PWD}/kill_all_procs.sh
-  sleep 0.5
-  ${SCRIPT_PWD}/kill_all_procs.sh
   if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.result; then
     touch ${TESTCASE}.result.NOCORE
   fi

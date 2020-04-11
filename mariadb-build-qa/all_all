@@ -3,26 +3,7 @@
 
 MYEXTRA_OPT="$*"
 
-# Remove ready flags
-./gendirs.sh | xargs -I{} rm -f "{}/ready.flag"
+# Stop (if running), wipe and start all instances in parallel
+./gendirs.sh | xargs -I{} echo "cd {}; ./all_no_cl ${MYEXTRA_OPT}" | xargs -P50 -I{} sh -c "{}"
 
-# Stop existing instances
-./stop_all
-
-# Preset COUNT to max
-COUNT=$(./gendirs.sh | wc -l)
-
-# Start all servers in parallel
-./gendirs.sh | xargs -I{} echo "cd {}; ./all ${MYEXTRA_OPT}; cd .." | xargs -P30 -I{} sh -c "{}" &
-
-# Wait for loading to complete
-COUNT2=${COUNT}
-echo "Servers left to start: ${COUNT}..."
-while [ $COUNT -ne 0 ]; do 
-  COUNT=$(./gendirs.sh | xargs -I{} ls "{}/ready.flag" 2>&1 | grep "No such file" | wc -l)
-  if [ ${COUNT2} -ne ${COUNT} ]; then
-    echo "Servers left to start: ${COUNT}..."
-    COUNT2=${COUNT}
-  fi
-  sleep 0.5
-done
+sync

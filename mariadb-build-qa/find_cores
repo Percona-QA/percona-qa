@@ -1,1 +1,1 @@
-find . | grep '/data/core$' | grep -v 'COPY'
+find . | grep '/core$' | grep -v 'COPY'

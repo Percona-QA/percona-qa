@@ -1,4 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-./gendirs.sh | xargs -I{} echo "cd {}; ./start; cd .." | xargs -I{} sh -c "{}"
+MYEXTRA_OPT="$*"
+
+./gendirs.sh | xargs -I{} echo "cd {}; ./start ${MYEXTRA_OPT}; cd .." | xargs -P50 -I{} sh -c "{}"
+
+sync

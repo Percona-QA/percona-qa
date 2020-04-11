@@ -228,7 +228,6 @@ echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instru
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB  # For fb-mysql only"' >> start
 echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start
 echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start
-echo "rm -f ./stopped.flag" >> start
 cp start start_valgrind  # Idem for Valgrind
 cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
 echo "$BIN  \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err --server-id=100 \${MYEXTRA_OPT}  2>&1 &" >> start
@@ -320,7 +319,6 @@ tail -n1 start >> start_valgrind
 tail -n1 start >> start_gypsy
 echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
-echo "touch ./stopped.flag" >> stop
 echo "./init;./start;./cl;./stop;tail log/master.err" > setup
 if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then
   echo "./start; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
@@ -410,17 +408,11 @@ echo "$INIT_TOOL ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
 
 echo 'MYEXTRA_OPT="$*"' > all
-echo 'rm -f ready.flag  # Remove ready flag' >> all
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
-echo 'touch ready.flag  # Set ready flag' >> all
 echo 'MYEXTRA_OPT="$*"' > all_stbe
-echo 'rm -f ready.flag  # Remove ready flag' >> all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
-echo 'touch ready.flag  # Set ready flag' >> all_stbe
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
-echo 'rm -f ready.flag  # Remove ready flag' >> all_no_cl
 echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
-echo 'touch ready.flag  # Set ready flag' >> all_no_cl
 if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
 chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"

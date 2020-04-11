@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-./gendirs.sh | xargs -I{} echo "cd {}; ./stop >/dev/null 2>&1 ; cd .." | xargs -P30 -I{} sh -c "{}" &
-echo "Remaining live processes (includes ongoing runs!):"
-ps -ef | grep mysqld | grep -v grep
+# If you execute mysqladmin shutdown when connecting to a local server using a Unix socket file, mysqladmin waits until the server's process ID file has been removed, to ensure that the server has stopped properly.  -- https://dev.mysql.com/doc/refman/8.0/en/mysqladmin.html
+
+./gendirs.sh | xargs -I{} echo "cd {}; ./stop >/dev/null 2>&1 ; cd .." | xargs -P50 -I{} sh -c "{}"
+
+sync
