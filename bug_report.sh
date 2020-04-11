@@ -10,6 +10,11 @@ if [ ! -r bin/mysqld ]; then
   exit 1
 fi
 
+if [ ! -r ./all_no_cl ]; then 
+  echo "Assert: ./all_no_cl not available, please run this from a basedir which was prepared with ${SCRIPT_PWD}/startup.sh"
+  exit 1
+fi
+
 if [ ! -r ../test_all ]; then
   echo "Assert: ../test_all not available - incorrect setup or structure"
   exit 1
@@ -109,7 +114,13 @@ if [ ${CORE_COUNT_ALL} -gt 0 ]; then
   echo 'Remember to action:'
   echo '1) If no engine is specified, add ENGINE=InnoDB'
   echo '2) Double check noformat version strings for non-10.5 issues'
-  echo '3) Add bug to known.strings'
+  if [ ${NOCORE} -ne 1 ]; then
+    echo '3) Add bug to known.strings, as follows:'
+    cd ${RUN_PWD}
+    ${SCRIPT_PWD}/new_text_string.sh
+  else
+    echo "3) Add bug to known.strings, using ${SCRIPT_PWD}/new_text_string.sh in the basedir of a crashed instance"
+  fi
   echo '4) Check for duplicates before logging bug:'
   if [ ${NOCORE} -ne 1 ]; then
     cd ${RUN_PWD}

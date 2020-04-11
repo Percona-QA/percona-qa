@@ -2,11 +2,16 @@
 # Created by Roel Van de Paar, MariaDB
 
 MYEXTRA_OPT="$*"  # Note that this is in addition to any '# mysqld options required for replay: --option1 --option2' etc. options listed inside the .sql testcases (as produced by reducer.sh), which are automatically included in the MYEXTRA options.
-TESTCASES_DIR=/test/TESTCASES/new
+TESTCASES_DIR=/test/TESTCASES
 RUN_BASEDIR=${PWD}
 
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from any basedir, preferably the most recent build/the latest version used for the intial testrun, as the backtrace and version/revision used in the bug reports will be based on this base directory"
+  exit 1
+fi
+
+if [ ! -r ./all_no_cl ]; then
+  echo "Assert: ./all_no_cl not available, please run this from a basedir which was prepared with ${SCRIPT_PWD}/startup.sh"
   exit 1
 fi
 
@@ -25,7 +30,7 @@ RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDFL=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 LIST="/tmp/list_of_testcases.${RANDFL}"
-ls ${TESTCASES_DIR}/*.sql 2>/dev/null | grep -v 'result' > ${LIST}
+ls ${TESTCASES_DIR}/*.sql 2>/dev/null > ${LIST}
 NR_OF_TESTCASES=$(wc -l ${LIST} | sed 's| .*||')
 
 if [ ${NR_OF_TESTCASES} -eq 0 ]; then
@@ -35,21 +40,23 @@ fi
 
 for i in $(seq 1 ${NR_OF_TESTCASES}); do
   TESTCASE=$(head -n${i} ${LIST} | tail -n1)
+  echo "------------------------------------------------------------------------------"
   echo "Now testing testcase ${i}/${NR_OF_TESTCASES}: ${TESTCASE}..."
+  echo "------------------------------------------------------------------------------"
   echo "Now testing testcase ${i}/${NR_OF_TESTCASES}: ${TESTCASE}..." > current.testcase
   sleep 1
-  rm -f ${TESTCASE}.result ${TESTCASE}.result.NOCORE
+  rm -f ${TESTCASE}.report ${TESTCASE}.report.NOCORE
   cd ${RUN_BASEDIR}  # Defensive coding only
   cp ${TESTCASE} ./in.sql
   MAX_DURATION=900  # 15 Minutes, normal runtime (if not OOM) is <= 1 min with ~20 instances
-  timeout -k${MAX_DURATION} -s9 ${MAX_DURATION}s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.result
-  if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.result; then
-    touch ${TESTCASE}.result.NOCORE
+  timeout -k${MAX_DURATION} -s9 ${MAX_DURATION}s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.report
+  if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.report; then
+    touch ${TESTCASE}.report.NOCORE
   fi
 done
 
 rm -f /tmp/list_of_testcases.${RANDFL} current.testcase
 
 echo "--------------------------------------------------------------------------------------------"
-echo "Done! Please check ${TESTCASES_DIR}/*result* files!"
-echo "A '{testcase}.sql.result.NOCORE' flag file was added for issues which did not reproduce on any basedir"
+echo "Done! Please check ${TESTCASES_DIR}/*report* files!"
+echo "A '{testcase}.sql.report.NOCORE' flag file was added for issues which did not reproduce on any basedir"

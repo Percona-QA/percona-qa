@@ -13,7 +13,7 @@ USE_SAN=0               # 0 or 1 # Use ASAN, MSAN, UBSAN
 CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
-IGNORE_WARNINGS=1       # 0 or 1 # Ignore warnings by using -DMYSQL_MAINTAINER_MODE=0. When ignoring warnings, regularly check that existing bugs are fixed. Related bugs:
+IGNORE_WARNINGS=1       # 0 or 1 # Ignore warnings by using -DMYSQL_MAINTAINER_MODE=OFF. When ignoring warnings, regularly check that existing bugs are fixed. Related bugs:
                                  # http://jira.mariadb.org/MDEV-21939
                                  # http://jira.mariadb.org/MDEV-21940
 
@@ -196,7 +196,7 @@ fi
 
 # Ignore warnings
 if [ ${IGNORE_WARNINGS} -eq 1 ]; then
-  FLAGS="${FLAGS} -DMYSQL_MAINTAINER_MODE=0"
+  FLAGS="${FLAGS} -DMYSQL_MAINTAINER_MODE=OFF"
 fi
 
 CURPATH=$(echo $PWD | sed 's|.*/||')
