@@ -1,6 +1,15 @@
 #!/bin/bash
 
 BASEDIR=MD080420-mariadb-10.5.3-linux-x86_64   # without -opt and -dbg
+
+if [ ! -r ~/ramdrive.sh ]; then
+  echo "Assert: ~/ramdrive.sh missing, you likely want to do something like:"
+  echo "cp ~/mariadb-qa/homedir_scripts/* ~"
+  exit 1
+fi
+
+~/ramdrive.sh
+
 cp -r ${BASEDIR}-opt /ram
 cp -r ${BASEDIR}-dbg /ram
 cd /ram/${BASEDIR}-opt

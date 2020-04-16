@@ -19,9 +19,12 @@ m_buffer_end == __null || end <= m_buffer_end|SIGABRT|Merge_chunk::set_buffer_en
 SIGABRT|ib::fatal_or_error::~fatal_or_error|ut_allocator<unsigned char, true>::allocate|buf_pool_t::create|srv_start                                                            ## OPT MDEV-22219
 marked_for_read()|SIGABRT|Field_blob::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                                                         ## DBG MDEV-21804
 SIGSEGV|Charset::swap|String::swap|Item_func_json_arrayagg::val_str|Type_handler::Item_send_str                                                                                 ## OPT MDEV-22236
-!table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables                      ## DBG MDEV-22237
+!table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables     ## Patch pending ## DBG MDEV-22237
 !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                                ## DBG MDEV-22062*
-
+id|SIGABRT|trx_write_trx_id|row_ins_step|row_insert_for_mysql|ha_innobase::write_row                                                                                            ## DBG MDEV-22255
+length == pack_length()|SIGABRT|Field_timestamp_with_dec::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                       ## DBG MDEV-22256
+trx_id > 0 || (flags & BTR_KEEP_SYS_FLAG)|SIGABRT|btr_cur_optimistic_update|row_upd_clust_rec|row_upd_clust_step|row_upd                                                        ## DBG MDEV-22257
+SIGABRT|ut_dbg_assertion_failed|os_thread_create_func|fil_crypt_set_thread_cnt|innodb_encryption_threads_update                                                                 ## DBG MDEV-22258
 
 
 ###### FIXED BUGS ######

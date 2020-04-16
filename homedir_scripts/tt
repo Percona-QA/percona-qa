@@ -1,0 +1,2 @@
+set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+grep -Fi --binary-files=text "$(~/t)" ~/mariadb-qa/known_bugs.strings

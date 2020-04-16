@@ -1,0 +1,14 @@
+# mysqld options required for replay:  --sql_mode= 
+CREATE TABLE t (c INT);
+INSERT INTO t VALUES(0);
+CREATE TEMPORARY TABLE t2 (c INT);
+START TRANSACTION READ ONLY;
+INSERT INTO t2 SELECT * FROM t;
+
+# mysqld options required for replay:  --sql_mode= 
+USE test;
+CREATE TEMPORARY TABLE t (c INT,c2 INT);
+START TRANSACTION READ ONLY;
+INSERT INTO t VALUES(0);
+SAVEPOINT s;
+INSERT INTO t VALUES(0,0);
