@@ -40,7 +40,7 @@ WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (defau
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
 MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
-BASEDIR="/sda/PS051018-percona-server-8.0.12-1-linux-x86_64-debug"  # Path to the MySQL BASE directory to be used
+BASEDIR="/test/MD080420-mariadb-10.5.3-linux-x86_64-dbg"  # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
 
@@ -3121,6 +3121,10 @@ report_linecounts(){
       echo_out "[Init] Initial number of lines in restructured input file: $LINECOUNTF"
     else
       echo_out "[Init] Number of lines in input file: $LINECOUNTF"
+      if [ ${LINECOUNTF} -eq 0 ]; then
+        echo_out "Assert: Input file empty (0 lines)! Terminating"
+	exit 1
+      fi
     fi
   fi
   if [ "$STAGE" = "V" ]; then echo_out "[Info] Restructured files linecounts are usually higher as INSERT lines are broken up, init SQL is expanded etc."; fi
@@ -3579,7 +3583,7 @@ if [ $MODE -ge 6 ]; then
     verify $WORKO
   else
     echo_out "$ATLEASTONCE [Stage $STAGE] [TSE Finish] More than one thread remaining. Implement multi-threaded simplification here"
-    echo "Terminating now."
+    echo_out "Terminating now."
     exit 1
   fi
 fi

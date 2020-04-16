@@ -16,9 +16,15 @@ if [ ! -r ./all_no_cl ]; then
 fi
 
 if [ ! -r ../kill_all ]; then
-  echo "Assert: ../ikill_all not available, wrong infrastructure setup, please copy contents of ${SCRIPT_PWD}/mariadb-build-qa to .."
+  echo "Assert: ../kill_all not available, wrong infrastructure setup, please copy contents of ${SCRIPT_PWD}/mariadb-build-qa to .."
   exit 1
 fi
+
+if [ ! -r ../check ]; then
+  echo "Assert: ../check not available, wrong infrastructure setup, please copy contents of ${SCRIPT_PWD}/mariadb-build-qa to .."
+  exit 1
+fi
+
 
 if [ "$(echo "${PWD}" | grep -o 'opt$')" == "opt" ]; then
   echo "Possible mistake; this script is being executed from an optimized build directory, however normally a solid subset of the testcases will require a debug build, and this script will use the current BASEDIR as the authorative source for prodicing the gdb backtrace displayed in the bug report. IOW, if there are debug-only testcases in ${TESTCASES_DIR} then there will likely not be any proper statck traces produced for those. To avoid this issue, simply CTRL+C now and run this script again from a debug build. This script will wait 5 seconds now to CTRL+C if necessary..."
@@ -43,6 +49,15 @@ if [ ${NR_OF_TESTCASES} -eq 0 ]; then
   exit 1
 fi
 
+# Create clean environment
+cd ..
+for i in $(seq 1 3); do
+  ./kill_all  # Can not be executed as ../kill_all as it requires ./gendirs.sh
+  sync
+  sleep 0.2
+done
+cd ${RUN_BASEDIR}
+
 for i in $(seq 1 ${NR_OF_TESTCASES}); do
   TESTCASE=$(head -n${i} ${LIST} | tail -n1)
   echo "------------------------------------------------------------------------------"
@@ -51,11 +66,20 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
   echo "Now testing testcase ${i}/${NR_OF_TESTCASES}: ${TESTCASE}..." > current.testcase
   sleep 1
   rm -f ${TESTCASE}.report ${TESTCASE}.report.NOCORE
-  cd ${RUN_BASEDIR}  # Defensive coding only
+  cd ${RUN_BASEDIR}/..
+  ./check  # Ensure that basedir dirs are still in top shape
+  if [ ${?} -ne 0 ]; then 
+    echo "Assert: ./check failed!"
+    exit 1
+  fi
+  cd ${RUN_BASEDIR}
   cp ${TESTCASE} ./in.sql
   MAX_DURATION=900  # 15 Minutes, normal runtime (if not OOM) is <= 1 min with ~20 instances
   timeout -k${MAX_DURATION} -s9 ${MAX_DURATION}s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.report
-  ../kill_all  # If bug_report was halted, this will stop all running instaces
+  cd ${RUN_BASEDIR}/..
+  ./kill_all  # If bug_report was halted, this will stop all running instaces
+  sync
+  cd ${RUN_BASEDIR}
   if grep -q "TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0" ${TESTCASE}.report; then
     touch ${TESTCASE}.report.NOCORE
   fi

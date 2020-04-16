@@ -47,7 +47,9 @@ RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Ra
 grep 'mysqld options required for replay:' ./in.sql | sed 's|.*mysqld options required for replay:[ ]||' > /tmp/options_bug_report.${RANDF}
 echo ${MYEXTRA_OPT} >> /tmp/options_bug_report.${RANDF}
 MYEXTRA_OPT_CLEANED=$(cat /tmp/options_bug_report.${RANDF} | sed 's|  | |g' | tr ' ' '\n' | sort -u | tr '\n' ' ')
-echo "Using the following options: ${MYEXTRA_OPT_CLEANED}"
+if [ "$(echo "${MYEXTRA_OPT_CLEANED}" | sed 's|[ \t]||g')" != "" ]; then
+  echo "Using the following options: ${MYEXTRA_OPT_CLEANED}"
+fi
 
 ./all_no_cl ${MYEXTRA_OPT_CLEANED}
 ./test
@@ -75,7 +77,7 @@ cd ..
 echo "Testing all..."
 ./test_all ${MYEXTRA_OPT_CLEANED}
 echo "Ensuring are servers are gone..."
-./kill_all
+./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
 CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
 cd -
 
@@ -115,9 +117,20 @@ if [ ${CORE_COUNT_ALL} -gt 0 ]; then
   echo '1) If no engine is specified, add ENGINE=InnoDB'
   echo '2) Double check noformat version strings for non-10.5 issues'
   if [ ${NOCORE} -ne 1 ]; then
-    echo '3) Add bug to known.strings, as follows:'
+    echo '3A) Add bug to known.strings, as follows:'
     cd ${RUN_PWD}
-    ${SCRIPT_PWD}/new_text_string.sh
+    TEXT="$(${SCRIPT_PWD}/new_text_string.sh)"
+    echo "${TEXT}"
+    echo '3B) Checking if this bug is already known:'
+    set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+    FINDBUG=$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)
+    if [ ! -z "${FINDBUG}" ]; then
+      echo "FOUND: This is an already known bug!"
+      echo "${FINDBUG}" 
+    else
+      echo "NOT FOUND: Bug not found yet in known_bugs.strings!"
+      echo "*** THIS IS POSSIBLY A NEW BUG; BUT CHECK #4 BELOW FIRST! ***"
+    fi
   else
     echo "3) Add bug to known.strings, using ${SCRIPT_PWD}/new_text_string.sh in the basedir of a crashed instance"
   fi

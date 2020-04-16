@@ -1,0 +1,18 @@
+#!/bin/bash
+
+FIRST=$(./gendirs.sh 2>/dev/null | wc -l)
+SECON=$(ls */bin/mysqld 2>/dev/null | wc -l)
+THIRD=$(ls */bin/mysql 2>/dev/null | wc -l)
+FOURT=$(ls */all 2>/dev/null | wc -l)
+
+if [ ${FIRST} -eq ${SECON} -a ${FIRST} -eq ${THIRD} -a ${FIRST} -eq ${FOURT} ]; then
+  echo "All OK"
+  exit 0
+else
+  echo "Mismatch!"
+  echo "Number of directories reported by gendirs.sh; ${FIRST}"
+  echo "Number of directories which have bin/mysqld ; ${SECON}"
+  echo "Number of directories which have bin/mysql  ; ${THIRD}"
+  echo "Number of directories which have all        ; ${FOURT}"
+  exit 1
+fi

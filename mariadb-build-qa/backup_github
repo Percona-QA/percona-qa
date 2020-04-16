@@ -28,6 +28,7 @@ cp find_cores ${TARGET}
 cp untar ${TARGET}
 cp prep_ram ${TARGET}
 cp copy_all_tests ${TARGET}
+cp check ${TARGET}
 
 cd ${TARGET}
 git add *
