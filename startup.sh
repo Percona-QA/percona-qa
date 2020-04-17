@@ -78,7 +78,7 @@ fi
 
 # Setup scritps
 rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb wipe_group_replication
-BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | all | all_stbe | all_no_cl | sysbench_prepare | sysbench_run | sysbench_measure | gdb | myrocks_tokudb_init"
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | mode | all | all_stbe | all_no_cl | reducerlocal.sh | sysbench_prepare | sysbench_run | sysbench_measure | gdb | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
@@ -390,6 +390,12 @@ echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.so
 #  fi
 #fi
 
+# Add handy local reducer
+if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
+  cp ${SCRIPT_PWD}/reducer.sh ./reducerlocal.sh
+  sed -i "s|somebug|\$2|" ./reducerlocal.sh
+fi
+
 echo 'if [ $(ls data/*core* 2>/dev/null | wc -l) -eq 0 ]; then' > gdb
 echo '  echo "No core file found in data/*core* - exiting"' >> gdb
 echo '  exit 1' >> gdb
@@ -407,6 +413,7 @@ echo "rm -Rf ${PWD}/data" >> init
 echo "$INIT_TOOL ${INIT_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> init
 echo "rm -f log/master.*" >> init
 
+echo './all --sql_mode=' > mode
 echo 'MYEXTRA_OPT="$*"' > all
 echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT};./cl" >> all
 echo 'MYEXTRA_OPT="$*"' > all_stbe
@@ -414,7 +421,7 @@ echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --in
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
 if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe mode all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init

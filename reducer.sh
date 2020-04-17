@@ -40,7 +40,7 @@ WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (defau
 WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
 MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
-BASEDIR="/test/MD080420-mariadb-10.5.3-linux-x86_64-dbg"  # Path to the MySQL BASE directory to be used
+BASEDIR="${PWD}"                # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
 SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
 
@@ -717,9 +717,9 @@ options_check(){
       else
         TS_INPUTDIR="$1/log"
         TOKUDB_RUN_DETECTED=0
-        if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+        if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb" 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
         if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
-          if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql; then TOKUDB_RUN_DETECTED=1; fi
+          if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
         fi
         if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
           if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
@@ -762,9 +762,9 @@ options_check(){
       export -n INPUTFILE=$1  # export -n is not necessary for this script, but it is here to prevent pquery-prep-red.sh from seeing this as a adjustable var
     fi
     TOKUDB_RUN_DETECTED=0
-    if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb"; then TOKUDB_RUN_DETECTED=1; fi
+    if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb" 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
     if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
-      if grep -E --binary-files=text -qi "tokudb" ${INPUTFILE}; then TOKUDB_RUN_DETECTED=1; fi
+      if grep -E --binary-files=text -qi "tokudb" ${INPUTFILE} 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
     fi
     if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
       #if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
@@ -832,6 +832,7 @@ options_check(){
     if [ ! -s "${BIN}" ]; then
       echo "Assert: No mysqld or mysqld-debug binary was found in ${BASEDIR}/bin"
       echo 'Please check script contents/options and set the $BASEDIR variable correctly'
+      echo "The $BASEDIR variable is currently set to ${BASEDIR}"
       echo "Terminating now."
       exit 1
     fi
@@ -1493,7 +1494,11 @@ init_workdir_and_files(){
     else
       WORKO=$(echo $INPUTFILE | sed 's/$/_out/' | sed "s/^.*\//$(echo $WORKD | sed 's/\//\\\//g')\//")  # Save output file in individual workdirs
     fi
-    echo_out "[Init] Output dir: $WORK_BUG_DIR"
+    if [ "${WORK_BUG_DIR}" == "${INPUTFULE}" ]; then
+      echo_out "[Init] Output dir: $PWD"
+    else
+      echo_out "[Init] Output dir: $WORK_BUG_DIR"
+    fi
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
     if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
@@ -3691,7 +3696,17 @@ if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
     elif [ $TRIAL -eq 40 ]; then sed -e 's/([0-9]\+)//gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 41 ]; then sed -e 's/[ ]*/ /g' -e 's/^ //g' $WORKF > $WORKT
     elif [ $TRIAL -eq 42 ]; then sed -e 's/transforms\.//gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 43 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 43 ]; then sed -e 's/test\.//gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 44 ]; then sed -e "s/'[^']\+'/'abcdefghijklmnopqrstuvwxyz'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 45 ]; then sed -e "s/'[^']\+'/'abcdefghijklm'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 46 ]; then sed -e "s/'[^']\+'/'abcde'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 47 ]; then sed -e "s/'[^']\+'/NULL/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 48 ]; then sed -e "s/'[^']\+'/'0'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 49 ]; then sed -e "s/'[^']\+'/'a'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 50 ]; then sed -e "s/'[^']\+'/''/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 51 ]; then sed -e "s/'[^']\+'/1/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 52 ]; then sed -e "s/'[^']\+'/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 53 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -3857,7 +3872,9 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     elif [ $TRIAL -eq 137 ]; then sed -e 's/SELECT .* /SELECT 1 /gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 138 ]; then sed -e 's/COLUMN_FORMAT COMPRESSED/ /i' $WORKF > $WORKT
     elif [ $TRIAL -eq 139 ]; then sed -e 's/INTEGER/INT/gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 140 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
+    elif [ $TRIAL -eq 140 ]; then sed -e 's/MAX[ \t]\+[0-9]\+//gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 141 ]; then sed -e 's/MAX[ \t]\+//gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 142 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -3873,7 +3890,7 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
   done
 fi
 
-#STAGE5: Rename tables and views to generic tx/vx names. This stage is not size bound (i.e. testcase size is not checked pre-run to see if the run can be skipped like in some other stages). Perform a check if the issue is still present for each replacement (set).
+#STAGE5: Rename tables and views to generic tx/vx names. This stage is not size bound (i.e. testcase size is not checked per&pre-run to see if the run can be skipped like in some other stages). Performs a check if the issue is still present for each replacement (set).
 if [ $SKIPSTAGEBELOW -lt 5 -a $SKIPSTAGEABOVE -gt 5 ]; then
   STAGE=5
   TRIAL=1

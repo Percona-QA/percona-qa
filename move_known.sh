@@ -2,13 +2,16 @@
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
-mkdir -p known
+mkdir -p known mysql_bugs
+
+# Move MySQL bugs to a seperate directory
+grep -A2 "Bug confirmed present in" *.report | grep MySQL | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" mysql_bugs 2>/dev/null
 
 # Move bugs which were already found to be dups by mass_bug_report.sh
-grep -o "FOUND: This is an already known bug" *.report | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" known
+grep -o "FOUND: This is an already known bug" *.report | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" known 2>/dev/null
 
 # Move bugs which have since been logged and/or are dups
-grep -A1 "Add bug to known.strings" *.sql.report | grep -v "\-\-" | grep -vE "Add bug to known.strings|Check for duplicates before logging bug" > /tmp/tmpdups.list
+grep -A1 "Add bug to known.strings" *.sql.report | grep -v "\-\-" | grep -vE "Add bug to known.strings|Check for duplicates before logging bug" > /tmp/tmpdups.list 2>/dev/null
 COUNT=$(wc -l /tmp/tmpdups.list 2>/dev/null | sed 's| .*||')
 
 if [ ${COUNT} -gt 0 ]; then
