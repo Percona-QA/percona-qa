@@ -18,7 +18,7 @@ CONFIGURATION_FILE=pquery-run.conf  # Do not use any path specifiers, the .conf 
 # Internal variables: DO NOT CHANGE!
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd `dirname $0` && pwd)
-WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0; PQUERY3=0
+WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0; PQUERY3=0; 
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -31,6 +31,7 @@ if [ ! -r ${SCRIPT_PWD}/${CONFIGURATION_FILE} ]; then echo "Assert: the confirua
 source ${SCRIPT_PWD}/$CONFIGURATION_FILE
 PQUERY_TOOL_NAME=$(basename ${PQUERY_BIN})
 if [ "${SEED}" == "" ]; then SEED=${RANDOMD}; fi
+# TODO: research this new code (and how it affects trials, though it seeems backwards compatible; checking for PQUERY3 varialbe happens AFTER all other checks are done (i.e. first core, then other checks, then PQUERY3 check, so should be fine? Though trial-1 is apparently removed; research further))
 if [[ ${PQUERY_TOOL_NAME} == "pquery3-ps" || ${PQUERY_TOOL_NAME} == "pquery3-pxc" ]]; then PQUERY3=1; fi
 
 # Safety checks: ensure variables are correctly set to avoid rm -Rf issues (if not set correctly, it was likely due to altering internal variables at the top of this file)
@@ -1695,21 +1696,48 @@ pquery_test(){
       fi
     fi
     if [ ${TRIAL_SAVED} -eq 0 ]; then
+      # Checking for a core has to always come before all other checks; If there is a core, there is the possibility of gaining a unique bug identifier using new_text.string.sh.
+      # The /*/ in the /*/*core* core search pattern is for to the /node1/ dir setup for cluster runs
+      # TODO: verify if this means that /data/ is completely replaced by /node1/ at the same level
       if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then
         if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null | wc -l) -ge 1 ]; then
           echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null)"
+	  cd ${RUNDIR}/${TRIAL}
+	  TEXT=$(${SCRIPT_PWD}/new_text_string.sh)
+	  echo "${TEXT}" > ${RUNDIR}/${TRIAL}/MYBUG 
+	  cd -
+	  if grep -qi "No .* found [ia][nt]" ${RUNDIR}/${TRIAL}/MYBUG; then
+            echoit "Assert: we found a coredump at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2>/dev/null), yet ${SCRIPT_PWD}/new_text_string.sh produced this output: ${TEXT}"
+	    exit 1
+	  fi
+	  echoit "Bug found (as per new_text_string.sh): ${TEXT}"
+	  if [ "${ELIMINATE_KNOWN_BUGS}" == "1" -a -r ${SCRIPT_PWD}/known_bugs.strings ]; then  # "1": String check hack to ensure backwards compatibility with older pquery-run.conf files
+            set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+	    FINDBUG="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"  # ^: ensures the issue is not remarked/prefixed with "#" (i.e. this ensures that fixed bugs which are seen again are kept)
+	    if [ ! -z "${FINDBUG}" ]; then
+              echoit "This is a known, non-fixed bug: ${FINDBUG}"
+	      echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, this bug was already logged and is not fixed yet"
+            else
+              savetrial
+              TRIAL_SAVED=1
+	    fi
+	  else
+            savetrial
+            TRIAL_SAVED=1
+	  fi
         else
-          echoit "mysqld crash detected in the error log via text_string.sh scan"
+          echoit "mysqld crash detected in the error log via old text_string.sh scan #TODO"  #TODO marker is placed here because the new_text_string.sh may not be able to handle these cases correctly yet. Also adding a #TODO marker into ${RUNDIR}/${TRIAL}/MYBUG to make it easy to scan for these trials.
+	  echo "#TODO" > ${RUNDIR}/${TRIAL}/MYBUG
         fi
         if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-          echoit "Bug found (as per error log): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err)"
+          echoit "Bug found (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err)"
         elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
-          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err)"; fi
-          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
-          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
+          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err)"; fi
+          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
+          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
+          savetrial
+          TRIAL_SAVED=1
         fi
-        savetrial
-        TRIAL_SAVED=1
       elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null | wc -l) -ge 1 ]; then
         echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
         savetrial
@@ -1887,6 +1915,8 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
 fi
 
 if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+  echoit "Making a copy of the mysqld used to ${RUNDIR} for in-run coredump analysis..."
+  cp ${BIN} ${RUNDIR}
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld

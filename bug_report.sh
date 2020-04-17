@@ -123,7 +123,7 @@ if [ ${CORE_COUNT_ALL} -gt 0 ]; then
     echo "${TEXT}"
     echo '3B) Checking if this bug is already known:'
     set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
-    FINDBUG=$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)
+    FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
     if [ ! -z "${FINDBUG}" ]; then
       echo "FOUND: This is an already known bug!"
       echo "${FINDBUG}" 

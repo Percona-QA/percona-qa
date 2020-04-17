@@ -6,10 +6,24 @@ if [ "${1}" == "FRAMESONLY" ]; then  # Used in automation, ref mass_bug_report.s
   FRAMESONLY=1
 fi
 
-LATEST_CORE=$(ls -t data/*core* 2>/dev/null | head -n1)
+MYSQLD=
+if [ -r ./bin/mysqld -a ! -d ./bin/mysqld ]; then  # For direct use in BASEDIR, like ~/tt
+  MYSQLD="./bin/mysqld"
+elif [ -r ../mysqld -a ! -d ../mysqld ]; then  # Used by pquery-run.sh when analyzing trial cores in-run
+  MYSQLD="../mysqld"
+elif [ -r ../mysqld/mysqld -a ! -d ../mysqld/mysqld ]; then  # For direct use inside trial directories
+  MYSQLD="../mysqld/mysqld"
+else
+  echo "Assert: mysqld not found at ./bin/mysqld, nor ../mysqld, nor ../mysqld/mysqld"
+  exit 1
+fi
+
+# The */ in the */*core* core search pattern is for to the /node1/ dir setup for cluster runs
+LATEST_CORE=$(ls -t */*core* 2>/dev/null | head -n1)
 if [ -z "${LATEST_CORE}" ]; then
   # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
-  echo "No core file found in data/*core* - exiting"
+  # Idea; can we fallback to 
+  echo "No core file found in */*core*"
   exit 1
 fi
 
@@ -23,7 +37,7 @@ RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 rm -f /tmp/${RANDF}.gdb*
-gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdb1 2>&1 << EOF
+gdb -q ${MYSQLD} ${LATEST_CORE} >/tmp/${RANDF}.gdb1 2>&1 << EOF
   set pagination off
   set trace-commands off
   set frame-info short-location

@@ -27,6 +27,8 @@ trx_id > 0 || (flags & BTR_KEEP_SYS_FLAG)|SIGABRT|btr_cur_optimistic_update|row_
 SIGABRT|ut_dbg_assertion_failed|os_thread_create_func|fil_crypt_set_thread_cnt|innodb_encryption_threads_update                                                                 ## DBG MDEV-22258
 m_status == DA_ERROR|SIGABRT|Diagnostics_area::sql_errno|fill_schema_table_by_open|get_all_tables|get_schema_tables_result                                                      ## DBG MDEV-22266
 length == Field_timef::pack_length()|SIGABRT|Field_timef::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                       ## DBG MDEV-22267
+0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_int_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_int|Item_func_hybrid_field_type::val_int  ## DBG MDEV-22268
+0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_real_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_real|Item_func_hybrid_field_type::val_real  ## DBG MDEV-22268
 
 
 ###### FIXED BUGS ######

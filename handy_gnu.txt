@@ -351,6 +351,13 @@ for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} e
 # Retrieve a single file in full from Github using wget. With thanks, http://stackoverflow.com/a/4605068
   wget https://raw.githubusercontent.com/Percona-QA/percona-qa/master/ldd_files.sh  # The filename, repository etc. in the url can be changed to get the needed file
   wget https://raw.githubusercontent.com/Percona-QA/percona-qa/master/pmm-info.sh && chmod +x pmm-info.sh && ./pmm-info.sh
+# Fixing a set of incorrect pushes:
+  # cd .. ; cp -r ${YOURBRANCH} ${YOURBRANCH_COPY}  # Important: Make a copy of your branch!
+  git reset --hard ${SHA}  # Reset the branch to a known good state/commit (warning; deletes everything newer than the state of the branch at the moment the ${SHA} commit was made
+  # Now, make any changes necessary, like for example copying in files etc. from ${YOURBRANCH_COPY}
+  git commit -a -m "My new commit"  # Commit any changes 
+  git push -f  # Forces an overwrite of history. Anyone else using your branch must rebase or repul
+# Handy git fix reference; https://sethrobertson.github.io/GitFixUm/fixup.html
 
 # ------ Must read's ------
 # http://tldp.org/LDP/abs/html/globbingref.html on globbing (and not regex) and filename expansion

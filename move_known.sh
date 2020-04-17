@@ -23,7 +23,7 @@ if [ ${COUNT} -gt 0 ]; then
     FILE="$(echo "${SCAN}" | sed 's|sql\.report-.*|sql.report|')"
     TEXT="$(echo "${SCAN}" | sed 's|.*sql\.report-||')"
     set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
-    FINDBUG=$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)
+    FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
     if [ ! -z "${FINDBUG}" ]; then
       NR="$(echo "${FILE}" | sed 's|\.sql\.report||')"
       if [ -r ${NR}.sql.report.NOCORE ]; then
