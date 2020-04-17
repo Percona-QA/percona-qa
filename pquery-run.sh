@@ -4,7 +4,7 @@
 # Updated by Mohit Joshi, Percona LLC
 
 # ========================================= User configurable variables ==========================================================
-# Note: if an option is passed to this script, it will use that option as the configuration file instead, for example ./pquery-run.sh pquery-run-ps.conf
+# Note: if an option is passed to this script, it will use that option as the configuration file instead, for example ./pquery-run.sh pquery-run-MD105.conf
 CONFIGURATION_FILE=pquery-run.conf  # Do not use any path specifiers, the .conf file should be in the same path as pquery-run.sh
 #CONFIGURATION_FILE=pquery-run-RocksDB.conf  # RocksDB testing
 
@@ -738,7 +738,7 @@ pquery_test(){
   (sleep 0.2; kill -9 $KILLPID >/dev/null 2>&1; timeout -k4 -s9 4s wait $KILLPID >/dev/null 2>&1) &
   timeout -k5 -s9 5s wait $KILLDPID >/dev/null 2>&1  # The sleep 0.2 + subsequent wait (cought before the kill) avoids the annoying 'Killed' message from being displayed in the output. Thank you to user 'Foonly' @ forums.whirlpool.net.au
   echoit "Clearing rundir..."
-  rm -Rf ${RUNDIR}/*
+  rm -Rf ${RUNDIR}/[0-9A-Za-ln-z]*  # m* is avoided to leave ./mysqld in place
   if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -eq 1 ]; then
     echoit "Generating new SQL inputfile using the SQL Generator..."
     SAVEDIR=${PWD}
@@ -1726,18 +1726,18 @@ pquery_test(){
             TRIAL_SAVED=1
 	  fi
         else
-          echoit "mysqld crash detected in the error log via old text_string.sh scan #TODO"  #TODO marker is placed here because the new_text_string.sh may not be able to handle these cases correctly yet. Also adding a #TODO marker into ${RUNDIR}/${TRIAL}/MYBUG to make it easy to scan for these trials.
+          echoit "mysqld crash detected in the error log via old text_string.sh scan #TODO"  #TODO marker is placed here because the new_text_string.sh may not be able to handle all cases correctly yet (like where there is an error log with a crash, but no coredump - though that may be OOS caused also). Also adding a #TODO marker into ${RUNDIR}/${TRIAL}/MYBUG to make it easy to scan for these trials.
 	  echo "#TODO" > ${RUNDIR}/${TRIAL}/MYBUG
         fi
+	echo '-1-'
         if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
           echoit "Bug found (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err)"
         elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
           if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err)"; fi
           if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
           if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2>/dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
-          savetrial
-          TRIAL_SAVED=1
         fi
+	echo '-2-'
       elif [ $(grep "SIGKILL myself" ${RUNDIR}/${TRIAL}/log/master.err 2>/dev/null | wc -l) -ge 1 ]; then
         echoit "'SIGKILL myself' detected in the mysqld error log for this trial; saving this trial"
         savetrial
@@ -1859,7 +1859,7 @@ if [[ $WITH_KEYRING_VAULT -eq 1 ]];then
 fi
 
 if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
-  echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Trials: ${TRIALS} | Statements per trial: ${QC_NR_OF_STATEMENTS_PER_TRIAL} | Primary Engine: ${QC_PRI_ENGINE} | Secondary Engine: ${QC_SEC_ENGINE}"
+  echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Trials: ${TRIALS} | Statements per trial: ${QC_NR_OF_STATEMENTS_PER_TRIAL} | Primary Engine: ${QC_PRI_ENGINE} | Secondary Engine: ${QC_SEC_ENGINE} | Eliminate Known Bugs: ${ELIMINATE_KNOWN_BUGS}"
 else
   echoit "mysqld Start Timeout: ${MYSQLD_START_TIMEOUT} | Client Threads: ${THREADS} | Queries/Thread: ${QUERIES_PER_THREAD} | Trials: ${TRIALS} | Save coredump/valgrind issue trials only: `if [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 1 ]; then echo -n 'TRUE'; if [ ${SAVE_SQL} -eq 1 ]; then echo ' + save all SQL traces'; else echo ''; fi; else echo 'FALSE'; fi`"
 fi
@@ -1917,6 +1917,7 @@ fi
 if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   echoit "Making a copy of the mysqld used to ${RUNDIR} for in-run coredump analysis..."
   cp ${BIN} ${RUNDIR}
+  echoit "${BIN} ${RUNDIR}"
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld
@@ -1986,6 +1987,8 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     fi
   fi
 elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+  echoit "Making a copy of the mysqld used to ${RUNDIR} for in-run coredump analysis..."
+  cp ${BIN} ${RUNDIR}
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
   mkdir ${WORKDIR}/mysqld
   cp ${BIN} ${WORKDIR}/mysqld
