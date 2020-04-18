@@ -29,6 +29,7 @@ m_status == DA_ERROR|SIGABRT|Diagnostics_area::sql_errno|fill_schema_table_by_op
 length == Field_timef::pack_length()|SIGABRT|Field_timef::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                       ## DBG MDEV-22267
 0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_int_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_int|Item_func_hybrid_field_type::val_int  ## DBG MDEV-22268
 0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_real_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_real|Item_func_hybrid_field_type::val_real  ## DBG MDEV-22268
+xid_seqno > wsrep_seqno|SIGABRT|trx_rseg_update_wsrep_checkpoint|trx_rseg_update_wsrep_checkpoint|trx_rseg_update_wsrep_checkpoint|innobase_wsrep_set_checkpoint                ## DBG MDEV-22285
 
 
 ###### FIXED BUGS ######
