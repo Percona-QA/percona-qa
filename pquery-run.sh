@@ -1785,7 +1785,7 @@ pquery_test() {
           cd ${RUNDIR}/${TRIAL} || exit 1
           TEXT=$(${SCRIPT_PWD}/new_text_string.sh)
           echo "${TEXT}" > ${RUNDIR}/${TRIAL}/MYBUG
-          cd - || exit 1
+          cd - >/dev/null || exit 1
           if grep -qi "No .* found [ia][nt]" ${RUNDIR}/${TRIAL}/MYBUG; then
             echoit "Assert: we found a coredump at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null), yet ${SCRIPT_PWD}/new_text_string.sh produced this output: ${TEXT}"
             exit 1

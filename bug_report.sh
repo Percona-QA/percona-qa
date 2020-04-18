@@ -79,7 +79,7 @@ echo "Testing all..."
 echo "Ensuring are servers are gone..."
 ./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
 CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
-cd -
+cd - >/dev/null || exit 1
 
 SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"
 SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"

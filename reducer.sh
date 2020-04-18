@@ -529,10 +529,12 @@ if [[ "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
 fi
 if [[ "${MYEXTRA}" == *"log"[-_]"bin"* ]]; then
   if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -oe '5\.[1567]|8\.[0-9]' | head -n1)" =~ ^5.[156]$ ]]; then  # version is 5.7 or 8.0 and NOT 5.1, 5.5 or 5.6, i.e. --server-id is required
-    if [[ ! "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
-      echo "Error: The version of mysqld is 5.7 or 8.0 and a --bin-log option was passed in MYEXTRA, yet no --server-id option was found whereas this is required for 5.7 and 8.0."
-      echo "Terminating now."
-      # exit 1   # temp hack, needs proper MariaDB check
+    if [[ ! "$(${BASEDIR}/bin/mysqld --version | grep -E --binary-files=text -ioe 'mariadb' | head -n1)" =~ ^mariadb$ ]]; then  # For MariaDB this is not the case (at least for 10.5. TODO: check other versions)
+      if [[ ! "${MYEXTRA}" == *"server"[-_]"id"* ]]; then
+        echo "Error: The version of mysqld is 5.7 or 8.0 and a --bin-log option was passed in MYEXTRA, yet no --server-id option was found whereas this is required for 5.7 and 8.0."
+        echo "Terminating now."
+        exit 1
+      fi
     fi
   fi
   BINLOG="$(echo "${MYEXTRA}" | grep -o "\-\-log[-_]bin[^ ]*" | head -n1)"  # Grep all text including and after '--log[-_]bin' upto a space
@@ -2769,7 +2771,7 @@ process_outcome(){
         else
           $TEXT_STRING_LOC >> ${WORKD}/MYBUG.FOUND
         fi
-        cd - || exit 1
+        cd - >/dev/null || exit 1
         set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
         FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"
         # TODO: a great improvement for finding additional issues is possible here;
