@@ -5,7 +5,7 @@
 # User Configurable Variables
 WORKDIR=$1
 ROOT_FS=$WORKDIR
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 SYSBENCH_PATH=$WORKDIR/
 PS_START_TIMEOUT=200
 RPORT=$((( RANDOM%21 + 10 ) * 1000 ))

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 TEST_SUITE=jsCore

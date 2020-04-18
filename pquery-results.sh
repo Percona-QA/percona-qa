@@ -7,7 +7,7 @@
 #  For known bugs scanning      : $./pquery-results.sh scan
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 VALGRINDOUTPUT=0
 SCANBUGS=0
 if [ "$1" == "valgrind" ]; then

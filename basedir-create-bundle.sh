@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
 
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORK_PWD=$PWD
 
 if [ "" == "$1" ]; then

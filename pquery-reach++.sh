@@ -12,7 +12,7 @@ STATIC_PQUERY_BIN=/home/roel/mariadb-qa/pquery/pquery2-ps8  # Leave empty to use
 SESSIONS=11
 
 # Internal variables: Do not change!
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 # Trap ctrl-c
 trap ctrl-c SIGINT

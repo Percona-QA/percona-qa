@@ -18,7 +18,7 @@ VERBOSE=1                                  # Leave to 1 unless you know what you
 WORKDIR=""                                 # Automatically set to /dev/shm if left empty (recommended)
 
 # Internal variables, do not change
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 PRI_ENGINE_NAME=$(echo ${PRI_ENGINE} | tr '[:lower:]' '[:upper:]')
 SEC_ENGINE_NAME=$(echo ${SEC_ENGINE} | tr '[:lower:]' '[:upper:]')
 PRI_SHORT_ENGINE_NAME=$(echo ${PRI_ENGINE_NAME} | sed 's|V[0-9]\+||')

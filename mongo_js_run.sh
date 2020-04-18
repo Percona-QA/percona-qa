@@ -16,7 +16,7 @@ PRI_ENGINE=PerconaFT                       # Primary engine to use for testing (
 SEC_ENGINE=MMAPv1
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 TEST_IN_PROGRESS=0
 WORKDIR=""
 RESULTSDIR=""

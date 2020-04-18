@@ -19,7 +19,7 @@ NAMEDIR7=MS-5.7.5-OPT; TESTDIR7=/sda/MS-mysql-5.7.5-m15-linux-x86_64-opt
 NAMEDIR8=MS-5.7.5-DBG; TESTDIR8=/sda/MS-mysql-5.7.5-m15-linux-x86_64-dbg
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 if [ ! -r ${TESTDIR1}/init ];then echo "Assert: ${TESTDIR1}/init not found! Did you forget to run ${SCRIPT_PWD}/startup.sh from the dir?";exit 1;else chmod +x ${TESTDIR1}/init;fi
 if [ ! -r ${TESTDIR2}/init ];then echo "Assert: ${TESTDIR2}/init not found! Did you forget to run ${SCRIPT_PWD}/startup.sh from the dir?";exit 1;else chmod +x ${TESTDIR2}/init;fi

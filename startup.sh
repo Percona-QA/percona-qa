@@ -4,7 +4,7 @@
 PORT=$[ ${RANDOM} % 10000 + 10000]
 MTRT=$[ ${RANDOM} % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 ADDR="127.0.0.1"
 
 if find . -name group_replication.so | grep -q . ; then

@@ -42,7 +42,7 @@ MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysql
 MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
 BASEDIR="${PWD}"                # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
-SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)  # script location to access storage engine plugin sql file.
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)
@@ -68,7 +68,7 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
 USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (mariadb-qa) instead of searching the entire error log. No effect otherwise
-TEXT_STRING_LOC=~/mariadb-qa/text_string.sh  # text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
+TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)

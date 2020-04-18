@@ -6,7 +6,7 @@ SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
 ROOT_FS=$WORKDIR
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 MYSQLD_START_TIMEOUT=200
 
 if [ -z ${BUILD_NUMBER} ]; then

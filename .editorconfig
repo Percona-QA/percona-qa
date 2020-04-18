@@ -1,0 +1,8 @@
+[*.sh]
+indent_style = space
+indent_size = 2
+
+shell_variant      = bash
+switch_case_indent = true  # like -ci
+space_redirects    = true  # like -sr
+keep_padding       = true  # like -kp

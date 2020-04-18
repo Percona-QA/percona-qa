@@ -16,8 +16,8 @@ CONFIGURATION_FILE=pquery3-run-single.cnf  # Do not use any path specifiers, the
 # ========================================= MAIN CODE ============================================================================
 # Internal variables: DO NOT CHANGE!
 RANDOM=`date +%s%N | cut -b14-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
-SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd `dirname $0` && pwd)
-WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0; STOREANYWAY=0
+SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
+WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0;
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -758,7 +758,6 @@ pquery_test(){
         echoit "Waiting for mysqld (pid: ${MPID2}) to fully start (note this is slow for Valgrind runs, and can easily take 35-90 seconds even on an high end server)..."
       fi
     fi
-    BADVALUE=0
     FAILEDSTARTABORT=0
     for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
       sleep 1

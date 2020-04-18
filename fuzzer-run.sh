@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 
 # Internal variables - do not modify
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 # User variables
 BASEDIR=/sda/PS280218-percona-server-5.7.19-17-linux-x86_64-debug  # Warning: running this script will remove ALL data directories in BASEDIR

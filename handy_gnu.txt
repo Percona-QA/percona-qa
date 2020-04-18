@@ -370,3 +370,13 @@ for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} e
   http://wiki.bash-hackers.org/syntax/arrays
 # On using a named pipe
   http://stackoverflow.com/a/14893732
+
+# ------ ~/.vimrc (copy and paste into file, sets mariadb-qa coding guidelines for vi) ------
+" tabstop:          Width of tab character
+" softtabstop:      Fine tunes the amount of white space to be added
+" shiftwidth        Determines the amount of whitespace to add in normal mode
+" expandtab:        When on uses space instead of tabs
+set tabstop     =2
+set softtabstop =2
+set shiftwidth  =2
+set expandtab

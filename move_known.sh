@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 mkdir -p known mysql_bugs
 

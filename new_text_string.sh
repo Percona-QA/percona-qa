@@ -22,7 +22,7 @@ fi
 LATEST_CORE=$(ls -t */*core* 2>/dev/null | head -n1)
 if [ -z "${LATEST_CORE}" ]; then
   # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
-  # Idea; can we fallback to 
+  # Idea; can we fallback to OLD/text_string.sh in that case?
   echo "No core file found in */*core*"
   exit 1
 fi

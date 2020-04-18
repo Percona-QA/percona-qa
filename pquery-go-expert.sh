@@ -54,7 +54,7 @@ ctrl_c(){
 trap ctrl_c SIGINT
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RANDOMMUTEX=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 MUTEX=/tmp/pge_${RANDOMMUTEX}_IN_PROGRESS_MUTEX
 

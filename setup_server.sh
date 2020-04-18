@@ -1,3 +1,6 @@
+sudo snap install shellcheck
+sudo snap install shfmt
+
 # Screen Script
 touch ~/.screenrc
 if [ -z "$(cat ~/.screenrc|grep 'termcapinfo xterm')" ]; then cat << EOF > ~/.screenrc

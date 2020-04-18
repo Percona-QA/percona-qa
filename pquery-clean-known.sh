@@ -4,7 +4,7 @@
 # This script deletes all known found bugs from a pquery work directory. Execute from within the pquery workdir.
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 # Check if this an automated (pquery-reach.sh) run
 REACH=0  # Normal output

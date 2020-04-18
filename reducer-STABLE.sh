@@ -42,7 +42,7 @@ MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysql
 MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
 BASEDIR="/sda/PS051018-percona-server-8.0.12-1-linux-x86_64-debug"  # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
-SCRIPT_PWD=$(cd `dirname $0` && pwd)  # script location to access storage engine plugin sql file.
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)  # script location to access storage engine plugin sql file.
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
 FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped (auto-enables FORCE_SPORADIC)

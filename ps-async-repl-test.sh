@@ -20,7 +20,7 @@ declare LADDR="$ADDR:$(( RPORT + 8 ))"
 declare SUSER=root
 declare SPASS=""
 declare SBENCH="sysbench"
-declare SCRIPT_PWD=$(cd `dirname $0` && pwd)
+declare SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 declare -i PS_START_TIMEOUT=60
 declare WORKDIR=""
 declare BUILD_NUMBER

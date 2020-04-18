@@ -11,7 +11,7 @@
 WORK_DIR="/sda" # The "master" location wherein the pquery-run.sh workdirs (6 number directories) are stored (/sda/814189/1996: /sda=WORK_DIR, /814189=PQUERY_DIR, i.e. the pquery-run.sh workdir, 1996=an individual trial directory, which is not used in this script)
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 if [ "" == "$1" ]; then
   echo "This script expects pquery rundir. eg ./pquery-auto-clean.sh 12345"

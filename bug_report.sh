@@ -2,7 +2,7 @@
 # Created by Roel Van de Paar, MariaDB
 
 MYEXTRA_OPT="$*"
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RUN_PWD=${PWD}
 
 if [ ! -r bin/mysqld ]; then

@@ -4,7 +4,7 @@
 # This script starts x (first option) new reducers based on the pquery-results.sh output (one reducer per issue seen - using the first failing trail for that issue)
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 if [ "$1" == "" ]; then
   echo "Assert: This script expects one option, namely how many reducers to start on pquery-results.sh output."

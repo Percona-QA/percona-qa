@@ -18,7 +18,7 @@ EARLYCOPY=0  # Make a copy to the COPYDIR before starting reducer. Not strictly 
 RANDOM=`date +%s%N | cut -b14-19`; 
 RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(.......\).*/\1/')  # Create random dir nr | 7 digits to separate it from other runs
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')   # Create random dir/file nr
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RUN_DONE=0
 
 echoit(){

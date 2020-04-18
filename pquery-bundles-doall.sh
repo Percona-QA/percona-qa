@@ -7,7 +7,7 @@
 # logging a breeze. Just see the resulting .err and .gdb files for bug details, and the bundle can be uploaded as it has ALL files
 # a developer could one for analysis (minus a testcase that is).
 
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 if [ `ls reducer* 2>/dev/null | wc -l` -eq 0 ]; then
   echo "Assert, we did not find any reducer scripts in this directory - did you already execute pquery-prep-red.sh ?"

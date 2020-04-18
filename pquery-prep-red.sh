@@ -13,9 +13,16 @@
 VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
 
 # Internal variables
-SCRIPT_PWD=$(cd `dirname $0` && pwd)
+SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
+USE_TEXT_STRING=1  # Unless proven otherwise, i.e. when MODE!=3
+
+# Sanity checks
+if [ ! -r ${SCRIPT_PWD}/new_text_string.sh ]; then
+  echo "Assert: ${SCRIPT_PWD}/new_text_string.sh not readable by this script!"
+  exit 1
+fi
 
 # Check if this is a pxc run
 if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
@@ -216,16 +223,19 @@ generate_reducer_script(){
   fi
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
+    USE_TEXT_STRING=0
     TEXT_CLEANUP="s|ZERO0|ZERO0|"  # A zero-effect change dummy (de-duplicates #VARMOD# code below)
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
     if [[ $VALGRIND_CHECK -eq 1 ]]; then
+      USE_TEXT_STRING=0  # As here new_text_string.sh will not be used, but valgrind_string.sh
       MODE=1
     else
       if [ ${QC} -eq 0 ]; then
         MODE=3
       else
+        USE_TEXT_STRING=0  # As here we're doing QC (Query correctness testing), not crash testing
         MODE=2
       fi
     fi
@@ -241,7 +251,7 @@ generate_reducer_script(){
               if [ ${QC} -eq 0 ]; then
                 TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"${TEXT}\"\n#VARMOD#-"
               else
-                TEXT=$(echo "$TEXT"|sed -e "s-|-\\\\\\\|-g")
+                TEXT="$(echo "$TEXT"|sed -e "s-|-\\\\\\\|-g")"
                 TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"^${TEXT}\$\"\n#VARMOD#-"
               fi
             fi
@@ -249,7 +259,7 @@ generate_reducer_script(){
             if [ ${QC} -eq 0 ]; then
               TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"${TEXT}\"\n#VARMOD#_"
             else
-              TEXT=$(echo "$TEXT"|sed -e "s_|_\\\\\\\|_g")
+              TEXT="$(echo "$TEXT"|sed -e "s_|_\\\\\\\|_g")"
               TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"^${TEXT}\$\"\n#VARMOD#_"
             fi
           fi
@@ -257,7 +267,7 @@ generate_reducer_script(){
           if [ ${QC} -eq 0 ]; then
             TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"${TEXT}\"\n#VARMOD#/"
           else
-            TEXT=$(echo "$TEXT"|sed -e "s/|/\\\\\\\|/g")
+            TEXT="$(echo "$TEXT"|sed -e "s/|/\\\\\\\|/g")"
             TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"^${TEXT}\$\"\n#VARMOD#/"
           fi
         fi
@@ -272,7 +282,7 @@ generate_reducer_script(){
       if [ ${QC} -eq 0 ]; then
         TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
       else
-        TEXT=$(echo "$TEXT"|sed -e "s:|:\\\\\\\|:g")
+        TEXT="$(echo "$TEXT"|sed -e "s:|:\\\\\\\|:g")"
         TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\"\n#VARMOD#:"
       fi
     fi
@@ -375,6 +385,8 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$/s|^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$|#DISABLE_TOKUDB_AUTOLOAD=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*TEXT_STRING_LOC[ \t]*=.*$/s|^[ \t]*TEXT_STRING_LOC[ \t]*=.*$|#TEXT_STRING_LOC=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*USE_TEXT_STRING[ \t]*=.*$/s|^[ \t]*USE_TEXT_STRING[ \t]*=.*$|#USE_TEXT_STRING=<set_below_in_machine_variables_section>|" \
    | sed  "0,/^[ \t]*SCRIPT_PWD[ \t]*=.*$/s|^[ \t]*SCRIPT_PWD[ \t]*=.*$|SCRIPT_PWD=${SCRIPT_PWD}|" \
    | sed -e "${PQUERYOPT_CLEANUP}" \
    | sed -e "${MYEXTRA_CLEANUP}" \
@@ -393,6 +405,8 @@ generate_reducer_script(){
    | sed -e "${SI_STRING1}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT_STRING_LOC=\"${SCRIPT_PWD}/new_text_string.sh\"\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:USE_TEXT_STRING=${USE_TEXT_STRING}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:BASEDIR=\"${BASE}\"\n#VARMOD#:" \
@@ -476,7 +490,8 @@ if [ ${QC} -eq 0 ]; then
         add_select_ones_to_trace
         add_select_sleep_to_trace
         remove_non_sql_from_trace
-        TEXT=`${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err`
+        # OLD_WAY: TEXT="$(${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err)"
+        TEXT="$(cat ./${TRIAL}/node${SUBDIR}/MYBUG | head -n1)"  # TODO: this change needs further testing for cluster/GR. Also, it is likely someting was missed for this in the updated pquery-run.sh: the need to generate a MYBUG file for each node!
         echo "* TEXT variable set to: \"${TEXT}\""
         if [ "${MULTI}" == "1" ]; then
            if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
@@ -573,7 +588,7 @@ if [ ${QC} -eq 0 ]; then
             VALGRIND_ERRORS_FOUND=1
           fi
           if [ ${VALGRIND_ERRORS_FOUND} -eq 1 ]; then
-            TEXT=`${SCRIPT_PWD}/valgrind_string.sh ./${TRIAL}/log/master.err`
+            TEXT="$(${SCRIPT_PWD}/valgrind_string.sh ./${TRIAL}/log/master.err)"
             if [ "${TEXT}" != "" ]; then
               echo "* Valgrind string detected: '${TEXT}'"
             else
@@ -589,7 +604,8 @@ if [ ${QC} -eq 0 ]; then
         fi
         # if not a valgrind run process everything, if it is valgrind run only if there's a core
         if [ ! -r ./${TRIAL}/VALGRIND ] || [ -r ./${TRIAL}/VALGRIND -a "$CORE" != "" ]; then
-          TEXT=`${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/log/master.err`
+          # OLD_WAY: TEXT="$(${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/log/master.err)"
+          TEXT="$(cat ./${TRIAL}/MYBUG)"
           echo "* TEXT variable set to: \"${TEXT}\""
           if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
             auto_interleave_failing_sql
@@ -621,9 +637,9 @@ else
       echo "Assert! Basedir '${BASE}' does not look to be a directory"
       exit 1
     fi
-    TEXT=$(grep --binary-files=text "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')
+    TEXT="$(grep --binary-files=text "^[<>]" ./${TRIAL}/diff.result | awk '{print length, $0;}' | sort -nr | head -n1 | sed 's/^[0-9]\+[ \t]\+//')"
     LEFTRIGHT=$(echo ${TEXT} | sed 's/\(^.\).*/\1/')
-    TEXT=$(echo ${TEXT} | sed 's/[<>][ \t]\+//')
+    TEXT="$(echo ${TEXT} | sed 's/[<>][ \t]\+//')"
     ENGINE=
     FAULT=0
     # Pre-processing all possible sql files to make it suitable for reducer.sh and manual replay - this can be handled in pquery core < TODO
@@ -652,8 +668,8 @@ else
     fi
     if [ ${FAULT} -ne 1 ]; then
       QCTEXTLN=$(echo "${TEXT}" | grep --binary-files=text -o "[0-9]*$")
-      TEXT=$(echo ${TEXT} | sed "s/#[0-9]*$//")
-      QCTEXT=$(sed -n "${QCTEXTLN},${QCTEXTLN}p" ${WORKD_PWD}/${TRIAL}/*_thread-0.${ENGINE}.sql | grep --binary-files=text -o "#@[0-9]*#")
+      TEXT="$(echo ${TEXT} | sed "s/#[0-9]*$//")"
+      QCTEXT="$(sed -n "${QCTEXTLN},${QCTEXTLN}p" ${WORKD_PWD}/${TRIAL}/*_thread-0.${ENGINE}.sql | grep --binary-files=text -o "#@[0-9]*#")"
     fi
     # Output of the following is too verbose
     #if [ "${MYEXTRA}" != "" ]; then
