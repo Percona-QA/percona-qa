@@ -27,6 +27,7 @@ TRIAL=0
 MYSQLD_START_TIMEOUT=60
 TIMEOUT_REACHED=0
 PQUERY3=0
+NEWBUGS=0
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -1798,6 +1799,9 @@ pquery_test() {
               echoit "This is aleady known and logged, non-fixed bug: ${FINDBUG}"
               echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"
               TRIAL_TO_SAVE=0
+            else 
+              NEWBUGS=$[ ${NEWBUGS} + 1 ]
+              echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings)"
             fi
           fi
         else

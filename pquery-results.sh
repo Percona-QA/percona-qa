@@ -53,7 +53,7 @@ if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
       MATCHING_TRIALS+=($MATCHING_TRIAL)
     done
     COUNT=`grep "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | wc -l`
-    STRING_OUT=`echo $STRING | awk -F "\n" '{printf "%-55s",$1}'`
+    STRING_OUT=`echo $STRING | awk -F "\n" '{printf "%-150s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
     if [ ${SCANBUGS} -eq 1 ]; then

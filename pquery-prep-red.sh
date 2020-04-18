@@ -11,6 +11,7 @@
 
 # User configurable variables
 VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
+SCAN_FOR_NEW_BUGS=1    # If set to 1, all generated reducders will scan for new issues while reducing!
 
 # Internal variables
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
@@ -21,6 +22,10 @@ USE_TEXT_STRING=1  # Unless proven otherwise, i.e. when MODE!=3
 # Sanity checks
 if [ ! -r ${SCRIPT_PWD}/new_text_string.sh ]; then
   echo "Assert: ${SCRIPT_PWD}/new_text_string.sh not readable by this script!"
+  exit 1
+fi
+if [ ${SCAN_FOR_NEW_BUGS} -eq 1 -a ! -r ${SCRIPT_PWD}/known_bugs.strings ]; then
+  echo "Assert: SCAN_FOR_NEW_BUGS=1, yet ${SCRIPT_PWD}/known_bugs.strings was not found?"
   exit 1
 fi
 
@@ -387,6 +392,8 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$/s|^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$|#DISABLE_TOKUDB_AUTOLOAD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*TEXT_STRING_LOC[ \t]*=.*$/s|^[ \t]*TEXT_STRING_LOC[ \t]*=.*$|#TEXT_STRING_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*USE_TEXT_STRING[ \t]*=.*$/s|^[ \t]*USE_TEXT_STRING[ \t]*=.*$|#USE_TEXT_STRING=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*SCAN_FOR_NEW_BUGS[ \t]*=.*$/s|^[ \t]*SCAN_FOR_NEW_BUGS[ \t]*=.*$|#SCAN_FOR_NEW_BUGS=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*KNOWN_BUGS[ \t]*=.*$/s|^[ \t]*KNOWN_BUGS[ \t]*=.*$|#KNOWN_BUGS=<set_below_in_machine_variables_section>|" \
    | sed  "0,/^[ \t]*SCRIPT_PWD[ \t]*=.*$/s|^[ \t]*SCRIPT_PWD[ \t]*=.*$|SCRIPT_PWD=${SCRIPT_PWD}|" \
    | sed -e "${PQUERYOPT_CLEANUP}" \
    | sed -e "${MYEXTRA_CLEANUP}" \
@@ -411,6 +418,8 @@ generate_reducer_script(){
    | sed -e "${TEXT_STRING2}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:BASEDIR=\"${BASE}\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:INPUTFILE=\"${INPUTFILE}\"\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:SCAN_FOR_NEW_BUGS=${SCAN_FOR_NEW_BUGS}\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:KNOWN_BUGS=\"${SCRIPT_PWD}/known_bugs.strings\"\n#VARMOD#:" \
    | sed -e "${MYEXTRA_STRING1}" \
    | sed -e "${MYINIT_STRING1}" \
    | sed -e "${WSREP_OPT_STRING}" \

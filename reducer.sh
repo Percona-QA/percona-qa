@@ -67,8 +67,10 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
-USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (mariadb-qa) instead of searching the entire error log. No effect otherwise
+USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (mariadb-qa) instead of searching the entire error log. No effect otherwise. Note: enabling this makes $TEXT non-regex.
 TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
+SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
+KNOWN_BUGS="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS file, it will not be considered a new issue when it is seen by reducer.sh
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -944,6 +946,13 @@ options_check(){
   if [ $MODE -eq 0 -a $FORCE_KILL=1 ]; then
     FORCE_KILL=0
   fi
+  if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
+    if [ ! -r ${KNOWN_BUGS} ]; then
+      echo "SCAN_FOR_NEW_BUGS was set to 1, yet file specified in KNOWN_BUGS (${KNOWN_BUGS}) does not exist?"
+      echo "Terminating now."
+      exit 1
+    fi
+  fi
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
 
@@ -1380,7 +1389,7 @@ init_workdir_and_files(){
   # Make sure that the directory does not exist yet
   while :; do
     if [ "$MULTI_REDUCER" == "1" ]; then  # This is a subreducer
-      WORKD=$(dirname $0)
+      WORKD="$(dirname $0)"
       break
     fi
     # Make sure that tmp has enough free space (some minor temporary files are stored there)
@@ -1490,9 +1499,9 @@ init_workdir_and_files(){
     TS_init_all_sql_files
   else
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-      WORKO=$(echo $INPUTFILE | sed 's/$/_out/')
+      WORKO="$(echo $INPUTFILE | sed 's/$/_out/')"
     else
-      WORKO=$(echo $INPUTFILE | sed 's/$/_out/' | sed "s/^.*\//$(echo $WORKD | sed 's/\//\\\//g')\//")  # Save output file in individual workdirs
+      WORKO="$(echo $INPUTFILE | sed 's/$/_out/' | sed "s/^.*\//$(echo $WORKD | sed 's/\//\\\//g')\//")"  # Save output file in individual workdirs
     fi
     if [ "${WORK_BUG_DIR}" == "${INPUTFULE}" ]; then
       echo_out "[Init] Output dir: $PWD"
@@ -1557,7 +1566,7 @@ init_workdir_and_files(){
     fi
   fi
   if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
-    echo_out "[Init] MODE=3 and USE_TEXT_STRING turned on. Scanning for TEXT in the output of 'text_string.sh error_log' instead of using the default error log grep"
+    echo_out "[Init] MODE=3 and USE_TEXT_STRING turned on. Reducer will analyze any core file found for a possible match with the ${TEXT_SCRIPT_LOC} script"
   fi
   if [ $FORCE_SKIPV -gt 0 ]; then
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer
@@ -2735,6 +2744,7 @@ process_outcome(){
       ERRORLOG=$WORKD/error.log.out
     fi
     if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+      M3_OUTPUT_TEXT="ConsoleTypescript"
       # A glibc crash looks similar to: *** Error in `/sda/PS180516-percona-server-5.6.30-76.3-linux-x86_64-debug/bin/mysqld': corrupted double-linked list: 0x00007feb2c0011e0 ***
       if grep -E --binary-files=text -iq '*** Error in' /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
         if grep -E --binary-files=text -iq "$TEXT" /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log; then
@@ -2747,17 +2757,60 @@ process_outcome(){
           M3_ISSUE_FOUND=1
         fi
       fi
-      M3_OUTPUT_TEXT="ConsoleTypescript"
     else
       if [ $USE_TEXT_STRING -eq 1 ]; then
-        rm -f ${ERRORLOG}.text_string
-        touch ${ERRORLOG}.text_string
-        $TEXT_STRING_LOC $ERRORLOG >> ${ERRORLOG}.text_string
-        if grep -E --binary-files=text -iq "$TEXT" $ERRORLOG.text_string; then M3_ISSUE_FOUND=1; fi
-        M3_OUTPUT_TEXT="TextString"
+        M3_OUTPUT_TEXT="NewTextString"
+        rm -f ${WORKD}/MYBUG.FOUND
+        touch ${WORKD}/MYBUG.FOUND
+        cd $WORKD || exit 1
+        if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
+          $TEXT_STRING_LOC >> ${WORKD}/MYBUG.FOUND
+          echo "${?}" > ${WORKD}/MYBUG.FOUND.EXITCODE
+        else
+          $TEXT_STRING_LOC >> ${WORKD}/MYBUG.FOUND
+        fi
+        cd - || exit 1
+        set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+        FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"
+        # TODO: a great improvement for finding additional issues is possible here;
+        # If a new bug was found (scan output of $TEXT_STRING_LOC does not contain errors),
+        # then copy the testcase 
+        if [ ! -z "${FINDBUG}" ]; then
+          M3_ISSUE_FOUND=1
+        else
+          if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
+            if [ -r ${WORKD}/MYBUG.FOUND.EXITCODE ]; then
+              if [ -r ${WORKD}/MYBUG.FOUND ]; then
+                if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # "1": Defensive coding against OOS etc
+                  # If we received a non-error (i.e. non-1) exit code, then a different bug was seen then the one being reduced for. Scan known bugs and copy info if something new was found
+                  set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+                  FINDBUG="$(grep -Fi --binary-files=text "$(cat ${WORKD}/MYBUG.FOUND)" ${KNOWN_BUGS})"
+                  if [ ! -z "${FINDBUG}" ]; then  # Reducer found a new bug
+                    EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
+                    NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
+                    NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
+                    echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: ${FINDBUG}"
+                    cp ${WORKT} ${NEWBUGSO}
+                    echo_out "[NewBug] Saved a copy of the new bug testcase to:    ${NEWBUGSO}"
+                    cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
+                    echo_out "[NewBug] Saved a copy of the new bug TEXT string to: ${NEWBUGTO}"
+                    EPOCH_RAN=
+                    NEWBUGSO=
+                    NEWBUGTO=
+                  fi 
+                fi
+              else
+                echo_out "[ERROR] Reducer generated ${WORKD}/MYBUG.FOUND, yet immediately thereafter the same file does not exist. OOS issue? Reducer will try and continue, but may fail. Impact: No scanning for known bugs was done due to this error, no other known impact."
+              fi
+            else
+              echo_out "[ERROR] Reducer noticed that ${WORKD}/MYBUG.FOUND.EXITCODE did not exist, while SCAN_FOR_NEW_BUGS is enabled. This should not happen. OOS issue? Reducer will try and continue, but may fail. Impact: No scanning for known bugs was done due to this error, no other known impact."
+            fi
+          fi
+        fi
+        FINDBUG=
       else
-        if grep -E --binary-files=text -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
         M3_OUTPUT_TEXT="ErrorLog"
+        if grep -E --binary-files=text -iq "$TEXT" $ERRORLOG; then M3_ISSUE_FOUND=1; fi
       fi
     fi
     if [ $M3_ISSUE_FOUND -eq 1 ]; then

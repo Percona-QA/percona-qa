@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+# Exit codes in this script are significant; used by reducer.sh and potentially other scripts
+
 FRAMESONLY=0
 if [ "${1}" == "FRAMESONLY" ]; then  # Used in automation, ref mass_bug_report.sh
   FRAMESONLY=1
@@ -23,13 +25,13 @@ LATEST_CORE=$(ls -t */*core* 2>/dev/null | head -n1)
 if [ -z "${LATEST_CORE}" ]; then
   # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
   # Idea; can we fallback to OLD/text_string.sh in that case?
-  echo "No core file found in */*core*"
+  echo "Assert: no core file found in */*core*"
   exit 1
 fi
 
 ERROR_LOG=$(ls log/master.err 2>/dev/null | head -n1)
 if [ -z "${ERROR_LOG}" ]; then
-  echo "No error log found at log/master.err - exiting"
+  echo "Assert: no error log found at log/master.err - exiting"
   exit 1
 fi
 
@@ -122,3 +124,4 @@ fi
 
 # Report bug identifier string
 echo "${TEXT}"
+exit 0

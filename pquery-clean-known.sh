@@ -59,8 +59,9 @@ while read line; do
 	# grep -li "${STRING}" reducer[0-9]*  # For debugging (use script utility, then search for the reducer<nr>.sh in the typescript)
         grep -li "${STRING}" reducer[0-9]* | awk -F'.'  '{print substr($1,8)}' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
       else
-	# grep -li "${STRING}" reducer[0-9]*  # For debugging (use script utility, then search for the reducer<nr>.sh in the typescript)
-        grep -li "${STRING}" reducer[0-9]* | sed 's/[^0-9]//g' | xargs -I_ $SCRIPT_PWD/pquery-del-trial.sh _
+	      # grep -li "${STRING}" reducer[0-9]*  # For debugging (use script utility, then search for the reducer<nr>.sh in the typescript)
+        set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+        grep -Fli --binary-files=text "${STRING}" reducer[0-9]* | sed 's/[^0-9]//g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
       fi
     fi
   fi
