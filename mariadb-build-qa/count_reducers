@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo "Active reducers: $(ps -ef | grep -o 'reducer[0-9]\+' | sort -u | wc -l)"

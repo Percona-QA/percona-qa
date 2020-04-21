@@ -34,14 +34,20 @@ fi
 if [ "$(grep -m1 'suid_dumpable=1' /etc/sysctl.conf)" != 'fs.suid_dumpable=1' ]; then
   sudo sh -c 'echo "fs.suid_dumpable=1" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'fs.aio-max-nr=300000' /etc/sysctl.conf)" != 'fs.aio-max-nr=300000' ]; then
-  sudo sh -c 'echo "fs.aio-max-nr=300000" >> /etc/sysctl.conf'
+if [ "$(grep -m1 'fs.aio-max-nr=3000000' /etc/sysctl.conf)" != 'fs.aio-max-nr=3000000' ]; then
+  sudo sh -c 'echo "fs.aio-max-nr=3000000" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kern.maxprocperuid=100000' /etc/sysctl.conf)" != 'kern.maxprocperuid=100000' ]; then
-  sudo sh -c 'echo "kern.maxprocperuid=100000" >> /etc/sysctl.conf'
+if [ "$(grep -m1 'kernel.maxprocperuid=1000000' /etc/sysctl.conf)" != 'kernel.maxprocperuid=1000000' ]; then
+  sudo sh -c 'echo "kernel.maxprocperuid=1000000" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kern.maxproc=1000000' /etc/sysctl.conf)" != 'kern.maxproc=1000000' ]; then
-  sudo sh -c 'echo "kern.maxproc=1000000" >> /etc/sysctl.conf'
+if [ "$(grep -m1 'kernel.maxproc=10000000' /etc/sysctl.conf)" != 'kernel.maxproc=10000000' ]; then
+  sudo sh -c 'echo "kernel.maxproc=10000000" >> /etc/sysctl.conf'
+fi
+if [ "$(grep -m1 'kernel.shmmni=32768' /etc/sysctl.conf)" != 'kernel.shmmni=32768' ]; then
+  sudo sh -c 'echo "kernel.shmmni=32768" >> /etc/sysctl.conf'
+fi
+if [ "$(grep -m1 'kernel.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.pid_max=4194304' ]; then
+  sudo sh -c 'echo "kernel.pid_max=4194304" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 '* soft core unlimited' /etc/security/limits.conf)" != '* soft core unlimited' ]; then
   sudo sh -c 'echo "* soft core unlimited" >> /etc/security/limits.conf'
@@ -49,8 +55,8 @@ fi
 if [ "$(grep -m1 '* hard core unlimited' /etc/security/limits.conf)" != '* hard core unlimited' ]; then
   sudo sh -c 'echo "* hard core unlimited" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* hard nofile 1048576' /etc/security/limits.conf)" != '* hard nofile 1048576' ]; then
-  sudo sh -c 'echo "* hard nofile 1048576" >> /etc/security/limits.conf'
+if [ "$(grep -m1 '* hard nofile 10485760' /etc/security/limits.conf)" != '* hard nofile 10485760' ]; then
+  sudo sh -c 'echo "* hard nofile 10485760" >> /etc/security/limits.conf'
 fi
 if [ "$(grep -m1 '* soft stack 20480' /etc/security/limits.conf)" != '* soft stack 20480' ]; then
   sudo sh -c 'echo "* soft stack 20480" >> /etc/security/limits.conf'
@@ -58,11 +64,11 @@ fi
 if [ "$(grep -m1 '* hard stack 20480' /etc/security/limits.conf)" != '* hard stack 20480' ]; then
   sudo sh -c 'echo "* hard stack 20480" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* soft nproc 300000' /etc/security/limits.conf)" != '* soft nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. 
-  sudo sh -c 'echo "* soft nproc 300000" >> /etc/security/limits.conf'
+if [ "$(grep -m1 '* soft nproc 3000000' /etc/security/limits.conf)" != '* soft nproc 3000000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. Later: multiplied by 10 as still running into server resource limits (but not hardware limits).
+  sudo sh -c 'echo "* soft nproc 3000000" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* hard nproc 300000' /etc/security/limits.conf)" != '* hard nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. 
-  sudo sh -c 'echo "* hard nproc 300000" >> /etc/security/limits.conf'
+if [ "$(grep -m1 '* hard nproc 3000000' /etc/security/limits.conf)" != '* hard nproc 3000000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. Later: multiplied by 10 as still running into server resource limits (but not hardware limits).
+  sudo sh -c 'echo "* hard nproc 3000000" >> /etc/security/limits.conf'
 fi
 
 # Ensuring nproc limiter is gone or not present

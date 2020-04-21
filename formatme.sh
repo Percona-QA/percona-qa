@@ -1,6 +1,10 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+# Another option to look at is this one; (more tunable);
+# http://manpages.ubuntu.com/manpages/trusty/man1/astyle.1.html
+# apt-get install astyle
+
 if [ -z "$(whereis shfmt | awk '{print $2}')" ]; then
   sudo snap install shfmt
 fi
