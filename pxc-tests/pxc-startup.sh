@@ -81,6 +81,15 @@ fi
 declare MYSQL_VERSION=$(${BUILD}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 declare XTRABACKUP_VERSION=$(xtrabackup --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 
+#Check xtrabackup binary
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
+  if [[ ! -e `which xtrabackup` ]];then
+    echo -e "ERROR! xtrabackup not in path: $PATH"
+    echo -e "xtrabackup is required for SST. For more info: https://www.percona.com/doc/percona-xtradb-cluster/5.7/manual/state_snapshot_transfer.html"
+    exit 1
+  fi
+fi
+
 if check_for_version $MYSQL_VERSION "8.0.0" ; then 
   if ! check_for_version $XTRABACKUP_VERSION "8.0.0" ; then
 	echo "Xtrabackup version($XTRABACKUP_VERSION) do not support current Percona XtraDB cluster version($MYSQL_VERSION). Terminating."
