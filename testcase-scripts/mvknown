@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "Before: $(ls *.sql | wc -l)"
+~/mariadb-qa/move_known.sh
+echo "After : $(ls *.sql | wc -l)"

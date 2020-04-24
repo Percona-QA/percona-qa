@@ -1,17 +1,18 @@
 #!/bin/bash
 
-if [ ! -d ./TESTCASES ]; then
-  mkdir -p ./TESTCASES
+if [ -d /test/TESTCASES ]; then
+  TARGET=/test/TESTCASES
+elif [ ! -d ${PWD}/TESTCASES ]; then
+  mkdir -p ${PWD}/TESTCASES
+  TARGET=${PWD}/TESTCASES
 fi
 
-LAST=$(cd TESTCASES; ls -1v *.sql 2>/dev/null | grep -v READY | grep -v DOES_NOT_REPRODUCE | grep -v in.sql | tail -n1 | sed 's|.sql||')
+LAST=$(cd ${TARGET}; ls -1v *.sql 2>/dev/null | grep -v READY | grep -v DOES_NOT_REPRODUCE | grep -v in.sql | tail -n1 | sed 's|.sql||')
 
-if [ -z "${LAST}" ]; then
-  LAST=0
-fi
+if [ -z "${LAST}" ]; then LAST=0; fi
 
 find . 2>/dev/null | grep "_out$" | cat -n | while read n f; do 
   n=$[ ${n} + ${LAST} ] 
-  cp -n "$f" "./TESTCASES/$n.sql"
-  echo "Copied $f to ./TESTCASES/$n.sql..."
+  cp -n "$f" "${TARGET}/$n.sql"
+  echo "Copied $f to ${TARGET}/$n.sql..."
 done

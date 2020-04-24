@@ -1,0 +1,1 @@
+grep -A2 "Bug confirmed present in" mysql_bugs/*.report

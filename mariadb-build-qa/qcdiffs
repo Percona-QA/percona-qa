@@ -1,0 +1,1 @@
+ls -ld --color=never [0-9]* | sed 's|.* ||' | xargs -I{} echo 'echo "====================================================== {}"; diff --suppress-common-lines --suppress-blank-empty --ignore-all-space --text -y {}/pquery_thread-*.out' | xargs -I{} bash -c "{}" | more

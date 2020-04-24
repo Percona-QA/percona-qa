@@ -208,6 +208,7 @@
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
   histchars=  # in ./bash_profile (or at the command line) will fix it. Reason; https://www.gnu.org/software/bash/manual/html_node/History-Interaction.html
   A better fix: use: set +H  # With thanks https://serverfault.com/a/208414
+  See also https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html (note: +/-H != +/-h)
 # Unlike echo -n, sed cannot parse a live input stream and print the result on a single line step-by-step as the input comes in. Proof;
   for i in `seq 1 10`; do echo $i; sleep 1; done | sed -n "H;/[369]/{x;s/\n/ /g;p}"  # Ref https://www.gnu.org/software/sed/manual/sed.html#fn-3
 # While the above cannot be done with sed, it can be done quite easily with awk. Semi-similar example, showing output, progressively, on one line;

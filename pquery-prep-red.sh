@@ -17,7 +17,6 @@ SCAN_FOR_NEW_BUGS=1    # If set to 1, all generated reducders will scan for new 
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
-USE_TEXT_STRING=1  # Unless proven otherwise, i.e. when MODE!=3
 
 # Sanity checks
 if [ ! -r ${SCRIPT_PWD}/new_text_string.sh ]; then
@@ -214,6 +213,7 @@ generate_reducer_script(){
     echo "Assert! \$BASE is empty at start of generate_reducer_script()"
     exit 1
   fi
+  USE_TEXT_STRING=1  # Set to 1 (on) until proven otherwise, i.e. when MODE!=3
   if [ -r ${BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
     DISABLE_TOKUDB_AUTOLOAD=0
   else
@@ -376,7 +376,9 @@ generate_reducer_script(){
     REDUCER_FILENAME=qcreducer${OUTFILE}.sh
     QC_STRING1="s|CURRENTLINE=2|CURRENTLINE=5|g"
     QC_STRING2="s|REALLINE=2|REALLINE=5|g"
-    QC_STRING3="0,/#VARMOD#/s:#VARMOD#:QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
+    # Ref [*], temporarily disabled
+    # QC_STRING3="0,/#VARMOD#/s:#VARMOD#:QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
+    QC_STRING3="0,/#VARMOD#/s:#VARMOD#:#QCTEXT=\"${QCTEXT}\"\n#VARMOD#:"
     QC_STRING4="s|SKIPSTAGEABOVE=9|SKIPSTAGEABOVE=3|"
   fi
   if [[ ${STARTUP_ISSUE} -eq 0 ]]; then
@@ -686,7 +688,8 @@ else
     #fi
     INPUTFILE=$(echo ${TRIAL} | sed "s|^|${WORKD_PWD}/|" | sed "s|$|/*_thread-0.${ENGINE}.sql|")
     echo "* Query Correctness: Data Correctness (QC DC) TEXT variable for trial ${TRIAL} set to: \"${TEXT}\""
-    echo "* Query Correctness: Line Identifier (QC LI) QCTEXT variable for trial ${TRIAL} set to: \"${QCTEXT}\""
+    # TODO: TEMPORARILY DISABLED THIS; re-review QCTEXT variable functionality later. Also see change at [*]
+    #echo "* Query Correctness: Line Identifier (QC LI) QCTEXT variable for trial ${TRIAL} set to: \"${QCTEXT}\""
     OUTFILE=$TRIAL
     generate_reducer_script
     if [ ${FAULT} -eq 1 ]; then

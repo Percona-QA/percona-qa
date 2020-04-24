@@ -1,0 +1,1 @@
+screen -admS pr$1 bash -c "ulimit -u 4000; cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105-QC.conf; bash"

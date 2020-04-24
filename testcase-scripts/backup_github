@@ -1,0 +1,18 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+TARGET=~/mariadb-qa/testcase-scripts
+mkdir -p ${TARGET}
+SCRIPT_PWD="$(cd `dirname $0` && pwd)"
+
+cd ${SCRIPT_PWD}
+cp mvknown ${TARGET}
+cp mysql_scan ${TARGET}
+cp scan ${TARGET}
+cp old_bugs_move ${TARGET}
+cp backup_github ${TARGET}
+
+cd ${TARGET}
+git add *
+cd ~/mariadb-qa/BUGS
+git add MDEV*.sql

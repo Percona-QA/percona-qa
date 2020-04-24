@@ -1,0 +1,2 @@
+#!/bin/bash
+~/mariadb-qa/scan_reports.sh

@@ -138,7 +138,7 @@ if [ ${CORE_COUNT_ALL} -gt 0 ]; then
   if [ ${NOCORE} -ne 1 ]; then
     cd ${RUN_PWD}
     FIRSTFRAME=$(${SCRIPT_PWD}/new_text_string.sh FRAMESONLY | sed 's/|.*//')
-    echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22${FIRSTFRAME}%5C%22%22"
+    echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22${FIRSTFRAME}%5C%22%22%20ORDER%20BY%20status%20ASC"
     echo "https://www.google.com/search?q=site%3Amariadb.org+%22${FIRSTFRAME}%22"
   else
     echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22\${FIRSTFRAME}%5C%22%22"

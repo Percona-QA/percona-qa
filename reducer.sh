@@ -49,7 +49,7 @@ FORCE_SKIPV=0                   # On/Off (1/0) Forces verify stage to be skipped
 FORCE_SPORADIC=0                # On/Off (1/0) Forces issue to be treated as sporadic
 
 # === True Multi-Threaded       # True multi-threaded testcase reduction (only program in the world that does this) based on random replay (auto-covers sporadic testcases)
-PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testcase reduction based on random replay (auto-enables PQUERY_MOD)
+PQUERY_MULTI=0                  # On/off (1/0) Enables true multi-threaded testcase reduction based on random replay (auto-enables USE_PQUERY)
 
 # === Reduce startup issues     # Reduces startup issues. This will only work if a clean start (mysqld --no-defaults) works correctly; otherwise template creation will fail also
 REDUCE_STARTUP_ISSUES=0         # Default/normal use: 0. Set to 1 to reduce mysqld startup (ie. failing mysqld --option etc.) issues (with SQL replay but without SQL simplication)
@@ -83,8 +83,8 @@ PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you ful
 PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (default=0), unless you fully understand the change (reverses --no-shuffle into shuffle and vice versa)
                                 # On/Off (1/0) (Default=0: --no-shuffle is used for standard pquery replay, shuffle is used for PQUERY_MULTI. =1 reverses this)
 
-# === pquery options            # Note: only relevant if pquery is used for testcase replay, ref PQUERY_MOD and PQUERY_MULTI
-PQUERY_MOD=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
+# === pquery options            # Note: only relevant if pquery is used for testcase replay, ref USE_PQUERY and PQUERY_MULTI
+USE_PQUERY=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
 PQUERY_LOC=~/mariadb-qa/pquery/pquery  # The pquery binary in mariadb-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
 
 # === Other options             # The options are not often changed
@@ -98,12 +98,12 @@ SKIPSTAGEABOVE=99               # Usually not changed (default=99), skips stages
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld instead of using mysqladmin shutdown etc. Auto-disabled for MODE=0.
 
 # === Percona XtraDB Cluster
-PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
+USE_PXC=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables USE_PQUERYE=1
 PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 WSREP_PROVIDER_OPTIONS=""       # wsrep_provider_options to be used (and reduced).
 
 # === MySQL Group Replication
-GRP_RPL_MOD=0                   # On/Off (1/0) Enable to reduce testcases using MySQL Group Replication. Auto-enables PQUERY_MODE=1
+USE_GRP_RPL=0                   # On/Off (1/0) Enable to reduce testcases using MySQL Group Replication. Auto-enables USE_PQUERYE=1
 GRP_RPL_ISSUE_NODE=0            # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
 # === MODE=5 Settings           # Only applicable when MODE5 is used
@@ -142,13 +142,13 @@ TS_VARIABILITY_SLEEP=1
 # - TEXT: Text to look for in MODEs 1,2,3,5,6,7,8. Ignored in MODEs 4 and 9.
 #   Can contain extended grep (i.e. grep -E --binary-files=text or egrep)+regex syntax like "^ERROR|some_other_string". Remember this is regex: specify | as \| etc.
 #   For MODE5, you would use a mysql CLI to get the desired output "string" (see example given above) and then set MODE5_COUNTTEXT
-# - PQUERY_MOD: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
+# - USE_PQUERY: 1: use pquery, 0: use mysql CLI. Causes reducer.sh to use pquery instead of the mysql client for replays (default=0). Supported for MODE=1,3,4
 # - PQUERY_LOC: Location of the pquery binary (ref ~/mariadb-qa/pquery/pquery[-ms])
 # - PQUERY_EXTRA_OPTIONS: Extra options to pquery which will be added to the pquery command line. This is used for query correctness trials
-# - PXC_MOD: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
-# - GRP_RPL_MOD: 1: bring up 3 node Group Replication instead of default server, 0: use default non-cluster server (mysqld)
+# - USE_PXC: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
+# - USE_GRP_RPL: 1: bring up 3 node Group Replication instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/mariadb-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/mariadb-qa/docker_info.txt for more information on this. See above for some limitations etc.
-#   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0,
+#   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: USE_PQUERY=1, LIMTATIONS: FORCE_SPORADIC=0,
 #   SPORADIC=0, FORCE_SKIPV=0, SKIPV=1, MYEXTRA="", MULTI_THREADS=0
 # - PXC_ISSUE_NODE: This indicates which node you would like to be checked for presence of the issue. 0 = Any node. Valid options: 0, 1, 2, or 3. Only works
 #   for MODE=4 currently.
@@ -247,8 +247,8 @@ TS_VARIABILITY_SLEEP=1
 #   present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used. Auto-disabled for MODE=0.
 
 # ======== Gotcha's
-# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, PQUERY_MOD=1, then reducer
-#   will replay the SQL file, using pquery (PQUERY_MOD=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order
+# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, USE_PQUERY=1, then reducer
+#   will replay the SQL file, using pquery (USE_PQUERY=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order
 #   (PQUERY_REVERSE_NOSHUFFLE_OPT=1) untill (FORCE_SKIPV=1 and FORCE_SPORADIC=1) it hits a bug. But notice that when the partially reduced file is written
 #   as _out, it is normally not valid to re-start reducer using this _out file (for further reduction) using PQUERY_REVERSE_NOSHUFFLE_OPT=0. The reason is
 #   that the sql replay order was random, but _out is generated based on the original testcase (sequential). Thus, the _out, when replayed sequentially,
@@ -609,12 +609,12 @@ ctrl_c(){
     echo_out "[Abort] Best testcase thus far: $INPUTFILE (= input file; no optimizations were successful)"
   fi
   echo_out "[Abort] End of dump stack"
-  if [ $PXC_MOD -eq 1 ]; then
+  if [ $USE_PXC -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining PXC nodes are terminated and removed"
     (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   fi
-  if [ $GRP_RPL_MOD -eq 1 ]; then
+  if [ $USE_GRP_RPL -eq 1 ]; then
     echo_out "[Abort] Ensuring any remaining Group Replication nodes are terminated and removed"
     (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
@@ -823,9 +823,9 @@ options_check(){
     fi
   fi
   if [ $MODE -eq 2 ]; then
-    if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
+    if [ $USE_PQUERY -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
       if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -E --binary-files=text -io "log-client-output")" != "log-client-output" ]; then
-        echo "Assert: PQUERY_MOD=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
+        echo "Assert: USE_PQUERY=1 && PQUERY_EXTRA_OPTIONS does not contain log-client-output, so not sure what file reducer.sh should check for TEXT occurence."
         exit 1
       fi
     fi
@@ -855,8 +855,8 @@ options_check(){
       exit 1
     fi
   fi
-  if [[ $PXC_MOD -eq 1  || $GRP_RPL_MOD -eq 1 ]]; then
-    PQUERY_MOD=1
+  if [[ $USE_PXC -eq 1  || $USE_GRP_RPL -eq 1 ]]; then
+    USE_PQUERY=1
     # ========= These are currently limitations of PXC/Group Replication mode. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
     export -n FORCE_SPORADIC=0
@@ -888,12 +888,12 @@ options_check(){
     fi
   fi
   if [ $PQUERY_MULTI -eq 1 ]; then
-    PQUERY_MOD=1
+    USE_PQUERY=1
   fi
-  if [ $PQUERY_MOD -eq 1 ]; then
+  if [ $USE_PQUERY -eq 1 ]; then
     if [ ! -r "$PQUERY_LOC" ]; then
-      echo "Error: PQUERY_MOD is set to 1, but the pquery binary (as defined by PQUERY_LOC; currently set to '$PQUERY_LOC') is not available."
-      echo 'Please check script contents/options ($PQUERY_MOD and $PQUERY_LOC variables)'
+      echo "Error: USE_PQUERY is set to 1, but the pquery binary (as defined by PQUERY_LOC; currently set to '$PQUERY_LOC') is not available."
+      echo 'Please check script contents/options ($USE_PQUERY and $PQUERY_LOC variables)'
       echo "Terminating now."
       exit 1
     fi
@@ -921,8 +921,8 @@ options_check(){
       echo "Terminating now."
       exit 1
     fi
-    if [[ $PXC_MOD -gt 0 || $GRP_RPL_MOD -eq 1 ]]; then
-      echo "GLIBC testcase reduction is not yet supported for PXC_MOD=1 or GRP_RPL_MOD=1. This would be very complex to code, except perhaps for a single node cluster or for one node only. See source code for details. Search for 'GLIBC crash reduction'"
+    if [[ $USE_PXC -gt 0 || $USE_GRP_RPL -eq 1 ]]; then
+      echo "GLIBC testcase reduction is not yet supported for USE_PXC=1 or USE_GRP_RPL=1. This would be very complex to code, except perhaps for a single node cluster or for one node only. See source code for details. Search for 'GLIBC crash reduction'"
       echo "A workaround may be to see if this GLIBC crash reproduces on standard (non-cluster) mysqld also, which is likely."
       echo "Terminating now."
       exit 1
@@ -966,7 +966,7 @@ remove_dropc(){
   # Loop through the top of the passed file (usually WORKT or WORKF) and remove all seen individual DROPC lines
   # Implenting things this way became necessary once individual lines were used for DROPC instead of just one long line
   # which could be grepped out with grep -v. The reason for having to use individual lines for DROPC is that pquery
-  # will not process STATEMENT1;STATEMENT2; and this led to errors. This is only done for PQUERY_MOD=1 runs to ensure
+  # will not process STATEMENT1;STATEMENT2; and this led to errors. This is only done for USE_PQUERY=1 runs to ensure
   # backwards compatibility (i.e. the mysql client will still use grep -v DROPC instead)
   while :; do
     DROPC_LINE_REMOVED=0
@@ -1489,7 +1489,7 @@ init_workdir_and_files(){
   WORK_GDB=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_gdb|")
   WORK_PARSE_CORE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_parse_core|")
   WORK_HOW_TO_USE=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_how_to_use.txt|")
-  if [ $PQUERY_MOD -eq 1 ]; then
+  if [ $USE_PQUERY -eq 1 ]; then
     WORK_RUN_PQUERY=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_run_pquery|")
     WORK_PQUERY_BIN=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_|" | sed "s|$|$(echo $PQUERY_LOC | sed 's|.*/||')|")
   fi
@@ -1513,7 +1513,7 @@ init_workdir_and_files(){
     echo_out "[Init] Input file: $INPUTFILE"
     # Initial INPUTFILE to WORKF copy
     if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
-      if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+      if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
         echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
       else  # pquery is used; use a multi-line format for DROPC
         cp $INPUTFILE $WORKF
@@ -1533,11 +1533,11 @@ init_workdir_and_files(){
       sed -i "/$QCTEXT/q" $WORKF
     fi
   fi
-  if [ $PXC_MOD -eq 1 ]; then
+  if [ $USE_PXC -eq 1 ]; then
     echo_out "[Init] PXC Node #1 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node1/node1_socket.sock"
     echo_out "[Init] PXC Node #2 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node2/node2_socket.sock"
     echo_out "[Init] PXC Node #3 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node3/node3_socket.sock"
-  elif [ $GRP_RPL_MOD -eq 1 ]; then
+  elif [ $USE_GRP_RPL -eq 1 ]; then
     echo_out "[Init] Group Replication Node #1 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node1/node1_socket.sock"
     echo_out "[Init] Group Replication Node #2 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node2/node2_socket.sock"
     echo_out "[Init] Group Replication Node #3 Client: $BASEDIR/bin/mysql -uroot -S$WORKD/node3/node3_socket.sock"
@@ -1552,7 +1552,7 @@ init_workdir_and_files(){
   if [ $SKIPSTAGEBELOW -gt 0 ]; then echo_out "[Init] SKIPSTAGEBELOW active. Stages up to and including $SKIPSTAGEBELOW are skipped"; fi
   if [ $SKIPSTAGEABOVE -lt 9 ]; then echo_out "[Init] SKIPSTAGEABOVE active. Stages above and including $SKIPSTAGEABOVE are skipped"; fi
   if [ $PQUERY_MULTI -gt 0 ]; then
-    echo_out "[Init] PQUERY_MULTI mode active, so automatically set PQUERY_MOD=1: testcase reduction will be done using pquery"
+    echo_out "[Init] PQUERY_MULTI mode active, so automatically set USE_PQUERY=1: testcase reduction will be done using pquery"
     if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -gt 0 ]; then
       echo_out "[Init] PQUERY_MULTI mode active, PQUERY_REVERSE_NOSHUFFLE_OPT on: Semi-true multi-threaded testcase reduction using pquery sequential replay commencing";
     else
@@ -1614,7 +1614,7 @@ init_workdir_and_files(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then
     echo_out "[Init] Querytimeout: ${QUERYTIMEOUT}s (For RQG-originating testcase reductions, ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   fi
-  if [ $PQUERY_MOD -eq 0 ]; then
+  if [ $USE_PQUERY -eq 0 ]; then
     if   [ ${CLI_MODE} -eq 0 ]; then echo_out "[Init] Using the mysql client for SQL replay. CLI_MODE: 0 (cat input.sql | mysql)";
     elif [ ${CLI_MODE} -eq 1 ]; then echo_out "[Init] Using the mysql client for SQL replay. CLI_MODE: 1 (mysql --execute='SOURCE input.sql')";
     elif [ ${CLI_MODE} -eq 2 ]; then echo_out "[Init] Using the mysql client for SQL replay. CLI_MODE: 2 (mysql < input.sql)";
@@ -1635,8 +1635,8 @@ init_workdir_and_files(){
       echo_out "[Warning] ThreadSync: ONLY use -vvv logging for debugging, as this *will* cause issue non-reproducilbity due to excessive disk logging!"
     fi
   fi
-  if [ $PXC_MOD -gt 0 ]; then
-    echo_out "[Init] PXC_MOD active, so automatically set PQUERY_MOD=1: Percona XtraDB Cluster testcase reduction is currently supported only with pquery"
+  if [ $USE_PXC -gt 0 ]; then
+    echo_out "[Init] USE_PXC active, so automatically set USE_PQUERY=1: Percona XtraDB Cluster testcase reduction is currently supported only with pquery"
     if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
       echo_out "[Warning] MODE=$MODE is set, as well as PXC mode active. This combination will likely work, but has not been tested yet. Please remove this warning (for MODE=$MODE only please) when it was tested succesfully"
     fi
@@ -1652,8 +1652,8 @@ init_workdir_and_files(){
       fi
     fi
   fi
-  if [ $GRP_RPL_MOD -gt 0 ]; then
-    echo_out "[Init] GRP_RPL_MOD active, so automatically set PQUERY_MOD=1: Group Replication Cluster testcase reduction is currently supported only with pquery"
+  if [ $USE_GRP_RPL -gt 0 ]; then
+    echo_out "[Init] USE_GRP_RPL active, so automatically set USE_PQUERY=1: Group Replication Cluster testcase reduction is currently supported only with pquery"
     if [ $MODE -eq 5 -o $MODE -eq 3 ]; then
       echo_out "[Warning] MODE=$MODE is set, as well as Group Replication mode active. This combination will likely work, but has not been tested yet. Please remove this warning (for MODE=$MODE only please) when it was tested succesfully"
     fi
@@ -1670,7 +1670,7 @@ init_workdir_and_files(){
     fi
   fi
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is a parent/main reducer
-    if [[ $PXC_MOD -ne 1 && $GRP_RPL_MOD -ne 1 ]]; then
+    if [[ $USE_PXC -ne 1 && $USE_GRP_RPL -ne 1 ]]; then
       echo_out "[Init] Setting up standard working template (without using MYEXTRA options)"
       # Get version specific options
       MID=
@@ -1734,7 +1734,7 @@ init_workdir_and_files(){
         $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock --force mysql < $WORKD/timezone.init
       fi
       stop_mysqld_or_pxc
-    elif [[ $PXC_MOD -eq 1 ]]; then
+    elif [[ $USE_PXC -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
       if check_for_version $MYSQL_VERSION "5.7.0" ; then
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
@@ -1754,7 +1754,7 @@ init_workdir_and_files(){
       cp -a $WORKD/node1/* $WORKD/node1.init/
       cp -a $WORKD/node2/* $WORKD/node2.init/
       cp -a $WORKD/node3/* $WORKD/node3.init/
-    elif [[ $GRP_RPL_MOD -eq 1 ]]; then
+    elif [[ $USE_GRP_RPL -eq 1 ]]; then
       echo_out "[Init] Setting up standard Group Replication working template (without using MYEXTRA options)"
       MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
       node1="${WORKD}/node1"
@@ -1814,9 +1814,9 @@ generate_run_scripts(){
       *) echo_out "Assert: default clause in CLI_MODE switchcase hit (in generate_run_scripts). This should not happen. CLI_MODE=${CLI_MODE}"; exit 1 ;;
     esac
     chmod +x $WORK_RUN
-    if [ $PQUERY_MOD -eq 1 ]; then
+    if [ $USE_PQUERY -eq 1 ]; then
       cp $PQUERY_LOC $WORK_PQUERY_BIN  # Make a copy of the pquery binary for easy replay later (no need to download)
-      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+      if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
         echo "echo \"Executing testcase ./${EPOCH}.sql against mysqld at 127.0.0.1:10000 using pquery...\"" > $WORK_RUN_PQUERY
         echo "SCRIPT_DIR=\$(cd \$(dirname \$0) && pwd)" >> $WORK_RUN_PQUERY
         echo "source \$SCRIPT_DIR/${EPOCH}_mybase" >> $WORK_RUN_PQUERY
@@ -1869,7 +1869,7 @@ generate_run_scripts(){
     echo "$ ./${EPOCH}_start           # STEP3: Starts mysqld" >> $WORK_HOW_TO_USE
   fi
   echo "$ ./${EPOCH}_cl              # STEP4: To check mysqld is up (repeat if necessary)" >> $WORK_HOW_TO_USE
-  if [ $PQUERY_MOD -eq 1 ]; then
+  if [ $USE_PQUERY -eq 1 ]; then
     echo "$ ./${EPOCH}_run_pquery      # STEP5: Run the testcase with the pquery binary" >> $WORK_HOW_TO_USE
     echo "$ ./${EPOCH}_run             # OPTIONAL: Run the testcase with the mysql CLI (may not reproduce the issue, as the pquery binary was used for the original testcase reduction)" >> $WORK_HOW_TO_USE
     if [ $MODE -eq 1 -o $MODE -eq 6 ]; then
@@ -1892,7 +1892,7 @@ generate_run_scripts(){
 }
 
 init_mysql_dir(){
-  if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+  if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
     sudo rm -Rf $WORKD/node1 $WORKD/node2 $WORKD/node3
     cp -a ${node1}.init ${node1}
     cp -a ${node2}.init ${node2}
@@ -1913,9 +1913,9 @@ init_mysql_dir(){
 
 start_mysqld_or_valgrind_or_pxc(){
   init_mysql_dir
-  if [ $PXC_MOD -eq 1 ]; then
+  if [ $USE_PXC -eq 1 ]; then
     start_pxc_main
-  elif [ $GRP_RPL_MOD -eq 1 ]; then
+  elif [ $USE_GRP_RPL -eq 1 ]; then
     gr_start_main
   else
     # Pre-start cleanup
@@ -2443,7 +2443,7 @@ run_and_check(){
   OUTCOME="$?"
   if [ $MODE -ne 0 -a $MODE -ne 1 -a $MODE -ne 6 ]; then stop_mysqld_or_pxc; fi
   # Add error log from this trial to the overall run error log
-  if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+  if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
     sudo cat $WORKD/node1/error.log > $WORKD/node1_error.log
     sudo cat $WORKD/node2/error.log > $WORKD/node2_error.log
     sudo cat $WORKD/node3/error.log > $WORKD/node3_error.log
@@ -2459,7 +2459,7 @@ run_sql_code(){
     # Setting up query timeouts using the MySQL Event Scheduler
     # Place event into the mysql db, not test db as the test db is dropped immediately
     SOCKET_TO_BE_USED=
-    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+    if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
       SOCKET_TO_BE_USED=${node1}/node1_socket.sock
     else
       SOCKET_TO_BE_USED=$WORKD/socket.sock
@@ -2513,7 +2513,7 @@ run_sql_code(){
     echo_out "$TXT_OUT"
     echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [SQL] All SQL threads have finished/terminated"
   elif [ $MODE -eq 5 ]; then
-    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+    if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
       cat $WORKT | $BASEDIR/bin/mysql -uroot -S${node1}/node1_socket.sock -vvv --force > $WORKD/mysql.out 2>&1
     else
       cat $WORKT | $BASEDIR/bin/mysql -uroot -S$WORKD/socket.sock -vvv --force > $WORKD/mysql.out 2>&1
@@ -2525,36 +2525,36 @@ run_sql_code(){
     # because of such an "incorrect opening of a multi-line statement". Hence, the reproducibility of a testcase using another replay tool (pquery testcase
     # being replayed with mysql CLI or vice versa) may differ. Another difference is that the pquery replay output looks significantly different from the
     # client replay output. Thus, any TEXT="..." strings need to be matched to the specific output seen in the original trial's pquery or mysql CLI output.
-    if [ $PQUERY_MOD -eq 1 ]; then
+    if [ $USE_PQUERY -eq 1 ]; then
       export LD_LIBRARY_PATH=${BASEDIR}/lib
       if [ -r $WORKD/pquery.out ]; then
         mv $WORKD/pquery.out $WORKD/pquery.prev
       fi
-      PQUERY_MODE2_CLIENT_LOGGING=
+      USE_PQUERYE2_CLIENT_LOGGING=
       if [ $MODE -eq 2 ]; then
-        PQUERY_MODE2_CLIENT_LOGGING="--log-all-queries --log-failed-queries"
+        USE_PQUERYE2_CLIENT_LOGGING="--log-all-queries --log-failed-queries"
       fi
-      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+      if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $USE_PQUERYE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=1 $USE_PQUERYE2_CLIENT_LOGGING --user=root --socket=${node1}/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       else
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES $USE_PQUERYE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -eq 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
-          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=1 $PQUERY_MODE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
+          $PQUERY_LOC --infile=$WORKT $PQUERY_SHUFFLE --threads=1 $USE_PQUERYE2_CLIENT_LOGGING --user=root --socket=$WORKD/socket.sock --logdir=$WORKD --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS > $WORKD/pquery.out 2>&1
         fi
       fi
     else
       if [ "$CLI_MODE" == "" ]; then CLI_MODE=99; fi  # Leads to assert below
       CLIENT_SOCKET=
-      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+      if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
         CLIENT_SOCKET=${node1}/node1_socket.sock
       else
         CLIENT_SOCKET=$WORKD/socket.sock
@@ -2603,7 +2603,7 @@ cleanup_and_save(){
       TS_init_all_sql_files
     fi
   else
-    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+    if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
       (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
       sleep 2; sync
     fi
@@ -2711,7 +2711,7 @@ process_outcome(){
   elif [ $MODE -eq 2 ]; then
     FILETOCHECK=
     # Check if this is a pquery client output testing run
-    if [ $PQUERY_MOD -eq 1 ]; then  # pquery client output testing run
+    if [ $USE_PQUERY -eq 1 ]; then  # pquery client output testing run
       FILETOCHECK=$WORKD/default.node.tld_thread-0.out  # Could use improvement for multi-threaded runs
       FILETOCHECK2=$WORKD/default.node.tld_thread-0.sql
     else  # mysql CLI output testing run
@@ -2739,7 +2739,7 @@ process_outcome(){
   elif [ $MODE -eq 3 ]; then
     M3_ISSUE_FOUND=0
     ERRORLOG=
-    if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+    if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
       ERRORLOG=$WORKD/*/error.log
       sudo chmod 777 $ERRORLOG
     else
@@ -2821,7 +2821,7 @@ process_outcome(){
         control_backtrack_flow
       fi
       cleanup_and_save
-      if [ $PXC_MOD -eq 0 ]; then
+      if [ $USE_PXC -eq 0 ]; then
         return 1
       fi
     else
@@ -2835,7 +2835,7 @@ process_outcome(){
   # MODE4: Crash testing
   elif [ $MODE -eq 4 ]; then
     M4_ISSUE_FOUND=0
-    if [ $PXC_MOD -eq 1 ]; then
+    if [ $USE_PXC -eq 1 ]; then
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 1 ]; then
         if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node1}/node1_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
@@ -2845,7 +2845,7 @@ process_outcome(){
       if [ $PXC_ISSUE_NODE -eq 0 -o $PXC_ISSUE_NODE -eq 3 ]; then
         if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node3}/node3_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
-    elif [ $GRP_RPL_MOD -eq 1 ]; then
+    elif [ $USE_GRP_RPL -eq 1 ]; then
       if [ $GRP_RPL_ISSUE_NODE -eq 0 -o $GRP_RPL_ISSUE_NODE -eq 1 ]; then
         if ! $BASEDIR/bin/mysqladmin -uroot --socket=${node1}/node1_socket.sock ping > /dev/null 2>&1; then M4_ISSUE_FOUND=1; fi
       fi
@@ -3015,7 +3015,7 @@ process_outcome(){
 stop_mysqld_or_pxc(){
   SHUTDOWN_TIME_START=$(date +'%s')
   MODE0_MIN_SHUTDOWN_TIME=$[ $TIMEOUT_CHECK + 10 ]
-  if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+  if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
     (ps -ef | grep -e  'node1_socket\|node2_socket\|node3_socket' | grep -v grep |  grep $EPOCH | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true)
     sleep 2; sync
   else
@@ -3130,7 +3130,7 @@ copy_workdir_to_tmp(){
     if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
       echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
       echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
-      if [[ $PXC_MOD -eq 1 || $GRP_RPL_MOD -eq 1 ]]; then
+      if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
         sudo cp -a $WORKD /tmp/$EPOCH
         sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
         cp $0 /tmp/$EPOCH  # Copy this reducer script
@@ -3212,7 +3212,7 @@ verify_not_found(){
       echo_out "[Finish] mysql CLI client output : not recorded                 (You may want to *TEMPORARY* turn on TS_DBG_CLI_OUTPUT to debug. Ensure to turn it back off before re-testing if the issue exists as it will likely not show with debug on if this is a multi-threaded issue)"
      fi
   else
-    if [ $PQUERY_MOD -eq 1 ]; then
+    if [ $USE_PQUERY -eq 1 ]; then
       echo_out "[Finish] pquery client output    : ${PRINTWORKD}/{EXTRA_PATH}default.node.tld_thread-0.sql  (Look for clear signs of non-replay or a terminated connection)"
     elset
       echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection)"
@@ -3299,7 +3299,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+            if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
               echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
@@ -3336,7 +3336,7 @@ verify(){
                   -e "s/', '/','/g" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+            if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
               echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
@@ -3376,7 +3376,7 @@ verify(){
             | sed -e 's/ VALUES[ ]*(/ VALUES \n(/g' > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+            if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
               echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
@@ -3409,7 +3409,7 @@ verify(){
             | sed -e "/CREATE.*TABLE.*;/s/(/(\n/1;/CREATE.*TABLE.*;/s/\(.*\))/\1\n)/;/CREATE.*TABLE.*;/s/,/,\n/g;" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+            if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
               echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
@@ -3440,7 +3440,7 @@ verify(){
             | sed -e "$REMOVESUFFIX" > $WORKT
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
-            if [ $PQUERY_MOD -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+            if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
               echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
@@ -3523,7 +3523,7 @@ verify(){
                            echo_out "[Init] Run mode: MODE=3: mysqld error log"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi; fi
   if [ $MODE -eq 2 ]; then
-    if [ $PQUERY_MOD -eq 1 ]; then
+    if [ $USE_PQUERY -eq 1 ]; then
                            echo_out "[Init] Run mode: MODE=2: pquery client output"
                            echo_out "[Init] Looking for this string: '$TEXT' in pquery client output (@ $WORKD/default.node.tld_thread-0.sql when MULTI mode is not active)";
     else

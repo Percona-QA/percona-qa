@@ -9,8 +9,9 @@ BOOST_LOCATION=/tmp/boost_465114
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
-USE_SAN=0               # 0 or 1 # Use ASAN, MSAN, UBSAN
-CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
+USE_SAN=1               # 0 or 1 # Use ASAN, MSAN, UBSAN
+#CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
+CLANG_LOCATION="/usr/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 IGNORE_WARNINGS=1       # 0 or 1 # Ignore warnings by using -DMYSQL_MAINTAINER_MODE=OFF. When ignoring warnings, regularly check that existing bugs are fixed. Related bugs:
@@ -187,7 +188,22 @@ else
     FLAGS='-DCMAKE_CXX_FLAGS=-march=native'  # -DCMAKE_CXX_FLAGS="-march=native" is the default for FB tree
   else  # Normal builds
     if [ $USE_SAN -eq 1 ]; then
-      FLAGS='-DCMAKE_CXX_FLAGS=-fsanitize-coverage=trace-pc-guard'
+      # TODO: Check following code is correct. This error:
+      # c++: error: unrecognized command line option ‘-fsanitize-coverage=trace-pc-guard’; did you mean ‘-fsanitize-coverage=trace-pc’?
+      # Is seen when using gcc (i.e. USE_CLANG=0) + USE_SAN=1. Quick hack that needs more research.
+      # Also ref https://clang.llvm.org/docs/SanitizerCoverage.html which has '-guard' but uses CLANG (hence the current change)
+      if [ $USE_CLANG -eq 1 ]; then
+        FLAGS='-DCMAKE_CXX_FLAGS=-fsanitize-coverage=trace-pc-guard'
+      else
+        # This was disabled also due to the following errors:
+        # testCXXCompiler.cxx:(.text+0xa): undefined reference to `__sanitizer_cov_trace_pc'
+        # testCXXCompiler.cxx:(.text+0x14): undefined reference to `__sanitizer_cov_trace_pc'
+        # FLAGS='-DCMAKE_CXX_FLAGS=-fsanitize-coverage=trace-pc'
+        # And the following was needed to avoid this error on mysqld startup:
+        # ==PID== ASan runtime does not come first in initial library list; you should either link runtime to your application or manually preload it with LD_PRELOAD.
+        FLAGS='-DCMAKE_CXX_FLAGS=-static-libasan'
+        echo "Using GCC for ASAN build."
+      fi
     fi
   fi
 fi

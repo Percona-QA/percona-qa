@@ -1,0 +1,9 @@
+#!/bin/bash
+if [ -z "${1}" ]; then
+  echo "Please pass the version string along, for example:"
+  echo "./old_bugs_move 'MariaDB: 10.5.2 (dbg)'"
+  echo "This will look for that specific string (and only that string)"
+  exit 1
+fi
+
+grep -A1 'Bug confirmed present in:' *.report | grep "report-${1}$" | sed 's|.sql.*||' | sort -u | xargs -I{} echo 'mv {}.* old_bugs_now_gone/' | xargs -I{} bash -c "{}" 
