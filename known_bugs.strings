@@ -56,6 +56,8 @@ field_max_length <= m_return_field_def.length || m_return_field_def.type_handler
 name.length == strlen(name.str)|SIGABRT|Item::print_item_w_name|st_select_lex::print|opt_trace_print_expanded_query|JOIN::prepare                                               ## DBG MDEV-22380
 thd->transaction.stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                      ## DBG MYSQL-99377
 SIGSEGV|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command|mysql_parse                                                                                        ## DBG MDEV-22381
+0|SIGABRT|stored_field_cmp_to_item|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator                                     ## DBG MDEV-22385
+m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                           ## OPT MDEV-22390
 
 
 ###### FIXED BUGS ######

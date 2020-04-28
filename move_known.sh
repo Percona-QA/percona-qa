@@ -11,7 +11,7 @@ grep -A2 "Bug confirmed present in" *.report | grep MySQL | sed 's|\..*||' | sor
 grep -o "FOUND: This is an already known bug" *.report | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" known 2>/dev/null
 
 # Move testcases which have debug_dbug into debug_dbug directory for later research
-grep -o "debug_dbug" *.report | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" debug_dbug 2>/dev/null
+grep -oi "debug_dbug" *.report | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" debug_dbug 2>/dev/null
 
 # Move testcases which did not produce a core on ANY basedir
 grep -o "^TOTAL CORES SEEN ACCROSS ALL VERSIONS: 0$" *.report | sed 's|\..*||' | sort -u | xargs -I{} mv "{}.sql" "{}.sql.report" "{}.sql.report.NOCORE" NOCORE 2>/dev/null

@@ -203,6 +203,8 @@
   # Note that devtoolset-4 is really gcc 5.3.1 (the native Centos7 gcc being 4.8.5)
 # Capture all console output, including stderr:  sudo apt-get/yum install script
   script; ./somescript.sh; exit; vi typescript
+# Easy way to see all live network connections on a system with DNS resolved hostnames
+  sudo apt-get install iftop; sudo iftop  # And use for example:  iftop -i wlan0  to see wireless stats etc.
 
 # ------ Common Issues ------
 # Ever seen "-bash: !": event not found" when you were trying to use '!' in for example a sed command? Try for examle: echo "!" | sed 's|!|found|' - the fix;
