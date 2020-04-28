@@ -393,7 +393,8 @@ echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.so
 # Add handy local reducer
 if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   cp ${SCRIPT_PWD}/reducer.sh ./reducerlocal.sh
-  sed -i "s|somebug|\$2|" ./reducerlocal.sh
+  sed -i 's|somebug|${2}|' ./reducerlocal.sh
+  sed -i 's|^\(MYEXTRA="[^"]\+\)"|\1 ${3}"|' ./reducerlocal.sh
 fi
 
 echo 'if [ $(ls data/*core* 2>/dev/null | wc -l) -eq 0 ]; then' > gdb

@@ -18,6 +18,9 @@ SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
 
+# Disable history substitution and avoid  -bash: !: event not found  like errors
+set +H
+
 # Sanity checks
 if [ ! -r ${SCRIPT_PWD}/new_text_string.sh ]; then
   echo "Assert: ${SCRIPT_PWD}/new_text_string.sh not readable by this script!"
@@ -254,6 +257,7 @@ generate_reducer_script(){
               echo "Assert (#1)! No suitable sed seperator found. TEXT (${TEXT}) contains all of the possibilities, add more!"
             else
               if [ ${QC} -eq 0 ]; then
+                TEXT="$(echo "$TEXT"|sed -e "s-&-\\\\\\&-g")"  # Escape '&' correctly
                 TEXT_STRING2="0,/#VARMOD#/s-#VARMOD#-   TEXT=\"${TEXT}\"\n#VARMOD#-"
               else
                 TEXT="$(echo "$TEXT"|sed -e "s-|-\\\\\\\|-g")"
@@ -262,6 +266,7 @@ generate_reducer_script(){
             fi
           else
             if [ ${QC} -eq 0 ]; then
+              TEXT="$(echo "$TEXT"|sed -e "s_&_\\\\\\&_g")"  # Escape '&' correctly
               TEXT_STRING2="0,/#VARMOD#/s_#VARMOD#_   TEXT=\"${TEXT}\"\n#VARMOD#_"
             else
               TEXT="$(echo "$TEXT"|sed -e "s_|_\\\\\\\|_g")"
@@ -270,6 +275,7 @@ generate_reducer_script(){
           fi
         else
           if [ ${QC} -eq 0 ]; then
+            TEXT="$(echo "$TEXT"|sed -e "s/&/\\\\\\&/g")"  # Escape '&' correctly
             TEXT_STRING2="0,/#VARMOD#/s/#VARMOD#/   TEXT=\"${TEXT}\"\n#VARMOD#/"
           else
             TEXT="$(echo "$TEXT"|sed -e "s/|/\\\\\\\|/g")"
@@ -278,17 +284,20 @@ generate_reducer_script(){
         fi
       else
         if [ ${QC} -eq 0 ]; then
+          TEXT="$(echo "$TEXT"|sed -e "s|&|\\\\\\&|g")"  # Escape '&' correctly
           TEXT_STRING2="0,/#VARMOD#/s|#VARMOD#|   TEXT=\"${TEXT}\"\n#VARMOD#|"
         else
+          # TODO: check if something was missed here, or is there no swap needed for "|" perhaps?
           TEXT_STRING2="0,/#VARMOD#/s|#VARMOD#|   TEXT=\"^${TEXT}\$\"\n#VARMOD#|"
         fi
       fi
     else
       if [ ${QC} -eq 0 ]; then
+        TEXT="$(echo "$TEXT"|sed -e "s:&:\\\\\\&:g")"  # Escape '&' correctly
         TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"${TEXT}\"\n#VARMOD#:"
       else
         TEXT="$(echo "$TEXT"|sed -e "s:|:\\\\\\\|:g")"
-        TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\"\n#VARMOD#:"
+        TEXT_STRING2="0,/#VARMOD#/s:#VARMOD#:   TEXT=\"^${TEXT}\$\"\n#VARMOD#:"
       fi
     fi
   fi
@@ -406,7 +415,7 @@ generate_reducer_script(){
    | sed -e "${MULTI_CLEANUP2}" \
    | sed -e "${MULTI_CLEANUP3}" \
    | sed -e "0,/^[ \t]*BASEDIR[ \t]*=.*$/s|^[ \t]*BASEDIR[ \t]*=.*$|#BASEDIR=<set_below_in_machine_variables_section>|" \
-   | sed -e "0,/^[ \t]*PQUERY_MOD[ \t]*=.*$/s|^[ \t]*PQUERY_MOD[ \t]*=.*$|#PQUERY_MOD=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*USE_PQUERY[ \t]*=.*$/s|^[ \t]*USE_PQUERY[ \t]*=.*$|#USE_PQUERY=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "${GRP_RPL_CLEANUP1}" \
@@ -428,7 +437,7 @@ generate_reducer_script(){
    | sed -e "${MULTI_STRING1}" \
    | sed -e "${MULTI_STRING2}" \
    | sed -e "${MULTI_STRING3}" \
-   | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_MOD=1\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:USE_PQUERY=1\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
    | sed -e "${GRP_RPL_STRING1}" \

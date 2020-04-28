@@ -366,6 +366,9 @@ TS_VARIABILITY_SLEEP=1
 # $WORK_OUT: an eventual copy of $WORKO, made for the sole purpose of being used in combination with $WORK_RUN etc. This makes it handy to bundle them as all
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
+# Disable history substitution and avoid  -bash: !: event not found  like errors
+set +H  
+
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
 # https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
@@ -818,7 +821,8 @@ options_check(){
   fi
   if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
     if [ ! -r "$TEXT_STRING_LOC" ] ; then
-      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this file was either not found, or is not script readable"
+      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this program was either not found (most likely), or it is not readable (check file privileges)"
+      echo "Terminating now."
       exit
     fi
   fi
@@ -1111,7 +1115,7 @@ multi_reducer(){
     export MULTI_WORKD=$(eval echo $(echo '$WORKD'"$t"))
     mkdir $MULTI_WORKD
 
-    FIXED_TEXT=$(echo "$TEXT" | sed "s|:|\\\:|g")
+    FIXED_TEXT="$(echo "$TEXT" | sed "s|:|\\\:|g;s|&|\\\&|g")"  # Correctly escape : and &
     cat $0 \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:MULTI_REDUCER=1\n#VARMOD#:" \
       | sed -e "0,/#VARMOD#/s:#VARMOD#:EPOCH=$EPOCH\n#VARMOD#:" \
@@ -1566,9 +1570,6 @@ init_workdir_and_files(){
         echo_out "[Init] PQUERY_REVERSE_NOSHUFFLE_OPT turned on. Replay will be random instead of sequential (whilst still using a single thread client per mysqld). This setting is best combined with FORCE_SKIPV=1 and FORCE_SPORADIC=1 ! Please edit the settings, unless you know what you're doing"
       fi
     fi
-  fi
-  if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
-    echo_out "[Init] MODE=3 and USE_TEXT_STRING turned on. Reducer will analyze any core file found for a possible match with the ${TEXT_SCRIPT_LOC} script"
   fi
   if [ $FORCE_SKIPV -gt 0 ]; then
     if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer
@@ -2766,13 +2767,12 @@ process_outcome(){
         touch ${WORKD}/MYBUG.FOUND
         cd $WORKD || exit 1
         if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
-          $TEXT_STRING_LOC >> ${WORKD}/MYBUG.FOUND
+          $TEXT_STRING_LOC "${BIN}" >> ${WORKD}/MYBUG.FOUND
           echo "${?}" > ${WORKD}/MYBUG.FOUND.EXITCODE
         else
-          $TEXT_STRING_LOC >> ${WORKD}/MYBUG.FOUND
+          $TEXT_STRING_LOC "${BIN}" >> ${WORKD}/MYBUG.FOUND
         fi
         cd - >/dev/null || exit 1
-        set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
         FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"
         # TODO: a great improvement for finding additional issues is possible here;
         # If a new bug was found (scan output of $TEXT_STRING_LOC does not contain errors),
@@ -2783,9 +2783,8 @@ process_outcome(){
           if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
             if [ -r ${WORKD}/MYBUG.FOUND.EXITCODE ]; then
               if [ -r ${WORKD}/MYBUG.FOUND ]; then
-                if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # "1": Defensive coding against OOS etc
+                if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # "1": Defensive coding against OOS (file missing, TEXT not written properly, etc.), no core generated etc.
                   # If we received a non-error (i.e. non-1) exit code, then a different bug was seen then the one being reduced for. Scan known bugs and copy info if something new was found
-                  set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
                   FINDBUG="$(grep -Fi --binary-files=text "$(cat ${WORKD}/MYBUG.FOUND)" ${KNOWN_BUGS})"
                   if [ ! -z "${FINDBUG}" ]; then  # Reducer found a new bug
                     EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
@@ -3517,8 +3516,8 @@ verify(){
                            echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_OR_SS_CRASHES=1: console typscript log"
                            echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
     elif [ $USE_TEXT_STRING -gt 0 ]; then
-                           echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: text_string.sh against mysqld error log"
-                           echo_out "[Init] Looking for this string: '$TEXT' in text_string.sh error_log output (@ $WORKD/error.log.out.text_string when MULTI mode is not active)";
+                           echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: core matching with new_text_string.sh"
+                           echo_out "[Init] Looking for this string: '$TEXT' in ${TEXT_STRING_LOC} output (@ $WORKD/MYBUG.FOUND when MULTI mode is not active)";
     else
                            echo_out "[Init] Run mode: MODE=3: mysqld error log"
                            echo_out "[Init] Looking for this string: '$TEXT' in mysqld error log output (@ $WORKD/error.log.out when MULTI mode is not active)"; fi; fi

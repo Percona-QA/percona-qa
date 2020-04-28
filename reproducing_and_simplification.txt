@@ -58,14 +58,14 @@ However, for issues that fail to reproduce, try these things (in this order):
 * For older pquery-run.sh runs, delete all generated reducer*.sh files, and re-run pquery-prep-red.sh as this will use the (regularly & recently updated) new
   reducer.sh code which is better. Note that if any of the above mentioned features/solutions were not (and thus now are) available, you can apply them now
 
-* Set PQUERY_MOD=0 instead of PQUERY_MOD=1. This forces CLI replay instead of pquery replay and this may, for some issues, improve reproducibility again.
+* Set USE_PQUERY=0 instead of USE_PQUERY=1. This forces CLI replay instead of pquery replay and this may, for some issues, improve reproducibility again.
 
-* Along the lines of the PQUERY_MOD=0 method, after having reduced any issue for some time using the PQUERY_MOD=1 option (which is btw automatically set by 
-  pquery-prep-red.sh), and if the issue no longer reproduces well or simplification stagnates, then set PQUERY_MOD=0 to enable mysql CLI (instead of pquery 
+* Along the lines of the USE_PQUERY=0 method, after having reduced any issue for some time using the USE_PQUERY=1 option (which is btw automatically set by 
+  pquery-prep-red.sh), and if the issue no longer reproduces well or simplification stagnates, then set USE_PQUERY=0 to enable mysql CLI (instead of pquery 
   binary) replay. This may work to reproduce and/or simplify further, and even more so in combination with the "double cat testcase" solution mentioned above 
   (i.e. first double up the testcase first).
 
-* With PQUERY_MOD=1, change the pquery binary from pquery to pquery-ms. (The idea here is similar as changing PQUERY_MOD=1 to PQUERY_MOD=0 - we are using 
+* With USE_PQUERY=1, change the pquery binary from pquery to pquery-ms. (The idea here is similar as changing USE_PQUERY=1 to USE_PQUERY=0 - we are using 
   another binary, slightly different (in this case a different compilation of pquery) to trigger the issue.) This has helped in one difficult case so far
 
 * Interleave your SQL file with SELECT SLEEP(1); after every command. It will cause slow replay, but a timeout triggered in the original run may be re-
@@ -80,7 +80,7 @@ However, for issues that fail to reproduce, try these things (in this order):
   the issue more easily (recommended for hard to trigger issues).
 
 * Test the current partly-simplified SQL testcase against mysqld (easy way is just to SOURCE the test case file from the CLI, or use the generated {epoch} 
-  scripts). If it crashes with the same crash, you can set PQUERY_MOD=0, FORCE_SPORADIC=0, FORCE_SKIPV=1 etc. Another strategy here is to replay the testcase 
+  scripts). If it crashes with the same crash, you can set USE_PQUERY=0, FORCE_SPORADIC=0, FORCE_SKIPV=1 etc. Another strategy here is to replay the testcase 
   against upstream when you were testing PS. Does it crash there too? If so, you can try changing MYBASE to see if the issue replays/reduces better on upstream.
 
 * Note that some testcases require SOURCEing them at the mysql> CLI command prompt. If reducer.sh reduced all the way down to a few lines, but the resulting

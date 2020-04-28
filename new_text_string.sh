@@ -2,22 +2,34 @@
 # Created by Roel Van de Paar, MariaDB
 
 # Exit codes in this script are significant; used by reducer.sh and potentially other scripts
+# First option to this script can be;
+# ./new_text_string.sh 'FRAMESONLY'    # Used in automation, ref mass_bug_report.sh
+# ./new_text_string.sh "${mysqld_loc}" # Where mysqld
 
 FRAMESONLY=0
-if [ "${1}" == "FRAMESONLY" ]; then  # Used in automation, ref mass_bug_report.sh
-  FRAMESONLY=1
+MYSQLD=
+if [ ! -z "${1}" ]; then
+  if [ "${1}" == "FRAMESONLY" ]; then  # Used in automation, ref mass_bug_report.sh
+    FRAMESONLY=1
+  elif [ -r "${1}" -a -x "${1}" ]; then  # TODO: improve to check if it is mysqld
+    MYSQLD="${1}"
+  else
+    echo "Assert: an option (${1}) was passed to this script, but that option does not make sense to this script"
+    exit 1
+  fi
 fi
 
-MYSQLD=
-if [ -r ./bin/mysqld -a ! -d ./bin/mysqld ]; then  # For direct use in BASEDIR, like ~/tt
-  MYSQLD="./bin/mysqld"
-elif [ -r ../mysqld -a ! -d ../mysqld ]; then  # Used by pquery-run.sh when analyzing trial cores in-run
-  MYSQLD="../mysqld"
-elif [ -r ../mysqld/mysqld -a ! -d ../mysqld/mysqld ]; then  # For direct use inside trial directories
-  MYSQLD="../mysqld/mysqld"
-else
-  echo "Assert: mysqld not found at ./bin/mysqld, nor ../mysqld, nor ../mysqld/mysqld"
-  exit 1
+if [ -z "${MYSQLD}" ]; then
+  if [ -r ./bin/mysqld -a ! -d ./bin/mysqld ]; then  # For direct use in BASEDIR, like ~/tt
+    MYSQLD="./bin/mysqld"
+  elif [ -r ../mysqld -a ! -d ../mysqld ]; then  # Used by pquery-run.sh when analyzing trial cores in-run
+    MYSQLD="../mysqld"
+  elif [ -r ../mysqld/mysqld -a ! -d ../mysqld/mysqld ]; then  # For direct use inside trial directories
+    MYSQLD="../mysqld/mysqld"
+  else
+    echo "Assert: mysqld not found at ./bin/mysqld, nor ../mysqld, nor ../mysqld/mysqld"
+    exit 1
+  fi
 fi
 
 # The */ in the */*core* core search pattern is for to the /node1/ dir setup for cluster runs
