@@ -1,9 +1,9 @@
 #!/bin/bash
 
 FIRST=$(./gendirs.sh 2>/dev/null | wc -l)
-SECON=$(ls */bin/mysqld 2>/dev/null | wc -l)
-THIRD=$(ls */bin/mysql 2>/dev/null | wc -l)
-FOURT=$(ls */all 2>/dev/null | wc -l)
+SECON=$(ls */bin/mysqld 2>/dev/null | grep -v ASAN | wc -l)
+THIRD=$(ls */bin/mysql 2>/dev/null | grep -v ASAN | wc -l)
+FOURT=$(ls */all 2>/dev/null | grep -v ASAN | wc -l)
 
 if [ ${FIRST} -eq ${SECON} -a ${FIRST} -eq ${THIRD} -a ${FIRST} -eq ${FOURT} ]; then
   echo "All OK"

@@ -317,7 +317,8 @@ echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/ge
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
 tail -n1 start >> start_valgrind
 tail -n1 start >> start_gypsy
-echo "${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown;./kill >/dev/null 2>&1" > stop
+echo "timeout -k5 -s9 5s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop
+echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;./cl;./stop;./kill >/dev/null 2>&1;tail log/master.err" > setup
 if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then

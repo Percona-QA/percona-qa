@@ -1,6 +1,9 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+# Terminate any other bug_report.sh scripts ongoing
+ps -ef | grep bug_report | grep -v grep | awk '{print $2}' | grep -v $$ | xargs kill -9 2>/dev/null
+
 MYEXTRA_OPT="$*"
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RUN_PWD=${PWD}

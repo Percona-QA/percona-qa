@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASEDIR=MD080420-mariadb-10.5.3-linux-x86_64   # without -opt and -dbg
+BASEDIR=MD210420-mariadb-10.5.3-linux-x86_64   # without -opt and -dbg
 
 if [ ! -r ~/ramdrive.sh ]; then
   echo "Assert: ~/ramdrive.sh missing, you likely want to do something like:"
@@ -8,7 +8,9 @@ if [ ! -r ~/ramdrive.sh ]; then
   exit 1
 fi
 
-~/ramdrive.sh
+if [ ! -z "$(mount | grep ramfs)" ]; then
+  ~/ramdrive.sh
+fi
 
 cp -r ${BASEDIR}-opt /ram
 cp -r ${BASEDIR}-dbg /ram
