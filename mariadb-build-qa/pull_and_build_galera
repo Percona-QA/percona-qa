@@ -1,0 +1,11 @@
+sudo apt-get install scons libssl-dev check
+rm -Rf ./galera
+git clone --depth=1 --recursive https://github.com/MariaDB/galera.git -b mariadb-4.x galera
+cd galera
+./scripts/build.sh -d
+cd -
+if [ -d ./galera ]; then mv galera-* galera; fi
+if [ -r galera/libgalera_smm.so ]; then
+  echo 'Now copy galera/libgalera_smm.so as follows, changing some_basedir;'
+  echo 'BASE=/test/some_basedir'
+  echo 'cp galera/libgalera_smm.so ${BASE}/lib'

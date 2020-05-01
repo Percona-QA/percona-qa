@@ -7,6 +7,7 @@ ps -ef | grep bug_report | grep -v grep | awk '{print $2}' | grep -v $$ | xargs 
 MYEXTRA_OPT="$*"
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RUN_PWD=${PWD}
+TEXT="Unknown key id"  # Leave empty to look for corefiles, or set to look for a specific string in the error log instead
 
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from a basedir which had the SQL executed against it an crashed"
@@ -52,6 +53,7 @@ echo ${MYEXTRA_OPT} >> /tmp/options_bug_report.${RANDF}
 MYEXTRA_OPT_CLEANED=$(cat /tmp/options_bug_report.${RANDF} | sed 's|  | |g' | tr ' ' '\n' | sort -u | tr '\n' ' ')
 if [ "$(echo "${MYEXTRA_OPT_CLEANED}" | sed 's|[ \t]||g')" != "" ]; then
   echo "Using the following options: ${MYEXTRA_OPT_CLEANED}"
+  sleep 0.2  # For visual confirmation
 fi
 
 ./all_no_cl ${MYEXTRA_OPT_CLEANED}
@@ -81,7 +83,13 @@ echo "Testing all..."
 ./test_all ${MYEXTRA_OPT_CLEANED}
 echo "Ensuring are servers are gone..."
 ./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
-CORE_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+if [ -z "${TEXT}" ]; then
+  echo "TEXT not set, scanning for corefiles..."
+  CORE_OR_TEXT_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+else
+  echo "TEXT set to '${TEXT}', searching error logs for the same"
+  CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh | xargs -I{} echo "grep '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+fi
 cd - >/dev/null || exit 1
 
 SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"
@@ -110,12 +118,21 @@ else
   echo "THIS TESTCASE DID NOT CRASH ${SERVER_VERSION} (the version of the basedir in which you started this script), SO NO BACKTRACE IS SHOWN HERE. YOU CAN RE-EXECUTE THIS SCRIPT FROM ONE OF THE 'Bug confirmed present in' DIRECTORIES BELOW TO OBTAIN ONE, OR EXECUTE ./all_no_cl; ./test; ./gdb FROM WITHIN THAT DIRECTORY TO GET A BACKTRACE MANUALLY!"
 fi
 echo -e '{noformat}\n'
-if [ -r ../test.results ]; then
-  cat ../test.results
+if [ -z "${TEXT}" ]; then
+  if [ -r ../test.results ]; then
+    cat ../test.results
+  else
+    echo "--------------------------------------------------------------------------------------------------------------"
+    echo "ERROR: expected ../test.results to exist, but it did not. Running:  ./findbug+ 'signal'  though this may fail."
+    echo "--------------------------------------------------------------------------------------------------------------"
+    cd ..; ./findbug+ 'signal'; cd -
+  fi
+else
+  cd ..; ./findbug+ "${TEXT}"; cd -
 fi
 echo '-------------------- /BUG REPORT --------------------'
-echo "TOTAL CORES SEEN ACCROSS ALL VERSIONS: ${CORE_COUNT_ALL}"
-if [ ${CORE_COUNT_ALL} -gt 0 ]; then
+echo "TOTAL CORES SEEN ACCROSS ALL VERSIONS: ${CORE_OR_TEXT_COUNT_ALL}"
+if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
   echo 'Remember to action:'
   echo '1) If no engine is specified, add ENGINE=InnoDB'
   echo '2) Double check noformat version strings for non-10.5 issues'

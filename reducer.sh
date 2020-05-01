@@ -67,8 +67,8 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 # === Advanced options          # Note: SLOW_DOWN_CHUNK_SCALING is of beta quality. It works, but it may affect chunk scaling somewhat negatively in some cases
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
-USE_TEXT_STRING=0               # On/off (1/0) If enabled, when using MODE=3, this uses text_string.sh (mariadb-qa) instead of searching the entire error log. No effect otherwise. Note: enabling this makes $TEXT non-regex.
-TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
+USE_NEW_TEXT_STRING=0           # On/off (1/0) If enabled, when using MODE=3, this uses new_text_string.sh (from mariadb-qa) instead of searching the entire error log. No effect otherwise. Note: enabling this makes $TEXT non-regex aware.
+TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
 SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
 KNOWN_BUGS="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS file, it will not be considered a new issue when it is seen by reducer.sh
 
@@ -819,9 +819,9 @@ options_check(){
     echo "Terminating now."
     exit 1
   fi
-  if [ $MODE -eq 3 -a $USE_TEXT_STRING -eq 1 ]; then
+  if [ $MODE -eq 3 -a $USE_NEW_TEXT_STRING -eq 1 ]; then
     if [ ! -r "$TEXT_STRING_LOC" ] ; then
-      echo "Assert: MODE=3 and USE_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this program was either not found (most likely), or it is not readable (check file privileges)"
+      echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this program was either not found (most likely), or it is not readable (check file privileges)"
       echo "Terminating now."
       exit
     fi
@@ -2200,6 +2200,9 @@ start_mysqld_main(){
   echo "BIN=\`find \${BASEDIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START
   SCHEDULER_OR_NOT=
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
+  CORE_FOR_NEW_TEXT_STRING=
+  if [ $USE_NEW_TEXT_STRING -gt 0 ]; then CORE_FOR_NEW_TEXT_STRING="--core-file"; fi
+
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
     echo "${TIMEOUT_COMMAND} \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
@@ -2208,7 +2211,7 @@ start_mysqld_main(){
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --loose-debug-sync-timeout=$TS_DS_TIMEOUT --user=$MYUSER $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT} ${CORE_FOR_NEW_TEXT_STRING}"
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
@@ -2761,7 +2764,7 @@ process_outcome(){
         fi
       fi
     else
-      if [ $USE_TEXT_STRING -eq 1 ]; then
+      if [ $USE_NEW_TEXT_STRING -eq 1 ]; then
         M3_OUTPUT_TEXT="NewTextString"
         rm -f ${WORKD}/MYBUG.FOUND
         touch ${WORKD}/MYBUG.FOUND
@@ -3304,7 +3307,7 @@ verify(){
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
               remove_dropc $WORKT
               # Re-setup DROPC using multiple lines (ref remove_dropc() for more information) and add the INITFILE
-              DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+              DROPC_UNIQUE_FILESUFFIX="${RANDOM}${RANDOM}"
               echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep --binary-files=text -v "^$";cat $INITFILE;cat $WORKT)" > /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp
               rm -f $WORKT
               mv /tmp/WORKT_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKT
@@ -3515,8 +3518,8 @@ verify(){
     if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
                            echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_OR_SS_CRASHES=1: console typscript log"
                            echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
-    elif [ $USE_TEXT_STRING -gt 0 ]; then
-                           echo_out "[Init] Run mode: MODE=3 with USE_TEXT_STRING=1: core matching with new_text_string.sh"
+    elif [ $USE_NEW_TEXT_STRING -gt 0 ]; then
+                           echo_out "[Init] Run mode: MODE=3 with USE_NEW_TEXT_STRING=1: core matching with new_text_string.sh"
                            echo_out "[Init] Looking for this string: '$TEXT' in ${TEXT_STRING_LOC} output (@ $WORKD/MYBUG.FOUND when MULTI mode is not active)";
     else
                            echo_out "[Init] Run mode: MODE=3: mysqld error log"

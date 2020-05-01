@@ -330,6 +330,8 @@ for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} e
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
   sudo yum install cabal-install; cabal update; cabal install shellcheck; ~/.cabal/bin/shellcheck
+# Expand DEB files 
+  ar x yourfile.deb; tar -xf data.tar.xz  # Each deb file has control.tar.xz and data.tar.xz
 
 # ------ Shortcuts ------
 # Pquery, single-threaded run, mysqld pre-started, socket, testcase and ./lib/ in this directory, percona-qa bzr tree pulled to ~/percona-qa/

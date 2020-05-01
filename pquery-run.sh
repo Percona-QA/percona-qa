@@ -399,13 +399,17 @@ if [[ $PXC -eq 1 ]]; then
   echo "innodb_file_per_table" >> ${BASEDIR}/my.cnf
   echo "innodb_autoinc_lock_mode=2" >> ${BASEDIR}/my.cnf
   if ! check_for_version $MYSQL_VERSION "8.0.0"; then
-    echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
-    echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
+    # TODO: research why is this here?
+    # MariaDB: [ERROR] /test/MD300420-mariadb-10.5.3-linux-x86_64-opt/bin/mysqld: unknown variable 'innodb_locks_unsafe_for_binlog=1'
+    # echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
+    # echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
+    echo "TODO"
   else
     echo "log-error-verbosity=3" >> ${BASEDIR}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
-  echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
+  echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
+  #echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
@@ -438,9 +442,13 @@ pxc_startup() {
   SOCKET3=${RUNDIR}/${TRIAL}/node3/node3_socket.sock
   if check_for_version $MYSQL_VERSION "5.7.0"; then
     if [[ "$ENCRYPTION_RUN" == 1 ]]; then
-      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
+      #MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
+      #TODO check if this is actually MD or MS/PS. If MD, use below, if MS/PS, use above.
+      MID="${BASEDIR}/bin/mysqld --no-defaults --force --auth-root-authentication-method=normal --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
     else
-      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+      #MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+      #TODO check if this is actually MD or MS/PS. If MD, use below, if MS/PS, use above.
+      MID="${BASEDIR}/bin/mysqld --no-defaults --force --auth-root-authentication-method=normal --basedir=${BASEDIR}"
     fi
   else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
@@ -1800,7 +1808,7 @@ pquery_test() {
           TRIAL_TO_SAVE=1
           if [ "${ELIMINATE_KNOWN_BUGS}" == "1" -a -r ${SCRIPT_PWD}/known_bugs.strings ]; then # "1": String check hack to ensure backwards compatibility with older pquery-run.conf files
             set +H                                                                          # Disables history substitution and avoids  -bash: !: event not found  like errors
-            FINDBUG="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)" # ^: ensures the issue is not remarked/prefixed with "#" (i.e. this ensures that fixed bugs which are seen again are kept)
+            FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)" # ^: ensures the issue is not remarked/prefixed with "#" (i.e. this ensures that fixed bugs which are seen again are kept)
             if [ ! -z "${FINDBUG}" ]; then                                                  # do not call savetrial, known/filtered bug seen
               echoit "This is aleady known and logged, non-fixed bug: ${FINDBUG}"
               echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"

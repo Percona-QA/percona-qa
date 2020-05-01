@@ -10,7 +10,7 @@ fi
 rm -f /tmp/pri.t /tmp/sec.t
 
 # Generate full list
-ls | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+ls --color=never | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 
 # Generate bug list
 ./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t

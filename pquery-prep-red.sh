@@ -53,14 +53,11 @@ else
 fi
 
 # Check if this is a query correctness run
-if [ $(ls */*.out */*.sql 2>/dev/null | egrep --binary-files=text -oi "innodb|rocksdb|tokudb|myisam|memory|csv|ndb|merge" | wc -l) -gt 0 ]; then
-  if [ "$1" == "noqc" ]; then  # Even though query correctness trials were found, process this run as a crash/assert run only
-    QC=0
-  else
+QC=0
+if [ $(ls */*.out */*.sql 2>/dev/null | egrep --binary-files=text -oi "innodb|rocksdb|tokudb|myisam|memory|csv|ndb|merge|aria|sequence|mrg_myisam" | wc -l) -gt 0 ]; then
+  if [ "$1" != "noqc" ]; then  # Even though query correctness trials were found, process this run as a crash/assert run only
     QC=1
   fi
-else
-  QC=0
 fi
 
 # Variable checks

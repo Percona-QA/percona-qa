@@ -31,6 +31,7 @@ cp copy_all_tests ${TARGET}
 cp check ${TARGET}
 cp count_reducers ${TARGET}
 cp qcdiffs ${TARGET}
+cp pull_and_build_galera ${TARGET}
 
 cd ${TARGET}
 git add *
