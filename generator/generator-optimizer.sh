@@ -22,14 +22,21 @@ RANDOM=`date +%s%N | cut -b13-19`  # Random entropy pool init
 MYSQL_VERSION="$(echo "${MYSQL_VERSION}" | sed "s|\.||")"
 SUBWHEREACTIVE=0
 
-if [ "" == "$1" -o "$2" == "" -o "$3" == "" -o "$4" != "" ]; then
+if [ "" == "$1" -o "$2" == "" -o "$4" != "" ]; then
   echo "Please specify the number of queries to generate as the first option to this script, and two engines as the second and third option. For example:"
   echo "./generator-optimizer.sh 50000 \"Aria\" \"InnoDB\""
+  echo ""
+  echo "Alternatively, specify only one engine to generate the SQL for a single engine. For example:"
+  echo "./generator-optimizer.sh 50000 \"MyISAM\""
   exit 1
 else
   QUERIES=$1
   ENGINE1="$2"
-  ENGINE2="$3"
+  if [ ! -z "$3" ]; then
+    ENGINE2="$3"
+  else
+    ENGINE2=
+  fi
 fi
 
 if [ $QUERIES -lt $THREADS ]; then
@@ -529,12 +536,13 @@ query(){
   esac
 }
 
-thread(){
-  local -a ARRAY
+thread(){  # Executed in background. First and only parameter: thread ID (used in filename as ${1})
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    ARRAY+=("`query`;")
+    if [ $[ ${i} % 1000 ] -eq 0 ]; then 
+      echo "Thread ${1}: ${i}/${QUERIES_PER_THREAD} queries generated..."
+    fi
+    printf "%s\n" "`query`;" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
   done
-  printf "%s\n" "${ARRAY[@]}" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
 }
 
 # ====== Main runtime
@@ -576,9 +584,13 @@ else
   # SQL syntax cleanup; replace tabs to spaces, replace double or more spaces with single space, remove spaces when in front of a comma, remove end-of-line spaces
   sed -i "s|\t| |g;s|  \+| |g;s|[ ]*,|,|g;s|[ ]*;$|;|" ${FINAL_OUTFILE}.sql
   END=`date +%s`; RUNTIME=$[ ${END} - ${START} ]; MINUTES=$[ ${RUNTIME} / 60 ]; SECONDS=$[ ${RUNTIME} % 60 ]
-  sed "s|${ENGINE1}|${ENGINE2}|gi" ${FINAL_OUTFILE}.sql > ${FINAL_OUTFILE}_2.sql
   mv ${FINAL_OUTFILE}.sql ${FINAL_OUTFILE}_1.sql
+  if [ ! -z "${ENGINE2}" ]; then
+    sed "s|${ENGINE1}|${ENGINE2}|gi" ${FINAL_OUTFILE}_1.sql > ${FINAL_OUTFILE}_2.sql
+  fi
   echo "DONE! Generated ${QUERIES} quality queries in ${MINUTES}m${SECONDS}s, and saved the results in:"
   echo "> ${FINAL_OUTFILE}_1.sql (ENGINE=${ENGINE1})"
-  echo "> ${FINAL_OUTFILE}_2.sql (ENGINE=${ENGINE2})"
+  if [ ! -z "${ENGINE2}" ]; then
+    echo "> ${FINAL_OUTFILE}_2.sql (ENGINE=${ENGINE2})"
+  fi
 fi

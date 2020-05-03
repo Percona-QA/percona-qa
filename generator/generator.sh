@@ -666,12 +666,13 @@ query(){
   esac
 }
 
-thread(){
-  local -a ARRAY
+thread(){  # Executed in background. First and only parameter: thread ID (used in filename as ${1})
   for i in `eval echo {1..${QUERIES_PER_THREAD}}`; do
-    ARRAY+=("`query`;")
+    if [ $[ ${i} % 1000 ] -eq 0 ]; then
+      echo "Thread ${1}: ${i}/${QUERIES_PER_THREAD} queries generated..."
+    fi
+    printf "%s\n" "`query`;" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
   done
-  printf "%s\n" "${ARRAY[@]}" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
 }
 
 # ====== Main runtime

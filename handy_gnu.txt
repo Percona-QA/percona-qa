@@ -68,8 +68,6 @@
   1) Press CTRL+z, 2) jobs -l; kill -9 {PID_seen_in_jobs_-l_output}
 # Timeout a given script/program after a set time. In the example, 1h=1 hour, but one can also use 10s=10 seconds etc.
   timeout --signal=9 1h ./pquery-run.sh
-# If you have made a process background (bg) with for example CTRL+Z it will show you the background ID: [1] to kill this particular background process, use:
-  kill %1  # Where 1 is the index of the background process
 # Check for the existence of multiple files. (Btw, if you get '-bash: !": event not found' when running directly at the bash prompt, see 'Common Issues' below)
   if [ ! -r aaa -o ! -r bbb -o ! -r ccc ]; then echo "One or more files not found: aaa, bbb and ccc!"; fi
 # Multi-threaded (3 threads in example) xargs call with direct input using cat. Output will be 1 then 2 then 3 after respective pauses (start at same time):
@@ -157,6 +155,10 @@
   true | false; echo "${PIPESTATUS[0]} ${PIPESTATUS[1]}"  # Result: 0 1: 0 (correct exit code of true) 1 (correct exit code of false)
 # Insert a line at the top of a file  # With thanks, https://linuxconfig.org/how-to-insert-line-to-the-beginning-of-file-on-linux
   sed -i "1 s/^/This is my first line with a variable: ${PWD}\n/" filename.txt
+# If you have made a process background (bg) (and not 'disown'ed it), or interrupted it with CTRL+z where, as an example, it will show you the background ID: [1], you can kill this particular background process, by using:
+  kill %1  # Where 1 is the index of the background or interrupted process
+# Halt a process, move it to background, disown it (so that if you leave your shell session it will continue to execute in the background)
+  Press CTRL+z on the running process, then type:  bg; disown
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

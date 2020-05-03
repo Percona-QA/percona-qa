@@ -12,10 +12,10 @@ if [ -z "${1}" ]; then
   exit 1
 fi
 
-echo "------------------ ERRRORS FOUND ------------------"
+echo "------------------ ERRORS FOUND ------------------"
 shellcheck -s bash -S error ${1}
 
 if [ ${CHECKWARNINGS} -eq 1 ]; then
-  echo "------------------ WARNINGS FOUND ------------------"
+  echo "------------------ WARNINGS FOUND ----------------"
   shellcheck -s bash -S error ${1}
 fi

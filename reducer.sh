@@ -2777,9 +2777,6 @@ process_outcome(){
         fi
         cd - >/dev/null || exit 1
         FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"
-        # TODO: a great improvement for finding additional issues is possible here;
-        # If a new bug was found (scan output of $TEXT_STRING_LOC does not contain errors),
-        # then copy the testcase 
         if [ ! -z "${FINDBUG}" ]; then
           M3_ISSUE_FOUND=1
         else
