@@ -3,3 +3,7 @@ SELECT 0 &(JSON_ARRAYAGG(1) OVER a) FROM (SELECT 0) AS b WINDOW a AS ();
 select json_arrayagg(a) over () from (select 1 a) t;  # MDEV-21915
 
 SELECT 0 &(JSON_ARRAYAGG(1)OVER w) FROM (select 1) as dt WINDOW w as ();  # MDEV-21915
+
+CREATE TABLE t1(c1 INT);
+INSERT INTO t1 VALUES(CONVERT(_ucs2 0x064506480631062F USING utf8));
+SELECT JSON_ARRAYAGG(null)FROM t1;

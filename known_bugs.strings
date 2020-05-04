@@ -46,8 +46,6 @@ length == Field_timef::pack_length()|SIGABRT|Field_timef::sort_string|Field::mak
 0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_decimal_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_decimal|Item_func_hybrid_field_type::val_decimal  ## DBG |MDEV-22268
 xid_seqno > wsrep_seqno|SIGABRT|trx_rseg_update_wsrep_checkpoint|trx_rseg_update_wsrep_checkpoint|trx_rseg_update_wsrep_checkpoint|innobase_wsrep_set_checkpoint                ## DBG MDEV-22285
 SIGSEGV|my_free|delete_dynamic|Rpl_filter::set_wild_ignore_table|Sys_var_rpl_filter::set_filter_value                                                                           ## OPT MDEV-22317
-SIGSEGV|copy_fields|Item_func_group_concat::add|Frame_cursor::add_value_to_items|Frame_cursor::add_value_to_items                                                               ## OPT |MDEV-22318     
-SIGSEGV|copy_fields|Item_func_group_concat::add|Item_func_json_arrayagg::add|Frame_cursor::add_value_to_items                                                                   ## OPT |MDEV-22318
 len <= fixed_len|SIGABRT|rec_get_converted_size_comp_prefix_low<>rem0rec.cc|rec_get_converted_size_comp|rec_get_converted_size|btr_cur_optimistic_insert                        ## DBG MDEV-22333
 thd->transaction.stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|prepare_for_repair|mysql_admin_table             ## DBG MDEV-17749*
 (templ->is_virtual && !field) || (field && field->prefix_len ? field->prefix_len == len : templ->mysql_col_len == len)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_search_idx_cond_check|row_search_mvcc  ## DBG MDEV-18911
@@ -81,4 +79,7 @@ SIGSEGV|_my_b_write|my_b_write|my_b_safe_write|Log_event_writer::write_internal 
 # !table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables           ## Fixed ## DBG MDEV-22237
 # !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                     ## Fixed ## DBG MDEV-22062
 # Alloced_length >= (str_length + length + net_length_size(length))|SIGABRT|Binary_string::q_net_store_data|User_variables_tracker::store|Session_tracker::store|net_send_ok  ## Fixed ## OPT |MDEV-22337
-# NONFILTERABLE_STRING|SIGSEGV|__libc_message|__GI___fortify_fail_abort|__stack_chk_fail|net_send_ok                                                                   ## Fixed ## OPT |MDEV-22337
+# SIGSEGV|__libc_message|__GI___fortify_fail_abort|__stack_chk_fail|net_send_ok                                                                                        ## Fixed ## OPT |MDEV-22337
+# SIGSEGV|copy_fields|Item_func_group_concat::add|Frame_cursor::add_value_to_items|Frame_cursor::add_value_to_items                                                    ## Fixed ## OPT |MDEV-22318     
+# SIGSEGV|copy_fields|Item_func_group_concat::add|Item_func_json_arrayagg::add|Frame_cursor::add_value_to_items                                                        ## Fixed ## OPT |MDEV-22318
+# SIGSEGV|copy_fields|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add                                                                     ## Fixed ## OPT |MDEV-22318
