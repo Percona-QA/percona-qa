@@ -53,7 +53,6 @@ thd->transaction.stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_table
 (templ->is_virtual && !field) || (field && field->prefix_len ? field->prefix_len == len : templ->mysql_col_len == len)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_search_idx_cond_check|row_search_mvcc  ## DBG MDEV-18911
 col->len == len|SIGABRT|innobase_rename_or_enlarge_column_try|innobase_rename_or_enlarge_columns_try|commit_try_norebuild|ha_innobase::commit_inplace_alter_table               ## DBG MDEV-22334
 !((col->prtype ^ prtype) & ~(16384U|32768U))|SIGABRT|innobase_rename_or_enlarge_column_try|innobase_rename_or_enlarge_columns_try|commit_try_norebuild|ha_innobase::commit_inplace_alter_table  ## DBG MDEV-18780*
-Alloced_length >= (str_length + length + net_length_size(length))|SIGABRT|Binary_string::q_net_store_data|User_variables_tracker::store|Session_tracker::store|net_send_ok      ## OPT MDEV-22337
 !thd || thd->locked_tables_mode || !thd->mdl_context.has_locks() || thd->handler_tables_hash.records || thd->ull_hash.records || thd->global_read_lock.is_acquired() || thd->current_backup_stage != BACKUP_FINISHED|SIGABRT|reload_acl_and_cache|mysql_execute_command|mysql_parse|dispatch_command  ## DBG MDEV-21994
 field_max_length <= m_return_field_def.length || m_return_field_def.type_handler()->cmp_type() == INT_RESULT || (_current_thd()->stmt_arena->is_stmt_execute() && m_return_field_def.length == 8 && (m_return_field_def.pack_flag & (1024U|2048U)))|SIGABRT|sp_head::create_result_field|Item_sp::init_result_field|Item_func_sp::fix_fields|Item::fix_fields_if_needed  ## DBG MDEV-22368
 name.length == strlen(name.str)|SIGABRT|Item::print_item_w_name|st_select_lex::print|opt_trace_print_expanded_query|JOIN::prepare                                               ## DBG MDEV-22380
@@ -65,7 +64,12 @@ m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::i
 templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc                                              ## DBG MDEV-22395
 cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connection|THD::free_connection|unlink_thd                                                               ## DBG MDEV-22420
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysqld_help_internal|mysqld_help                                                                                     ## DBG MDEV-22422
-
+SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::causal_read                                                             ## OPT MDEV-22443
+SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_writer_object::add                                                                                   ## OPT MDEV-22444
+SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::init_table_handle_for_HANDLER|mysql_ha_read                                                        ## OPT MDEV-22445
+SIGSEGV|mtr_t::set_named_space|dict_index_t::set_modified|innobase_instant_try|commit_try_norebuild                                                                             ## OPT MDEV-22446
+SIGSEGV|Item::val_uint|handle_select|execute_sqlcom_select|mysql_execute_command                                                                                                ## OPT MDEV-22447
+SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock                                      ## OPT MDEV-22448
 
 ###### FIXED BUGS ######
 # SIGSEGV|row_make_new_pathname|row_rename_table_for_mysql|innobase_rename_table|ha_innobase::rename_table                                                             ## Fixed ## OPT MDEV-21983
@@ -73,3 +77,5 @@ cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connectio
 # !is_owned()|SIGABRT|MutexDebug<TTASEventMutex<BlockMutexPolicy> >::enter|PolicyMutex<TTASEventMutex<BlockMutexPolicy> >::enter|buf_LRU_free_page|innodb_buffer_pool_evict_uncompressed  ## Fixed ## DBG MDEV-22114
 # !table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables           ## Fixed ## DBG MDEV-22237
 # !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                     ## Fixed ## DBG MDEV-22062
+# Alloced_length >= (str_length + length + net_length_size(length))|SIGABRT|Binary_string::q_net_store_data|User_variables_tracker::store|Session_tracker::store|net_send_ok  ## Fixed ## OPT |MDEV-22337
+# NONFILTERABLE_STRING|SIGSEGV|__libc_message|__GI___fortify_fail_abort|__stack_chk_fail|net_send_ok                                                                   ## Fixed ## OPT |MDEV-22337

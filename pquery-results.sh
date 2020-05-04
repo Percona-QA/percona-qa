@@ -258,6 +258,13 @@ if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|"
   echo "Detected one or more empty (0 byte) reducer script(s): `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|" | sed 's/^0|//' | tr '\n' ' '`- you may want to check what's causing this (possibly a bug in pquery-prep-red.sh, or did you simply run out of space while running pquery-prep-red.sh?) and do the analysis for these trial numbers manually, or free some space, delete the reducer*.sh scripts and re-run pquery-prep-red.sh"
 fi
 
+# Stack smashing overview
+if [ -z "$(grep "smashing" */*/log/master.err 2>/dev/null)" ]; then
+  echo "================ Stack smashing detected:"
+  grep "smashing" */*/log/master.err 2>/dev/null
+  echo "================"
+fi
+
 extract_valgrind_error(){
   for i in $( ls  */log/master.err 2>/dev/null); do
     TRIAL=`echo $i | cut -d'/' -f1`
