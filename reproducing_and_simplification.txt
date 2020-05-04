@@ -3,6 +3,8 @@ pquery-run.sh > ~/percona-qa/pquery-prep-red.sh > ~/percona-qa/pquery-clean-know
 
 However, for issues that fail to reproduce, try these things (in this order):
 -----------------------------------------------------------------------------
+* Remember that OOS (out of disk space) may have resulted in the _out and even the _out.prev file(s) not to be saved correctly. If so, you would have to restart from the original input file.
+
 * If the issue reproduced before and now no longer does, check the <filename>_out.prev file line count (wc -l <trial_nr>/<filename>_out.prev) vs
   the linecount in the current file (wc -l <trial_nr>/<filename>_out). If the line number in the <filename>_out.prev file is bigger, copy that 
   one over the current file and restart reducer without changes. Things like a simple out-of-disk-space may cause the this type of issue

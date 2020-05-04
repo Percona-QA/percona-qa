@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Handy command to see per-user pid max settings, and current status;
+# cat /sys/fs/cgroup/pids/user.slice/user-${UID}.slice/pids.max  # or use ${EUID}, change pids.max to others
+# cat /sys/fs/cgroup/pids/user.slice/user-${UID}.slice/pids.current
+
 echo "Substantial changes will be made to the system configuration of this machine. Press CTRL+C within the next 7 seconds to abort if you are not sure if that is a wise idea."
 echo "Script assumes that this machine is a Ubuntu 18.04 server!"
 echo "Script assumes current user is sudo-enabled."
@@ -35,33 +39,37 @@ bind } history
 bind k kill
 EOF
 fi
-if [ "$(grep -m1 'kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' ]; then
+if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' ]; then
   sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%g.%s.%t.%e" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'suid_dumpable=1' /etc/sysctl.conf)" != 'fs.suid_dumpable=1' ]; then
+if [ "$(grep -m1 '^suid_dumpable=1' /etc/sysctl.conf)" != 'fs.suid_dumpable=1' ]; then
   sudo sh -c 'echo "fs.suid_dumpable=1" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'fs.aio-max-nr=3000000' /etc/sysctl.conf)" != 'fs.aio-max-nr=3000000' ]; then
+if [ "$(grep -m1 '^fs.aio-max-nr=3000000' /etc/sysctl.conf)" != 'fs.aio-max-nr=3000000' ]; then
   sudo sh -c 'echo "fs.aio-max-nr=3000000" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'fs.file-max=10000000' /etc/sysctl.conf)" != 'fs.file-max=10000000' ]; then
+if [ "$(grep -m1 '^fs.file-max=10000000' /etc/sysctl.conf)" != 'fs.file-max=10000000' ]; then
   sudo sh -c 'echo "fs.file-max=10000000" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kernel.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.pid_max=4194304' ]; then
+if [ "$(grep -m1 '^kernel.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.pid_max=4194304' ]; then
   sudo sh -c 'echo "kernel.pid_max=4194304" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'threads-max.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.threads-max=4194304' ]; then
+if [ "$(grep -m1 '^kernel.threads-max=4194304' /etc/sysctl.conf)" != 'kernel.threads-max=4194304' ]; then
   sudo sh -c 'echo "kernel.threads-max=4194304" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kernel.shmmni=32768' /etc/sysctl.conf)" != 'kernel.shmmni=32768' ]; then
+if [ "$(grep -m1 '^kernel.shmmni=32768' /etc/sysctl.conf)" != 'kernel.shmmni=32768' ]; then
   sudo sh -c 'echo "kernel.shmmni=32768" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kernel.msgmax=65536' /etc/sysctl.conf)" != 'kernel.msgmax=65536' ]; then
+if [ "$(grep -m1 '^kernel.msgmax=65536' /etc/sysctl.conf)" != 'kernel.msgmax=65536' ]; then
   sudo sh -c 'echo "kernel.msgmax=65536" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kernel.msgmnb=65536' /etc/sysctl.conf)" != 'kernel.msgmnb=65536' ]; then
+if [ "$(grep -m1 '^kernel.msgmnb=65536' /etc/sysctl.conf)" != 'kernel.msgmnb=65536' ]; then
   sudo sh -c 'echo "kernel.msgmnb=65536" >> /etc/sysctl.conf'
 fi
+if [ "$(grep -m1 '^m.max_map_count=1048576' /etc/sysctl.conf)" != 'vm.max_map_count=1048576' ]; then
+  sudo sh -c 'echo "vm.max_map_count=1048576" >> /etc/sysctl.conf'
+fi
+
 # Note that a high number (>20480) for soft+hard nproc may cause system instability/hang on Centos7
 sudo bash -c "cat << EOF > /etc/security/limits.conf
 * soft core unlimited
@@ -95,6 +103,10 @@ sudo bash -c "cat << EOF > /etc/security/limits.conf
 * soft msgqueue unlimited
 * hard msgqueue unlimited
 EOF"
+
+if [ "$(grep -m1 '^UserTasksMax=infinity' /etc/systemd/logind.conf)" != 'UserTasksMax=infinity' ]; then
+  sudo sh -c 'echo "UserTasksMax=infinity" >> /etc/systemd/logind.conf'
+fi
 
 # Ensuring nproc limiter is gone or not present
 if [ -r /etc/security/limits.d/90-nproc.conf ]; then

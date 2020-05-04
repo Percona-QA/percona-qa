@@ -7,7 +7,7 @@ ps -ef | grep bug_report | grep -v grep | awk '{print $2}' | grep -v $$ | xargs 
 MYEXTRA_OPT="$*"
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RUN_PWD=${PWD}
-TEXT="Unknown key id"  # Leave empty to look for corefiles, or set to look for a specific string in the error log instead
+TEXT=""  # Leave empty to look for corefiles, or set to look for a specific string in the error log instead
 
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from a basedir which had the SQL executed against it an crashed"
@@ -81,7 +81,7 @@ if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy att
 cd ..
 echo "Testing all..."
 ./test_all ${MYEXTRA_OPT_CLEANED}
-echo "Ensuring are servers are gone..."
+echo "Ensuring all servers are gone..."
 ./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
 if [ -z "${TEXT}" ]; then
   echo "TEXT not set, scanning for corefiles..."
