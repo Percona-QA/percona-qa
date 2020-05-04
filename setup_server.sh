@@ -1,3 +1,10 @@
+#!/bin/bash
+
+echo "Substantial changes will be made to the system configuration of this machine. Press CTRL+C within the next 7 seconds to abort if you are not sure if that is a wise idea."
+echo "Script assumes that this machine is a Ubuntu 18.04 server!"
+echo "Script assumes current user is sudo-enabled."
+sleep 7
+
 sudo snap install shellcheck
 sudo snap install shfmt
 
@@ -37,39 +44,57 @@ fi
 if [ "$(grep -m1 'fs.aio-max-nr=3000000' /etc/sysctl.conf)" != 'fs.aio-max-nr=3000000' ]; then
   sudo sh -c 'echo "fs.aio-max-nr=3000000" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 'kernel.maxprocperuid=1000000' /etc/sysctl.conf)" != 'kernel.maxprocperuid=1000000' ]; then
-  sudo sh -c 'echo "kernel.maxprocperuid=1000000" >> /etc/sysctl.conf'
-fi
-if [ "$(grep -m1 'kernel.maxproc=10000000' /etc/sysctl.conf)" != 'kernel.maxproc=10000000' ]; then
-  sudo sh -c 'echo "kernel.maxproc=10000000" >> /etc/sysctl.conf'
-fi
-if [ "$(grep -m1 'kernel.shmmni=32768' /etc/sysctl.conf)" != 'kernel.shmmni=32768' ]; then
-  sudo sh -c 'echo "kernel.shmmni=32768" >> /etc/sysctl.conf'
+if [ "$(grep -m1 'fs.file-max=10000000' /etc/sysctl.conf)" != 'fs.file-max=10000000' ]; then
+  sudo sh -c 'echo "fs.file-max=10000000" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 'kernel.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.pid_max=4194304' ]; then
   sudo sh -c 'echo "kernel.pid_max=4194304" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '* soft core unlimited' /etc/security/limits.conf)" != '* soft core unlimited' ]; then
-  sudo sh -c 'echo "* soft core unlimited" >> /etc/security/limits.conf'
+if [ "$(grep -m1 'threads-max.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.threads-max=4194304' ]; then
+  sudo sh -c 'echo "kernel.threads-max=4194304" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '* hard core unlimited' /etc/security/limits.conf)" != '* hard core unlimited' ]; then
-  sudo sh -c 'echo "* hard core unlimited" >> /etc/security/limits.conf'
+if [ "$(grep -m1 'kernel.shmmni=32768' /etc/sysctl.conf)" != 'kernel.shmmni=32768' ]; then
+  sudo sh -c 'echo "kernel.shmmni=32768" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '* hard nofile 10485760' /etc/security/limits.conf)" != '* hard nofile 10485760' ]; then
-  sudo sh -c 'echo "* hard nofile 10485760" >> /etc/security/limits.conf'
+if [ "$(grep -m1 'kernel.msgmax=65536' /etc/sysctl.conf)" != 'kernel.msgmax=65536' ]; then
+  sudo sh -c 'echo "kernel.msgmax=65536" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '* soft stack 20480' /etc/security/limits.conf)" != '* soft stack 20480' ]; then
-  sudo sh -c 'echo "* soft stack 20480" >> /etc/security/limits.conf'
+if [ "$(grep -m1 'kernel.msgmnb=65536' /etc/sysctl.conf)" != 'kernel.msgmnb=65536' ]; then
+  sudo sh -c 'echo "kernel.msgmnb=65536" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '* hard stack 20480' /etc/security/limits.conf)" != '* hard stack 20480' ]; then
-  sudo sh -c 'echo "* hard stack 20480" >> /etc/security/limits.conf'
-fi
-if [ "$(grep -m1 '* soft nproc 3000000' /etc/security/limits.conf)" != '* soft nproc 3000000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. Later: multiplied by 10 as still running into server resource limits (but not hardware limits).
-  sudo sh -c 'echo "* soft nproc 3000000" >> /etc/security/limits.conf'
-fi
-if [ "$(grep -m1 '* hard nproc 3000000' /etc/security/limits.conf)" != '* hard nproc 3000000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. Later: multiplied by 10 as still running into server resource limits (but not hardware limits).
-  sudo sh -c 'echo "* hard nproc 3000000" >> /etc/security/limits.conf'
-fi
+# Note that a high number (>20480) for soft+hard nproc may cause system instability/hang on Centos7
+sudo bash -c "cat << EOF > /etc/security/limits.conf
+* soft core unlimited
+* hard core unlimited
+* soft data unlimited
+* hard data unlimited
+* soft fsize unlimited
+* hard fsize unlimited
+* soft memlock unlimited
+* hard memlock unlimited
+* soft nofile unlimited
+* hard nofile unlimited
+* soft rss unlimited
+* hard rss unlimited
+* soft stack unlimited
+* hard stack unlimited
+* soft cpu unlimited
+* hard cpu unlimited
+* soft nproc unlimited
+* hard nproc unlimited
+* soft as unlimited
+* hard as unlimited
+* soft maxlogins unlimited
+* hard maxlogins unlimited
+* soft maxsyslogins unlimited
+* hard maxsyslogins unlimited
+* soft locks unlimited
+* hard locks unlimited
+* soft sigpending unlimited
+* hard sigpending unlimited
+* soft msgqueue unlimited
+* hard msgqueue unlimited
+EOF"
 
 # Ensuring nproc limiter is gone or not present
 if [ -r /etc/security/limits.d/90-nproc.conf ]; then
