@@ -387,3 +387,25 @@ set tabstop     =2
 set softtabstop =2
 set shiftwidth  =2
 set expandtab
+set nocompatible
+colo torte
+syntax on
+
+# ------ Google cloud ------
+# Configure a serial port for console level access:
+  https://cloud.google.com/compute/docs/instances/interacting-with-serial-console
+  Basically, add a variable here (change {yourproject} and {yourorgid} to yours):
+  https://console.cloud.google.com/compute/metadata?project={yourproject}&folder&organizationId={yourorgid}
+  Variable to add:  serial-port-enable	value:  TRUE
+  Then go back to (change {yourzone}, {yourserver}, {yourproject} and {yourorgid} to yours):
+  https://console.cloud.google.com/compute/instancesDetail/zones/{yourzone}/instances/{yourserver}?project={yourproject}&folder&organizationId={yourorgid}
+  And click the "Connect to serial console" button
+# Remount root as r/w to enable changing files like /etc/fstab
+  mount -o remount,rw /
+# Check if entries in dmesg/journal give more information
+  journalctl -xb
+# Check if system has correct boot info
+  update-initramfs -u  # If you get an error like 'cannot find boot device in /etc/fstab', debug fstab
+# Issue with a specific driver on Ubuntu which can be blacklisted
+  echo "blacklist i2c-piix4" >> /etc/modprobe.d/blacklist.conf
+  # With thanks, https://askubuntu.com/questions/691729/piix4-smbus-0000007-3-host-smbus-controller-bus-not-enabled

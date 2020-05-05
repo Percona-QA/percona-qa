@@ -671,7 +671,7 @@ thread(){  # Executed in background. First and only parameter: thread ID (used i
     if [ $[ ${i} % 1000 ] -eq 0 ]; then
       echo "Thread ${1}: ${i}/${QUERIES_PER_THREAD} queries generated..."
     fi
-    printf "%s\n" "`query`;" > ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
+    printf "%s\n" "`query`;" >> ${FINAL_OUTFILE}${RANDOM_SUFFIX}_${1}.sql
   done
 }
 
