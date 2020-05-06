@@ -2,7 +2,12 @@ COUNT=0
 while true; do 
   COUNT=$[ ${COUNT} + 1 ]
   clear
-  df -h | grep -vE "/snap/|/run/|/cgroup|/efi|udev|/run" 
+  df -h | head -n1
+  df -h | grep -vE "/snap/|/run/|/cgroup|/efi|udev|/run" | sed '1d' | sort   # | grep -v "shm"
+  #cd /dev/shm
+  #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
+  #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
+  #cd - >/dev/null
   echo -n "${COUNT}/30"
   sleep 2
   if [ ${COUNT} -ge 30 ]; then

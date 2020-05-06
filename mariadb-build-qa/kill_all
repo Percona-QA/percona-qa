@@ -3,6 +3,6 @@
 
 # The ./kill script ensures the correct PID is selected (via random PORT= assignment)
 
-./gendirs.sh | xargs -I{} echo "cd {}; ./kill; cd .." | xargs -P50 -I{} sh -c "{}"
+./gendirs.sh | xargs -I{} echo "cd {}; if [ -r ./kill ]; then ./kill; else echo './kill did not exist for directory {} - please run ./startup_all or instead do cd {}; ~/mariadb-qa/startup.sh; cd -'; fi; cd .." | xargs -P50 -I{} sh -c "{}"
 
 sync

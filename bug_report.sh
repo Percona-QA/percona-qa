@@ -2,7 +2,8 @@
 # Created by Roel Van de Paar, MariaDB
 
 # Terminate any other bug_report.sh scripts ongoing
-ps -ef | grep bug_report | grep -v grep | awk '{print $2}' | grep -v $$ | xargs kill -9 2>/dev/null
+# Does not work correctly
+#ps -ef | grep -v $$ | grep bug_report | grep -v grep | grep -v mass_bug_report | awk '{print $2}' | xargs kill -9 2>/dev/null
 
 MYEXTRA_OPT="$*"
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
@@ -145,12 +146,21 @@ if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
     set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
     FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
     if [ ! -z "${FINDBUG}" ]; then
-      echo "FOUND: This is an already known bug!"
-      echo "${FINDBUG}" 
+      FINDBUG2="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
+      if [ ! -z "${FINDBUG2}" ]; then
+        # Do NOT change the text in the next echo line, it is used by mariadb-qa/move_known.sh
+        echo "FOUND: This is an already known, and not fixed yet, bug!"
+        echo "${FINDBUG}" 
+      else
+        echo "*** FOUND: This is an already known bug, but it was previously fixed! Research further! ***"
+        echo "${FINDBUG}" 
+      fi
     else
       echo "NOT FOUND: Bug not found yet in known_bugs.strings!"
       echo "*** THIS IS POSSIBLY A NEW BUG; BUT CHECK #4 BELOW FIRST! ***"
     fi
+    FINDBUG=
+    FINDBUG2=
   else
     echo "3) Add bug to known.strings, using ${SCRIPT_PWD}/new_text_string.sh in the basedir of a crashed instance"
   fi

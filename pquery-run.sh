@@ -24,6 +24,7 @@ SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
 SCRIPT_PWD=$(cd "$(dirname $0)" && pwd)
 WORKDIRACTIVE=0
 SAVED=0
+ALREADY_KNOWN=0
 TRIAL=0
 MYSQLD_START_TIMEOUT=60
 TIMEOUT_REACHED=0
@@ -49,7 +50,7 @@ if [[ ${PQUERY_TOOL_NAME} == "pquery3-ps" || ${PQUERY_TOOL_NAME} == "pquery3-pxc
 
 # Safety checks: ensure variables are correctly set to avoid rm -Rf issues (if not set correctly, it was likely due to altering internal variables at the top of this file)
 if [ "${WORKDIR}" == "/sd[a-z][/]" ]; then
-  echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"
+  echo "Assert! \${WORKDIR} == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"
   exit 1
 fi
 if [ "${RUNDIR}" == "/dev/shm[/]" ]; then
@@ -62,11 +63,11 @@ if [ "$(echo ${RANDOMD} | sed 's|[0-9]|/|g')" != "//////" ]; then
 fi
 if [ "${SKIPCHECKDIRS}" == "" ]; then # Used in/by pquery-reach.sh TODO: find a better way then hacking to avoid these checks. Check; why do they fail when called from pquery-reach.sh?
   if [ "$(echo ${WORKDIR} | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then
-    echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"
+    echo "Assert! \${WORKDIR} == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"
     exit 1
   fi
   if [ "$(echo ${RUNDIR} | grep -oi "$RANDOMD" | head -n1)" != "${RANDOMD}" ]; then
-    echo "Assert! \$WORKDIR == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"
+    echo "Assert! \${WORKDIR} == '${WORKDIR}' - is it missing the \$RANDOMD suffix?"
     exit 1
   fi
 fi
@@ -85,8 +86,13 @@ if [ ! -r ${OPTIONS_INFILE} ]; then
   exit 1
 fi
 
-# Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
-ulimit -u 7000
+# Incrementally try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf). If an higher setting fails, the earlier one will still apply.
+ulimit -u 2000  2>/dev/null 
+ulimit -u 4000  2>/dev/null
+ulimit -u 7000  2>/dev/null
+ulimit -u 10000 2>/dev/null
+ulimit -u 20000 2>/dev/null
+ulimit -u 30000 2>/dev/null
 
 # Check input file (when generator is not used)
 if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 ] && [ ! -r ${INFILE} ]; then
@@ -124,8 +130,31 @@ check_for_version() {
 
 # Output function
 echoit() {
-  echo "[$(date +'%T')] [$SAVED] $1"
+  if [ ${ALREADY_KNOWN} -gt 0 ]; then
+    echo "[$(date +'%T')] [$SAVED SAVED] [${ALREADY_KNOWN} DUPS] $1"
+  else
+    echo "[$(date +'%T')] [$SAVED] $1"
+  fi
   if [ ${WORKDIRACTIVE} -eq 1 ]; then echo "[$(date +'%T')] [$SAVED] $1" >> /${WORKDIR}/pquery-run.log; fi
+}
+
+# Diskspace OOS check function
+diskspace() {
+  while true; do
+    if [ ! -d ${RUNDIR} ]; then mkdir -p ${RUNDIR}; fi
+    echo "Diskspace Test" > ${RUNDIR}/diskspace 2>/dev/null
+    if [ $? -eq 0 ]; then
+      if [ -r ${RUNDIR}/diskspace ]; then
+        if [ "$(grep -o 'Diskspace Test' ${RUNDIR}/diskspace 2>/dev/null | head -n1)" == "Diskspace Test" ]; then
+          rm -f ${RUNDIR}/diskspace
+          break  # We have at least got some diskspace available!
+        fi
+      fi
+    fi
+    echoit "Likely out of diskspace on ${RUNDIR}... Pausing 10 minutes"
+    sleep 600
+    echoit "Slept 10 minutes, resuming pquery-run.sh run..."
+  done
 }
 
 # Find mysqld binary
@@ -367,6 +396,7 @@ removelasttrial() {
 
 savesql() {
   echoit "Copying sql trace(s) from ${RUNDIR}/${TRIAL} to ${WORKDIR}/${TRIAL}"
+  diskspace
   mkdir ${WORKDIR}/${TRIAL}
   cp ${RUNDIR}/${TRIAL}/*.sql ${WORKDIR}/${TRIAL}/
   rm -Rf ${RUNDIR}/${TRIAL}
@@ -463,17 +493,24 @@ pxc_startup() {
       else
         if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
           echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
-          grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
+          grep "ERROR" -B5 -A3 $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
             echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
           else
-            savetrial
-            echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
-            exit 1
+            if grep -qi "Could not open mysql.plugin" $ERROR_LOG; then  # Likely OOS on /dev/shm
+              echoit "Found 'Could not open mysql.plugin' in error log, likely OOS on ${RUNDIR} or in /tmp or root (/). Removing trial to maximize space, and pausing 0.5 hour before trying again (reducer's may be running and consuming space)"
+              removetrial
+              sleep 1800
+              echoit "Slept 0.5h, resuming pquery-run.sh run..."
+            else  
+              savetrial
+              echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+              exit 1
+            fi
           fi
         else # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
           echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
-          grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
+          grep "ERROR" -B5 -A3 $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           FAILEDSTARTABORT=1
           return
         fi
@@ -502,6 +539,7 @@ pxc_startup() {
     if [ "$IS_STARTUP" == "startup" ]; then
       node="${WORKDIR}/node${i}.template"
       if ! check_for_version $MYSQL_VERSION "5.7.0"; then
+        diskspace
         mkdir -p $node
       fi
       DATADIR=${WORKDIR}
@@ -509,6 +547,7 @@ pxc_startup() {
       node="${RUNDIR}/${TRIAL}/node${i}"
       DATADIR="${RUNDIR}/${TRIAL}"
     fi
+    diskspace
     mkdir -p $DATADIR/tmp${i}
     RBASE1="$((RPORT + (100 * $i)))"
     LADDR1="127.0.0.1:$((RBASE1 + 8))"
@@ -546,6 +585,7 @@ pxc_startup() {
   done
   if check_for_version $MYSQL_VERSION "8.0.0"; then
     if [ "$IS_STARTUP" == "startup" ]; then
+      diskspace
       mkdir ${WORKDIR}/cert
       cp ${WORKDIR}/node1.template/*.pem ${WORKDIR}/cert/
     fi
@@ -561,7 +601,7 @@ pxc_startup() {
     fi
   }
   if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
-    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault_pxc${i}.cnf"
+    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/vault/keyring_vault_pxc${i}.cnf"
   fi
 
   if [ "${VALGRIND_RUN}" == "1" ]; then
@@ -569,6 +609,7 @@ pxc_startup() {
   else
     VALGRIND_CMD=""
   fi
+  diskspace
   sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n1.cnf
   sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n2.cnf
   sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[3]},${PXC_LADDRS[3]}" ${DATADIR}/n3.cnf
@@ -586,10 +627,10 @@ pxc_startup() {
 
   if [ "$IS_STARTUP" != "startup" ]; then
     echo "RUNDIR=$RUNDIR" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "WORKDIR=$WORKDIR" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n1.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n2.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n3.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "WORKDIR=${WORKDIR}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n1.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n2.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n3.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "startup_check(){ " >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "  SOCKET=\$1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "  for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
@@ -657,10 +698,17 @@ gr_startup() {
         removetrial
       else
         echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MYEXTRA (${MYEXTRA}) startup options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings."
-        grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-        savetrial
-        echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
-        exit 1
+        grep "ERROR" -B5 -A3 $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
+        if grep -qi "Could not open mysql.plugin" $ERROR_LOG; then  # Likely OOS on /dev/shm
+          echoit "Found 'Could not open mysql.plugin' in error log, likely OOS on ${RUNDIR} or in /tmp or root (/). Removing trial to maximize space, and pausing 0.5 hour before trying again (reducer's may be running and consuming space)"
+          removetrial
+          sleep 1800
+          echoit "Slept 0.5h, resuming pquery-run.sh run..." 
+        else  
+          savetrial
+          echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+          exit 1
+        fi
       fi
     fi
   }
@@ -824,6 +872,7 @@ pquery_test() {
   fi
   echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
   ISSTARTED=0
+  diskspace
   if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if check_for_version $MYSQL_VERSION "8.0.0"; then
       mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log # Cannot create /data/test, /data/mysql in 8.0
@@ -831,10 +880,11 @@ pquery_test() {
       mkdir -p ${RUNDIR}/${TRIAL}/data/test ${RUNDIR}/${TRIAL}/data/mysql ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log
     fi
     echo 'SELECT 1;' > ${RUNDIR}/${TRIAL}/startup_failure_thread-0.sql # Add fake file enabling pquery-prep-red.sh/reducer.sh to be used with/for mysqld startup issues
+    diskspace
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Copying datadir from template for Primary mysqld..."
     elif [[ ${PQUERY3} -eq 1 && ${TRIAL} -gt 1 ]]; then
-      echoit "Copying datadir from Trial $WORKDIR/$((${TRIAL} - 1)) into $WORKDIR/${TRIAL}..."
+      echoit "Copying datadir from Trial ${WORKDIR}/$((${TRIAL} - 1)) into ${WORKDIR}/${TRIAL}..."
     else
       echoit "Copying datadir from template..."
     fi
@@ -913,10 +963,12 @@ pquery_test() {
         --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
         --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
     fi
+    diskspace
     $CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1 &
     MPID="$!"
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Starting Secondary mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log2/master.err"
+      diskspace
       if check_for_version $MYSQL_VERSION "8.0.0"; then
         mkdir -p ${RUNDIR}/${TRIAL}/data2 ${RUNDIR}/${TRIAL}/tmp2 ${RUNDIR}/${TRIAL}/log2 # Cannot create /data/test, /data/mysql in 8.0
       else
@@ -934,10 +986,12 @@ pquery_test() {
           --core-file --port=$PORT2 --pid_file=${RUNDIR}/${TRIAL}/pid2.pid --socket=${RUNDIR}/${TRIAL}/socket2.sock \
           --log-output=none --log-error=${RUNDIR}/${TRIAL}/log2/master.err"
       fi
+      diskspace
       $CMD2 > ${RUNDIR}/${TRIAL}/log2/master.err 2>&1 &
       MPID2="$!"
       sleep 1
     fi
+    diskspace
     echo "## Good for reproducing mysqld (5.7+) startup issues only (full issues need a data dir, so use mysql_install_db or mysqld --init for those)" > ${RUNDIR}/${TRIAL}/start
     echo "## Another strategy is to activate the data dir copy below, this way the server will be brought up with the same state as it crashed/was shutdown" >> ${RUNDIR}/${TRIAL}/start
     echo "echo '=== Setting up directories...'" >> ${RUNDIR}/${TRIAL}/start
@@ -964,7 +1018,7 @@ pquery_test() {
     chmod +x ${RUNDIR}/${TRIAL}/start
     echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
 
-    echo "${CMD//$RUNDIR/$WORKDIR} --init-file=${WORKDIR}/recovery-user.sql > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery
+    echo "${CMD//$RUNDIR/${WORKDIR}} --init-file=${WORKDIR}/recovery-user.sql > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery
     chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
@@ -1025,9 +1079,16 @@ pquery_test() {
             else
               echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MEXTRA (or \$MYSAFE) startup parameters. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against the \$MYEXTRA (or \$MYSAFE if it was modified) settings. You may also want to try setting \$MYEXTRA=\"${MYEXTRA}\" directly in start (as created by startup.sh using your base directory)."
               grep "ERROR" ${RUNDIR}/${TRIAL}/log/master.err | tee -a /${WORKDIR}/pquery-run.log
-              savetrial
-              echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
-              exit 1
+              if grep -qi "Could not open mysql.plugin" $ERROR_LOG; then  # Likely OOS on /dev/shm
+                echoit "Found 'Could not open mysql.plugin' in error log, likely OOS on ${RUNDIR} or in /tmp or root (/). Removing trial to maximize space, and pausing 0.5 hour before trying again (reducer's may be running and consuming space)"
+                removetrial
+                sleep 1800
+                echoit "Slept 0.5h, resuming pquery-run.sh run..." 
+              else  
+                savetrial
+                echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+                exit 1
+              fi
             fi
           else # Do not halt for ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as MYEXTRA was randomly changed
             echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the MYEXTRA startup parameters. As ADD_RANDOM_OPTIONS=1, this is likely to be encountered. Not saving trial. If you see this error for every trial however, set \$ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, your base \$MYEXTRA setting is faulty."
@@ -1061,13 +1122,14 @@ pquery_test() {
       fi
     fi
   elif [[ "${PXC}" == "1" ]]; then
+    diskspace
     if [[ ${PQUERY3} -eq 1 && ${TRIAL} -gt 1 ]]; then
       mkdir -p ${RUNDIR}/${TRIAL}/
-      echoit "Copying datadir from $WORKDIR/$((${TRIAL} - 1))/node1 into ${RUNDIR}/${TRIAL}/node1 ..."
+      echoit "Copying datadir from ${WORKDIR}/$((${TRIAL} - 1))/node1 into ${RUNDIR}/${TRIAL}/node1 ..."
       cp -R ${WORKDIR}/$((${TRIAL} - 1))/node1 ${RUNDIR}/${TRIAL}/node1 2>&1
-      echoit "Copying datadir from $WORKDIR/$((${TRIAL} - 1))/node2 into ${RUNDIR}/${TRIAL}/node2 ..."
+      echoit "Copying datadir from ${WORKDIR}/$((${TRIAL} - 1))/node2 into ${RUNDIR}/${TRIAL}/node2 ..."
       cp -R ${WORKDIR}/$((${TRIAL} - 1))/node2 ${RUNDIR}/${TRIAL}/node2 2>&1
-      echoit "Copying datadir from $WORKDIR/$((${TRIAL} - 1))/node3 into ${RUNDIR}/${TRIAL}/node3 ..."
+      echoit "Copying datadir from ${WORKDIR}/$((${TRIAL} - 1))/node3 into ${RUNDIR}/${TRIAL}/node3 ..."
       cp -R ${WORKDIR}/$((${TRIAL} - 1))/node3 ${RUNDIR}/${TRIAL}/node3 2>&1
       sed -i 's|safe_to_bootstrap:.*$|safe_to_bootstrap: 1|' ${RUNDIR}/${TRIAL}/node1/grastate.dat
     else
@@ -1147,6 +1209,7 @@ pquery_test() {
       fi
     done
   elif [[ ${GRP_RPL} -eq 1 ]]; then
+    diskspace
     mkdir -p ${RUNDIR}/${TRIAL}/
     cp -R ${WORKDIR}/node1.template ${RUNDIR}/${TRIAL}/node1 2>&1
     cp -R ${WORKDIR}/node2.template ${RUNDIR}/${TRIAL}/node2 2>&1
@@ -1476,6 +1539,7 @@ pquery_test() {
             CMD="${PQUERY_BIN} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL}/node1/ --user=root --socket=${SOCKET1} --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}"
           fi
           echoit "$CMD"
+          diskspace
           $CMD > ${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
           PQPID="$!"
         else
@@ -1808,15 +1872,17 @@ pquery_test() {
           TRIAL_TO_SAVE=1
           if [ "${ELIMINATE_KNOWN_BUGS}" == "1" -a -r ${SCRIPT_PWD}/known_bugs.strings ]; then # "1": String check hack to ensure backwards compatibility with older pquery-run.conf files
             set +H                                                                          # Disables history substitution and avoids  -bash: !: event not found  like errors
-            FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)" # ^: ensures the issue is not remarked/prefixed with "#" (i.e. this ensures that fixed bugs which are seen again are kept)
+            FINDBUG="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)" # ^: ensures the issue is not remarked/prefixed with "#" (i.e. this ensures that fixed bugs which are seen again are kept)
             if [ ! -z "${FINDBUG}" ]; then                                                  # do not call savetrial, known/filtered bug seen
               echoit "This is aleady known and logged, non-fixed bug: ${FINDBUG}"
               echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"
+              ALREADY_KNOWN=$[ ${ALREADY_KNOWN} + 1]
               TRIAL_TO_SAVE=0
             else 
               NEWBUGS=$[ ${NEWBUGS} + 1 ]
               echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings)"
             fi
+            FINDBUG=
           fi
         else
           echoit "mysqld crash detected in the error log via old text_string.sh scan #TODO" #TODO marker is placed here because the new_text_string.sh may not be able to handle all cases correctly yet (like where there is an error log with a crash, but no coredump - though that may be OOS caused also). Also adding a #TODO marker into ${RUNDIR}/${TRIAL}/MYBUG to make it easy to scan for these trials.
@@ -1904,6 +1970,7 @@ if [[ "${INFILE}" == *".tar."* ]]; then
   INFILE=$(echo ${INFILE} | sed 's|\.tar\..*||')
 fi
 rm -Rf ${WORKDIR} ${RUNDIR}
+diskspace
 mkdir ${WORKDIR} ${WORKDIR}/log ${RUNDIR}
 WORKDIRACTIVE=1
 ONGOING=
@@ -1943,14 +2010,15 @@ fi
 # Start vault server for pquery encryption run
 if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
   echoit "Setting up vault server"
-  mkdir $WORKDIR/vault
-  rm -rf $WORKDIR/vault/*
+  diskspace
+  mkdir ${WORKDIR}/vault
+  rm -rf ${WORKDIR}/vault/*
   killall vault
   if [[ $PXC -eq 1 ]]; then
-    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --setup-pxc-mount-points --use-ssl
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=${WORKDIR}/vault --setup-pxc-mount-points --use-ssl
   else
-    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=$WORKDIR/vault --use-ssl
-    #MYEXTRA="$MYEXTRA --early-plugin-load=keyring_vault.so --loose-keyring_vault_config=$WORKDIR/vault/keyring_vault.cnf"
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=${WORKDIR}/vault --use-ssl
+    #MYEXTRA="$MYEXTRA --early-plugin-load=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/vault/keyring_vault.cnf"
   fi
 fi
 
@@ -2028,12 +2096,13 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
   ${INIT_TOOL} ${INIT_OPT} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
   # Sysbench dataload
+  diskspace
   if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
     echoit "Starting mysqld for sysbench data load. Error log is stored at ${WORKDIR}/data.template/master.err"
     CMD="${BIN} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template --tmpdir=${WORKDIR}/data.template \
       --core-file --port=$PORT --pid_file=${WORKDIR}/data.template/pid.pid --socket=${WORKDIR}/data.template/socket.sock \
       --log-output=none --log-error=${WORKDIR}/data.template/master.err"
-
+    diskspace
     $CMD > ${WORKDIR}/data.template/master.err 2>&1 &
     MPID="$!"
 

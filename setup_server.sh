@@ -69,6 +69,9 @@ fi
 if [ "$(grep -m1 '^m.max_map_count=1048576' /etc/sysctl.conf)" != 'vm.max_map_count=1048576' ]; then
   sudo sh -c 'echo "vm.max_map_count=1048576" >> /etc/sysctl.conf'
 fi
+if [ "$(grep -m1 '^vm.swappiness=5' /etc/sysctl.conf)" != 'vm.swappiness=5' ]; then
+  sudo sh -c 'echo "vm.swappiness=5" >> /etc/sysctl.conf'
+fi
 
 # Note that a high number (>20480) for soft+hard nproc may cause system instability/hang on Centos7
 sudo bash -c "cat << EOF > /etc/security/limits.conf
