@@ -4,6 +4,10 @@
 # cat /sys/fs/cgroup/pids/user.slice/user-${UID}.slice/pids.max  # or use ${EUID}, change pids.max to others
 # cat /sys/fs/cgroup/pids/user.slice/user-${UID}.slice/pids.current
 
+# References
+# https://www.ibm.com/support/knowledgecenter/SSEPGG_11.1.0/com.ibm.db2.luw.qb.server.doc/doc/t0008238.html
+# https://www.serverwatch.com/server-tutorials/set-user-limits-with-pamlimits-and-limits.conf.html
+
 echo "Substantial changes will be made to the system configuration of this machine. Press CTRL+C within the next 7 seconds to abort if you are not sure if that is a wise idea."
 echo "Script assumes that this machine is a Ubuntu 18.04 server!"
 echo "Script assumes current user is sudo-enabled."
@@ -39,29 +43,36 @@ bind } history
 bind k kill
 EOF
 fi
+echo "These settings are for a 128GB Memory server (google cloud instance of that size or similar)"
 if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' ]; then
   sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%g.%s.%t.%e" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 '^suid_dumpable=1' /etc/sysctl.conf)" != 'fs.suid_dumpable=1' ]; then
   sudo sh -c 'echo "fs.suid_dumpable=1" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '^fs.aio-max-nr=3000000' /etc/sysctl.conf)" != 'fs.aio-max-nr=3000000' ]; then
-  sudo sh -c 'echo "fs.aio-max-nr=3000000" >> /etc/sysctl.conf'
+if [ "$(grep -m1 '^fs.aio-max-nr=99999999' /etc/sysctl.conf)" != 'fs.aio-max-nr=99999999' ]; then
+  sudo sh -c 'echo "fs.aio-max-nr=99999999" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '^fs.file-max=10000000' /etc/sysctl.conf)" != 'fs.file-max=10000000' ]; then
-  sudo sh -c 'echo "fs.file-max=10000000" >> /etc/sysctl.conf'
+if [ "$(grep -m1 '^fs.file-max=99999999' /etc/sysctl.conf)" != 'fs.file-max=99999999' ]; then
+  sudo sh -c 'echo "fs.file-max=99999999" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 '^kernel.pid_max=4194304' /etc/sysctl.conf)" != 'kernel.pid_max=4194304' ]; then
   sudo sh -c 'echo "kernel.pid_max=4194304" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '^kernel.threads-max=4194304' /etc/sysctl.conf)" != 'kernel.threads-max=4194304' ]; then
-  sudo sh -c 'echo "kernel.threads-max=4194304" >> /etc/sysctl.conf'
+if [ "$(grep -m1 '^kernel.threads-max=99999999' /etc/sysctl.conf)" != 'kernel.threads-max=99999999' ]; then
+  sudo sh -c 'echo "kernel.threads-max=99999999" >> /etc/sysctl.conf'
+fi
+if [ "$(grep -m1 '^kernel.sem = 32768 1073741824 2000 32768' /etc/sysctl.conf)" != 'kernel.sem = 32768 1073741824 2000 32768' ]; then
+  sudo sh -c 'echo "kernel.sem = 32768 1073741824 2000 32768" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 '^kernel.shmmni=32768' /etc/sysctl.conf)" != 'kernel.shmmni=32768' ]; then
-  sudo sh -c 'echo "kernel.shmmni=32768" >> /etc/sysctl.conf'
+  sudo sh -c 'echo "kernel.shmmni=32768" >> /etc/sysctl.conf'  # 32768 is the effective max value
 fi
 if [ "$(grep -m1 '^kernel.msgmax=65536' /etc/sysctl.conf)" != 'kernel.msgmax=65536' ]; then
   sudo sh -c 'echo "kernel.msgmax=65536" >> /etc/sysctl.conf'
+fi
+if [ "$(grep -m1 '^kernel.msgmni=32768' /etc/sysctl.conf)" != 'kernel.msgmni=32768' ]; then
+  sudo sh -c 'echo "kernel.msgmni=32768" >> /etc/sysctl.conf'  # 32768 is the effective max value
 fi
 if [ "$(grep -m1 '^kernel.msgmnb=65536' /etc/sysctl.conf)" != 'kernel.msgmnb=65536' ]; then
   sudo sh -c 'echo "kernel.msgmnb=65536" >> /etc/sysctl.conf'
@@ -83,8 +94,8 @@ sudo bash -c "cat << EOF > /etc/security/limits.conf
 * hard fsize unlimited
 * soft memlock unlimited
 * hard memlock unlimited
-* soft nofile unlimited
-* hard nofile unlimited
+* soft nofile 1048576
+* hard nofile 1048576
 * soft rss unlimited
 * hard rss unlimited
 * soft stack unlimited

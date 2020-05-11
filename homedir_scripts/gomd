@@ -1,1 +1,35 @@
-screen -admS pr$1 bash -c "ulimit -u 2000; ulimit -u 4000; ulimit -u 10000; ulimit -u 20000; ulimit -u 30000; ulimit -u 40000; ulimit -u 50000; cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105.conf; bash"
+#!/bin/bash
+
+RUNS=13
+
+for run in $(seq 1 ${RUNS}); do
+  rm -f /tmp/gomd_helper
+
+  screen -admS pr$1 bash -c "ulimit -u 2000; ulimit -u 4000; ulimit -u 10000; ulimit -u 20000; ulimit -u 30000; ulimit -u 40000; ulimit -u 50000; cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105.conf; bash"
+
+  while true; do
+    sleep 1
+    if [ -r /tmp/gomd_helper ]; then
+      sleep 0.3
+      DIR="$(cat /tmp/gomd_helper)"
+      rm -f /tmp/gomd_helper
+      if [ -d "${DIR}" ]; then
+        cd ${DIR}/..
+        DIREND="$(echo "${DIR}" | sed 's|.*/||')"
+        if [ ! -d ./${DIREND} ]; then
+          echo "Assert: ./${DIREND} should exist, based on directory passed by gomd_helper (${DIR})"
+          exit 1; break
+        else
+          if [ ! -r ~/sge ]; then 
+            echo "Assert: ~/sge not available! Cannot start pquery-go-expert!" 
+            exit 1; break
+          else
+            ~/sge ${DIREND}
+            echo "MD run started in directory ${DIR}, and pquery-go-expert started for the same!"
+            break
+          fi
+        fi 
+      fi
+    fi
+  done
+done

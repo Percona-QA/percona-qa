@@ -11,8 +11,10 @@ cp mysql_scan ${TARGET}
 cp scan ${TARGET}
 cp old_bugs_move ${TARGET}
 cp backup_github ${TARGET}
+cp gen_inprogress ${TARGET}
+cp optimizer_bugs ${TARGET}
 
 cd ${TARGET}
 git add *
 cd ~/mariadb-qa/BUGS
-git add MDEV*.sql
+git add *

@@ -275,6 +275,8 @@
 for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -I{} bash -c "{}"
 # And the next line. The first one will run sequentially, whereas the -P10 version will start 10 threads at once
 for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -P10 -I{} bash -c "{}"
+# See what processes are accessing a given file
+fuser -a /path_to/your_file
 
 
 # ------ GNU 'screen' usage ------

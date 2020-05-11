@@ -22,6 +22,7 @@ SIGSEGV|__strlen_avx2|my_strdup|Session_sysvars_tracker::init|plugin_thdvar_init
 global_system_variables.session_track_system_variables|SIGABRT|Session_sysvars_tracker::init|plugin_thdvar_init|THD::init|THD::THD                                              ## OPT |MDEV-22134
 SIGSEGV|Sys_var_sesvartrack::session_save_default|sys_var::set_default|set_var::update|sql_set_variables                                                                        ## OPT |MDEV-22134
 state_ == s_exec || state_ == s_quitting|SIGABRT|wsrep::client_state::disable_streaming|wsrep_trx_fragment_size_update|sys_var::update|set_var::update                          ## OPT MDEV-22148
+state_ == s_exec || state_ == s_quitting|SIGABRT|wsrep::client_state::disable_streaming|wsrep_trx_fragment_size_update|sys_var::update|sys_var::set_default                     ## OPT MDEV-22148
 SIGSEGV|st_join_table::save_explain_data|JOIN::save_explain_data_intern|JOIN::save_explain_data|JOIN::build_explain                                                             ## OPT MDEV-22160
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send                 ## DBG |MDEV-19723*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item_func_as_wkt::val_str_ascii|Item_func::val_str_from_val_str_ascii             ## DBG |MDEV-19723*
@@ -70,6 +71,14 @@ SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_c
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_lock|MDL_context::release_lock                                                                  ## OPT |MDEV-22448
 SIGSEGV|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add|init_sum_functions                                                                         ## OPT MDEV-22449
 SIGSEGV|_my_b_write|my_b_write|my_b_safe_write|Log_event_writer::write_internal                                                                                                 ## OPT MDEV-22451
+SIGSEGV|Bitmap<64u>::merge|add_key_field|add_key_equal_fields|Item_bool_func2::add_key_fields_optimize_op                                                                       ## OPT MDEV-22498
+(uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock  # DBG MDEV-22499
+thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                              ## DBG |MDEV-22500
+thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|mysql_load                                                              ## DBG |MDEV-22500
+SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|Sys_var_multi_source_ulonglong::get_master_info_ulonglong_value|Sys_var_multi_source_ulonglong::session_value_ptr           ## DBG MDEV-22524
+SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT MDEV-15703
+SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT MDEV-15703
+
 
 ###### FIXED BUGS ######
 # SIGSEGV|row_make_new_pathname|row_rename_table_for_mysql|innobase_rename_table|ha_innobase::rename_table                                                             ## Fixed ## OPT MDEV-21983

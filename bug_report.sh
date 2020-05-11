@@ -42,9 +42,11 @@ fi
 
 echo 'Starting bug report generation for this SQL code (please check):'
 echo '----------------------------------------------------------------'
-cat in.sql
+cat in.sql | grep -v '^$'
 echo '----------------------------------------------------------------'
-sleep 1
+echo 'Note that any mysqld options need to be listed as follows on the first line above:'
+echo '# mysqld options required for replay:  --someoption[=somevalue]'
+sleep 2
 
 RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
@@ -98,7 +100,7 @@ SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|
 
 echo '-------------------- BUG REPORT --------------------'
 echo '{noformat}'
-cat ./in.sql
+cat in.sql | grep -v '^$'
 echo -e '{noformat}\n'
 echo -e 'Leads to:\n'
 # Assumes (which is valid for the pquery framework) that 1st assertion is also the last in the log
@@ -146,8 +148,7 @@ if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
     set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
     FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
     if [ ! -z "${FINDBUG}" ]; then
-      FINDBUG2="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
-      if [ ! -z "${FINDBUG2}" ]; then
+      if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" != "#" ]; then  # If true, then this is not a previously fixed bugs. If false (i.e. leading char is "#") then this is a previouly fixed bug remarked with a leading '#' in the known bugs file.
         # Do NOT change the text in the next echo line, it is used by mariadb-qa/move_known.sh
         echo "FOUND: This is an already known, and not fixed yet, bug!"
         echo "${FINDBUG}" 
@@ -160,7 +161,6 @@ if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
       echo "*** THIS IS POSSIBLY A NEW BUG; BUT CHECK #4 BELOW FIRST! ***"
     fi
     FINDBUG=
-    FINDBUG2=
   else
     echo "3) Add bug to known.strings, using ${SCRIPT_PWD}/new_text_string.sh in the basedir of a crashed instance"
   fi

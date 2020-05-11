@@ -1,0 +1,6 @@
+USE test;
+SET SESSION aria_sort_buffer_size=1023;
+CREATE TABLE t (c CHAR);
+INSERT INTO t VALUES (''),('');
+CREATE TABLE t2 (c TEXT,INDEX(c)) ENGINE=Aria;
+INSERT INTO t2 SELECT * FROM t;

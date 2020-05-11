@@ -29,7 +29,10 @@ if [ ${COUNT} -gt 0 ]; then
     FILE="$(echo "${SCAN}" | sed 's|sql\.report-.*|sql.report|')"
     TEXT="$(echo "${SCAN}" | sed 's|.*sql\.report-||')"
     set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
-    FINDBUG="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
+    FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
+    if [ "${1}" == "" ]; then  # Allows one to quickly cleanup all fixed bugs also - handy when dealing with many testcases and a good number of recent bugfixes. Not perfect, so optional.
+      if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
+    fi
     if [ ! -z "${FINDBUG}" ]; then
       NR="$(echo "${FILE}" | sed 's|\.sql\.report||')"
       if [ -r ${NR}.sql.report.NOCORE ]; then

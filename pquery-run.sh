@@ -43,6 +43,7 @@ if [ ! -r ${SCRIPT_PWD}/${CONFIGURATION_FILE} ]; then
   exit 1
 fi
 source ${SCRIPT_PWD}/$CONFIGURATION_FILE
+echo ${WORKDIR} > /tmp/gomd_helper # gomd helper
 PQUERY_TOOL_NAME=$(basename ${PQUERY_BIN})
 if [ "${SEED}" == "" ]; then SEED=${RANDOMD}; fi
 # TODO: research this new code (and how it affects trials, though it seeems backwards compatible; checking for PQUERY3 varialbe happens AFTER all other checks are done (i.e. first core, then other checks, then PQUERY3 check, so should be fine? Though trial-1 is apparently removed; research further))
@@ -130,7 +131,7 @@ check_for_version() {
 
 # Output function
 echoit() {
-  if [ ${ALREADY_KNOWN} -gt 0 ]; then
+  if [ "${ELIMINATE_KNOWN_BUGS}" == "1" ]; then
     echo "[$(date +'%T')] [$SAVED SAVED] [${ALREADY_KNOWN} DUPS] $1"
   else
     echo "[$(date +'%T')] [$SAVED] $1"
@@ -1872,15 +1873,16 @@ pquery_test() {
           TRIAL_TO_SAVE=1
           if [ "${ELIMINATE_KNOWN_BUGS}" == "1" -a -r ${SCRIPT_PWD}/known_bugs.strings ]; then # "1": String check hack to ensure backwards compatibility with older pquery-run.conf files
             set +H                                                                          # Disables history substitution and avoids  -bash: !: event not found  like errors
-            FINDBUG="$(grep -Fi --binary-files=text "^${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)" # ^: ensures the issue is not remarked/prefixed with "#" (i.e. this ensures that fixed bugs which are seen again are kept)
-            if [ ! -z "${FINDBUG}" ]; then                                                  # do not call savetrial, known/filtered bug seen
+            FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
+            if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
+            if [ ! -z "${FINDBUG}" ]; then  # do not call savetrial, known/filtered bug seen
               echoit "This is aleady known and logged, non-fixed bug: ${FINDBUG}"
               echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"
               ALREADY_KNOWN=$[ ${ALREADY_KNOWN} + 1]
               TRIAL_TO_SAVE=0
             else 
               NEWBUGS=$[ ${NEWBUGS} + 1 ]
-              echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings)"
+              echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings, or found but marked as already fixed)"
             fi
             FINDBUG=
           fi

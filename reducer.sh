@@ -2778,7 +2778,7 @@ process_outcome(){
           $TEXT_STRING_LOC "${BIN}" >> ${WORKD}/MYBUG.FOUND
         fi
         cd - >/dev/null || exit 1
-        FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"  # Do not use "^${TEXT}"
+        FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"  # Do not use "^${TEXT}", not only will this not work (the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings), but it is also not required here; we want to be able to search for part of the string, and the risk of an incorrect "more generic unique bug string with a more specific one being looked for" match is very low.
         if [ ! -z "${FINDBUG}" ]; then  # $TEXT_STRING_LOC yielded same bug as the one being reduced for
           M3_ISSUE_FOUND=1
           FINDBUG=
@@ -2789,7 +2789,8 @@ process_outcome(){
               if [ -r ${WORKD}/MYBUG.FOUND ]; then
                 if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # Using "..." as defensive coding against OOS (file missing, TEXT not written properly, etc.), no core generated etc.
                   # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
-                  FINDBUG="$(grep -Fi --binary-files=text "^$(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)" ${KNOWN_BUGS})"
+                  FINDBUG="$(grep -Fi --binary-files=text "$(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)" ${KNOWN_BUGS})"
+                  if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
                   if [ -z "${FINDBUG}" ]; then  # Reducer found a new bug (nothing found in known bugs)
                     EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
                     NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
@@ -2802,7 +2803,7 @@ process_outcome(){
                     EPOCH_RAN=
                     NEWBUGSO=
                     NEWBUGTO=
-                  fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the ^${TEXT} which excludes fixed bugs remarked in the known bugs list file)
+                  fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the secondary if which excludes fixed bugs remarked with a leading '#' in the known bugs list file)
                   FINDBUG=
                 fi  # No else needed; if the exit code was 1, then no bug (for example assert) was seen
               else
@@ -3218,7 +3219,7 @@ verify_not_found(){
   else
     if [ $USE_PQUERY -eq 1 ]; then
       echo_out "[Finish] pquery client output    : ${PRINTWORKD}/{EXTRA_PATH}default.node.tld_thread-0.sql  (Look for clear signs of non-replay or a terminated connection)"
-    elset
+    else
       echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection)"
     fi
   fi

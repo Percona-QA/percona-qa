@@ -33,11 +33,11 @@ if [ -z "${MYSQLD}" ]; then
 fi
 
 # The */ in the */*core* core search pattern is for to the /node1/ dir setup for cluster runs
-LATEST_CORE=$(ls -t */*core* 2>/dev/null | head -n1)
+LATEST_CORE=$(ls -t */*core* 2>/dev/null | grep -v 'PREV' | head -n1)  # Exclude data.PREV
 if [ -z "${LATEST_CORE}" ]; then
   # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
   # Idea; can we fallback to OLD/text_string.sh in that case?
-  echo "Assert: no core file found in */*core*"
+  echo "Assert: no core file found in */*core* (excluding any .PREV directories)"
   exit 1
 fi
 
@@ -135,5 +135,10 @@ else
 fi
 
 # Report bug identifier string
-echo "${TEXT}"
-exit 0
+if [ "$(echo "${TEXT}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then
+  echo "Assert: leading character of unique bug id (${TEXT}) is a '#', which will lead to issues in other scripts. This would normally never happen, but it did. Please improve new_text_string.sh to handle this situation!"
+  exit 1
+else
+  echo "${TEXT}"
+  exit 0
+fi

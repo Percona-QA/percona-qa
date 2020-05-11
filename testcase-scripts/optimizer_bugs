@@ -1,0 +1,2 @@
+#!/bin/bash
+grep --binary-files=text -li "OPTIMIZER" *.sql | xargs wc -l | grep -v total | sort -rn
