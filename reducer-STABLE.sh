@@ -823,8 +823,12 @@ options_check(){
     if [ ! -r "$TEXT_STRING_LOC" ] ; then
       echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this program was either not found (most likely), or it is not readable (check file privileges)"
       echo "Terminating now."
-      exit
+      exit 1
     fi
+  fi
+  if [ $USE_NEW_TEXT_STRING -eq 1 -a $MODE -ne 3 ]; then
+    echo "Assert: USE_NEW_TEXT_STRING=1 and MODE!=3 (MODE=${MODE}). This scenario is not covered by reducer yet. Suggestion; disable USE_NEW_TEXT_STRING and instead use a string from the error log; TEXT='some_search_string_from_error_log' to let reducer use that (search for that string) to reduce the testcase. OR, altenatively, please expand reducer.sh to handle this scenario too. For this, the main change would be to avoid using a regex-aware grep in the actual bug-found-or-not checking section of the individual mode (MODE=${MODE}) inside the process_outcome() function. This can be done by using grep -Fi instead of grep -E. So basically, check for USE_NEW_TEXT_STRING being enabled, then, if so, use different grep to check. Needs qucik eval of usefullness per MODE."  # TODO
+    exit 1
   fi
   if [ $MODE -eq 2 ]; then
     if [ $USE_PQUERY -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
@@ -1002,12 +1006,8 @@ remove_dropc(){
 
 set_internal_options(){  # Internal options: do not modify!
   # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see mariadb-qa/setup_server.sh for an example)
-  ulimit -u 2000  2>/dev/null  # Attempt to raise it to 4000
-  ulimit -u 4000  2>/dev/null  # Attempt to raise it even higher, if it fails, but the previous one worked, then that one is still used
-  ulimit -u 20000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
-  ulimit -u 30000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
-  ulimit -u 40000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
-  ulimit -u 50000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
+  #ulimit -u 4000  2>/dev/null
+  # ^ This was removed, because it was causing the system to run out of available file descriptors. i.e. while ulimit -n may be set to a maximum of 1048576, and whilst that limit may never be reached, a system would still run into "fork: retry: Resource temporarily unavailable" issues. Ref https://askubuntu.com/questions/1236454
   # Unless core files are specifically requested (--core-file or --core option passed to mysqld via MYEXTRA), disable all core file generation (OS+mysqld)
   # It would be good if we could disable OS core file generation without disabling mysqld core file generation, but for the moment it looks like
   # ulimit -c 0 disables ALL core file generation, both OS and mysqld, so instead, ftm, reducer checks for "CORE" in MYEXTRA (uppercase-ed via ^^)
@@ -2223,7 +2223,7 @@ start_mysqld_main(){
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --user=$MYUSER $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT} ${CORE_FOR_NEW_TEXT_STRING}"
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"
@@ -2773,26 +2773,29 @@ process_outcome(){
         cd $WORKD || exit 1
         if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
           $TEXT_STRING_LOC "${BIN}" >> ${WORKD}/MYBUG.FOUND
-          echo "${?}" > ${WORKD}/MYBUG.FOUND.EXITCODE
+          echo ${?} > ${WORKD}/MYBUG.FOUND.EXITCODE
         else
           $TEXT_STRING_LOC "${BIN}" >> ${WORKD}/MYBUG.FOUND
         fi
         cd - >/dev/null || exit 1
-        FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"
-        if [ ! -z "${FINDBUG}" ]; then
+        FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${WORKD}/MYBUG.FOUND)"  # Do not use "^${TEXT}", not only will this not work (the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings), but it is also not required here; we want to be able to search for part of the string, and the risk of an incorrect "more generic unique bug string with a more specific one being looked for" match is very low.
+        if [ ! -z "${FINDBUG}" ]; then  # $TEXT_STRING_LOC yielded same bug as the one being reduced for
           M3_ISSUE_FOUND=1
-        else
+          FINDBUG=
+        else  # $TEXT_STRING_LOC yielded another output (error, or a different bug - new or already existing)
+          FINDBUG=
           if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
             if [ -r ${WORKD}/MYBUG.FOUND.EXITCODE ]; then
               if [ -r ${WORKD}/MYBUG.FOUND ]; then
-                if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # "1": Defensive coding against OOS (file missing, TEXT not written properly, etc.), no core generated etc.
-                  # If we received a non-error (i.e. non-1) exit code, then a different bug was seen then the one being reduced for. Scan known bugs and copy info if something new was found
-                  FINDBUG="$(grep -Fi --binary-files=text "$(cat ${WORKD}/MYBUG.FOUND)" ${KNOWN_BUGS})"
-                  if [ ! -z "${FINDBUG}" ]; then  # Reducer found a new bug
+                if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # Using "..." as defensive coding against OOS (file missing, TEXT not written properly, etc.), no core generated etc.
+                  # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
+                  FINDBUG="$(grep -Fi --binary-files=text "$(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)" ${KNOWN_BUGS})"
+                  if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
+                  if [ -z "${FINDBUG}" ]; then  # Reducer found a new bug (nothing found in known bugs)
                     EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
                     NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
                     NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
-                    echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: ${FINDBUG}"
+                    echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: $(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)"
                     cp ${WORKT} ${NEWBUGSO}
                     echo_out "[NewBug] Saved a copy of the new bug testcase to:    ${NEWBUGSO}"
                     cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
@@ -2800,8 +2803,9 @@ process_outcome(){
                     EPOCH_RAN=
                     NEWBUGSO=
                     NEWBUGTO=
-                  fi 
-                fi
+                  fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the secondary if which excludes fixed bugs remarked with a leading '#' in the known bugs list file)
+                  FINDBUG=
+                fi  # No else needed; if the exit code was 1, then no bug (for example assert) was seen
               else
                 echo_out "[ERROR] Reducer generated ${WORKD}/MYBUG.FOUND, yet immediately thereafter the same file does not exist. OOS issue? Reducer will try and continue, but may fail. Impact: No scanning for known bugs was done due to this error, no other known impact."
               fi
@@ -3215,7 +3219,7 @@ verify_not_found(){
   else
     if [ $USE_PQUERY -eq 1 ]; then
       echo_out "[Finish] pquery client output    : ${PRINTWORKD}/{EXTRA_PATH}default.node.tld_thread-0.sql  (Look for clear signs of non-replay or a terminated connection)"
-    elset
+    else
       echo_out "[Finish] mysql CLI client output : ${PRINTWORKD}/${EXTRA_PATH}mysql.out             (Look for clear signs of non-replay or a terminated connection)"
     fi
   fi

@@ -823,11 +823,11 @@ options_check(){
     if [ ! -r "$TEXT_STRING_LOC" ] ; then
       echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this program was either not found (most likely), or it is not readable (check file privileges)"
       echo "Terminating now."
-      exit
+      exit 1
     fi
   fi
   if [ $USE_NEW_TEXT_STRING -eq 1 -a $MODE -ne 3 ]; then
-    echo "Assert: USE_NEW_TEXT_STRING=1 and MODE!=3 (MODE=${MODE}). This scenario is not covered by reducer yet. Suggestion; disable USE_NEW_TEXT_STRING and instead use a string from the error log; TEXT='some_search_string_from_error_log' to let reducer use that (search for that string) to reduce the testcase. OR, altenatively, please expand reducer.sh to handle this scenario too. For this, the main change would be to avoid using a regex-aware grep in the actual bug-found-or-not checking section of the individual mode (MODE=${MODE}) inside the process_outcome() function."
+    echo "Assert: USE_NEW_TEXT_STRING=1 and MODE!=3 (MODE=${MODE}). This scenario is not covered by reducer yet. Suggestion; disable USE_NEW_TEXT_STRING and instead use a string from the error log; TEXT='some_search_string_from_error_log' to let reducer use that (search for that string) to reduce the testcase. OR, altenatively, please expand reducer.sh to handle this scenario too. For this, the main change would be to avoid using a regex-aware grep in the actual bug-found-or-not checking section of the individual mode (MODE=${MODE}) inside the process_outcome() function. This can be done by using grep -Fi instead of grep -E. So basically, check for USE_NEW_TEXT_STRING being enabled, then, if so, use different grep to check. Needs qucik eval of usefullness per MODE."  # TODO
     exit 1
   fi
   if [ $MODE -eq 2 ]; then
@@ -1006,12 +1006,8 @@ remove_dropc(){
 
 set_internal_options(){  # Internal options: do not modify!
   # Try and raise max user processes limit (please also preset the soft/hard nproc settings in /etc/security/limits.conf (Centos), both to at least 20480 - see mariadb-qa/setup_server.sh for an example)
-  ulimit -u 2000  2>/dev/null  # Attempt to raise it to 4000
-  ulimit -u 4000  2>/dev/null  # Attempt to raise it even higher, if it fails, but the previous one worked, then that one is still used
-  ulimit -u 20000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
-  ulimit -u 30000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
-  ulimit -u 40000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
-  ulimit -u 50000 2>/dev/null  # Attempt to raise it even higher, if it fails, but a previous one worked, then that one is still used
+  #ulimit -u 4000  2>/dev/null
+  # ^ This was removed, because it was causing the system to run out of available file descriptors. i.e. while ulimit -n may be set to a maximum of 1048576, and whilst that limit may never be reached, a system would still run into "fork: retry: Resource temporarily unavailable" issues. Ref https://askubuntu.com/questions/1236454
   # Unless core files are specifically requested (--core-file or --core option passed to mysqld via MYEXTRA), disable all core file generation (OS+mysqld)
   # It would be good if we could disable OS core file generation without disabling mysqld core file generation, but for the moment it looks like
   # ulimit -c 0 disables ALL core file generation, both OS and mysqld, so instead, ftm, reducer checks for "CORE" in MYEXTRA (uppercase-ed via ^^)
@@ -2227,7 +2223,7 @@ start_mysqld_main(){
                          > $WORKD/mysqld.out 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START
     CMD="${TIMEOUT_COMMAND} ${BIN} --no-defaults --basedir=$BASEDIR --datadir=$WORKD/data --tmpdir=$WORKD/tmp \
                          --port=$MYPORT --pid-file=$WORKD/pid.pid --socket=$WORKD/socket.sock \
-                         --user=$MYUSER $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT}"
+                         --user=$MYUSER $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA --log-error=$WORKD/error.log.out ${SCHEDULER_OR_NOT} ${CORE_FOR_NEW_TEXT_STRING}"
     MYSQLD_START_TIME=$(date +'%s')
     $CMD > $WORKD/mysqld.out 2>&1 &
     PIDV="$!"

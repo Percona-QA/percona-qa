@@ -162,7 +162,7 @@ add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT
   for i in {1..3}; do
     echo "SELECT 1;" >> ${INPUTFILE}
   done
-  echo "  > 'SELECT 1;' query added 3x to the SQL trace"
+  echo "  > 3 'SELECT 1;' queries to the SQL trace"
 }
 
 add_select_sleep_to_trace(){  # Improve issue reproducibility by adding 2x SELECT SLEEP(5); to the sql trace
@@ -171,7 +171,7 @@ add_select_sleep_to_trace(){  # Improve issue reproducibility by adding 2x SELEC
   for i in {1..3}; do
     echo "SELECT SLEEP(5);" >> ${INPUTFILE}
   done
-  echo "  > 'SELECT SLEEP(5);' query added 2x to the SQL trace"
+  echo "  > 2 'SELECT SLEEP(5);' queries added to the SQL trace"
 }
 
 remove_non_sql_from_trace(){

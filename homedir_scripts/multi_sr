@@ -1,3 +1,30 @@
 #!/bin/bash
-~/pr | grep "Seen" | grep -v "MODE=0" | grep -o "reducers.*" | tr ',' '\n' | sed 's|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | xargs -I{} echo "echo 'Starting reducer {}'; ~/sr {}" | xargs -I{} bash -c "{}"
+# Approx 10-12k threads, 75GB/128GB memory use (of which 45G tmpfs) are created PER 20 reducers.
+# System max for 128GB machine with 100GB tmpfs and 32 cores is likely something like 40 reducers
+# Usage: cd /some_work_dir; 
+# ~/multi_sr       # starts all reducers in current work dir
+# ~/multi_sr 8     # starts reducers 1-8 (do 8, starting at top) in current work dir
+# ~/multi_sr 8 10  # starts reducers 11-18 (skip 10, do 8) in current work dir
 
+if [ ! -r ~/pr ]; then 
+  echo "Assert: ~/pr not found!"
+  echo "You want to: cp ~/mariadb-qa/homedir_scripts/* ~"
+  exit 1
+fi
+
+rm -Rf /tmp/*
+
+if [ -z "${1}" ]; then 
+  TOP=1000
+else
+  TOP=${1}
+fi
+if [ -z "${2}" ]; then
+  TAIL=${TOP}
+else
+  TOP=$[ ${TOP} + ${2} ]
+  TAIL=${TOP}
+fi
+  
+~/pr | grep "Seen" | grep -v "MODE=0" | grep -o "reducers.*" | tr ',' '\n' | sed 's|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | head -n ${TOP} | tail -n ${TAIL} | xargs -I{} echo "echo 'Starting reducer {}'; ~/sr {}" | xargs -I{} bash -c "{}"
+exit 0
