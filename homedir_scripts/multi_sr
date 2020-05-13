@@ -1,0 +1,3 @@
+#!/bin/bash
+~/pr | grep "Seen" | grep -v "MODE=0" | grep -o "reducers.*" | tr ',' '\n' | sed 's|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | xargs -I{} echo "echo 'Starting reducer {}'; ~/sr {}" | xargs -I{} bash -c "{}"
+

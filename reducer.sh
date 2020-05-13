@@ -826,6 +826,10 @@ options_check(){
       exit
     fi
   fi
+  if [ $USE_NEW_TEXT_STRING -eq 1 -a $MODE -ne 3 ]; then
+    echo "Assert: USE_NEW_TEXT_STRING=1 and MODE!=3 (MODE=${MODE}). This scenario is not covered by reducer yet. Suggestion; disable USE_NEW_TEXT_STRING and instead use a string from the error log; TEXT='some_search_string_from_error_log' to let reducer use that (search for that string) to reduce the testcase. OR, altenatively, please expand reducer.sh to handle this scenario too. For this, the main change would be to avoid using a regex-aware grep in the actual bug-found-or-not checking section of the individual mode (MODE=${MODE}) inside the process_outcome() function."
+    exit 1
+  fi
   if [ $MODE -eq 2 ]; then
     if [ $USE_PQUERY -eq 1 ]; then  # pquery client output testing run in MODE=2 - we need to make sure we have pquery client logging activated
       if [ "$(echo $PQUERY_EXTRA_OPTIONS | grep -E --binary-files=text -io "log-client-output")" != "log-client-output" ]; then

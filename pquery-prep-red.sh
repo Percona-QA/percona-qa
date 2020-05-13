@@ -213,7 +213,7 @@ generate_reducer_script(){
     echo "Assert! \$BASE is empty at start of generate_reducer_script()"
     exit 1
   fi
-  USE_TEXT_STRING=1  # Set to 1 (on) until proven otherwise, i.e. when MODE!=3
+  USE_NEW_TEXT_STRING=1  # Set to 1 (on) until proven otherwise, i.e. when MODE!=3
   if [ -r ${BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
     DISABLE_TOKUDB_AUTOLOAD=0
   else
@@ -228,19 +228,19 @@ generate_reducer_script(){
   fi
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
-    USE_TEXT_STRING=0
+    USE_NEW_TEXT_STRING=0
     TEXT_CLEANUP="s|ZERO0|ZERO0|"  # A zero-effect change dummy (de-duplicates #VARMOD# code below)
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
     if [[ $VALGRIND_CHECK -eq 1 ]]; then
-      USE_TEXT_STRING=0  # As here new_text_string.sh will not be used, but valgrind_string.sh
+      USE_NEW_TEXT_STRING=0  # As here new_text_string.sh will not be used, but valgrind_string.sh
       MODE=1
     else
       if [ ${QC} -eq 0 ]; then
         MODE=3
       else
-        USE_TEXT_STRING=0  # As here we're doing QC (Query correctness testing), not crash testing
+        USE_NEW_TEXT_STRING=0  # As here we're doing QC (Query correctness testing), not crash testing
         MODE=2
       fi
     fi
@@ -399,7 +399,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$/s|^[ \t]*DISABLE_TOKUDB_AUTOLOAD[ \t]*=.*$|#DISABLE_TOKUDB_AUTOLOAD=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*TEXT_STRING_LOC[ \t]*=.*$/s|^[ \t]*TEXT_STRING_LOC[ \t]*=.*$|#TEXT_STRING_LOC=<set_below_in_machine_variables_section>|" \
-   | sed -e "0,/^[ \t]*USE_TEXT_STRING[ \t]*=.*$/s|^[ \t]*USE_TEXT_STRING[ \t]*=.*$|#USE_TEXT_STRING=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*USE_NEW_TEXT_STRING[ \t]*=.*$/s|^[ \t]*USE_NEW_TEXT_STRING[ \t]*=.*$|#USE_NEW_TEXT_STRING=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*SCAN_FOR_NEW_BUGS[ \t]*=.*$/s|^[ \t]*SCAN_FOR_NEW_BUGS[ \t]*=.*$|#SCAN_FOR_NEW_BUGS=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*KNOWN_BUGS[ \t]*=.*$/s|^[ \t]*KNOWN_BUGS[ \t]*=.*$|#KNOWN_BUGS=<set_below_in_machine_variables_section>|" \
    | sed  "0,/^[ \t]*SCRIPT_PWD[ \t]*=.*$/s|^[ \t]*SCRIPT_PWD[ \t]*=.*$|SCRIPT_PWD=${SCRIPT_PWD}|" \
@@ -421,7 +421,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT_STRING_LOC=\"${SCRIPT_PWD}/new_text_string.sh\"\n#VARMOD#:" \
-   | sed -e "0,/#VARMOD#/s:#VARMOD#:USE_TEXT_STRING=${USE_TEXT_STRING}\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:USE_NEW_TEXT_STRING=${USE_NEW_TEXT_STRING}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:BASEDIR=\"${BASE}\"\n#VARMOD#:" \

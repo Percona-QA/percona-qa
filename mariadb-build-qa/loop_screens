@@ -1,0 +1,11 @@
+#!/bin/bash
+
+screen -d -r | grep "\.s[0-9]\+" | sed 's|\..*||' | sed 's|[^0-9]||g' | sort -un > /tmp/screen_list
+
+COUNT=$(wc -l /tmp/screen_list 2>/dev/null | sed 's| .*||')
+
+for SCREEN in $(seq 1 ${COUNT}); do
+  PID="$(head -n ${SCREEN} /tmp/screen_list | tail -n1)"
+  echo "Connecting you to screen ${SCREEN}/${COUNT} with PID ${PID}"
+  screen -d -r ${PID}
+done

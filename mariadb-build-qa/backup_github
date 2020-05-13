@@ -32,6 +32,8 @@ cp check ${TARGET}
 cp count_reducers ${TARGET}
 cp qcdiffs ${TARGET}
 cp pull_and_build_galera ${TARGET}
+cp del_all_data ${TARGET}
+cp loop_screens ${TARGET}
 
 cd ${TARGET}
 git add *
