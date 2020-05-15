@@ -259,7 +259,7 @@ if [ `ls -l reducer* qcreducer* 2>/dev/null | awk '{print $5"|"$9}' | grep "^0|"
 fi
 
 # Stack smashing overview
-if [ -z "$(grep "smashing" */*/log/master.err 2>/dev/null)" ]; then
+if [ ! -z "$(grep "smashing" */*/log/master.err 2>/dev/null)" ]; then
   echo "================ Stack smashing detected:"
   grep "smashing" */*/log/master.err 2>/dev/null
   echo "================"

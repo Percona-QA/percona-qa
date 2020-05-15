@@ -1,10 +1,15 @@
 #!/bin/bash
-# Approx 10-12k threads, 75GB/128GB memory use (of which 45G tmpfs) are created PER 20 reducers.
-# System max for 128GB machine with 100GB tmpfs and 32 cores is likely something like 40 reducers
+
 # Usage: cd /some_work_dir; 
 # ~/multi_sr       # starts all reducers in current work dir
 # ~/multi_sr 8     # starts reducers 1-8 (do 8, starting at top) in current work dir
 # ~/multi_sr 8 10  # starts reducers 11-18 (skip 10, do 8) in current work dir
+
+# Approx 10-12k threads, 60-75GB/118GB memory use (inc max  45G tmpfs), are/is created for 20 reducers
+# Approx 17-20k threads,90-103GB/118GB memory use (inc max  71G tmpfs), are/is created for 33 reducers
+# Approx 18-22k threads,   116GB/118GB memory use (inc max ???G tmpfs), are/is created for 40 reducers
+# System max for 128GB machine with 100GB tmpfs and 32 cores is likely something like 33 reducers,
+# provided that the system is tuned properly (ref ~/mariadb-qa/setup_server.sh), though close to limit
 
 if [ ! -r ~/pr ]; then 
   echo "Assert: ~/pr not found!"
@@ -12,7 +17,7 @@ if [ ! -r ~/pr ]; then
   exit 1
 fi
 
-rm -Rf /tmp/*
+rm -Rf /tmp/* 2>/dev/null
 
 if [ -z "${1}" ]; then 
   TOP=1000
