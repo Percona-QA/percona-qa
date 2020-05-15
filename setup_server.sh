@@ -132,3 +132,19 @@ if [ -r /etc/security/limits.d/90-nproc.conf ]; then
 fi
 
 sudo apt-get install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev valgrind python-mysqldb mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench
+
+echo "An example for /etc/fstab:"
+echo "---------------------------------------------------------------------------------------"
+echo "LABEL=cloudimg-rootfs                     /         ext4  defaults 0 0"
+echo "LABEL=UEFI                                /boot/efi vfat  defaults 0 0"
+echo "UUID=someuuid-uuid-uuid-uuid-uuidsomeuuid /data     ext4  discard,defaults,nofail 0 2"
+echo "tmpfs                                     /dev/shm  tmpfs defaults,rw,nosuid,nodev,noatime,nofail,size=90G 0 0"
+echo "/swapfile swap swap defaults,nofail 0 0"
+echo "---------------------------------------------------------------------------------------"
+echo "Create swapfile like this:"
+echo "  sudo fallocate -l 16G /swapfile"
+echo "  sudo chmod 600 /swapfile"
+echo "  sudo mkswap /swapfile"
+echo "  sudo swapon /swapfile"
+echo "Then add the /swapfile line to the /etc/fstab file as shown above"
+

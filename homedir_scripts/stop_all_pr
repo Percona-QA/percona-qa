@@ -1,1 +1,2 @@
 screen -ls | grep pr | sed 's|\..*||' | xargs kill -9
+screen -wipe

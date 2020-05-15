@@ -11,6 +11,7 @@ while true; do
   echo -n "${COUNT}/30"
   sleep 2
   if [ ${COUNT} -ge 30 ]; then
+    sync
     ~/mariadb-qa/tmpfs_clean.sh 1
     COUNT=0
   fi

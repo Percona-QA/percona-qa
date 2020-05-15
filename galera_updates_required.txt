@@ -1,2 +1,3 @@
 * reducer.sh, error.log.out (as well as mysql.out and mysqld.out etc.) was changed to log/master.err etc. (and same for all or most .prev files). This needs to be updated for Galera startup, handling etc. ESPECIALLY if the idea is to use new_text_string parsing for Galera runs also (and it is ;)
 * pquery-prep-red.sh, search for 'TODO.*cluster' regex. Also fix GR.
+* pquery-results.sh, the else clause of the 'if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then' statement needs updating with grep -Fi etc. for Galera new text string use

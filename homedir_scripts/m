@@ -1,4 +1,4 @@
-GODIR=/sda/MS010217-mysql-5.7.17-linux-x86_64-debug
+GODIR=/data/MD180320-mariadb-10.5.2-linux-x86_64-opt
 cd $GODIR
 vi start
 ./all

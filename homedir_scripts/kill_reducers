@@ -1,5 +1,5 @@
 #!/bin/bash 
-screen -ls | grep "\.s[0-9]" | sed 's|\.pr.*$||;s|[\t ]||g' | xargs -I{} kill -9 {}
+screen -ls | grep "\.s[0-9]" | sed 's|\.s[0-9]\+.*$||;s|[\t ]||g' | xargs -I{} kill -9 {}
 sleep 3
 screen -wipe 2>&1 >/dev/null
 echo "Reducers terminated... All done!"

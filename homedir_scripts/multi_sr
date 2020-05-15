@@ -5,11 +5,16 @@
 # ~/multi_sr 8     # starts reducers 1-8 (do 8, starting at top) in current work dir
 # ~/multi_sr 8 10  # starts reducers 11-18 (skip 10, do 8) in current work dir
 
-# Approx 10-12k threads, 60-75GB/118GB memory use (inc max  45G tmpfs), are/is created for 20 reducers
-# Approx 17-20k threads,90-113GB/118GB memory use (inc max  77G tmpfs), are/is created for 33 reducers
-# Approx 18-22k threads,   116GB/118GB memory use (inc max ???G tmpfs), are/is created for 40 reducers
-# System max for 128GB machine with 100GB tmpfs and 32 cores is likely something like 33 reducers,
-# provided that the system is tuned properly (ref ~/mariadb-qa/setup_server.sh), though close to limit
+# To stop an ongoing set of reducers:
+# ~/ka; rm -Rf /dev/shm/  # provided nothing else needs to be kept in /dev/shm
+
+# ~ 5k threads,  ~40/118G memory (inc ~30G tmpfs) for 35 reducers prepared by pquery-go-expert.sh
+# ~17k threads, ~113/118G memory (inc ~90G tmpfs) for 95 reducers prepared by pquery-go-expert.sh
+# Max for GG cloud 120GB server with 90GB tmpfs & 32 cores is ~70-95 reducers started simultaneously,
+# provided that the system is tuned properly (use ~/mariadb-qa/setup_server.sh), though close to limit
+# Nevertheless, one can have a rogue testcase which creates in excess of 50GB per [sub]reducer due
+# to some large JOIN, re-insert etc. This completely throws off any space calculations/provisioning
+# If observed, reduce such testcases on disk instead of tmpfs (du -shc /dev/shm  # see use per dir)
 
 if [ ! -r ~/pr ]; then 
   echo "Assert: ~/pr not found!"
@@ -27,9 +32,21 @@ fi
 if [ -z "${2}" ]; then
   TAIL=${TOP}
 else
-  TOP=$[ ${TOP} + ${2} ]
-  TAIL=${TOP}
+  TOP=$[ ${1} + ${2} ]
+  TAIL=${1}
 fi
-  
-~/pr | grep "Seen" | grep -v "MODE=0" | grep -o "reducers.*" | tr ',' '\n' | sed 's|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | head -n ${TOP} | tail -n ${TAIL} | xargs -I{} echo "echo 'Starting reducer {}'; ~/sr {}" | xargs -I{} bash -c "{}"
+
+# All, one per bug, all MODE=4 trials (most sensical)
+# Count and pause
+COUNT=$(~/pr 2>/dev/null | grep "Seen" | grep -v 'MODE=0' | sed '/MODE=4/s|,|\nreducers |g' | grep -o "reducers.*" | sed 's|,.*||;s|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | wc -l)
+echo "Total number ready to go: ${COUNT}..."
+if [ ${COUNT} -lt ${TOP} ]; then TOP=${COUNT}; fi
+if [ ${TOP} -lt ${TAIL} ]; then TAIL=${TOP}; fi
+read -p "Press enter to start ${TAIL} reducers..."
+~/pr 2>/dev/null | grep "Seen" | grep -v 'MODE=0' | sed '/MODE=4/s|,|\nreducers |g' | grep -o "reducers.*" | sed 's|,.*||;s|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | head -n ${TOP} | tail -n ${TAIL} | xargs -I{} echo "echo 'Starting reducer {}'; ~/sr {}" | xargs -I{} bash -c "{}"
+ 
 exit 0
+
+# All, all per bug, all MODE=4 trials automatically included (old, not used nor maitained)
+#~/pr 2>/dev/null | grep "Seen" | grep -v "MODE=0" | grep -o "reducers.*" | tr ',' '\n' | sed 's|[^0-9]||g' | grep -v "^[ \t]*$" | sort -un | head -n ${TOP} | tail -n ${TAIL} | xargs -I{} echo "echo 'Starting reducer {}'; ~/sr {}" | xargs -I{} bash -c "{}"
+

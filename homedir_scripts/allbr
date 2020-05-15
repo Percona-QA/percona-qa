@@ -1,0 +1,1 @@
+ls -ld [0-9]* | sed 's|.*..:.. ||' | xargs -I{} bash -c "cd {}; ~/pr" | grep -o "^.*(Seen" | sed "s|(Seen||" | sort -u | grep -v "NO TEXT SET"

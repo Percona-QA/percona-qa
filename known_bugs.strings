@@ -1,6 +1,7 @@
 ###### CURRENT BUGS ######
 SIGSEGV|next_breadth_first_tab|JOIN::cleanup|JOIN::destroy|st_select_lex::cleanup                                                                                               ## DBG MDEV-22019
-end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse|parse_sql                                              ## DBG MDEV-22022
+end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse|parse_sql                                              ## DBG |MDEV-22022
+end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|ORAparse|parse_sql                                                ## DBG |MDEV-22022
 0|SIGABRT|my_wc_to_printable_generic|my_convert_using_func|convert_error_message|net_send_error_packet                                                                          ## DBG MDEV-22043
 strlen(name_arg) <= (64*3)|SIGABRT|MDL_key::mdl_key_init|MDL_request::init_with_source|lock_object_name|Sp_handler::sp_drop_routine                                             ## DBG MDEV-22044
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_sql_stmt_prepare|mysql_execute_command                                ## DBG MDEV-22058
@@ -76,8 +77,12 @@ SIGSEGV|Bitmap<64u>::merge|add_key_field|add_key_equal_fields|Item_bool_func2::a
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                              ## DBG |MDEV-22500
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|mysql_load                                                              ## DBG |MDEV-22500
 SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|Sys_var_multi_source_ulonglong::get_master_info_ulonglong_value|Sys_var_multi_source_ulonglong::session_value_ptr           ## DBG MDEV-22524
-SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT MDEV-15703
-SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT MDEV-15703
+SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT |MDEV-15703*
+SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT |MDEV-15703*
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_create_table_like::execute|mysql_execute_command                    ## DBG MDEV-22002
+! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|push_warning                                          ## DBG MDEV-17729*
+part_id == m_last_part|SIGABRT|ha_partition::delete_row|handler::ha_delete_row|TABLE::delete_row|mysql_delete                                                                   ## DBG |MDEV-22413
+old_part_id == m_last_part|SIGABRT|ha_partition::update_row|handler::ha_update_row|mysql_update|mysql_execute_command                                                           ## DBG |MDEV-22413
 
 
 ###### FIXED BUGS ######
@@ -92,3 +97,40 @@ SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_st
 # SIGSEGV|copy_fields|Item_func_group_concat::add|Item_func_json_arrayagg::add|Frame_cursor::add_value_to_items                                                        ## Fixed ## OPT |MDEV-22318
 # SIGSEGV|copy_fields|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add                                                                     ## Fixed ## OPT |MDEV-22318
 # SIGSEGV|mtr_t::set_named_space|dict_index_t::set_modified|innobase_instant_try|commit_try_norebuild                                                                  ## Fixed ## OPT MDEV-22446
+! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysql_admin_table|Sql_cmd_analyze_table::execute
+!current|SIGABRT|PROFILING::start_new_query|dispatch_command|execute_init_command|handle_slave_sql
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_create_table_like::execute|mysql_execute_command
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_client_binlog_statement|mysql_execute_command
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_load|mysql_execute_command
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|simple_rename_or_index_change|mysql_alter_table
+(ptr != __null && end >= ptr) || (ptr == __null && end == __null)|SIGABRT|copy_fields|Item_func_group_concat::add|Item_func_json_arrayagg::add|Aggregator_simple::add
+(uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock
+Count >= rest_length|SIGABRT|_my_b_write|my_b_write|my_b_safe_write|Log_event_writer::write_internal
+SIGABRT|?? () from|?? () from|std::terminate() () from|__cxa_throw () from
+SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|Sys_var_multi_source_ulonglong::get_master_info_ulonglong_value|Sys_var_multi_source_ulonglong::session_value_ptr
+SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::status
+SIGABRT|ut_dbg_assertion_failed|dict_mem_table_create|create_table_info_t::create_table_def|create_table_info_t::create_table
+SIGFPE|Unique::get_cost_calc_buff_size|prepare_search_best_index_intersect|get_best_index_intersect|SQL_SELECT::test_quick_select
+SIGSEGV|Bitmap<64u>::merge|add_key_field|add_key_equal_fields|Item_bool_func2::add_key_fields_optimize_op
+SIGSEGV|Charset::swap|String::swap|Item_func_json_arrayagg::val_str|Item_func_group_concat::val_int
+SIGSEGV|Item_args::walk_args|Item_func_or_sum::walk|Item_args::walk_args|Item_func_or_sum::walk
+SIGSEGV|JOIN::transform_in_predicates_into_in_subq|convert_join_subqueries_to_semijoins|JOIN::optimize_inner|JOIN::optimize
+SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr
+SIGSEGV|flush_all_key_blocks|prepare_resize_simple_key_cache|resize_partitioned_key_cache|resize_key_cache
+SIGSEGV|ha_partition::create_partitioning_metadata|handler::ha_create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table
+SIGSEGV|handle_grant_table|handle_grant_data|mysql_rename_user|mysql_execute_command
+SIGSEGV|intern_find_sys_var|find_sys_var|LEX::set_system_variable|LEX::set_variable
+SIGSEGV|report_json_error_ex|Item_func_json_merge_patch::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send
+field_nr < share->fields|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|create_table_for_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute
+idx < array.elements|SIGABRT|Dynamic_array<st_mysql_const_lex_string*>::at|fill_schema_schemata|get_schema_tables_result|JOIN::exec_inner
+llabs(next_free_value % real_increment) == offset|SIGABRT|sequence_definition::adjust_values|sequence_definition::check_and_adjust|MYSQLparse|parse_sql
+m_buffer_end == __null || end <= m_buffer_end|SIGABRT|Merge_chunk::set_buffer_end|merge_buffers|merge_many_buff|Unique::merge
+m_psi_batch_mode == PSI_BATCH_MODE_NONE|SIGABRT|handler::ha_close|create_internal_tmp_table_from_heap|select_unit::write_record|select_unit::send_data
+mon > 0 && mon < 13|SIGABRT|sec_since_epoch|Time_zone_offset::TIME_to_gmt_sec|TIME_to_timestamp|Timestamp::Timestamp
+pos->field != __null || pos->item != __null|SIGABRT|Filesort::make_sortorder|filesort|create_sort_index|st_join_table::sort_table
+sel->quick|SIGABRT|JOIN::make_range_rowid_filters|JOIN::optimize_stage2|JOIN::optimize_inner|JOIN::optimize
+share->in_trans == 0|SIGABRT|maria_close|ha_maria::close|handler::ha_close|closefrm
+state_ == s_exec || state_ == s_quitting|SIGABRT|wsrep::client_state::disable_streaming|wsrep_trx_fragment_size_update|sys_var::update|sys_var::set_default
+status_var.local_memory_used == 0 || !debug_assert_on_not_freed_memory|SIGABRT|THD::~THD|THD::~THD|do_handle_one_connection|handle_one_connection
+thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|mysql_load
+ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|THD::cleanup|unlink_thd

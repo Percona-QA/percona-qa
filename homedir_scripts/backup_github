@@ -1,0 +1,82 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+if [ ! -d ~/mariadb-qa ]; then
+  echo "Assert: this script expects ~/mariadb-qa to be present. Please do:"
+  echo "cd ~ && git clone https://github.com/mariadb-corporation/mariadb-qa.git"
+  exit 1
+fi
+
+TARGET=~/mariadb-qa/homedir_scripts
+BUGS=~/mariadb-qa/BUGS                                                                                
+mkdir -p ${TARGET}                                                                                    
+SCRIPT_PWD="$(cd `dirname $0` && pwd)"   
+
+cd ${SCRIPT_PWD}
+cp allbr ${TARGET}
+cp allbrs ${TARGET}
+cp b ${TARGET}
+cp backup_github ${TARGET}
+cp c ${TARGET}
+cp cl ${TARGET}
+cp core ${TARGET}
+cp count_reducers ${TARGET}
+cp cr ${TARGET}
+cp cr+ ${TARGET}
+cp ds ${TARGET}
+cp dt ${TARGET}
+cp er ${TARGET}
+cp f-master ${TARGET}
+cp f-slave ${TARGET}
+cp fb ${TARGET}
+cp fc ${TARGET}
+cp fs ${TARGET}
+cp gomd ${TARGET}
+cp gomdQC ${TARGET}
+cp ka ${TARGET}
+cp kb ${TARGET}
+cp kbs ${TARGET}
+cp kill_reducers ${TARGET}
+cp kill_runs ${TARGET}
+cp m ${TARGET}
+cp m56 ${TARGET}
+cp mcl ${TARGET}
+cp mo ${TARGET}
+cp ms ${TARGET}
+cp multi_sr ${TARGET}
+cp my ${TARGET}
+cp myver ${TARGET}
+cp o ${TARGET}
+cp oo ${TARGET}
+cp ooo ${TARGET}
+cp p ${TARGET}
+cp p56 ${TARGET}
+cp pg ${TARGET}
+cp pge ${TARGET}
+cp pr ${TARGET}
+cp prs ${TARGET}
+cp ps ${TARGET}
+cp ps_1sec ${TARGET}
+cp r ${TARGET}
+cp ramdrive.sh ${TARGET}
+cp s ${TARGET}
+cp sc ${TARGET}
+cp sge ${TARGET}
+cp sr ${TARGET}
+cp start ${TARGET}
+cp stop_all_ge ${TARGET}
+cp stop_all_pr ${TARGET}
+cp swapoffon ${TARGET}
+cp t ${TARGET}
+cp tc ${TARGET}
+cp tr ${TARGET}
+cp ts+ ${TARGET}
+cp tsm ${TARGET}
+cp tsm+ ${TARGET}
+cp tt ${TARGET}
+cp vi ${TARGET}
+
+cd ${TARGET}
+git add *
+cd ${BUGS}
+git add *.sql

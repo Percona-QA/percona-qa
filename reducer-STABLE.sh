@@ -2770,7 +2770,8 @@ process_outcome(){
           echo_out "Assert: cd ${WORKD} before USE_NEW_TEXT_STRING parsing failed. Terminating."
           exit 1
         fi
-        $TEXT_STRING_LOC "${BIN}" >> ${WORKD}/MYBUG.FOUND
+        MYBUGFOUND="$($TEXT_STRING_LOC "${BIN}")"
+        echo "${MYBUGFOUND}" >> ${WORKD}/MYBUG.FOUND
         TSEXITCODE=${?}
         echo ${TSEXITCODE} > ${WORKD}/MYBUG.FOUND.EXITCODE
         if [ ${TSEXITCODE} -ne 0 ]; then
@@ -2798,35 +2799,29 @@ process_outcome(){
         else  # $TEXT_STRING_LOC yielded another output (error, or a different bug - new or already existing)
           FINDBUG=
           if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
-            if [ -r ${WORKD}/MYBUG.FOUND.EXITCODE ]; then
-              if [ -r ${WORKD}/MYBUG.FOUND ]; then
-                if [ "$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)" == "0" ]; then  # Using "..." as defensive coding against OOS (file missing, TEXT not written properly, etc.), no core generated etc.
-                  # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
-                  FINDBUG="$(grep -Fi --binary-files=text "$(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)" ${KNOWN_BUGS})"
-                  if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
-                  if [ -z "${FINDBUG}" ]; then  # Reducer found a new bug (nothing found in known bugs)
-                    EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
-                    NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
-                    NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
-                    echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: $(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)"
-                    cp ${WORKT} ${NEWBUGSO}
-                    echo_out "[NewBug] Saved a copy of the new bug testcase to:    ${NEWBUGSO}"
-                    cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
-                    echo_out "[NewBug] Saved a copy of the new bug TEXT string to: ${NEWBUGTO}"
-                    EPOCH_RAN=
-                    NEWBUGSO=
-                    NEWBUGTO=
-                  fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the secondary if which excludes fixed bugs remarked with a leading '#' in the known bugs list file)
-                  FINDBUG=
-                fi  # No else needed; if the exit code was 1, then no bug (for example assert) was seen
-              else
-                echo_out "[ERROR] Reducer generated ${WORKD}/MYBUG.FOUND, yet immediately thereafter the same file does not exist. OOS issue? Reducer will try and continue, but may fail. Impact: No scanning for known bugs was done due to this error, no other known impact."
-              fi
-            else
-              echo_out "[ERROR] Reducer noticed that ${WORKD}/MYBUG.FOUND.EXITCODE did not exist, while SCAN_FOR_NEW_BUGS is enabled. This should not happen. OOS issue? Reducer will try and continue, but may fail. Impact: No scanning for known bugs was done due to this error, no other known impact."
-            fi
+            if [ ${TSEXITCODE} -eq 0 ]; then
+              # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
+              FINDBUG="$(grep -Fi --binary-files=text "${MYBUGFOUND}" ${KNOWN_BUGS} | tail -n1)"  # head -n1: fixed bugs are at the end of the list, so preference for "newbug found" is higher this way
+              if [[ "${FINDBUG}" == "#"* ]]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
+              if [ -z "${FINDBUG}" ]; then  # Reducer found a new bug (nothing found in known bugs)
+                EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
+                NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
+                NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
+                echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: $(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)"
+                cp ${WORKT} ${NEWBUGSO}
+                echo_out "[NewBug] Saved a copy of the new bug testcase to:    ${NEWBUGSO}"
+                cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
+                echo_out "[NewBug] Saved a copy of the new bug TEXT string to: ${NEWBUGTO}"
+                EPOCH_RAN=
+                NEWBUGSO=
+                NEWBUGTO=
+              fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the secondary if which excludes fixed bugs remarked with a leading '#' in the known bugs list file)
+              FINDBUG=
+            fi  # No else needed; if the exit code was 1, then either no issue was reproduced this trial, or there was some other issue (handled already above)
           fi
         fi
+        MYBUGFOUND=
+        TSEXITCODE=
         FINDBUG=
       else
         M3_OUTPUT_TEXT="ErrorLog"

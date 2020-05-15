@@ -6,6 +6,9 @@
 #  For Valgrind + normal output : $./pquery-results.sh valgrind
 #  For known bugs scanning      : $./pquery-results.sh scan
 
+# Setup
+set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+
 # Internal variables
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 VALGRINDOUTPUT=0
@@ -46,20 +49,32 @@ TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep -o "==.*TRIAL.*==" | tai
 echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, `ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l` remaining reducer scripts)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
-  for STRING in `grep "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u`; do
+  for STRING in `grep --binary-files=text "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u`; do
     MATCHING_TRIALS=()
-    for MATCHING_TRIAL in `grep -H "TEXT=.${STRING}." reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
-      MATCHING_TRIAL=$(echo ${MATCHING_TRIAL} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
-      MATCHING_TRIALS+=($MATCHING_TRIAL)
-    done
-    COUNT=`grep "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\).sh:|reducer\1.sh:  |;s|reducer\([0-9][0-9]\).sh:|reducer\1.sh: |;s|  TEXT|TEXT|' | grep "${STRING}" | wc -l`
+    if grep -qi "^USE_NEW_TEXT_STRING=1" reducer*.sh; then  # New text string (i.e. no regex) mode
+      for MATCHING_TRIAL in `grep -FiH --binary-files=text "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+        MATCHING_TRIAL=$(echo ${MATCHING_TRIAL} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
+        MATCHING_TRIALS+=($MATCHING_TRIAL)
+      done
+      COUNT=$(grep -Fi --binary-files=text "${STRING}" reducer* 2>/dev/null | wc -l)
+    else  # Backwards compatible (and manually modified reducers scanning without using new text string)
+      for MATCHING_TRIAL in `grep -H "TEXT=.${STRING}." reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+        MATCHING_TRIAL=$(echo ${MATCHING_TRIAL} | sed 's|.*TEXT=.||;s|\.[ \t]*$||')
+        MATCHING_TRIALS+=($MATCHING_TRIAL)
+      done
+      COUNT=$(grep --binary-files=text "   TEXT=" reducer* 2>/dev/null | sed 's|reducer\([0-9]\+\).sh:|reducer\1.sh:  |;s|  TEXT|TEXT|' | grep --binary-files=text "${STRING}" | wc -l)
+    fi
     STRING_OUT=`echo $STRING | awk -F "\n" '{printf "%-150s",$1}'`
     COUNT_OUT=`echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}'`
     echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
     if [ ${SCANBUGS} -eq 1 ]; then
       # Look for exact match (except for allowing both .c and .cc to be used)
       SCANSTRING=$(echo "${STRING}" | sed 's|\.c[c]*|.c[c]*|')
-      SCANOUTPUT=$(grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
+      if grep -qi "^USE_NEW_TEXT_STRING=1" reducer*.sh; then  # New text string (i.e. no regex) mode
+        SCANOUTPUT=$(grep -Fi --binary-files=text "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
+      else  # Backwards compatible (and manually modified reducers scanning without using new text string)
+        SCANOUTPUT=$(grep --binary-files=text "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /')
+      fi
       if [ "$(echo "${SCANOUTPUT}" | sed 's|[ \t]\+||g')" != "" ]; then
         # Note you cannot just echo ${SCANOUTPUT} here without processing; it does not contain newlines. If multiple matches are found, it will condense them into one line
         grep "${SCANSTRING}" ${SCRIPT_PWD}/known_bugs.strings | sed 's|[ \t]\+| |g;s/^/  | /'

@@ -1,7 +1,14 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+if [ ! -d ~/mariadb-qa ]; then                                                                        
+  echo "Assert: this script expects ~/mariadb-qa to be present. Please do:"                           
+  echo "cd ~ && git clone https://github.com/mariadb-corporation/mariadb-qa.git"                      
+  exit 1                                                                                              
+fi
+
 TARGET=~/mariadb-qa/mariadb-build-qa
+BUGS=~/mariadb-qa/BUGS
 mkdir -p ${TARGET}
 SCRIPT_PWD="$(cd `dirname $0` && pwd)"
 
@@ -34,8 +41,9 @@ cp qcdiffs ${TARGET}
 cp pull_and_build_galera ${TARGET}
 cp del_all_data ${TARGET}
 cp loop_screens ${TARGET}
+cp loop_screens_ge ${TARGET}
 
 cd ${TARGET}
 git add *
-cd ~/mariadb-qa/BUGS
-git add MDEV*.sql
+cd ${BUGS}
+git add *.sql
