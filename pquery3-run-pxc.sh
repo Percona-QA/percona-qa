@@ -44,7 +44,7 @@ if [ ! -r ${PQUERY_BIN} ]; then echo "${PQUERY_BIN} specified in the configurati
 if [ ! -r ${OPTIONS_INFILE} ]; then echo "${OPTIONS_INFILE} specified in the configuration file used (${SCRIPT_PWD}/${CONFIGURATION_FILE}) cannot be found/read"; exit 1; fi
 
 # Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
-ulimit -u 7000
+#ulimit -u 7000
 
 # Check input file (when generator is not used)
 if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then

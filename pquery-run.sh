@@ -87,13 +87,8 @@ if [ ! -r ${OPTIONS_INFILE} ]; then
   exit 1
 fi
 
-# Incrementally try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf). If an higher setting fails, the earlier one will still apply.
-ulimit -u 2000  2>/dev/null 
-ulimit -u 4000  2>/dev/null
-ulimit -u 7000  2>/dev/null
-ulimit -u 10000 2>/dev/null
-ulimit -u 20000 2>/dev/null
-ulimit -u 30000 2>/dev/null
+# Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
+#ulimit -u 7000
 
 # Check input file (when generator is not used)
 if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 ] && [ ! -r ${INFILE} ]; then

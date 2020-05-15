@@ -1,1 +1,3 @@
-screen -admS pr$1 bash -c "ulimit -u 2000; ulimit -u 4000; ulimit -u 10000; ulimit -u 20000; ulimit -u 30000; ulimit -u 40000; ulimit -u 50000; cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105-QC.conf; bash"
+#!/bin/bash
+#screen -admS pr$1 bash -c "ulimit -u 4000; cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105-QC.conf; bash"
+screen -admS pr$1 bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105-QC.conf; bash"

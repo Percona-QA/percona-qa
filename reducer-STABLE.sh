@@ -2774,7 +2774,10 @@ process_outcome(){
         TSEXITCODE=${?}
         echo ${TSEXITCODE} > ${WORKD}/MYBUG.FOUND.EXITCODE
         if [ ${TSEXITCODE} -ne 0 ]; then
-          echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${TSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND.EXITCODE)'. Terminating."
+          if ! egrep -qi "no core file" ${WORKD}/MYBUG.FOUND; then
+            echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${TSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
+            exit 1
+          fi
         fi
         cd - >/dev/null
         if [ "${SAVEPATH}" != "${PWD}" ]; then
