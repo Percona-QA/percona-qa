@@ -42,6 +42,8 @@ cp pull_and_build_galera ${TARGET}
 cp del_all_data ${TARGET}
 cp loop_screens ${TARGET}
 cp loop_screens_ge ${TARGET}
+cp monitor_run ${TARGET}
+cp monitor_runs ${TARGET}
 
 cd ${TARGET}
 git add *

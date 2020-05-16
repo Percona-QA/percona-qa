@@ -1,0 +1,18 @@
+#!/bin/bash
+COUNT=0
+while true; do 
+  clear
+  ls */*/*_out | xargs wc -l | nl -nrz -w3 | grep -v "^$" | sed 's|^\(.............\)|\1/data/|;s|...\(.*\)total$|-->\1total|'
+  echo -n "${COUNT}/12"
+  sleep 15
+  COUNT=$[ ${COUNT} + 1]
+  if [ ${COUNT} -gt 12 ]; then # 3 minutes
+    echo ""
+    COUNT=0
+    if [ -r ./clean_all ]; then
+      ./clean_all
+    fi
+  fi
+done
+
+# With thanks, https://stackoverflow.com/a/8206395/1208218

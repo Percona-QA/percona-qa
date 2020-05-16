@@ -1,0 +1,11 @@
+#!/bin/bash
+if [ -z "${1}" ]; then 
+  echo "Please pass a workdir directory to this script"
+  exit 1
+elif [ ! -d "${1}" ]; then
+  echo "Directory ${1} cannot be read by this script"
+  exit 1
+fi
+cd $1
+while true; do clear; ls */*_out | xargs wc -l; sleep 3; done
+exit 0

@@ -353,7 +353,7 @@ TS_VARIABILITY_SLEEP=1
 # ======== Internal variable Reference
 # $WORKD = Working directory (i.e. likely /tmp/<epoch>/ or /dev/shm/<epoch>)
 # $INPUTFILE = The original input file (the file to reduce). This file, and this variable, are never changed (to protect the original file from being changed).
-# $WORK_BUG_DIR = The directory in which the original input file resides (i.e. $INPUTFILE, which may have been set to $1 specifically as well). In this directory the output files will be stored
+# $WORK_BUG_DIR = The directory in which the original input file resides (i.e. where $INPUTFILE resides, which may have been set to $1 specifically as well). In this directory the output files will be stored
 # $WORKF = This is *originally* a copy of $INPUTFILE, seen in the working directory as $WORKD/in.sql
 #   work   From it are then made chunk deletes etc. and the result is stored in the $WORKT file. Then, $WORKT ovewrites $WORKF when
 #   file   a [for MODE4+9: "likely the same", for other MODES: "the same"] issue was located when executing $WORKT
@@ -590,9 +590,6 @@ if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   fi
 fi
 
-# Sanitize input filenames which do not have a path specified by pointing to the current path. This ensures [Finish] output looks correct (ref $WORK_BUG_DIR)
-if [[ "${INPUTFILE}" != *"/"* ]]; then INPUTFILE="./${INPUTFILE}"; fi;
-
 echo_out(){
   echo "$(date +'%F %T') $1"
   if [ -r $WORKD/reducer.log ]; then echo "$(date +'%F %T') $1" >> $WORKD/reducer.log; fi
@@ -792,6 +789,14 @@ options_check(){
           exit 1
         fi
       fi
+    fi
+  fi
+  # Sanitize input filenames which do not have a path specified by pointing to the current path (only possible conclusion). This ensures [Finish] output looks correct (ref $WORK_BUG_DIR)
+  if [[ "${INPUTFILE}" != *"/"* ]]; then 
+    INPUTFILE="${PWD}/${INPUTFILE}"
+    if [ ! -r "${INPUTFILE}" -a ! -d "${INPUTFILE}" ]; then
+      echo "Assert: INPUTFILE is not a readable file, nor a directory"
+      exit 1
     fi
   fi
   if [ $MODE -eq 0 ]; then
@@ -1490,6 +1495,9 @@ init_workdir_and_files(){
   JE4=" else echo 'Warning: jemalloc was not loaded as it was not found (this is fine for MS, but do check ./${EPOCH}_mybase to set correct jemalloc location for PS)'; fi"
 
   WORK_BUG_DIR=$(echo $INPUTFILE | sed "s|/[^/]\+$||;s|/$||")  # i.e. the directory in which the original $INPUTFILE resides
+  if [ "${WORK_BUG_DIR}" == "${INPUTFILE}" -o "${WORK_BUG_DIR}" == "./${INPUTFILE}" ]; then
+    WORK_BUG_DIR=${PWD}
+  fi
   WORKF="$WORKD/in.sql"
   WORKT="$WORKD/in.tmp"
   WORK_BASEDIR=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_mybase|")
@@ -1523,6 +1531,7 @@ init_workdir_and_files(){
       echo_out "[Init] Output dir: $WORK_BUG_DIR"
     fi
     echo_out "[Init] Input file: $INPUTFILE"
+    echo_out "[Init] EPOCH: $EPOCH (used for various file and directory names)"
     # Initial INPUTFILE to WORKF copy
     if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
       if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line

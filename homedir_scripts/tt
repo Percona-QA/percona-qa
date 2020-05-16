@@ -1,6 +1,26 @@
+#!/bin/bash
 set +H  # Disables history substitution and avoids  -bash: !: event not found  like errors
+NOPERL=0
+perl --version >/dev/null 2>&1
+if [ $? -ne 0 ]; then echo "This script requires perl, please install it"; NOPERL=1; fi
 TEXT="$(~/t)"
 echo "----- Bug String  -----"
 echo "${TEXT}"
 echo "----- String Scan -----"
-grep -Fi --binary-files=text "${TEXT}" ~/mariadb-qa/known_bugs.strings
+OUT="$(grep -Fi --binary-files=text "${TEXT}" ~/mariadb-qa/known_bugs.strings)"
+if [ -z "${OUT}" ]; then
+  echo "BUG NOT FOUND IN KNOWN BUGS LIST! POTENTIALLY NEW BUG; SEARCH FIRST:"
+else
+  echo "${OUT}"
+fi
+echo "----- Search URL (3 significant frames) -----"
+FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
+FRAMEY="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*$/\1/')"
+FRAMEZ="$(echo "${TEXT}" | sed 's/.*|\(.*\)$/\1/')"
+echo "https://jira.mariadb.org/issues/?jql=text%20~%20%22%5C%22${FRAMEX}%5C%22%22%20and%20text%20~%20%22%5C%22${FRAMEY}%5C%22%22%20and%20text%20~%20%22%5C%22${FRAMEZ}%5C%22%22%20ORDER%20BY%20status%20ASC"
+echo "----- Search URL (assert message) -----"
+ASSERT="$(echo -n "${TEXT}" | sed 's/||/DUMMYREP/g' | sed 's/|.*//' | sed 's/DUMMYREP/||/g;')"
+if [ ${NOPERL} -eq 0 ]; then  # Properly escape all special characters to generate a correct URL
+  ASSERT="$(echo -n "${ASSERT}" | perl -MURI::Escape -le 'print uri_escape <STDIN>')"
+fi
+echo "https://jira.mariadb.org/issues/?jql=text%20~%20%22%5C%22${ASSERT}%5C%22%22%20ORDER%20BY%20status%20ASC"

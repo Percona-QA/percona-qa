@@ -21,3 +21,11 @@ FLUSH TABLE t1 WITH READ LOCK; # FOR EXPORT crashes as well
 UNLOCK TABLES;
 BACKUP UNLOCK;
 DROP TABLE t1;
+
+# MDEV-20945
+USE test;
+CREATE TABLE t (c INT);
+BACKUP LOCK not_existing.t;
+LOCK TABLES t WRITE;
+UNLOCK TABLES;
+# Shutdown server; crash happens on shutdown

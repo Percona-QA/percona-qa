@@ -164,16 +164,17 @@ if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
   else
     echo "3) Add bug to known.strings, using ${SCRIPT_PWD}/new_text_string.sh in the basedir of a crashed instance"
   fi
-  echo '4) Check for duplicates before logging bug:'
-  if [ ${NOCORE} -ne 1 ]; then
-    cd ${RUN_PWD}
-    FIRSTFRAME=$(${SCRIPT_PWD}/new_text_string.sh FRAMESONLY | sed 's/|.*//')
-    echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22${FIRSTFRAME}%5C%22%22%20ORDER%20BY%20status%20ASC"
-    echo "https://www.google.com/search?q=site%3Amariadb.org+%22${FIRSTFRAME}%22"
-  else
-    echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22\${FIRSTFRAME}%5C%22%22"
-    echo "https://www.google.com/search?q=site%3Amariadb.org+%22\${FIRSTFRAME}%22"
-    echo "Please swap \${FIRSTFRAME} in the above to the first frame name. Regrettably this script could not obtain it for you (ref 'THIS TESTCASE DID NOT...' note above), but you can choose to re-run it from one of the 'Bug confirmed present in' directories, and it will produce ready-made URL's for you."
-  fi
+  echo '4) Check for duplicates before logging bug by executing ~/tt from within the basedir of a crashed instance and following the search url/instructions there'
 fi
 
+# OLD
+#  if [ ${NOCORE} -ne 1 ]; then
+#    cd ${RUN_PWD}
+#    FIRSTFRAME=$(${SCRIPT_PWD}/new_text_string.sh FRAMESONLY | sed 's/|.*//')
+#    echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22${FIRSTFRAME}%5C%22%22%20ORDER%20BY%20status%20ASC"
+#    echo "https://www.google.com/search?q=site%3Amariadb.org+%22${FIRSTFRAME}%22"
+#  else
+#    echo "https://jira.mariadb.org/browse/MDEV-21938?jql=text%20~%20%22%5C%22\${FIRSTFRAME}%5C%22%22"
+#    echo "https://www.google.com/search?q=site%3Amariadb.org+%22\${FIRSTFRAME}%22"
+#    echo "Please swap \${FIRSTFRAME} in the above to the first frame name. Regrettably this script could not obtain it for you (ref 'THIS TESTCASE DID NOT...' note above), but you can choose to re-run it from one of the 'Bug confirmed present in' directories, and it will produce ready-made URL's for you."
+#  fi

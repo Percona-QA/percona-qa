@@ -2,6 +2,8 @@
 SET=0
 
 # DISABLED; this code is unsafe! Need to find a better solution
+# i.e. if you were to run this script, which updates known_bugs.strings, and then run ./mvknown in
+# TESTCASES also around the same time, it may move all testcases THERE into known 
 #if [ -r ~/mariadb-qa/known_bugs.strings ]; then
 #  if [ -r /test/TESTCASES/inprogress_known_bugs.strings ]; then
 #    cp ~/mariadb-qa/known_bugs.strings ~/mariadb-qa/known_bugs.strings.PREV

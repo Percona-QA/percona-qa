@@ -1,4 +1,5 @@
 ###### CURRENT BUGS ######
+SIGSEGV|flush_all_key_blocks|prepare_resize_simple_key_cache|resize_partitioned_key_cache|resize_key_cache                                                                      ## MDEV-22590
 old_part_id == m_last_part|SIGABRT|ha_partition::update_row|handler::ha_update_row|mysql_update|mysql_execute_command                                                           ## DBG |MDEV-22413
 part_id == m_last_part|SIGABRT|ha_partition::delete_row|handler::ha_delete_row|TABLE::delete_row|mysql_delete                                                                   ## DBG |MDEV-22413
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_create_table_like::execute|mysql_execute_command                    ## DBG MDEV-22002
@@ -10,7 +11,8 @@ SIGSEGV|Bitmap<64u>::merge|add_key_field|add_key_equal_fields|Item_bool_func2::a
 SIGSEGV|_my_b_write|my_b_write|my_b_safe_write|Log_event_writer::write_internal                                                                                                 ## OPT MDEV-22451
 SIGSEGV|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add|init_sum_functions                                                                         ## OPT MDEV-22449
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_lock|MDL_context::release_lock                                                                  ## OPT |MDEV-22448
-SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock                                      ## OPT |MDEV-22448
+SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock  ## OPT |MDEV-22448
+ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|THD::cleanup|unlink_thd                                                                      ## OPT |MDEV-22448
 SIGSEGV|Item::val_uint|handle_select|execute_sqlcom_select|mysql_execute_command                                                                                                ## OPT MDEV-22447
 SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::init_table_handle_for_HANDLER|mysql_ha_read                                                        ## OPT MDEV-22445
 SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_writer_object::add                                                                                   ## OPT MDEV-22444

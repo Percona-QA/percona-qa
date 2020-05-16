@@ -1,1 +1,2 @@
-find . | grep "_out$" | xargs wc -l
+wc -l */*/*_out
+#find . | grep "_out$" | xargs wc -l
