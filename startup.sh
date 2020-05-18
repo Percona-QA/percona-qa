@@ -183,12 +183,12 @@ if [[ $GRP_RPL -eq 1 ]];then
 fi
 
 mkdir -p data data/mysql log
-if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
+if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ] || [ -r ${PWD}/lib/plugin/ha_tokudb.so ]; then
   TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
 else
   TOKUDB=""
 fi
-if [ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]; then
+if [ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ] || [ -r ${PWD}/lib/plugin/ha_rocksdb.so ]; then
   ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"
 else
   ROCKSDB=""
