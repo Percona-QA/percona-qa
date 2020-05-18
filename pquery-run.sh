@@ -367,16 +367,24 @@ if [[ $PXC -eq 1 ]];then
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
+  echo "log_bin=binlog" >> ${BASEDIR}/my.cnf
+  echo "binlog_format=ROW" >> ${BASEDIR}/my.cnf
+  echo "gtid_mode=ON" >> ${BASEDIR}/my.cnf
+  echo "log_slave_updates=ON" >> ${BASEDIR}/my.cnf
+  echo "enforce_gtid_consistency=ON" >> ${BASEDIR}/my.cnf
+  echo "master_verify_checksum=on" >> ${BASEDIR}/my.cnf
+  echo "binlog_checksum=CRC32" >> ${BASEDIR}/my.cnf
   if [[ "$ENCRYPTION_RUN" == 1 ]];then
-    echo "log_bin=binlog" >> ${BASEDIR}/my.cnf
-    echo "binlog_format=ROW" >> ${BASEDIR}/my.cnf
-    echo "gtid_mode=ON" >> ${BASEDIR}/my.cnf
-    echo "enforce_gtid_consistency=ON" >> ${BASEDIR}/my.cnf
-    echo "master_verify_checksum=on" >> ${BASEDIR}/my.cnf
-    echo "binlog_checksum=CRC32" >> ${BASEDIR}/my.cnf
-    echo "binlog_encryption=ON" >> ${BASEDIR}/my.cnf
-    echo "innodb_sys_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
-    echo "pxc_encrypt_cluster_traffic=ON" >> ${BASEDIR}/my.cnf
+  	if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      echo "binlog-encryption=ON" >> ${BASEDIR}/my.cnf
+      echo "innodb_temp_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
+      echo "encrypt_tmp_files=ON" >> ${BASEDIR}/my.cnf
+      echo "default_table_encryption=ON" >> ${BASEDIR}/my.cnf
+      echo "innodb_redo_log_encrypt=ON" >> ${BASEDIR}/my.cnf
+      echo "innodb_undo_log_encrypt=ON" >> ${BASEDIR}/my.cnf
+      echo "innodb_sys_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
+      echo "pxc_encrypt_cluster_traffic=ON" >> ${BASEDIR}/my.cnf
+    fi
     if [[ $WITH_KEYRING_VAULT -ne 1 ]];then
       echo "early-plugin-load=keyring_file.so" >> ${BASEDIR}/my.cnf
       echo "keyring_file_data=keyring" >> ${BASEDIR}/my.cnf
@@ -396,53 +404,22 @@ pxc_startup(){
   SOCKET3=${RUNDIR}/${TRIAL}/node3/node3_socket.sock
   if check_for_version $MYSQL_VERSION "5.7.0" ; then
     if [[ "$ENCRYPTION_RUN" == 1 ]];then
-      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
+      if check_for_version $MYSQL_VERSION "8.0.0" ; then
+        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
+	  else
+        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+	  fi
 	else
       MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
     fi
   else
     MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
   fi
-  pxc_startup_chk(){
-    ERROR_LOG=$1
-    if grep -qi "ERROR. Aborting" $ERROR_LOG ; then
-      if grep -qi "TCP.IP port. Address already in use" $ERROR_LOG ; then
-        echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-        removetrial
-      else
-        if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
-          echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
-          grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-          if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
-            echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
-          else
-            savetrial
-            echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
-            exit 1
-          fi
-        else  # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
-          echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
-          grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-          FAILEDSTARTABORT=1
-          break
-        fi
-      fi
-    fi
-  }
+
   if [ "$IS_STARTUP" != "startup" ]; then
     echo "echo '=== Starting PXC cluster for recovery...'" > ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "sed -i 's|safe_to_bootstrap:.*$|safe_to_bootstrap: 1|' ${WORKDIR}/${TRIAL}/node1/grastate.dat" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
   fi
-  pxc_startup_status(){
-    NR=$1
-    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
-      sleep 1
-      if ${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping > /dev/null 2>&1; then
-        break
-      fi
-      pxc_startup_chk ${ERR_FILE}
-    done
-  }
   unset PXC_PORTS
   unset PXC_LADDRS
   PXC_PORTS=""
@@ -470,33 +447,43 @@ pxc_startup(){
     sed -i "2i log-error=$node/node${i}.err" ${DATADIR}/n${i}.cnf
     sed -i "2i port=$RBASE1" ${DATADIR}/n${i}.cnf
     sed -i "2i datadir=$node" ${DATADIR}/n${i}.cnf
+    sed -i "2i socket=$node/node${i}_socket.sock" ${DATADIR}/n${i}.cnf
+    sed -i "2i tmpdir=$DATADIR/tmp${i}" ${DATADIR}/n${i}.cnf
     if [[ "$ENCRYPTION_RUN" != 1 ]];then
       sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
 	else
       sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT;socket.ssl_key=${WORKDIR}/cert/server-key.pem;socket.ssl_cert=${WORKDIR}/cert/server-cert.pem;socket.ssl_ca=${WORKDIR}/cert/ca.pem\"" ${DATADIR}/n${i}.cnf
-	fi
-    sed -i "2i socket=$node/node${i}_socket.sock" ${DATADIR}/n${i}.cnf
-    sed -i "2i tmpdir=$DATADIR/tmp${i}" ${DATADIR}/n${i}.cnf
-    echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf
-    echo "[client]" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-cert = ${WORKDIR}/cert/client-cert.pem" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-key = ${WORKDIR}/cert/client-key.pem" >> ${DATADIR}/n${i}.cnf
-    echo "[sst]" >> ${DATADIR}/n${i}.cnf
-    echo "encrypt = 4" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
-    echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf    
+      echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf
+      echo "[client]" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-cert = ${WORKDIR}/cert/client-cert.pem" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-key = ${WORKDIR}/cert/client-key.pem" >> ${DATADIR}/n${i}.cnf
+      echo "[sst]" >> ${DATADIR}/n${i}.cnf
+      echo "encrypt = 4" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
+      echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf
+    fi
     if [ "$IS_STARTUP" == "startup" ]; then
       ${MID} --datadir=$node  > ${WORKDIR}/startup_node1.err 2>&1 || exit 1;
     fi
   done
-  if check_for_version $MYSQL_VERSION "8.0.0" ; then
+  if [[ "$ENCRYPTION_RUN" == 1 ]];then
     if [ "$IS_STARTUP" == "startup" ]; then
-	  mkdir ${WORKDIR}/cert
-	  cp ${WORKDIR}/node1.template/*.pem ${WORKDIR}/cert/
+      mkdir ${WORKDIR}/cert
+      if check_for_version $MYSQL_VERSION "5.7.0" ; then
+	    cp ${WORKDIR}/node1.template/*.pem ${WORKDIR}/cert/
+      else
+        pushd ${WORKDIR}/cert	
+        openssl genrsa 2048 > ca-key.pem	
+        openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'	
+        openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'	
+        openssl rsa -in server-key.pem -out server-key.pem	
+        openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem	
+        popd
+	  fi
     fi
   fi
   get_error_socket_file(){
@@ -518,20 +505,58 @@ pxc_startup(){
   else
     VALGRIND_CMD=""
   fi
-  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n1.cnf
-  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n2.cnf
-  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[3]},${PXC_LADDRS[3]}" ${DATADIR}/n3.cnf
-  get_error_socket_file 1
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
-  pxc_startup_status 1
-  get_error_socket_file 2
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n2.cnf \
-    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
-  pxc_startup_status 2
-  get_error_socket_file 3
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n3.cnf \
-    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
-  pxc_startup_status 3
+  for j in `seq 1 3`;do
+	IS_FAILED=0
+    sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n${j}.cnf
+    get_error_socket_file ${j}
+    if [[ ${j} -eq 1 ]]; then
+	  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n${j}.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
+    else
+	  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n${j}.cnf \
+	    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
+    fi
+    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+      sleep 1
+      if ${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping > /dev/null 2>&1; then
+        break
+	  else
+        if grep -qi "Address already in use" ${ERR_FILE} ; then
+	      echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
+	      if [ "$IS_STARTUP" == "startup" ]; then
+            IS_FAILED=1
+	  		break
+	  	  else
+	        removetrial
+	        FAILEDSTARTABORT=1
+            IS_FAILED=1
+	        break
+	  	  fi
+	    fi
+	    if grep -qi "ERROR. Aborting" ${ERR_FILE} ; then
+	      if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
+	        echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
+	        grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
+	        if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
+	          echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
+	        else
+	          savetrial
+	          echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+	          exit 1
+	        fi
+	      else  # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
+	        echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
+	        grep "ERROR" ${ERR_FILE} | tee -a /${WORKDIR}/pquery-run.log
+	        FAILEDSTARTABORT=1
+            IS_FAILED=1
+	        break
+	      fi
+	    fi
+      fi
+    done
+    if [[ $IS_FAILED -eq 1 ]]; then
+	  break
+    fi
+  done
   
   if [ "$IS_STARTUP" != "startup" ]; then
     echo "RUNDIR=$RUNDIR"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
@@ -1466,10 +1491,10 @@ pquery_test(){
             break 
           fi
         fi
-        if [ $X -ge ${PQUERY_RUN_TIMEOUT} ]; then
+        if [[ $X -ge ${PQUERY_RUN_TIMEOUT} ]]; then
           echoit "${PQUERY_RUN_TIMEOUT}s timeout reached. Terminating this trial..."
           TIMEOUT_REACHED=1
-          if [ ${TIMEOUT_INCREMENT} != 0 ]; then
+          if [[ ${TIMEOUT_INCREMENT} != 0 ]]; then
             echoit "TIMEOUT_INCREMENT option was enabled and set to ${TIMEOUT_INCREMENT} sec"
             echoit "${TIMEOUT_INCREMENT}s will be added to the next trial timeout."
           else
@@ -1488,7 +1513,7 @@ pquery_test(){
     fi
   else
     if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
-      if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
+      if [[ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]]; then
         echoit "Either the Primary server (PID: ${MPID} | Socket: ${SOCKET}), or the Secondary server (PID: ${MPID2} | Socket: ${RUNDIR}/${TRIAL}/socket2.sock) failed to start after ${MYSQLD_START_TIMEOUT} seconds. Will issue extra kill -9 to ensure it's gone..."
         (sleep 0.2; kill -9 ${MPID2} >/dev/null 2>&1; timeout -k4 -s9 4s wait ${MPID2} >/dev/null 2>&1) &
         timeout -k5 -s9 5s wait ${MPID2} >/dev/null 2>&1
