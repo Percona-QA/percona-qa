@@ -83,6 +83,9 @@ TEXT=
 # Assertion catch
 # Assumes (which is valid for the pquery framework) that 1st assertion is also the last in the log
 ASSERT="$(grep --binary-files=text -om1 'Assertion.*failed.$' ${ERROR_LOG} | sed "s|\.$||;s|^Assertion [\`]||;s|['] failed$||" | head -n1)"
+if [ -z "${ASSERT}" ]; then
+  ASSERT="$(grep --binary-files=text -m1 'Failing assertion:' ${ERROR_LOG} | sed "s|.*Failing assertion:[ \t]*||" | head -n1)"
+fi
 if [ ! -z "${ASSERT}" ]; then
   TEXT="${ASSERT}"
 fi
