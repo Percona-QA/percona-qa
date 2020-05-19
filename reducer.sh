@@ -98,6 +98,7 @@ FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld 
 # === Percona XtraDB Cluster
 PXC_MOD=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables PQUERY_MODE=1
 PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
+ENCRYPTION_RUN=0                # On/Off (1/0) Enable pxc encryption options
 WSREP_PROVIDER_OPTIONS=""       # wsrep_provider_options to be used (and reduced).
 
 # === MySQL Group Replication
@@ -144,6 +145,7 @@ TS_VARIABILITY_SLEEP=1
 # - PQUERY_LOC: Location of the pquery binary (retrieve pquery like this; $ cd ~; bzr branch lp:percona-qa; # then ref ~/percona-qa/pquery/pquery[-ms])
 # - PQUERY_EXTRA_OPTIONS: Extra options to pquery which will be added to the pquery command line. This is used for query correctness trials
 # - PXC_MOD: 1: bring up 3 node Percona XtraDB Cluster instead of default server, 0: use default non-cluster server (mysqld)
+# - ENCRYPTION_RUN: 1: Start PXC with encryption options, 0: Start PXC without encryption options
 # - GRP_RPL_MOD: 1: bring up 3 node Group Replication instead of default server, 0: use default non-cluster server (mysqld)
 #   see lp:/percona-qa/pxc-pquery/new/pxc-pquery_info.txt and lp:/percona-qa/docker_info.txt for more information on this. See above for some limitations etc.
 #   IMPORTANT NOTE: If this is set to 1, ftm, these settings (and limitations) are automatically set: INHERENT: PQUERY_MOD=1, LIMTATIONS: FORCE_SPORADIC=0,
@@ -1714,11 +1716,19 @@ init_workdir_and_files(){
       stop_mysqld_or_pxc
     elif [[ $PXC_MOD -eq 1 ]]; then
       echo_out "[Init] Setting up standard PXC working template (without using MYEXTRA options)"
-      if check_for_version $MYSQL_VERSION "5.7.0" ; then
-        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
-      else
-        MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --force ${MYINIT} --basedir=${BASEDIR}"
-      fi
+	  if check_for_version $MYSQL_VERSION "5.7.0" ; then
+	    if [[ "$ENCRYPTION_RUN" == 1 ]];then
+	      if check_for_version $MYSQL_VERSION "8.0.0" ; then
+	        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
+		  else
+	        MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+		  fi
+		else
+	      MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure ${MYINIT} --basedir=${BASEDIR}"
+	    fi
+	  else
+	    MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --force ${MYINIT} --basedir=${BASEDIR}"
+	  fi
       node1="${WORKD}/node1"
       node2="${WORKD}/node2"
       node3="${WORKD}/node3"
@@ -1745,6 +1755,20 @@ init_workdir_and_files(){
       cp -a $WORKD/node1/* $WORKD/node1.init/
       cp -a $WORKD/node2/* $WORKD/node2.init/
       cp -a $WORKD/node3/* $WORKD/node3.init/
+    fi
+    if [[ "$ENCRYPTION_RUN" == 1 ]];then
+      mkdir ${WORKDIR}/cert
+      if check_for_version $MYSQL_VERSION "5.7.0" ; then
+  	    cp ${node1}/*.pem $WORKD/cert/
+      else
+        pushd $WORKD/cert	
+        openssl genrsa 2048 > ca-key.pem	
+        openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'	
+        openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'	
+        openssl rsa -in server-key.pem -out server-key.pem	
+        openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem	
+        popd
+      fi
     fi
   else
     echo_out "[Init] This is a subreducer process; using initialization data template from the main process ($WORKD/../../data.init)"
@@ -1941,7 +1965,6 @@ start_pxc_main(){
     echo "innodb_locks_unsafe_for_binlog=1" >> ${WORKD}/my.cnf
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
   else
-    echo "pxc_encrypt_cluster_traffic=OFF" >> ${WORKD}/my.cnf
     echo "log-error-verbosity=3" >> ${WORKD}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
@@ -1949,6 +1972,45 @@ start_pxc_main(){
   echo "core-file" >> ${WORKD}/my.cnf
   echo "log-output=none" >> ${WORKD}/my.cnf
   echo "wsrep_slave_threads=2" >> ${WORKD}/my.cnf
+  echo "log_bin=binlog" >> ${WORKD}/my.cnf
+  echo "binlog_format=ROW" >> ${WORKD}/my.cnf
+  echo "gtid_mode=ON" >> ${WORKD}/my.cnf
+  echo "log_slave_updates=ON" >> ${WORKD}/my.cnf
+  echo "enforce_gtid_consistency=ON" >> ${WORKD}/my.cnf
+  echo "master_verify_checksum=on" >> ${WORKD}/my.cnf
+  echo "binlog_checksum=CRC32" >> ${WORKD}/my.cnf
+  if [[ "$ENCRYPTION_RUN" == 1 ]];then
+  	if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      echo "binlog-encryption=ON" >> ${WORKD}/my.cnf
+      echo "innodb_temp_tablespace_encrypt=ON" >> ${WORKD}/my.cnf
+      echo "encrypt_tmp_files=ON" >> ${WORKD}/my.cnf
+      echo "default_table_encryption=ON" >> ${WORKD}/my.cnf
+      echo "innodb_redo_log_encrypt=ON" >> ${WORKD}/my.cnf
+      echo "innodb_undo_log_encrypt=ON" >> ${WORKD}/my.cnf
+      echo "innodb_sys_tablespace_encrypt=ON" >> ${WORKD}/my.cnf
+      echo "pxc_encrypt_cluster_traffic=ON" >> ${WORKD}/my.cnf
+    fi
+    if [[ $WITH_KEYRING_VAULT -ne 1 ]];then
+      echo "early-plugin-load=keyring_file.so" >> ${WORKD}/my.cnf
+      echo "keyring_file_data=keyring" >> ${WORKD}/my.cnf
+    fi
+    echo "ssl-ca = ${WORKD}/cert/ca.pem" >> ${WORKD}/my.cnf
+    echo "ssl-cert = ${WORKD}/cert/server-cert.pem" >> ${WORKD}/my.cnf
+    echo "ssl-key = ${WORKD}/cert/server-key.pem" >> ${WORKD}/my.cnf
+    echo "[client]" >> ${WORKD}/my.cnf
+    echo "ssl-ca = ${WORKD}/cert/ca.pem" >> ${WORKD}/my.cnf
+    echo "ssl-cert = ${WORKD}/cert/client-cert.pem" >> ${WORKD}/my.cnf
+    echo "ssl-key = ${WORKD}/cert/client-key.pem" >> ${WORKD}/my.cnf
+    echo "[sst]" >> ${WORKD}/my.cnf
+    echo "encrypt = 4" >> ${WORKD}/my.cnf
+    echo "ssl-ca = ${WORKD}/cert/ca.pem" >> ${WORKD}/my.cnf
+    echo "ssl-cert = ${WORKD}/cert/server-cert.pem" >> ${WORKD}/my.cnf
+    echo "ssl-key = ${WORKD}/cert/server-key.pem" >> ${WORKD}/my.cnf
+  else
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
+      echo "pxc_encrypt_cluster_traffic=OFF" >> ${WORKD}/my.cnf
+    fi
+  fi
 
   ADDR="127.0.0.1"
   RPORT=$(( RANDOM%21 + 10 ))

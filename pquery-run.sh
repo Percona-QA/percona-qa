@@ -1816,22 +1816,22 @@ elif [[ ${PXC} -eq 1 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
   echoit "${ONGOING}"
   if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
-    echoit "PXC Cluster run: 'YES'"
+    echoit "PXC Cluster run: YES"
   else
-    echoit "PXC Cluster run: 'NO'"
+    echoit "PXC Cluster run: NO"
   fi
   if [ ${ENCRYPTION_RUN} -eq 1 ]; then
-    echoit "PXC Encryption run: 'YES'"
+    echoit "PXC Encryption run: YES"
   else
-    echoit "PXC Encryption run: 'NO'"
+    echoit "PXC Encryption run: NO"
   fi
 elif [[ ${GRP_RPL} -eq 1 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
   echoit "${ONGOING}"
   if [ ${GRP_RPL_CLUSTER_RUN} -eq 1 ]; then
-    echoit "Group Replication Cluster run: 'YES'"
+    echoit "Group Replication Cluster run: YES"
   else
-    echoit "Group Replication Cluster run: 'NO'"
+    echoit "Group Replication Cluster run: NO"
   fi
 fi
 echo "[$(date +'%D %T')] ${ONGOING}" >> ~/ongoing.pquery-runs.txt

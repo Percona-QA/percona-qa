@@ -31,6 +31,13 @@ else
   GRP_RPL=0
 fi
 
+# Check if this is a PXC ENCRYPTION RUN
+if [ "$(grep 'PXC Encryption run:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Encryption run[: \t]*||')" == "YES" ]; then
+  ENCRYPT_RUN=1
+else
+  ENCRYPT_RUN=0
+fi
+
 # Check if this an automated (pquery-reach.sh) run
 if [ "$1" == "reach" ]; then
   REACH=1  # Minimal output, and no 2x enter required
@@ -351,6 +358,13 @@ generate_reducer_script(){
     GRP_RPL_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
     GRP_RPL_STRING1="s|ZERO0|ZERO0|"
   fi
+  if [[ ${ENCRYPT_RUN} -eq 1 ]]; then
+    PXC_ENCRYPTION_CLEANUP1="0,/^[ \t]*ENCRYPTION_RUN[ \t]*=.*$/s|^[ \t]*ENCRYPTION_RUN[ \t]*=.*$|#ENCRYPTION_RUN=<set_below_in_machine_variables_section>|"
+    PXC_ENCRYPTION_STRING1="0,/#VARMOD#/s:#VARMOD#:ENCRYPTION_RUN=1\n#VARMOD#:"
+  else
+    PXC_ENCRYPTION_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
+    PXC_ENCRYPTION_STRING1="s|ZERO0|ZERO0|"
+  fi
   if [[ ${QC} -eq 0 ]]; then
     REDUCER_FILENAME=reducer${OUTFILE}.sh
     QC_STRING1="s|ZERO0|ZERO0|"
@@ -389,6 +403,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "${PXC_CLEANUP1}" \
    | sed -e "${GRP_RPL_CLEANUP1}" \
+   | sed -e "${PXC_ENCRYPTION_CLEANUP1}" \
    | sed -e "${SI_CLEANUP1}" \
    | sed -e "${SI_STRING1}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
@@ -407,6 +422,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
    | sed -e "${GRP_RPL_STRING1}" \
+   | sed -e "${PXC_ENCRYPTION_STRING1}" \
    | sed -e "${QC_STRING1}" \
    | sed -e "${QC_STRING2}" \
    | sed -e "${QC_STRING3}" \
