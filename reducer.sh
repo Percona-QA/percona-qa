@@ -602,7 +602,7 @@ echo_out_overwrite(){
 
 ctrl_c(){
   echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
-  echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log) | EPOCH: $EPOCH"
+  echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log) | EPOCH ID: $EPOCH"
   if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
     echo_out "[Abort] Best testcase thus far: $WORKO"
   else
@@ -1531,7 +1531,7 @@ init_workdir_and_files(){
       echo_out "[Init] Output dir: $WORK_BUG_DIR"
     fi
     echo_out "[Init] Input file: $INPUTFILE"
-    echo_out "[Init] EPOCH: $EPOCH (used for various file and directory names)"
+    echo_out "[Init] EPOCH ID: $EPOCH (used for various file and directory names)"
     # Initial INPUTFILE to WORKF copy
     if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
       if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line

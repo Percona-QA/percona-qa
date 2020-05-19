@@ -1,0 +1,5 @@
+#!/bin/bash
+
+ls -d /dev/shm/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9] | xargs -I{} echo "cd /dev/shm; du -sh {}; grep -o 'Input file: .*' {}/reducer.log" > ~/findr.run && chmod +x ~/findr.run && ~/findr.run
+
+echo 'To connect to the screen for a particular reducer; screen -d -r s{trialno}'
