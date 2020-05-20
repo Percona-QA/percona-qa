@@ -2747,6 +2747,7 @@ process_outcome(){
   # MODE3: mysqld error output log testing (set TEXT)
   elif [ $MODE -eq 3 ]; then
     M3_ISSUE_FOUND=0
+    SKIP_NEWBUG=0
     ERRORLOG=
     if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
       ERRORLOG=$WORKD/*/error.log
@@ -2784,9 +2785,11 @@ process_outcome(){
         TSEXITCODE=${?}
         echo ${TSEXITCODE} > ${WORKD}/MYBUG.FOUND.EXITCODE
         if [ ${TSEXITCODE} -ne 0 ]; then
-          if ! egrep -qi "no core file" ${WORKD}/MYBUG.FOUND; then
+          if ! egrep -qi 'no core file' ${WORKD}/MYBUG.FOUND; then
             echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${TSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
             exit 1
+          else  # 'no core file' was seen in ${WORKD}/MYBUG.FOUND; this is definitely not a newbug
+            SKIP_NEWBUG=1
           fi
         fi
         cd - >/dev/null
@@ -2807,7 +2810,7 @@ process_outcome(){
           FINDBUG=
         else  # $TEXT_STRING_LOC yielded another output (error, or a different bug - new or already existing)
           FINDBUG=
-          if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
+          if [ ${SCAN_FOR_NEW_BUGS} -eq 1 -a ${SKIP_NEWBUG} -ne 1 ]; then
             if [ ${TSEXITCODE} -eq 0 ]; then
               # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
               FINDBUG="$(grep -Fi --binary-files=text "${MYBUGFOUND}" ${KNOWN_BUGS} | tail -n1)"  # head -n1: fixed bugs are at the end of the list, so preference for "newbug found" is higher this way

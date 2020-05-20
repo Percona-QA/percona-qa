@@ -1,0 +1,1 @@
+ls */*/*newbug*string | xargs -I{} echo "echo -n '==== {} ====:'; cat '{}'" | xargs -I{} sh -c "{}" | grep -v "no core file found" | sed 's|===:|===\n|'

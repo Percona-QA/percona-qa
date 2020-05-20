@@ -38,6 +38,7 @@ cp kb ${TARGET}
 cp kbs ${TARGET}
 cp kill_reducers ${TARGET}
 cp kill_runs ${TARGET}
+cp newbug ${TARGET}
 cp m ${TARGET}
 cp m56 ${TARGET}
 cp mcl ${TARGET}

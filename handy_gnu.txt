@@ -316,8 +316,10 @@ fuser -a /path_to/your_file
 # Get the IP address of the host (hostname --ip-address may produce 127.0.0.1 which is not usefull if you need the network interface IP)
   ip route get 1 | awk '{print $NF;exit}'  # With thanks, https://stackoverflow.com/questions/13322485/how-to-i-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
 # Raise the priority of a certain process  # With thanks, https://serverfault.com/a/228632
-  sudo renice -10 -p ${PROCESSID}  # Where ${PROCESSID} is the ID of the process to raise priority for 
-# Clear OS cache
+  sudo renice -10 -p ${PROCESSID}  # Where ${PROCESSID} is the ID of the process to raise priority for
+# Quickly profile a system inside scripts
+  df -kTh; top -n1; cat /proc/cpuinfo; uname -a; cat /etc/*release* 2>&1; dpkg -l; printenv
+# Clear OS cache, potentially avoid OOM on high use servers by running this regularly
   sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"
 # Use cgroups to limit application memory usage
   sudo service cgconfig restart
