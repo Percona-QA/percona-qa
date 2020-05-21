@@ -29,3 +29,10 @@ BACKUP LOCK not_existing.t;
 LOCK TABLES t WRITE;
 UNLOCK TABLES;
 # Shutdown server; crash happens on shutdown
+
+# MDEV-20945
+USE test;
+BACKUP LOCK t1;
+CREATE TABLE t2(c1 TIME,c2 TIME,c3 DATE,KEY (c1,c2));
+LOCK TABLE t2 READ;
+# Shutdown server; crash happens on shutdown

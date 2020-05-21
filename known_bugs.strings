@@ -1,8 +1,17 @@
+###### CURRENT BUGS WITH HIGH TEST-AFFECTING IMPACT (REVIEW REGULARLY) ######
+SIGABRT|__libc_message|malloc_printerr|munmap_chunk|__GI___libc_free                                                                                                            ## OPT |MDEV-18496
+SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free                                                                                                               ## OPT |MDEV-18496
+
 ###### CURRENT BUGS ######
+dict_col_get_fixed_size(f.col, not_redundant()) <= 768|SIGABRT|dict_table_t::init_instant|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try  ## DBG MDEV-22651
+page_zip_verify_checksum(frame, bpage->zip_size())|SIGABRT|ut_dbg_assertion_failed|buf_flush_write_block_low|buf_flush_page|buf_flush_try_neighbors                             ## DBG MDEV-22650
+SIGSEGV|ha_partition::create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute                                             ## OPT |MDEV-22649
+SIGSEGV|ha_partition::create_partitioning_metadata|handler::ha_create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table                                 ## OPT |MDEV-22649
 SIGSEGV|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add|init_sum_functions                                                                         ## OPT MDEV-22449/22640
 SIGSEGV|copy_fields|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add                                                                                ## OPT MDEV-22640
 dict_tf2_is_valid(flags, flags2)|SIGABRT|ut_dbg_assertion_failed|dict_mem_table_create|create_table_info_t::create_table_def|create_table_info_t::create_table                  ## OPT MDEV-22627
-SIGSEGV|__strlen_avx2|intern_find_sys_var|find_sys_var|LEX::set_system_variable                                                                                                 ## OPT MDEV-22625
+SIGSEGV|__strlen_avx2|intern_find_sys_var|find_sys_var|LEX::set_system_variable                                                                                                 ## OPT |MDEV-22625
+SIGSEGV|intern_find_sys_var|find_sys_var|LEX::set_system_variable|LEX::set_variable                                                                                             ## OPT |MDEV-22625
 SIGSEGV|flush_all_key_blocks|prepare_resize_simple_key_cache|resize_partitioned_key_cache|resize_key_cache                                                                      ## OPT MDEV-22590
 old_part_id == m_last_part|SIGABRT|ha_partition::update_row|handler::ha_update_row|mysql_update|mysql_execute_command                                                           ## DBG |MDEV-22413
 part_id == m_last_part|SIGABRT|ha_partition::delete_row|handler::ha_delete_row|TABLE::delete_row|mysql_delete                                                                   ## DBG |MDEV-22413
@@ -61,6 +70,7 @@ global_system_variables.session_track_system_variables|SIGABRT|Session_sysvars_t
 SIGSEGV|__strlen_avx2|my_strdup|Session_sysvars_tracker::init|plugin_thdvar_init                                                                                                ## OPT |MDEV-22134
 SIGSEGV|handle_grant_table|handle_grant_data|mysql_drop_user|mysql_execute_command                                                                                              ## OPT |MDEV-22133
 SIGSEGV|handle_grant_table|handle_grant_data|mysql_create_user|mysql_execute_command                                                                                            ## OPT |MDEV-22133
+SIGSEGV|handle_grant_table|handle_grant_data|mysql_rename_user|mysql_execute_command                                                                                            ## OPT |MDEV-22133
 SIGSEGV|Binary_string::copy_printable_hhhh|Protocol::store_warning|mysqld_show_warnings|mysql_execute_command                                                                   ## OPT MDEV-22130
 nr != 0|SIGABRT|handler::update_auto_increment|ha_myisam::write_row|handler::ha_write_row|copy_data_between_tables                                                              ## DBG |MDEV-22118
 nr != 0|SIGABRT|handler::update_auto_increment|ha_heap::write_row|handler::ha_write_row|copy_data_between_tables                                                                ## DBG |MDEV-22118 

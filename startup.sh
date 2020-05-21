@@ -317,7 +317,7 @@ echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/ge
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
 tail -n1 start >> start_valgrind
 tail -n1 start >> start_gypsy
-echo "timeout -k20 -s9 20s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop  # 20 second to allow core dump to be written if needed
+echo "timeout -k30 -s9 30s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop  # 30 seconds to allow core dump to be written if needed
 echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "./init;./start;./cl;./stop;./kill >/dev/null 2>&1;tail log/master.err" > setup

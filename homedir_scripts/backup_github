@@ -38,7 +38,6 @@ cp kb ${TARGET}
 cp kbs ${TARGET}
 cp kill_reducers ${TARGET}
 cp kill_runs ${TARGET}
-cp newbug ${TARGET}
 cp m ${TARGET}
 cp m56 ${TARGET}
 cp mcl ${TARGET}
@@ -47,6 +46,7 @@ cp ms ${TARGET}
 cp multi_sr ${TARGET}
 cp my ${TARGET}
 cp myver ${TARGET}
+cp newbug ${TARGET}
 cp o ${TARGET}
 cp oo ${TARGET}
 cp ooo ${TARGET}

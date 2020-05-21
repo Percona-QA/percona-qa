@@ -5,9 +5,31 @@ NOPERL=0
 perl --version >/dev/null 2>&1
 if [ $? -ne 0 ]; then echo "This script requires perl, please install it"; NOPERL=1; fi
 
+noformat_strings(){
+  echo "----- Handy extra noformat strings -----"
+  MYSQLD=
+  if [ -z "${MYSQLD}" ]; then
+    if [ -r ./bin/mysqld -a ! -d ./bin/mysqld ]; then  # For direct use in BASEDIR, like ~/tt
+      MYSQLD="./bin/mysqld"
+    elif [ -r ../mysqld -a ! -d ../mysqld ]; then  # Not currently used, but provisioned alike to ~/t
+      MYSQLD="../mysqld"
+    elif [ -r ../mysqld/mysqld -a ! -d ../mysqld/mysqld ]; then  # For direct use inside trial directories
+      MYSQLD="../mysqld/mysqld"
+    fi
+  fi
+  if [ ! -z "${MYSQLD}" ]; then
+    SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" ${MYSQLD} 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"
+    SERVER_VERSION="$(${MYSQLD} --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
+    echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV}}"
+    echo "{noformat}"
+  fi
+}
+
 TEXT="$(~/t)"
 if [[ "${TEXT}" == *"no core file found"* ]]; then 
   echo "Assert: no core file found in */*core*"
+echo $-
+  noformat_strings
   exit 1
 fi
 
@@ -37,10 +59,6 @@ if [[ "${ASSERT}" != "SIGSEGV" && "${ASSERT}" != "SIGABRT" ]]; then
   echo "https://jira.mariadb.org/issues/?jql=text%20~%20%22%5C%22${ASSERT}%5C%22%22%20ORDER%20BY%20status%20ASC"
 fi
 
-echo "----- Handy extra noformat strings -----"
-SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||')"
-SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
-echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV}}"
-echo "{noformat}"
+noformat_strings
 
 exit 0

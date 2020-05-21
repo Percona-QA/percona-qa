@@ -178,6 +178,8 @@
   sleep 1000 &  gdb /usr/bin/sleep --pid=$! --ex 'generate-core-file'
 # Check your bash scripts
   https://www.shellcheck.net/  https://github.com/koalaman/shellcheck
+# Check if this script is being run interactively (i.e. $. ./script.sh instead of $./script.sh)
+  if [[ "${-}" == *"i"* ]]; then echo "script was executed as . ./script.sh"; fi
 
 # ------ Compiling / Compiler Issues ------
 # If you see for example "/usr/bin/ld: cannot find -lzlib" in your compilation/build of MySQL, and the build fails because of it, then check:
@@ -332,6 +334,10 @@ fuser -a /path_to/your_file
   apt-cache search <package name>       # Search
 # Display space used by subdirs, handy to find out what is using space. Note that the sort is not perfect
   ls -l | grep "^d" | awk '{print $9}' | xargs -I{} du -sh ./{} | sort -n | more
+# Configure timezone on a server (does not change any other works of the server, only the 'local time')
+  timedatectl && timedatectl list-timezones | grep "Australia"  # or similar
+  sudo timedatectl set-timezone Australia/Sydney                # or similar
+  # If timedatectl is not available (older systems), use dpkg-reconfigure tzdata
   
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
