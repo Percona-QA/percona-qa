@@ -1,0 +1,4 @@
+# mysqld options required for replay: --log-bin
+USE test;
+CREATE FUNCTION f(c INT) RETURNS NUMERIC NO SQL RETURN 0;
+CREATE OR REPLACE FUNCTION f(c INT) RETURNS INT RETURN 0;

@@ -1,0 +1,3 @@
+CREATE TABLE t1 (a POINT, KEY(a));
+HANDLER t1 OPEN h;
+HANDLER h READ a = (0);
