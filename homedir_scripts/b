@@ -6,3 +6,4 @@ rm -f report.log
 if [ -r report.log ]; then echo "Assert: report.log still present though this script tried to delete it!"; exit 1; fi
 sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Ensure we're looking for core files, not specific bugs for which bug_report.sh may have been updated
 ~/mariadb-qa/bug_report.sh "${MYEXTRA_OPT}" | tee report.log
+~/tt | grep -A1 "URL"
