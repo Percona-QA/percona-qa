@@ -3,10 +3,13 @@ SIGABRT|__libc_message|malloc_printerr|munmap_chunk|__GI___libc_free            
 SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free                                                                                                               ## OPT |MDEV-18496
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysqld_help_internal|mysqld_help                                                                                     ## DBG MDEV-22422
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysql_ha_read|mysql_execute_command                                                                                  ## DBG MDEV-20207*
+0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|do_handle_one_connection                                                                                          ## DBG MDEV-22663
 
 ###### CURRENT BUGS ######
-level <= 50|SIGABRT|btr_page_set_level|PageBulk::init|BtrBulk::finish|row_merge_read_clustered_index                                                                            ## DBG MDEV-22653
+fixed == 0|SIGABRT|Item_func::fix_fields|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                             ## DBG MDEV-22662
+time_type == MYSQL_TIMESTAMP_DATETIME|SIGABRT|Datetime::is_valid_datetime_slow|Datetime::is_valid_value_slow|Datetime::Datetime|Item::val_datetime_packed                       ## DBG MDEV-22661
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_execute_command|mysql_parse                                           ## DBG MDEV-22654
+level <= 50|SIGABRT|btr_page_set_level|PageBulk::init|BtrBulk::finish|row_merge_read_clustered_index                                                                            ## DBG MDEV-22653
 SIGSEGV|in_vector::find|Item_func_in::val_int|TABLE::verify_constraints|TABLE_LIST::view_check_option                                                                           ## DBG MDEV-22652
 dict_col_get_fixed_size(f.col, not_redundant()) <= 768|SIGABRT|dict_table_t::init_instant|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try  ## DBG MDEV-22651
 page_zip_verify_checksum(frame, bpage->zip_size())|SIGABRT|ut_dbg_assertion_failed|buf_flush_write_block_low|buf_flush_page|buf_flush_try_neighbors                             ## DBG MDEV-22650
@@ -35,7 +38,7 @@ SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::ini
 SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_writer_object::add                                                                                   ## OPT MDEV-22444
 SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::causal_read                                                             ## OPT MDEV-22443
 cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connection|THD::free_connection|unlink_thd                                                               ## DBG MDEV-22420
-templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc                                              ## DBG MDEV-22395
+templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc  ## DBG MDEV-22395
 0|SIGABRT|Item_type_holder::val_str|Item_func_conv_charset::Item_func_conv_charset|Item::safe_charset_converter|Type_std_attributes::agg_item_set_converter                     ## DBG MDEV-22391
 m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                           ## OPT MDEV-22390
 0|SIGABRT|stored_field_cmp_to_item|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator                                     ## DBG MDEV-22385
@@ -109,8 +112,8 @@ SIGSEGV|Query_arena::set_query_arena|THD::set_n_backup_active_arena|Field::set_d
 SIGSEGV|fk_prepare_copy_alter_table|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command                                                                        ## DBG MDEV-19194*
 !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                                ## DBG MDEV-22062*
 SIGSEGV|row_upd_del_mark_clust_rec|row_upd_clust_step|row_upd|row_upd_step                                                                                                      ## OPT MDEV-20563*
-maybe_null || !null_value|SIGABRT|Item_func_round::date_op|Item_func_hybrid_field_type::date_op_with_null_check|Item_func_hybrid_field_type::val_real_from_date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_val_real                                                   ## DBG |MDEV-20501*
-maybe_null || !null_value|SIGABRT|Item_func_round::date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_get_date|Type_handler::Item_func_hybrid_field_type_get_date_with_warn|Item_func_hybrid_field_type::get_date                                                        ## DBG |MDEV-20501*
+maybe_null || !null_value|SIGABRT|Item_func_round::date_op|Item_func_hybrid_field_type::date_op_with_null_check|Item_func_hybrid_field_type::val_real_from_date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_val_real  ## DBG |MDEV-20501*
+maybe_null || !null_value|SIGABRT|Item_func_round::date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_get_date|Type_handler::Item_func_hybrid_field_type_get_date_with_warn|Item_func_hybrid_field_type::get_date  ## DBG |MDEV-20501*
 SIGSEGV|ha_partition::compare_number_of_records|my_qsort2|ha_partition::info|ha_partition::open                                                                                 ## DBG MDEV-21134
 marked_for_read()|SIGABRT|Field_blob::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                                                         ## DBG ~MDEV-21804*
 SIGSEGV|myrocks::Rdb_drop_index_thread::run|myrocks::Rdb_thread::thread_func|start_thread|clone                                                                                 ## DBG MDEV-21927*

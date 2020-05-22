@@ -1,0 +1,9 @@
+USE test;
+SET SQL_MODE='';
+CREATE TABLE t (id INT);
+INSERT INTO t VALUES (1);
+INSERT INTO t VALUES (2);
+INSERT INTO t VALUES (3);
+INSERT INTO t VALUES (4);
+ALTER TABLE mysql.help_keyword engine=InnoDB;
+HELP going_to_crash;
