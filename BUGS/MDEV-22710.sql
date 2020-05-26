@@ -1,0 +1,11 @@
+USE test;
+CREATE TABLE t(c INT,KEY(c));
+INSERT INTO t VALUES(0);
+INSERT INTO t VALUES(0);
+set global innodb_file_per_table=OFF;
+set global innodb_limit_optimistic_insert_debug=2;
+set global innodb_change_buffering_debug=1;
+CREATE TABLE t2(a INT) PARTITION BY HASH (a) PARTITIONS 13;
+DROP TABLE t2;
+INSERT INTO t VALUES(0);
+ALTER TABLE t CHANGE COLUMN c c BINARY(1);

@@ -826,11 +826,11 @@ options_check(){
   fi
   if [ $MODE -eq 3 -a $USE_NEW_TEXT_STRING -eq 1 ]; then
     if [ ! -r "$TEXT_STRING_LOC" ] ; then
-      echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, but this program was either not found (most likely), or it is not readable (check file privileges)"
+      echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC (as set in \$TEXT_STRING_LOC), but this program was either not found (most likely), or it is not readable (check file privileges)"
       echo "Terminating now."
       exit 1
     elif ! egrep -qi "set logging" $TEXT_STRING_LOC; then
-      echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC, and found a readable file at this location, however it did not contain the text 'set logging' so it is likely not the right script!"
+      echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC (as set in \$TEXT_STRING_LOC), and found a readable file at this location, however it did not contain the text 'set logging' so it is likely not the right script!"
       echo "Terminating now."
       exit 1
     fi
