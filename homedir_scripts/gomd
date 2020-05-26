@@ -1,13 +1,19 @@
 #!/bin/bash
 
-RUNS=10
+BASEDIR=/test/MD260520-mariadb-10.5.4-linux-x86_64-opt  # opt or dbg is fine, does not matter
+RUNSOPT=5
+RUNSDBG=5
 
-for run in $(seq 1 ${RUNS}); do
+TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
+for RUN in $(seq 1 ${TOTALRUNS}); do
   rm -f /tmp/gomd_helper
-
-  #screen -admS pr$1 bash -c "ulimit -u 4000; cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105.conf; bash"
-  screen -admS pr$1 bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105.conf; bash"
-
+  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" pquery-run-MD105.conf
+  if [ ${RUN} -le ${RUNSOPT} ]; then  # Opt runs
+    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt' pquery-run-MD105.conf
+  else  # Dbg runs
+    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg' pquery-run-MD105.conf
+  fi
+  screen -admS pr${RUN} bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105.conf; bash"
   while true; do
     sleep 1
     if [ -r /tmp/gomd_helper ]; then
@@ -26,7 +32,7 @@ for run in $(seq 1 ${RUNS}); do
             exit 1; break
           else
             ~/sge ${DIREND}
-            echo "MD run started in directory ${DIR}, and pquery-go-expert started for the same!"
+            echo "MD Run ${RUN} started (Dir: ${DIR} Screen: pr${RUN}), and pquery-go-expert started for the same"
             break
           fi
         fi 
