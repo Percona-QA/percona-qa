@@ -3,7 +3,7 @@ SET=0
 
 # DISABLED; this code is unsafe! Need to find a better solution
 # i.e. if you were to run this script, which updates known_bugs.strings, and then run ./mvknown in
-# TESTCASES also around the same time, it may move all testcases THERE into known 
+# TESTCASES also around the same time, it may move all testcases THERE into known
 #if [ -r ~/mariadb-qa/known_bugs.strings ]; then
 #  if [ -r /test/TESTCASES/inprogress_known_bugs.strings ]; then
 #    cp ~/mariadb-qa/known_bugs.strings ~/mariadb-qa/known_bugs.strings.PREV
@@ -12,7 +12,7 @@ SET=0
 #  fi
 #fi
 
-~/mariadb-qa/pquery-clean-all.sh 
+~/mariadb-qa/pquery-clean-all.sh
 
 # DISABLED; ref above
 #if [ ${SET} -eq 1 ]; then

@@ -89,7 +89,7 @@ fi
 MYEXTRA=             # Note that MYEXTRA as obtained from any trial's MYEXTRA file (i.e. ./{trialnr}/MYEXTRA) - ref below - includes MYSAFE but not MYINIT, which is read in separately from a ./{trialnr}/MYINIT file. MYINIT cannot be joined to MYEXTRA as MYEXTRA cannot be passed in full to mysqld --initialize as that may cause mysqld initialization to fail
 VALGRIND_CHECK=0
 
-if [ `ls ./*/MYEXTRA* 2>/dev/null | wc -l` -eq 0 ]; then 
+if [ `ls ./*/MYEXTRA* 2>/dev/null | wc -l` -eq 0 ]; then
   echo "Assert: No MYEXTRA files for trials (./*/MYEXTRA*) were found. This should not be the case. Please check what is wrong."
   exit 1
 fi
@@ -508,6 +508,11 @@ if [ ${QC} -eq 0 ]; then
         add_select_sleep_to_trace
         remove_non_sql_from_trace
         # OLD_WAY: TEXT="$(${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err)"
+        if [ ! -r ./${TRIAL}/node${SUBDIR}/MYBUG ]; then  # Sometimes (approx 1/50-1/100 trials) MYBUG is missing, so [re-]generate it. TODO: find reason (in pquery-run.sh likely)
+          cd ./${TRIAL}/node${SUBDIR} || exit 1
+          ${SCRIPT_PWD}/new_text_string.sh > ./MYBUG
+          cd - >/dev/null || exit 1
+        fi 
         TEXT="$(cat ./${TRIAL}/node${SUBDIR}/MYBUG | head -n1)"  # TODO: this change needs further testing for cluster/GR. Also, it is likely someting was missed for this in the updated pquery-run.sh: the need to generate a MYBUG file for each node!
         echo "* TEXT variable set to: \"${TEXT}\""
         if [ "${MULTI}" == "1" ]; then
@@ -622,6 +627,11 @@ if [ ${QC} -eq 0 ]; then
         # if not a valgrind run process everything, if it is valgrind run only if there's a core
         if [ ! -r ./${TRIAL}/VALGRIND ] || [ -r ./${TRIAL}/VALGRIND -a "$CORE" != "" ]; then
           # OLD_WAY: TEXT="$(${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/log/master.err)"
+          if [ ! -r ./${TRIAL}/MYBUG ]; then  # Sometimes (approx 1/50-1/100 trials) MYBUG is missing, so [re-]generate it. TODO: find reason (in pquery-run.sh likely)
+            cd ./${TRIAL} || exit 1
+            ${SCRIPT_PWD}/new_text_string.sh > ./MYBUG
+            cd - >/dev/null || exit 1
+          fi
           TEXT="$(cat ./${TRIAL}/MYBUG)"
           echo "* TEXT variable set to: \"${TEXT}\""
           if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then

@@ -195,13 +195,13 @@ TS_VARIABILITY_SLEEP=1
 #   http://bazaar.launchpad.net/~percona-core/mariadb-qa/trunk/view/head:/reproducing_and_simplification.txt
 # - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3, unless it was set to a non-default number (i.e. !=90 - to enable
 #   reduction of issues via MULTI until a given amount of lines is reached, which is handy for tools like pquery-reach.sh where a mix of sporadic and
-#   non-sporadic issues may be seen). MULTI reducer mode is used after verify, even if issue is found to seemingly not be sporadic (i.e. all verify 
-#   threads reproduced the issue). This can be handy for issues which are very slow to reduce or which, on visual inspection of the testcase reduction 
-#   process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines in the testcase and/or there are many trials without the 
-#   issue being observed. Another situation which would call for use of this parameter is when produced testcases are still greater then 15 to 80 lines - 
+#   non-sporadic issues may be seen). MULTI reducer mode is used after verify, even if issue is found to seemingly not be sporadic (i.e. all verify
+#   threads reproduced the issue). This can be handy for issues which are very slow to reduce or which, on visual inspection of the testcase reduction
+#   process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines in the testcase and/or there are many trials without the
+#   issue being observed. Another situation which would call for use of this parameter is when produced testcases are still greater then 15 to 80 lines -
 #   this also indicates a possibly sporadic issue (even if verify stage manages to produce it against all started subreducer threads).
 #   Note that this may be a bug in reducer too - i.e. a mismatch between verify stage and stage 1. Yet, if that were true, the issue would likely not
-#   reproduce to start with. Another plausible reason for this occurence (all threads verified in verify stage but low frequency reproduction later on) is 
+#   reproduce to start with. Another plausible reason for this occurence (all threads verified in verify stage but low frequency reproduction later on) is
 #   the existence of all threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
 #   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this option will help.
 # - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction
@@ -367,7 +367,7 @@ TS_VARIABILITY_SLEEP=1
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 # Disable history substitution and avoid  -bash: !: event not found  like errors
-set +H  
+set +H 
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -384,12 +384,12 @@ SPECIAL_MYEXTRA_OPTIONS=
 #                      3) Testcase reduction removal of engines (one-by-one) is tested in STAGE9
 
 MYSQL_VERSION=$(${BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
-#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2)
 normalize_version(){
   local major=0
   local minor=0
   local patch=0
-  
+ 
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -400,12 +400,12 @@ normalize_version(){
   printf %02d%02d%02d $major $minor $patch
 }
 
-#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2)
 check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
-  
+ 
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -792,7 +792,7 @@ options_check(){
     fi
   fi
   # Sanitize input filenames which do not have a path specified by pointing to the current path (only possible conclusion). This ensures [Finish] output looks correct (ref $WORK_BUG_DIR)
-  if [[ "${INPUTFILE}" != *"/"* ]]; then 
+  if [[ "${INPUTFILE}" != *"/"* ]]; then
     INPUTFILE="${PWD}/${INPUTFILE}"
     if [ ! -r "${INPUTFILE}" -a ! -d "${INPUTFILE}" ]; then
       echo "Assert: INPUTFILE is not a readable file, nor a directory"
@@ -1024,7 +1024,7 @@ set_internal_options(){  # Internal options: do not modify!
     # and if present reducer does not disable core file generation (OS nor mysqld)
     if [[ "${MYEXTRA^^}" != *"CORE"* ]]; then  # ^^ = Uppercase MYEXTRA contents before compare
       ulimit -c 0 >/dev/null
-    fi 
+    fi
   fi
   SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }')
   RANDOM=$SEED
@@ -2279,7 +2279,7 @@ start_valgrind_mysqld_main(){
   chmod +x $WORK_START_VALGRIND
   for X in $(seq 1 360); do
     sleep 1
-    if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then 
+    if $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock ping > /dev/null 2>&1; then
       break
     fi
   done
@@ -4132,7 +4132,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
               echo "Terminating now."
               exit 1
             fi
-  
+ 
             # First count how many actual INSERT rows there are
             COUNTINSERTS=0
             COUNTINSERTS=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \
@@ -4487,7 +4487,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
         else  # Issue reproduced, so leave MYEXTA as-is (already filtered), and filter each filtered optiom from WORK_START now too
           while read line; do
             sed -i "s|$line||" $WORK_START
-          done < $FILE1  # We use $FILE1 here (the opposite option set with options that are not required for issue reproduction) 
+          done < $FILE1  # We use $FILE1 here (the opposite option set with options that are not required for issue reproduction)
           myextra_split
           if [ $(wc -l $FILE1 $FILE2 | grep total | awk '{print $1}') -le 4 ]; then  # Remaining nr of options <=4
             myextra_reduction  # Commence 1-by-1 reduction
@@ -4497,7 +4497,7 @@ if [ $SKIPSTAGEBELOW -lt 8 -a $SKIPSTAGEABOVE -gt 8 ]; then
       else  # Issue reproduced, so leave MYEXTRA as-is (already filtered), and filter each filtered option from WORK_START now too
         while read line; do
           sed -i "s|$line||" $WORK_START
-        done < $FILE2  # We use $FILE2 here (the opposite option set with options that are not required for issue reproduction) 
+        done < $FILE2  # We use $FILE2 here (the opposite option set with options that are not required for issue reproduction)
         myextra_split
         if [ $(wc -l $FILE1 $FILE2 | grep total | awk '{print $1}') -le 4 ]; then  # Remaining nr of options <=4
           myextra_reduction  # Commence 1-by-1 reduction
@@ -4527,12 +4527,12 @@ if [ $SKIPSTAGEBELOW -lt 9 -a $SKIPSTAGEABOVE -gt 9 ]; then
     run_and_check
     if [ $STAGE9_CHK -eq 0 -o $STAGE9_NOT_STARTED_CORRECTLY -eq 1 ];then  # Issue failed to reproduce, revert
       SPECIAL_MYEXTRA_OPTIONS=$SAVE_SPECIAL_MYEXTRA_OPTIONS
-      if [ "${SAVE_MYINIT}" != "" ]; then 
+      if [ "${SAVE_MYINIT}" != "" ]; then
         MYINIT=${SAVE_MYINIT}
       fi
     else  # Issue reproduced, so leave SPECIAL_MYEXTRA_OPTIONS as-is (already filtered), and filter the same from WORK_START now too
       sed -i "s|$STAGE9_FILTER||" $WORK_START
-      if [ "${SAVE_MYINIT}" != "" ]; then 
+      if [ "${SAVE_MYINIT}" != "" ]; then
         sed -i "s|${MYINIT}||" $WORK_START
       fi
     fi

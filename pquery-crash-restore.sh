@@ -11,7 +11,7 @@ if [ ! -d "${BASEDIR}" ]; then
 fi
 
 while read line ; do
-  $line/start_recovery  
+  $line/start_recovery 
   for X in $(seq 0 60); do
     sleep 1
     if ${BASEDIR}/bin/mysqladmin -uroot -S$WORKD_PWD/$line/socket.sock ping > /dev/null 2>&1; then

@@ -66,7 +66,7 @@ gdb -q ${MYSQLD} ${LATEST_CORE} >/tmp/${RANDF}.gdb1 2>&1 << EOF
   set print address off
   set print symbol-filename off
   set print symbol off
-  set filename-display basename 
+  set filename-display basename
   set print array off
   set print array-indexes off
   set print elements 1

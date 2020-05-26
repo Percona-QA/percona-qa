@@ -15,7 +15,7 @@ if [ ! -r bin/mysqld ]; then
   exit 1
 fi
 
-if [ ! -r ./all_no_cl ]; then 
+if [ ! -r ./all_no_cl ]; then
   echo "Assert: ./all_no_cl not available, please run this from a basedir which was prepared with ${SCRIPT_PWD}/startup.sh"
   exit 1
 fi
@@ -154,10 +154,10 @@ if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
       if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" != "#" ]; then  # If true, then this is not a previously fixed bugs. If false (i.e. leading char is "#") then this is a previouly fixed bug remarked with a leading '#' in the known bugs file.
         # Do NOT change the text in the next echo line, it is used by mariadb-qa/move_known.sh
         echo "FOUND: This is an already known, and not fixed yet, bug!"
-        echo "${FINDBUG}" 
+        echo "${FINDBUG}"
       else
         echo "*** FOUND: This is an already known bug, but it was previously fixed! Research further! ***"
-        echo "${FINDBUG}" 
+        echo "${FINDBUG}"
       fi
     else
       echo "NOT FOUND: Bug not found yet in known_bugs.strings!"

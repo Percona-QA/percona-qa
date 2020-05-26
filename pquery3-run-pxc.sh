@@ -52,12 +52,12 @@ if [ ${USE_GENERATOR_INSTEAD_OF_INFILE} -ne 1 -a ! -r ${INFILE} ]; then
   exit 1
 fi
 
-#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2)
 normalize_version(){
   local major=0
   local minor=0
   local patch=0
-  
+ 
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -68,12 +68,12 @@ normalize_version(){
   printf %02d%02d%02d $major $minor $patch
 }
 
-#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2)
 check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
-  
+ 
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -520,7 +520,7 @@ pxc_startup(){
   $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n3.cnf \
     $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
   pxc_startup_status 3
-  
+ 
   if [ "$IS_STARTUP" != "startup" ]; then
     echo "RUNDIR=$RUNDIR"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "WORKDIR=$WORKDIR"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
@@ -536,14 +536,14 @@ pxc_startup(){
     echo "    fi" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "  done" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery 
+    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${RUNDIR}/${TRIAL}/node1/node1.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
 	echo "startup_check ${RUNDIR}/${TRIAL}/node1/node1_socket.sock" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n2.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node2/node2.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
 	echo "startup_check ${RUNDIR}/${TRIAL}/node2/node2_socket.sock" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n3.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node3/node3.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
 	echo "startup_check ${RUNDIR}/${TRIAL}/node3/node3_socket.sock" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery 
+    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery

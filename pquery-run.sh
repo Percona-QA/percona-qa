@@ -498,7 +498,7 @@ pxc_startup() {
               removetrial
               sleep 1800
               echoit "Slept 0.5h, resuming pquery-run.sh run..."
-            else  
+            else 
               savetrial
               echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
               exit 1
@@ -699,8 +699,8 @@ gr_startup() {
           echoit "Found 'Could not open mysql.plugin' in error log, likely OOS on ${RUNDIR} or in /tmp or root (/). Removing trial to maximize space, and pausing 0.5 hour before trying again (reducer's may be running and consuming space)"
           removetrial
           sleep 1800
-          echoit "Slept 0.5h, resuming pquery-run.sh run..." 
-        else  
+          echoit "Slept 0.5h, resuming pquery-run.sh run..."
+        else 
           savetrial
           echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
           exit 1
@@ -1079,8 +1079,8 @@ pquery_test() {
                 echoit "Found 'Could not open mysql.plugin' in error log, likely OOS on ${RUNDIR} or in /tmp or root (/). Removing trial to maximize space, and pausing 0.5 hour before trying again (reducer's may be running and consuming space)"
                 removetrial
                 sleep 1800
-                echoit "Slept 0.5h, resuming pquery-run.sh run..." 
-              else  
+                echoit "Slept 0.5h, resuming pquery-run.sh run..."
+              else 
                 savetrial
                 echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
                 exit 1
@@ -1876,7 +1876,7 @@ pquery_test() {
               echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"
               ALREADY_KNOWN=$[ ${ALREADY_KNOWN} + 1]
               TRIAL_TO_SAVE=0
-            else 
+            else
               NEWBUGS=$[ ${NEWBUGS} + 1 ]
               echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings, or found but marked as already fixed)"
             fi

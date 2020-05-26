@@ -56,12 +56,12 @@ if [ -z ${TCOUNT} ]; then
   TCOUNT=10
 fi
 
-#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2)
 normalize_version(){
   local major=0
   local minor=0
   local patch=0
-  
+ 
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -72,12 +72,12 @@ normalize_version(){
   printf %02d%02d%02d $major $minor $patch
 }
 
-#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2)
 check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
-  
+ 
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -181,7 +181,7 @@ fi
 
 declare MYSQL_VERSION=$(${PS_LOWER_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 #mysql install db check
-if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
   LOWER_MID="${PS_LOWER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_LOWER_BASEDIR}"
 else
   LOWER_MID="${PS_LOWER_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_LOWER_BASEDIR}"
@@ -189,7 +189,7 @@ fi
 
 declare MYSQL_VERSION=$(${PS_UPPER_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 #mysql install db check
-if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
   UPPER_MID="${PS_UPPER_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_UPPER_BASEDIR}"
 else
   UPPER_MID="${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${PS_UPPER_BASEDIR}"
@@ -231,7 +231,7 @@ for X in $(seq 0 ${PS_START_TIMEOUT}); do
     exit 1
     fi
 done
-	  
+	 
 echoit "Sysbench Run: Prepare stage"
 sysbench_run innodb test
 $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
@@ -251,7 +251,7 @@ create_emp_db employee_2 innodb employees_partitioned.sql
 echoit "Loading employees database with myisam engine.."
 create_emp_db employee_3 myisam employees.sql
 
-if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
   echoit "Loading employees partitioned database with myisam engine.."
   create_emp_db employee_4 myisam employees_partitioned.sql
 fi
@@ -275,8 +275,8 @@ if [ -r ${PS_UPPER_BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
 
     echoit "Loading employees database with tokudb engine for upgrade testing.."
     create_emp_db employee_5 tokudb employees.sql
-  
-    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+ 
+    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
       echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
       create_emp_db employee_6 tokudb employees_partitioned.sql
     fi
@@ -296,7 +296,7 @@ if [ -r ${PS_UPPER_BASEDIR}/lib/mysql/plugin/ha_rocksdb.so ]; then
     sysbench_run rocksdb rocksdb_test
     $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_rocksdb_prepare.txt
 
-    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then 
+    if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
       echoit "Creating rocksdb partitioned tables"
       for i in `seq 1 10`; do
         ${PS_LOWER_BASEDIR}/bin/mysql -uroot --socket=$WORKDIR/ps_lower.sock -e "create table rocksdb_test.tbl_range${i} (id int auto_increment,str varchar(32),year_col int, primary key(id,year_col)) PARTITION BY RANGE (year_col) ( PARTITION p0 VALUES LESS THAN (1991), PARTITION p1 VALUES LESS THAN (1995),PARTITION p2 VALUES LESS THAN (2000))" 2>&1
@@ -556,7 +556,7 @@ function rpl_test(){
 
   $PS_LOWER_BASEDIR/bin/mysqladmin  --socket=$WORKDIR/ps_master.sock -u root shutdown
 
-  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_UPPER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 & 
+  ${PS_UPPER_BASEDIR}/bin/mysqld --defaults-file=$WORKDIR/ps_master.cnf --basedir=${PS_UPPER_BASEDIR} > $WORKDIR/logs/ps_master.err 2>&1 &
   #${PS_UPPER_BASEDIR}/bin/mysqld --no-defaults --basedir=${PS_UPPER_BASEDIR}  --datadir=$ps_master_datadir  --port=$PORT_MASTER --innodb_file_per_table --default-storage-engine=InnoDB --binlog-format=ROW --log-bin=mysql-bin --server-id=101 --gtid-mode=ON  --log-slave-updates --enforce-gtid-consistency --innodb_flush_method=O_DIRECT --core-file --secure-file-priv= --skip-name-resolve --log-error=$WORKDIR/logs/ps_master.err --socket=$WORKDIR/ps_master.sock --log-output=none > $WORKDIR/logs/ps_master.err 2>&1 &
 
   startup_check $WORKDIR/ps_master.sock

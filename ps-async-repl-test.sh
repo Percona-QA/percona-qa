@@ -126,12 +126,12 @@ do
   esac
 done
 
-#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2)
 normalize_version(){
   local major=0
   local minor=0
   local patch=0
-  
+ 
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -142,12 +142,12 @@ normalize_version(){
   printf %02d%02d%02d $major $minor $patch
 }
 
-#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2)
 check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
-  
+ 
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -285,7 +285,7 @@ function check_xb_dir(){
   PXBBASE="$ROOT_FS/$PXBBASE"
   popd
 }
-  
+ 
 #Check sysbench
 if [[ ! -e `which sysbench` ]];then
   echoit "Sysbench not found"
@@ -319,7 +319,7 @@ sysbench_run(){
 
 declare MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe ' Ver [0-9]\.[0-9][\.0-9]*'|sed 's/ Ver //')
 #mysql install db check
-if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 else
   if [[ -z $ENCRYPTION ]]; then
@@ -662,13 +662,13 @@ function async_rpl_test(){
     else
       if [[ "$KEYRING_PLUGIN" == "file" ]]; then
         ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
-        
+       
         echoit "Prepare xtrabackup"	
         ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin > $WORKDIR/logs/xb_prepare_backup.log 2>&1
-        
+       
       elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
         ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault_ps.cnf --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
-        
+       
         echoit "Prepare xtrabackup"	
         ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault_ps.cnf > $WORKDIR/logs/xb_prepare_backup.log 2>&1
       fi
@@ -1185,7 +1185,7 @@ function async_rpl_test(){
   	  elif [[ "$i" == "master_master_test" ]]; then
   	    master_master_test
   	  elif [[ "$i" == "msr_test" ]]; then
-        if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+        if check_for_version $MYSQL_VERSION "5.7.0" ; then
           msr_test
         fi
       elif [[ "$i" == "mtr_test" ]]; then
@@ -1200,7 +1200,7 @@ function async_rpl_test(){
     master_slave_test
     master_multi_slave_test
     master_master_test
-    if check_for_version $MYSQL_VERSION "5.7.0" ; then 
+    if check_for_version $MYSQL_VERSION "5.7.0" ; then
       msr_test
     fi
     mtr_test
@@ -1208,7 +1208,7 @@ function async_rpl_test(){
       mgr_test
     fi
 	  xb_master_slave_test
-  fi  
+  fi 
 }
 
 async_rpl_test

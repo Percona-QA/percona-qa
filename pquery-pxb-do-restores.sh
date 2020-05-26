@@ -17,11 +17,11 @@ if [ ! -d "${PXB_BASEDIR}" ]; then
 fi
 
 while read line ; do
-  if [[ -d $WORKD_PWD/$line/xb_full ]]; then 
+  if [[ -d $WORKD_PWD/$line/xb_full ]]; then
     rm -rf $WORKD_PWD/$line/data_bkp
     mv $WORKD_PWD/$line/data $WORKD_PWD/$line/data_bkp
     ${PXB_BASEDIR}/bin/xtrabackup --copy-back --target-dir=$WORKD_PWD/$line/xb_full --datadir=$WORKD_PWD/$line/data --lock-ddl > $WORKD_PWD/$line/copy_backup.log 2>&1
-    $line/start_recovery  
+    $line/start_recovery 
     for X in $(seq 0 60); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S$WORKD_PWD/$line/socket.sock ping > /dev/null 2>&1; then
@@ -36,10 +36,10 @@ while read line ; do
       fi
     done
   else
-    echo "TRIAL [$WORKD_PWD/$line] Skipped restore : backup is not prepared properly" 
+    echo "TRIAL [$WORKD_PWD/$line] Skipped restore : backup is not prepared properly"
     if grep -qi 'error:' $WORKD_PWD/$line/backup.log; then
       echo "Following error found in backup log"
 	  grep -i 'error:' $WORKD_PWD/$line/backup.log
     fi
-  fi 
+  fi
 done < <(grep -B2  'Backup completed' ./pquery-run.log | grep "log stored in" | cut -d'/' -f5)

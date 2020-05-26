@@ -75,12 +75,12 @@ do
   esac
 done
 
-#Format version string (thanks to wsrep_sst_xtrabackup-v2) 
+#Format version string (thanks to wsrep_sst_xtrabackup-v2)
 normalize_version(){
   local major=0
   local minor=0
   local patch=0
-  
+ 
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -91,12 +91,12 @@ normalize_version(){
   printf %02d%02d%02d $major $minor $patch
 }
 
-#Version comparison script (thanks to wsrep_sst_xtrabackup-v2) 
+#Version comparison script (thanks to wsrep_sst_xtrabackup-v2)
 check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
-  
+ 
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -165,7 +165,7 @@ if [ ! -z $PROXYSQL_TAR ];then
     echo "ERROR! Could not find ProxySQL directory. Terminating"
     exit 1
   else
-    export PATH="$ROOT_FS/$PROXYSQL_BASE/usr/bin:$PATH" 
+    export PATH="$ROOT_FS/$PROXYSQL_BASE/usr/bin:$PATH"
   fi
 else
   PROXYSQL_BASE=`ls -1td proxysql-1* 2>/dev/null | grep -v ".tar" | head -n1`
@@ -241,10 +241,10 @@ function sysbench_insert_run(){
   $SBENCH $SYSBENCH_OPTIONS --mysql-user=$USER --mysql-password=test --mysql-port=6033 --mysql-host=127.0.0.1 run  > $WORKDIR/logs/sysbench_insert.log 2>&1
   check_cmd $? "Failed to execute sysbench insert run"
 }
- 
+
 MYSQL_VERSION=$(${PS_BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 #mysql install db check
-if ! check_for_version $MYSQL_VERSION "5.7.0" ; then 
+if ! check_for_version $MYSQL_VERSION "5.7.0" ; then
   MID="${PS_BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${PS_BASEDIR}"
 else
   MID="${PS_BASEDIR}/bin/mysqld --no-defaults --initialize-insecure  --basedir=${PS_BASEDIR}"
@@ -315,7 +315,7 @@ function ps_start(){
         exit 1
         fi
     done
-    
+   
   done
 }
 
@@ -336,12 +336,12 @@ function proxysql_start(){
     ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps${i}.sock -e"create user monitor@'%' identified with mysql_native_password by 'monitor';create user testuser_W@'%' identified with mysql_native_password by 'test';grant all on *.* to testuser_W@'%';create user testuser_R@'%' identified with mysql_native_password by 'test';grant all on *.* to testuser_R@'%';create user testuser_RW@'%' identified with mysql_native_password by 'test';grant all on *.* to testuser_RW@'%';"
   done
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
-  
+ 
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_users (username,password,active,default_hostgroup,default_schema) values ('testuser_W','test',1,$READ_HG,'sbtest_db');"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_users (username,password,active,default_hostgroup,default_schema) values ('testuser_R','test',1,$WRITE_HG,'sbtest_db');"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_users (username,password,active,default_hostgroup,default_schema) values ('testuser_RW','test',1,$RW_HG,'sbtest_db');"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
-  
+ 
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_query_rules (username,destination_hostgroup,active,flagIN,retries,match_digest,apply) values('testuser_RW',$RW_HG,1,100,3,'^INSERT ',1);"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_query_rules (username,destination_hostgroup,active,flagIN,retries,match_digest,apply) values('testuser_RW',$RW_HG,1,100,3,'^UPDATE ',1);"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_query_rules (username,destination_hostgroup,active,flagIN,retries,match_digest,apply) values('testuser_RW',$RW_HG,1,100,3,'^DELETE ',1);"
@@ -359,7 +359,7 @@ function proxysql_qa(){
   echoit "PS server initialization"
   ps_start 3
   proxysql_start 3
-  
+ 
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
@@ -374,13 +374,13 @@ function proxysql_qa(){
   sysbench_insert_run sbtest_db "testuser_W"
   sysbench_insert_run sbtest_db "testuser_W"
   sysbench_insert_run sbtest_db "testuser_W"
-  
+ 
   sysbench_rw_run sbtest_db "testuser_RW"
   sysbench_rw_run sbtest_db "testuser_RW"
   sysbench_rw_run sbtest_db "testuser_RW"
-  
+ 
   sleep 5
-  
+ 
   $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
   $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown

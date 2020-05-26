@@ -47,7 +47,7 @@ if [ ! -d "${BASEDIR}" ]; then echo "Assert! Basedir ($BASEDIR) does not exist o
 if [ ! -d "${WORKDIR}" ]; then echo "Assert! Workdir ($WORKDIR) does not exist or is not a directory!"; exit 1; fi
 if [ ! -d "${COPYDIR}" ]; then echo "Assert! Copydir ($COPYDIR) does not exist or is not a directory!"; exit 1; fi
 
-# Clear current status 
+# Clear current status
 rm -f /tmp/pqr_status.cnt
 echo "0" > /tmp/pqr_status.cnt
 
@@ -55,12 +55,12 @@ echo "0" > /tmp/pqr_status.cnt
 RANDOM=`date +%s%N | cut -b14-19`;
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(........\).*/\1/')   # Create random dir/file nr, 8 digits
 COPYDIR=$(echo "${COPYDIR}/${RANDOMD}")
-if [ -d ${COPYDIR} ]; then 
+if [ -d ${COPYDIR} ]; then
   echo "Assert: the COPYDIR ($COPYDIR) already exists! This may have been an (unlikely) random-match. Please retry running script."
   exit 1
 fi
 mkdir $COPYDIR
-if [ ! -d ${COPYDIR} ]; then 
+if [ ! -d ${COPYDIR} ]; then
   echo "Assert: trying to create the COPYDIR random directory ($COPYDIR) failed (and it did not exist before this script tried to create it)."
   exit 1
 fi

@@ -190,7 +190,7 @@ else
       # c++: error: unrecognized command line option ‘-fsanitize-coverage=trace-pc-guard’; did you mean ‘-fsanitize-coverage=trace-pc’?
       # Is seen when using gcc (i.e. USE_CLANG=0) + USE_SAN=1. Quick hack that needs more research.
       # Also ref https://clang.llvm.org/docs/SanitizerCoverage.html which has '-guard' but uses CLANG (hence the current change)
-      if [ $USE_CLANG -eq 1 ]; then 
+      if [ $USE_CLANG -eq 1 ]; then
         FLAGS='-DCMAKE_CXX_FLAGS=-fsanitize-coverage=trace-pc-guard'
       else
         # This was disabled also due to the following errors:

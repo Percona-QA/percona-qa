@@ -25,12 +25,12 @@ elif [ "`echo ${TRIAL} | sed 's|[0-9]*||'`" != "" ]; then
 elif [ -d ./${TRIAL} ]; then
   # Delete trial directory
   if [[ $PXC -eq 1 ]];then
-    # TODO: add '[ERROR] Aborting' provision (ref below) x3 (one for each node) 
+    # TODO: add '[ERROR] Aborting' provision (ref below) x3 (one for each node)
     rm -Rf ./${TRIAL_DIR} > /dev/null 2>&1
   else
     #if grep -qi "ERROR. Aborting" $ERROR_LOG; then
     #  if grep -qi "TCP.IP port.*Address already in use" $ERROR_LOG; then
-        
+       
     rm -Rf ./${TRIAL} > /dev/null 2>&1
   fi
 else

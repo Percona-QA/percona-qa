@@ -15,7 +15,7 @@ MYEXTRA="--plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-lo
 EARLYCOPY=0  # Make a copy to the COPYDIR before starting reducer. Not strictly required, but handy if your machine may power off and you were using /dev/shm as WORKDIR
 
 # Internal variables: Do not change!
-RANDOM=`date +%s%N | cut -b14-19`; 
+RANDOM=`date +%s%N | cut -b14-19`;
 RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(.......\).*/\1/')  # Create random dir nr | 7 digits to separate it from other runs
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')   # Create random dir/file nr
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
@@ -23,7 +23,7 @@ RUN_DONE=0
 
 echoit(){
   echo "[$(date +'%T')] === $1"
-  if [ "${WORKDIR}" != "" ]; then 
+  if [ "${WORKDIR}" != "" ]; then
     if [ ${RUN_DONE} -ne 1 ]; then
       echo "[$(date +'%T')] === $1" >> ${PQUERY_REACH_LOG}
     else
@@ -187,7 +187,7 @@ while true; do
           # Early copy time
           if [ ${EARLYCOPY} -eq 1 ]; then
             echoit "Preliminary copy of the work directory (${WORKDIR}) to the copy directory (${COPYDIR}) for safety..."
-            cp -a ${WORKDIR} ${COPYDIR} 
+            cp -a ${WORKDIR} ${COPYDIR}
           fi
           echoit "=================================================================================================================="
           ${PQR_WORKDIR}/reducer1.sh | tee -a ${PQUERY_REACH_LOG}
@@ -205,7 +205,7 @@ while true; do
             echoit "Copying the work directory (${WORKDIR}) to the copy directory (${COPYDIR})..."
           fi
           COPY_RESULT=0
-          cp -af ${WORKDIR} ${COPYDIR} 
+          cp -af ${WORKDIR} ${COPYDIR}
           if [ $? -eq 0 ]; then
             COPY_RESULT=1
             echoit "Removing work directory (${WORKDIR})..."

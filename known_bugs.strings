@@ -6,6 +6,7 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|do_handle_one_connection                                                                                          ## DBG MDEV-22663
 
 ###### CURRENT BUGS ######
+SIGSEGV|radixsort_for_str_ptr|Filesort_buffer::sort_buffer|SORT_INFO::sort_buffer|write_keys                                                                                    ## OPT MDEV-22715
 (*select_ref)->is_fixed()|SIGABRT|resolve_ref_in_select_and_group|Item_ref::fix_fields|Item_field::fix_fields|Item::fix_fields_if_needed                                        ## DBG MDEV-22713
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_client_binlog_statement|mysql_execute_command                         ## DBG MDEV-22712
 nr != 0|SIGABRT|handler::update_auto_increment|ha_partition::write_row|handler::ha_write_row|write_record                                                                       ## DBG MDEV-22711
@@ -140,7 +141,8 @@ SIGSEGV|heap_rnext|ha_heap::index_next|handler::index_next_same|handler::ha_inde
 subq_pred->engine->engine_type() == subselect_engine::SINGLE_SELECT_ENGINE|SIGABRT|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner|JOIN::optimize  ## DBG |MDEV-22700*
 SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner                                                                ## OPT |MDEV-22700*
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|copy_fields|end_write                                                                                  ## DBG MDEV-22702*
-part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## MDEV-21027
+part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
+index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                 ## OPT MDEV-22714*
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written. In progress: MDEV-22258                                ## Fixed ## DBG MDEV-22501

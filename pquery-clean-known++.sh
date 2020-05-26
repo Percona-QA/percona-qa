@@ -18,7 +18,7 @@ ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely 'Server has gone away' 200x d
 ${SCRIPT_PWD}/pquery-results.sh | grep "Handlerton. error == 0" | grep -o "reducers.*[^)]" | \
  sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 
-# Delete all 'TRIALS TO CHECK MANUALLY' trials which do not have an associated core file in their data directories 
+# Delete all 'TRIALS TO CHECK MANUALLY' trials which do not have an associated core file in their data directories
 for i in $(${SCRIPT_PWD}/pquery-results.sh | grep "TRIALS.*MANUALLY" | grep -o "reducers.*[^)]" | sed 's|reducers ||;s|,|\n|g'); do
   if [ `ls $i/data/*core* 2>/dev/null | wc -l` -lt 1 ]; then
     ${SCRIPT_PWD}/pquery-del-trial.sh $i

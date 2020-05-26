@@ -73,7 +73,7 @@ sudo yum install kernel-devel wget patch make cmake automake autoconf bzr git ht
      yum-utils readline-devel lshw lscpu iotop pymongo bats lzma lzma bzip2-devel snappy-dev \
      boost-devel lz4-devel gflags-devel xz jemalloc jemalloc-devel jemalloc-debuginfo libssh \
      fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev valgrind \
-     python-mysqldb mdm clang libasan5 clang-format 
+     python-mysqldb mdm clang libasan5 clang-format
 
 sudo yum remove abrt  # abrt: see redhat solution 61536 linked below in core file section (otherwise core_pattern setting will not work)
 sudo yum remove pulseaudio*  # Only do this on servers, to avoid writing of pulse* files into /dev/shm. Best to leave on workstations (for audio)
@@ -189,10 +189,10 @@ fi
 if [ "$(grep -m1 '* hard stack 20480' /etc/security/limits.conf)" != '* hard stack 20480' ]; then
   sudo sh -c 'echo "* hard stack 20480" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* soft nproc 300000' /etc/security/limits.conf)" != '* soft nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. 
+if [ "$(grep -m1 '* soft nproc 300000' /etc/security/limits.conf)" != '* soft nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative.
   sudo sh -c 'echo "* soft nproc 300000" >> /etc/security/limits.conf'
 fi
-if [ "$(grep -m1 '* hard nproc 300000' /etc/security/limits.conf)" != '* hard nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative. 
+if [ "$(grep -m1 '* hard nproc 300000' /etc/security/limits.conf)" != '* hard nproc 300000' ]; then  # Previously; 1048576. May cause system hangs on Centos7? Was then reduced to 20480. Readjusted to 300000 as it seems that (in Bionic) the number of processes allowed accross various opened shells is cumulative.
   sudo sh -c 'echo "* hard nproc 300000" >> /etc/security/limits.conf'
 fi
 #if [ "$(grep -m1 '* soft memlock 128' /etc/security/limits.conf)" != '* soft memlock 128' ]; then  # May cause system hangs on Centos7?

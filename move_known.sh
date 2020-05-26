@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
@@ -22,7 +22,7 @@ COUNT=$(wc -l /tmp/tmpdups.list 2>/dev/null | sed 's| .*||')
 
 if [ ${COUNT} -gt 0 ]; then
   LINE=0
-  while true; do 
+  while true; do
     LINE=$[ ${LINE} + 1 ]
     if [ ${LINE} -gt ${COUNT} ]; then break; fi
     SCAN="$(head -n${LINE} /tmp/tmpdups.list | tail -n1)"

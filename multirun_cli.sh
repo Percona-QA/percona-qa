@@ -2,8 +2,8 @@
 # Created by Roel Van de Paar, Percona LLC
 
 RND_DELAY_FUNCTION=0     # If set to 1, insert random delays after starting a new repetition in a thread. This may help to decrease locking issues.
-RND_REPLAY_ORDER=1       # If set to 1, the tool will shuffle the input SQL in various ways 
-REPORT_END_THREAD=0      # If set to 1, report the outcome of ended threads (slows things down considerably) 
+RND_REPLAY_ORDER=1       # If set to 1, the tool will shuffle the input SQL in various ways
+REPORT_END_THREAD=0      # If set to 1, report the outcome of ended threads (slows things down considerably)
 
 if [ "" == "$5" ]; then
   echo "This script expects exactly 5 options. Execute as follows:"
