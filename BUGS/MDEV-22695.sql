@@ -1,0 +1,3 @@
+CREATE TABLE t1 (a VARCHAR(128), b VARCHAR(32), KEY(a) USING BTREE, KEY(b) USING BTREE) ENGINE=HEAP;
+INSERT INTO t1 VALUES ('foo',NULL),('m','b'),(6,'j'),('bar','qux'),(NULL,NULL);
+DELETE FROM t1 WHERE a <=> 'm' OR b <=> NULL;

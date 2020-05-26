@@ -6,6 +6,7 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|do_handle_one_connection                                                                                          ## DBG MDEV-22663
 
 ###### CURRENT BUGS ######
+llabs(next_free_value % real_increment) == offset|SIGABRT|sequence_definition::adjust_values|sequence_definition::check_and_adjust|MYSQLparse|parse_sql                         ## DBG MDEV-22705
 fixed == 0|SIGABRT|Item_func::fix_fields|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                             ## DBG MDEV-22662
 time_type == MYSQL_TIMESTAMP_DATETIME|SIGABRT|Datetime::is_valid_datetime_slow|Datetime::is_valid_value_slow|Datetime::Datetime|Item::val_datetime_packed                       ## DBG MDEV-22661
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_execute_command|mysql_parse                                           ## DBG MDEV-22654
@@ -122,6 +123,15 @@ SIGSEGV|myrocks::Rdb_drop_index_thread::run|myrocks::Rdb_thread::thread_func|sta
 marked_for_read()|SIGABRT|Field_blob::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                                                         ## DBG ~MDEV-22551*
 SIGSEGV|traverse_role_graph_impl|traverse_role_graph_up|propagate_role_grants|mysql_grant                                                                                       ## OPT MDEV-22521*
 SIGSEGV|is_versioning_timestamp|Vers_parse_info::check_sys_fields|Table_scope_and_contents_source_st::vers_check_system_fields|Table_scope_and_contents_source_st::check_fields ## OPT MDEV-22660*
+offset < table->s->reclength|SIGABRT|dump_leaf_key|Item_func_group_concat::add|Item_func_group_concat::add|Aggregator_simple::add
+bitmap_is_set(&(m_part_info->read_partitions), m_last_part)|SIGABRT|ha_partition::position|multi_delete::send_data|select_result_sink::send_data_with_check|end_send            ## DBG MDEV-22667*
+offset < table->s->reclength|SIGABRT|dump_leaf_key|Item_func_group_concat::add|Item_func_group_concat::add|Aggregator_simple::add                                               ## DBG MDEV-22675*
+result != FTS_INVALID|SIGABRT|ut_dbg_assertion_failed|fts_trx_row_get_new_state|fts_trx_table_add_op|fts_trx_add_op                                                             ## OPT MDEV-22676*
+SIGSEGV|ha_partition::open|handler::ha_open|ha_heap::clone|ha_partition::open                                                                                                   ## OPT MDEV-22677*
+SIGSEGV|heap_rnext|ha_heap::index_next|handler::index_next_same|handler::ha_index_next_same                                                                                     ## DBG MDEV-22695*
+subq_pred->engine->engine_type() == subselect_engine::SINGLE_SELECT_ENGINE|SIGABRT|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner|JOIN::optimize  ## DBG |MDEV-22700*
+SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner                                                                ## OPT |MDEV-22700*
+!field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|copy_fields|end_write                                                                                  ## DBG MDEV-22702*
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written. In progress: MDEV-22258                                ## Fixed ## DBG MDEV-22501

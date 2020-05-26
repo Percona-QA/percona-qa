@@ -1,0 +1,2 @@
+#!/bin/bash
+ls -l |grep "$(date | awk '{print $2" "$3}')" | sed 's|.* ||' | grep -v '[^0-9]'

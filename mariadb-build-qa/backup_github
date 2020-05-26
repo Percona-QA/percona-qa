@@ -44,6 +44,7 @@ cp loop_screens ${TARGET}
 cp loop_screens_ge ${TARGET}
 cp monitor_run ${TARGET}
 cp monitor_runs ${TARGET}
+cp todaysruns ${TARGET}
 
 cd ${TARGET}
 git add *

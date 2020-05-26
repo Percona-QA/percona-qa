@@ -44,7 +44,6 @@ cp mcl ${TARGET}
 cp mo ${TARGET}
 cp ms ${TARGET}
 cp multi_sr ${TARGET}
-cp my ${TARGET}
 cp myver ${TARGET}
 cp newbug ${TARGET}
 cp o ${TARGET}
