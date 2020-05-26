@@ -67,7 +67,6 @@ xid_seqno > wsrep_seqno|SIGABRT|trx_rseg_update_wsrep_checkpoint|trx_rseg_update
 0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_int_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_int|Item_func_hybrid_field_type::val_int              ## DBG |MDEV-22268
 length == Field_timef::pack_length()|SIGABRT|Field_timef::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                       ## DBG MDEV-22267
 m_status == DA_ERROR|SIGABRT|Diagnostics_area::sql_errno|fill_schema_table_by_open|get_all_tables|get_schema_tables_result                                                      ## DBG MDEV-22266
-os_thread_count <= srv_max_n_threads|SIGABRT|ut_dbg_assertion_failed|os_thread_create_func|fil_crypt_set_thread_cnt|innodb_encryption_threads_update                            ## DBG |MDEV-22258
 id|SIGABRT|trx_write_trx_id|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                                              ## DBG |MDEV-22257
 trx_id > 0 || (flags & BTR_KEEP_SYS_FLAG)|SIGABRT|btr_cur_optimistic_update|row_upd_clust_rec|row_upd_clust_step|row_upd                                                        ## DBG |MDEV-22257
 length == pack_length()|SIGABRT|Field_inet6::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                                    ## DBG |MDEV-22256
@@ -153,6 +152,7 @@ index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_pl
 # SIGSEGV|copy_fields|Item_func_group_concat::add|Frame_cursor::add_value_to_items|Frame_cursor::add_value_to_items                                                    ## Fixed ## OPT |MDEV-22318     
 # SIGSEGV|__libc_message|__GI___fortify_fail_abort|__stack_chk_fail|net_send_ok                                                                                        ## Fixed ## OPT |MDEV-22337
 # Alloced_length >= (str_length + length + net_length_size(length))|SIGABRT|Binary_string::q_net_store_data|User_variables_tracker::store|Session_tracker::store|net_send_ok  ## Fixed ## OPT |MDEV-22337
+# os_thread_count <= srv_max_n_threads|SIGABRT|ut_dbg_assertion_failed|os_thread_create_func|fil_crypt_set_thread_cnt|innodb_encryption_threads_update                 ## Fixed ## DBG MDEV-22258
 # !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                     ## Fixed ## DBG MDEV-22062
 # !table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables           ## Fixed ## DBG MDEV-22237
 # !is_owned()|SIGABRT|MutexDebug<TTASEventMutex<BlockMutexPolicy> >::enter|PolicyMutex<TTASEventMutex<BlockMutexPolicy> >::enter|buf_LRU_free_page|innodb_buffer_pool_evict_uncompressed  ## Fixed ## DBG MDEV-22114

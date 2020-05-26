@@ -13,7 +13,8 @@ while true; do
   if [ ${COUNT} -ge 30 ]; then
     sync
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"  # Cleanup cache, may help avoid OOM
-    ~/mariadb-qa/tmpfs_clean.sh 1
+    ~/mariadb-qa/tmpfs_clean.sh 1 &
+    rm -Rf /tmp/* &
     COUNT=0
   fi
 done

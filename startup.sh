@@ -7,13 +7,6 @@ BUILD=$(pwd | sed 's|^.*/||')
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 ADDR="127.0.0.1"
 
-if find . -name group_replication.so | grep -q . ; then
-  GRP_RPL=1
-else
-  echo "Warning! Group Replication plugin not found. Skipping Group Replication startup"
-  GRP_RPL=0
-fi
-
 JE1="if [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
 JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
 JE3=" elif [ -r /usr/local/lib/libjemalloc.so ]; then export LD_PRELOAD=/usr/local/lib/libjemalloc.so"
@@ -40,7 +33,7 @@ fi
 BIN=
 if [ -r ${PWD}/bin/mysqld-debug ]; then BIN="${PWD}/bin/mysqld-debug"; fi  # Needs to come first so it's overwritten in next line if both exist
 if [ -r ${PWD}/bin/mysqld ]; then BIN="${PWD}/bin/mysqld"; fi
-if [ -z "${BIN}" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; fi
+if [ -z "${BIN}" ]; then echo "Assert: no mysqld or mysqld-debug binary was found!"; exit 1; fi
 MID=
 if [ -r ${PWD}/scripts/mysql_install_db ]; then MID="${PWD}/scripts/mysql_install_db"; fi
 if [ -r ${PWD}/bin/mysql_install_db ]; then MID="${PWD}/bin/mysql_install_db"; fi
@@ -74,6 +67,14 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
   echo "=========================================================================================="
   echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld, or simply because this directory is not a proper MySQL[-fork] base directory. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may and will likely fail."
   echo "=========================================================================================="
+fi
+
+# Check GR
+if find . -name group_replication.so | grep -q . ; then
+  GRP_RPL=1
+else
+  echo "Warning! Group Replication plugin not found. Skipping Group Replication startup"
+  GRP_RPL=0
 fi
 
 # Setup scritps
