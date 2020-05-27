@@ -80,3 +80,19 @@ INSERT INTO t1 VALUES(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0);
 INSERT INTO t1 SELECT * FROM t1;
 SELECT * FROM t1 ORDER BY c1,c2;
 
+set sort_buffer_size=20971;
+SET max_sort_length=4;
+CREATE TEMPORARY TABLE t1(c1 DECIMAL(65) UNSIGNED ,c2 DECIMAL(10,0) UNSIGNED,c3 DECIMAL(1))ENGINE=MEMORY;
+INSERT INTO t1 SELECT 0, 0, 0 from seq_1_to_10000;
+SELECT * FROM t1 ORDER BY c1,c2;
+
+SET @start_global_value =@@global.low_priority_updates;
+SET @@global.sort_buffer_size =@start_global_value;
+SET SESSION sort_buffer_size =DEFAULT;
+SET @@SESSION.max_sort_length=0;
+USE test;
+CREATE TEMPORARY TABLE t1(c1 NUMERIC(65)UNSIGNED ZEROFILL,c2 DECIMAL(0,0) UNSIGNED,c3 NUMERIC(1)) ENGINE=MEMORY;
+INSERT INTO t1 VALUES(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0);
+INSERT INTO t1 VALUES(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0);
+INSERT INTO t1 SELECT * FROM t1;
+SELECT * FROM t1 ORDER BY c1,c2;
