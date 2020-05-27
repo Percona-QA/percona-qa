@@ -12,7 +12,7 @@ fi
 
 # Startup all server fresh (clean data dir) (as background processes; end handling done by ./all_all)
 ./all_all ${MYEXTRA_OPT}
-rm -f MD*/data.PREV MS*/data.PREV  # Cleanup old data dirs for clean runs (defensive coding)
+rm -Rf MD*/data.PREV MS*/data.PREV  # Cleanup old data dirs for clean runs (defensive coding)
 
 # Copy in.sql to all instances
 ./copy_in.sql_all

@@ -1,5 +1,5 @@
 #!/bin/bash
 echo "WARNING: This script will delete: */data */data.PREV"
 read -p "Press enter to continue, or CTRL+C to abort."
-sleep 1
-rm -Rf */data */data.PREV
+sleep 2
+rm -Rf MD*/data MD*/data.PREV MS*/data MS*/data.PREV
