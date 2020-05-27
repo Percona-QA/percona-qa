@@ -398,6 +398,9 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|somebug|${2}|' ./reducerlocal.sh
   sed -i 's|^\(MYEXTRA="[^"]\+\)"|\1 ${3}"|' ./reducerlocal.sh
   sed -i 's|^MODE=4|MODE=3|' ./reducerlocal.sh
+  sed -i 's|^FORCE_SKIPV=0|FORCE_SKIPV=1|' ./reducerlocal.sh
+  sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducerlocal.sh
+  sed -i 's|^STAGE1_LINES=[^#]\+|STAGE1_LINES=10   |' ./reducerlocal.sh
   sed -i 's|^TEXT_STRING_LOC=[^#]\+|TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"   |' ./reducerlocal.sh
 fi
 
