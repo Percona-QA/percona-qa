@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Likely incorrect git status for these files (if any) which should not exist (FIXED file present):"
+ls --color=never FIXED_MDEV* | sed 's|FIXED_||' | xargs -I{} ls {} 2>/dev/null

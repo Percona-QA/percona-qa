@@ -41,7 +41,6 @@ SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|Sys_var_multi_source_ulonglo
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|mysql_load                                                              ## DBG |MDEV-22500
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                              ## DBG |MDEV-22500
 (uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock  # DBG MDEV-22499
-SIGSEGV|_my_b_write|my_b_write|my_b_safe_write|Log_event_writer::write_internal                                                                                                 ## OPT MDEV-22451
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_lock|MDL_context::release_lock                                                                  ## OPT |MDEV-22448
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock  ## OPT |MDEV-22448
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|THD::cleanup|unlink_thd                                                                      ## OPT |MDEV-22448
@@ -52,7 +51,6 @@ SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_write
 SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::causal_read                                                             ## OPT MDEV-22443
 cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connection|THD::free_connection|unlink_thd                                                               ## DBG MDEV-22420
 templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc  ## DBG MDEV-22395
-0|SIGABRT|Item_type_holder::val_str|Item_func_conv_charset::Item_func_conv_charset|Item::safe_charset_converter|Type_std_attributes::agg_item_set_converter                     ## DBG MDEV-22391
 m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                           ## OPT MDEV-22390
 0|SIGABRT|stored_field_cmp_to_item|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator                                     ## DBG MDEV-22385
 SIGSEGV|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command|mysql_parse                                                                                        ## DBG MDEV-22381
@@ -147,18 +145,20 @@ index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_pl
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written. In progress: MDEV-22258                                ## Fixed ## DBG MDEV-22501
 # SIGSEGV|mtr_t::set_named_space|dict_index_t::set_modified|innobase_instant_try|commit_try_norebuild                                                                  ## Fixed ## OPT MDEV-22446
 # SIGSEGV|Bitmap<64u>::merge|add_key_field|add_key_equal_fields|Item_bool_func2::add_key_fields_optimize_op                                                            ## Fixed ## OPT MDEV-22498
+# SIGSEGV|_my_b_write|my_b_write|my_b_safe_write|Log_event_writer::write_internal                                                                                      ## Fixed ## OPT MDEV-22451
+# 0|SIGABRT|Item_type_holder::val_str|Item_func_conv_charset::Item_func_conv_charset|Item::safe_charset_converter|Type_std_attributes::agg_item_set_converter          ## Fixed ## DBG MDEV-22391
+# SIGSEGV|__libc_message|__GI___fortify_fail_abort|__stack_chk_fail|net_send_ok                                                                                        ## Fixed ## OPT |MDEV-22337
+# Alloced_length >= (str_length + length + net_length_size(length))|SIGABRT|Binary_string::q_net_store_data|User_variables_tracker::store|Session_tracker::store|net_send_ok  ## Fixed ## OPT |MDEV-22337
 # SIGSEGV|copy_fields|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add                                                                     ## Fixed ## OPT |MDEV-22318
 # SIGSEGV|copy_fields|Item_func_group_concat::add|Item_func_json_arrayagg::add|Frame_cursor::add_value_to_items                                                        ## Fixed ## OPT |MDEV-22318
 # SIGSEGV|copy_fields|Item_func_group_concat::add|Frame_cursor::add_value_to_items|Frame_cursor::add_value_to_items                                                    ## Fixed ## OPT |MDEV-22318     
-# SIGSEGV|__libc_message|__GI___fortify_fail_abort|__stack_chk_fail|net_send_ok                                                                                        ## Fixed ## OPT |MDEV-22337
-# Alloced_length >= (str_length + length + net_length_size(length))|SIGABRT|Binary_string::q_net_store_data|User_variables_tracker::store|Session_tracker::store|net_send_ok  ## Fixed ## OPT |MDEV-22337
 # os_thread_count <= srv_max_n_threads|SIGABRT|ut_dbg_assertion_failed|os_thread_create_func|fil_crypt_set_thread_cnt|innodb_encryption_threads_update                 ## Fixed ## DBG MDEV-22258
-# !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                     ## Fixed ## DBG MDEV-22062
 # !table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables           ## Fixed ## DBG MDEV-22237
-# !is_owned()|SIGABRT|MutexDebug<TTASEventMutex<BlockMutexPolicy> >::enter|PolicyMutex<TTASEventMutex<BlockMutexPolicy> >::enter|buf_LRU_free_page|innodb_buffer_pool_evict_uncompressed  ## Fixed ## DBG MDEV-22114
 # SIGFPE|dict_index_add_to_cache|dict_create_index_step|que_thr_step|que_run_threads_low                                                                               ## Fixed ## DBG MDEV-22115
+# !is_owned()|SIGABRT|MutexDebug<TTASEventMutex<BlockMutexPolicy> >::enter|PolicyMutex<TTASEventMutex<BlockMutexPolicy> >::enter|buf_LRU_free_page|innodb_buffer_pool_evict_uncompressed  ## Fixed ## DBG MDEV-22114
 # field_nr < share->fields|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock                                ## Fixed ## DBG |MDEV-22111
 # SIGSEGV|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock                                                         ## Fixed ## OPT |MDEV-22111
+# !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                     ## Fixed ## DBG MDEV-22062
 # !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_create_table_like::execute|mysql_execute_command         ## Fixed ## DBG MDEV-22002
 # SIGSEGV|row_make_new_pathname|row_rename_table_for_mysql|innobase_rename_table|ha_innobase::rename_table                                                             ## Fixed ## OPT MDEV-21983
 # args[0]->type_handler()->mysql_timestamp_type() == MYSQL_TIMESTAMP_DATETIME|SIGABRT|Item_func_round::date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_get_date|Type_handler::Item_func_hybrid_field_type_get_date_with_warn|Item_func_hybrid_field_type::get_date  ## Fixed ## MDEV-20984
