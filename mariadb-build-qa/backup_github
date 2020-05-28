@@ -28,6 +28,9 @@ cp stop_all ${TARGET}
 cp start_all ${TARGET}
 cp startup_all ${TARGET}
 cp all_all ${TARGET}
+cp sge_all ${TARGET}
+cp clean_all ${TARGET}
+cp multi_sr_all ${TARGET}
 cp dbg ${TARGET}
 cp opt ${TARGET}
 cp test_all ${TARGET}
@@ -46,6 +49,7 @@ cp loop_screens_pr ${TARGET}
 cp monitor_run ${TARGET}
 cp monitor_runs ${TARGET}
 cp todaysruns ${TARGET}
+cp symlinks ${TARGET}
 
 cd ${TARGET}
 git add *

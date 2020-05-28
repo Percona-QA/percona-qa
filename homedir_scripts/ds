@@ -15,18 +15,15 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT1}/10 ${COUNT2}/200 ${COUNT3}/2000"
+  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/2000"
   sleep 2
   if [ ${COUNT1} -ge 10 ]; then
-    sync
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM
     sync
     COUNT1=0
   fi
-  if [ ${COUNT2} -ge 200 ]; then
-    rm -Rf /tmp/* >/dev/null 2>&1 &
+  if [ ${COUNT2} -ge 60 ]; then
     ~/mariadb-qa/tmpfs_clean.sh 1 >/dev/null &
-    sync
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"  # Cleanup cache, may help avoid OOM
     sync
     COUNT2=0

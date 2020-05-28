@@ -1,0 +1,6 @@
+ln -s /test/clean_all /data/clean_all 
+ln -s /test/monitor_run /data/monitor_run
+ln -s /test/monitor_runs /data/monitor_runs
+ln -s /test/multi_sr_all /data/multi_sr_all
+ln -s /test/sge_all /data/sge_all
+ln -s /test/todaysruns /data/todaysruns

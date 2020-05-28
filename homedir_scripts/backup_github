@@ -33,8 +33,10 @@ cp fc ${TARGET}
 cp fs ${TARGET}
 cp gomd ${TARGET}
 cp gomdQC ${TARGET}
+cp gomdASAN ${TARGET}
 cp ka ${TARGET}
 cp kb ${TARGET}
+cp kba ${TARGET}
 cp kbs ${TARGET}
 cp kill_reducers ${TARGET}
 cp kill_runs ${TARGET}

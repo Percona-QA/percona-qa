@@ -1,0 +1,2 @@
+sql/item.cc:2788:70: runtime error: member call on address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr    ## MDEV-22737
+sql/sql_select.cc:24493:22: runtime error: load of value 3200171710, which is not a valid value for type 'enum_parsing_place'                                                      ## MDEV-22738

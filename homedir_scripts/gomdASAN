@@ -1,0 +1,49 @@
+#!/bin/bash
+
+BASEDIR=/test/ASAN_MD280520-mariadb-10.5.4-linux-x86_64-dbg  # opt or dbg is fine, does not matter, but must be an ASAN build
+RUNSOPT=3
+RUNSDBG=3
+
+if [[ "${BASEDIR}" != *"ASAN"* ]]; then
+  echo "Not an ASAN build?"
+  exit 1
+fi
+
+TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
+for RUN in $(seq 1 ${TOTALRUNS}); do
+  rm -f /tmp/gomd_helper
+  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ~/mariadb-qa/pquery-run-MD105-ASAN.conf
+  if [ ${RUN} -le ${RUNSOPT} ]; then  # Opt runs
+    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|' ~/mariadb-qa/pquery-run-MD105-ASAN.conf
+  else  # Dbg runs
+    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg|' ~/mariadb-qa/pquery-run-MD105-ASAN.conf
+  fi
+  screen -admS pr${RUN} bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD105-ASAN.conf; bash"
+  while true; do
+    sleep 1
+    if [ -r /tmp/gomd_helper ]; then
+      sleep 0.3
+      DIR="$(cat /tmp/gomd_helper)"
+      rm -f /tmp/gomd_helper
+      if [ -d "${DIR}" ]; then
+        cd ${DIR}/..
+        DIREND="$(echo "${DIR}" | sed 's|.*/||')"
+        if [ ! -d ./${DIREND} ]; then
+          echo "Assert: ./${DIREND} should exist, based on directory passed by gomd_helper (${DIR})"
+          exit 1; break
+        else
+          if [ ! -r ~/sge ]; then 
+            echo "Assert: ~/sge not available! Cannot start pquery-go-expert!" 
+            exit 1; break
+          else
+            ~/sge ${DIREND}
+            TYPE="DBG"
+            if [ ${RUN} -le ${RUNSOPT} ]; then TYPE="OPT"; fi
+            echo "MD ${TYPE} Run ${RUN} started (Dir: ${DIR} Screen: pr${RUN}), and pquery-go-expert started for the same!"
+            break
+          fi
+        fi 
+      fi
+    fi
+  done
+done
