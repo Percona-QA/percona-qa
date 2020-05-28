@@ -586,6 +586,7 @@ if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   # With thanks, http://stackoverflow.com/a/26308092 from http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session
   if [ -z "$REDUCER_TYPESCRIPT" ]; then
     TYPESCRIPT_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+    # TODO: the following line does not work correctly when passing multiple variables to reducer (outside of the input file), or when such variables contain spaces. This is currenty only seen for the basedir local reducers as created by startup.sh, and is not a common issue otherwise. Workaround; just specify everything in the variables inside the script, without passing command line parameters.
     exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "REDUCER_TYPESCRIPT=1 TYPESCRIPT_UNIQUE_FILESUFFIX=${TYPESCRIPT_UNIQUE_FILESUFFIX} $0 $@"
   fi
 fi

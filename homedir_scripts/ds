@@ -1,8 +1,11 @@
-COUNT=0
+#!/bin/bash
+COUNT1=0
 COUNT2=0
+COUNT3=0
 while true; do 
-  COUNT=$[ ${COUNT} + 1 ]
+  COUNT1=$[ ${COUNT1} + 1 ]
   COUNT2=$[ ${COUNT2} + 1 ]
+  COUNT3=$[ ${COUNT3} + 1 ]
   clear
   df -h | head -n1
   df -h | grep -vE "/snap/|/run/|/cgroup|/efi|udev|/run" | sed '1d' | sort   # | grep -v "shm"
@@ -10,16 +13,25 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT}/30 ${COUNT2}/500"
-  sleep 2
-  if [ ${COUNT} -ge 30 ]; then
+  echo -n "${COUNT1}/60 ${COUNT2}/300 ${COUNT3}/1000"
+  sleep 1
+  if [ ${COUNT1} -ge 60 ]; then
     sync
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"  # Cleanup cache, may help avoid OOM
-    ~/mariadb-qa/tmpfs_clean.sh 1 >/dev/null &
-    COUNT=0
+    sync
+    COUNT1=0
   fi
-  if [ ${COUNT2} -ge 500 ]; then
+  if [ ${COUNT2} -ge 300 ]; then
     rm -Rf /tmp/* >/dev/null 2>&1 &
+    ~/mariadb-qa/tmpfs_clean.sh 1 >/dev/null &
+    sync
+    sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"  # Cleanup cache, may help avoid OOM
+    sync
     COUNT2=0
+  fi
+  if [ ${COUNT3} -ge 1000 ]; then
+    rm -Rf /tmp/* >/dev/null 2>&1 &
+    sync
+    COUNT3=0
   fi
 done
