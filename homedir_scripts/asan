@@ -1,0 +1,14 @@
+#!/bin/bash
+echo "{noformat}"
+echo "{noformat}"
+echo ""
+echo "Leads to:"
+~/myver
+echo ""
+echo "Setup:"
+echo "{noformat}"
+echo "Compiled with GCC >=7.5.0 and:"
+echo "    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF"
+echo "Set before execution:"
+echo "    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1"
+echo "{noformat}"

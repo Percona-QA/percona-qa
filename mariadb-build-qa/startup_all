@@ -8,7 +8,7 @@ if [ ! -r ~/mariadb-qa/startup.sh ]; then
   exit 1
 fi
 
-./gendirs.sh | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -P50 -I{} sh -c "{}"
+./gendirs.sh ALL | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -P50 -I{} sh -c "{}"
 
 sync
 

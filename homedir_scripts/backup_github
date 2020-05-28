@@ -78,6 +78,7 @@ cp tsm+ ${TARGET}
 cp tt ${TARGET}
 cp vi ${TARGET}
 cp drop_caches ${TARGET}
+cp asan ${TARGET}
 
 cd ${TARGET}
 git add *

@@ -1,2 +1,2 @@
 #!/bin/bash
-ls -l |grep "$(date | awk '{print $2" "$3}')" | sed 's|.* ||' | grep -v '[^0-9]' | xargs -I{} grep -Hom1 "^BASEDIR=[^ ]\+" {}/pquery-pquery-run-MD105.conf | sed "s|/pquery.*conf||;s|BASEDIR=|  |"
+ls -l |grep "$(date | awk '{print $2" "$3}')" | sed 's|.* ||' | grep -v '[^0-9]' | xargs -I{} grep -Hom1 "^BASEDIR=[^ ]\+" {}/pquery-pquery-run-MD105.conf {}/pquery-pquery-run-MD105-ASAN.conf 2>/dev/null | sed "s|/pquery.*conf||;s|BASEDIR=|  |"
