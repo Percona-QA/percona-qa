@@ -75,6 +75,7 @@ cp tsm ${TARGET}
 cp tsm+ ${TARGET}
 cp tt ${TARGET}
 cp vi ${TARGET}
+cp drop_caches ${TARGET}
 
 cd ${TARGET}
 git add *

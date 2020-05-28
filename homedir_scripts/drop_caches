@@ -1,0 +1,8 @@
+#!/bin/bash
+sudo sh -c "$(which echo) 4 > /proc/sys/vm/drop_caches"  # Disable bulk dmesg messages
+COUNT=0
+while true; do
+  COUNT=$[ ${COUNT} + 1 ]
+  echo -n "${COUNT}... "
+  sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"  # Cleanup cache, may help avoid OOM
+done

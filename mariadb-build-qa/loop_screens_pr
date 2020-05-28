@@ -1,11 +1,13 @@
 #!/bin/bash
 
-screen -d -r | grep "\.pr[0-9]\+" | sed 's|\..*||' | sed 's|[^0-9]||g' | sort -un > /tmp/screen_list_pr
+screen -d -r | grep "\.pr[0-9]\+" | sed 's|\..*||' | sed 's|[^0-9]||g' | sort -un > ~/screen_list_pr
 
-COUNT=$(wc -l /tmp/screen_list_pr 2>/dev/null | sed 's| .*||')
+COUNT=$(wc -l ~/screen_list_pr 2>/dev/null | sed 's| .*||')
 
 for SCREEN in $(seq 1 ${COUNT}); do
-  PID="$(head -n ${SCREEN} /tmp/screen_list_pr | tail -n1)"
+  PID="$(head -n ${SCREEN} ~/screen_list_pr | tail -n1)"
   echo "Connecting you to screen ${SCREEN}/${COUNT} with PID ${PID}"
   screen -d -r ${PID}
 done
+
+rm -f ~/screen_list_pr

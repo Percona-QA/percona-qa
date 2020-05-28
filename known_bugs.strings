@@ -6,6 +6,7 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|do_handle_one_connection                                                                                          ## DBG MDEV-22663
 
 ###### CURRENT BUGS ######
+mon > 0 && mon < 13|SIGABRT|sec_since_epoch|Time_zone_offset::TIME_to_gmt_sec|TIME_to_timestamp|Timestamp::Timestamp                                                            ## DBG MDEV-22734
 SIGFPE|Unique::get_cost_calc_buff_size|prepare_search_best_index_intersect|get_best_index_intersect|SQL_SELECT::test_quick_select                                               ## OPT MDEV-22728
 thd->transaction->stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG MDEV-22726
 0|SIGABRT|Type_handler_row::subquery_type_allows_materialization|cmp_row_types|Item_func_in::in_predicate_to_in_subs_transformer|Item_func::transform                           ## DBG MDEV-22716

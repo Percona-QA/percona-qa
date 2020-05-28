@@ -1,4 +1,6 @@
 #!/bin/bash
+if [ ! -r ~/sr ]; then echo "~/sr required! Please copy it from ~/mariadb-qa/homedir_scripts. Terminating."; exit 1; fi
+sudo sh -c "$(which echo) 4 > /proc/sys/vm/drop_caches"  # Disable bulk dmesg messages
 COUNT1=0
 COUNT2=0
 COUNT3=0
@@ -13,15 +15,15 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT1}/60 ${COUNT2}/300 ${COUNT3}/1000"
-  sleep 1
-  if [ ${COUNT1} -ge 60 ]; then
+  echo -n "${COUNT1}/10 ${COUNT2}/200 ${COUNT3}/2000"
+  sleep 2
+  if [ ${COUNT1} -ge 10 ]; then
     sync
-    sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches"  # Cleanup cache, may help avoid OOM
+    sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM
     sync
     COUNT1=0
   fi
-  if [ ${COUNT2} -ge 300 ]; then
+  if [ ${COUNT2} -ge 200 ]; then
     rm -Rf /tmp/* >/dev/null 2>&1 &
     ~/mariadb-qa/tmpfs_clean.sh 1 >/dev/null &
     sync
@@ -29,9 +31,36 @@ while true; do
     sync
     COUNT2=0
   fi
-  if [ ${COUNT3} -ge 1000 ]; then
+  if [ ${COUNT3} -ge 2000 ]; then
     rm -Rf /tmp/* >/dev/null 2>&1 &
     sync
     COUNT3=0
   fi
+  continue
+  # Check if any reducers are using >=10GB, terminate them and restart them on disk instead of tmpfs
+  rm -f ~/large_reducers
+  # Find /dev/shm assigned epoch subdirs >=10GB, count them and then loop through them 1-by-1
+  du -sh 1[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9] | grep "[0-9][0-9]G" | awk '{print $2}' > ~/large_reducers
+  COUNT=$(wc -l ~/large_reducers 2>/dev/null | sed 's| .*||')
+  for LINE in $(seq 1 ${COUNT}); do
+    EPOCH="$(head -n ${LINE} ~/large_reducers | tail -n1)"
+    # Find the reducer connected with the particular epoch /dev/shm subdir
+    REDUCER="$(grep -om1 ".Init. Reducer:.*" /dev/shm/${EPOCH}/reducer.log | sed 's|.*: ||')"
+    # Kill all processes related to the epoch /dev/shm subdir (excluding reducer itself)
+    ps -ef | grep ${EPOCH} | grep -v grep | awk '{print $2}' | xargs kill -9
+    # Change workdir to disk instead of tmpfs
+    sed -i "s|^WORKDIR_LOCATION=1|WORKDIR_LOCATION=3|" ${REDUCER}
+    sed -i "s|^WORKDIR_M3_DIRECTORY=.*|WORKDIR_M3_DIRECTORY=~/reducers|" ${REDUCER}
+    mkdir -p ~/reducers
+    if [ ! -d ~/reducers ]; then 
+      echo "Script attempted to create ~/reducers but somehow it failed. Terminating."
+      exit 1
+    fi
+    # Terminate reducer by reducing the corresponding screen (will also ensure all processes are gone)
+    ps -ef | grep "$(basename "${REDUCER}")" | grep -v grep | grep -i screen | awk '{print $2}' | xargs kill -9
+    # Restart reducer with new setting
+    # TODO: expand this script to check for presence of _out file to shorten time to reduced testcase. However, there is not real way to check if such an _out file was saved correctly. Use .prev perhaps if present
+    eval $(cd $(echo ${REDUCER} | sed 's|$(basename "${REDUCER}")||'); ~/sr $(echo "$(basename "${REDUCER}")" | sed 's|[^0-9]||g'))
+  done 
+  rm -f ~/large_reducers
 done

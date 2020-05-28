@@ -1482,7 +1482,7 @@ init_workdir_and_files(){
   mkdir $WORKD/data $WORKD/log $WORKD/tmp
   chmod -R 777 $WORKD
   touch $WORKD/reducer.log
-  echo_out "[Init] Reducer: $SCRIPT_PWD/$(basename "$0")"  # With thanks (basename), https://stackoverflow.com/a/192337/1208218
+  echo_out "[Init] Reducer: $(cd "`dirname $0`" && pwd)/$(basename "$0")"  # With thanks (basename), https://stackoverflow.com/a/192337/1208218
   echo_out "[Init] Workdir: $WORKD"
   export TMP=$WORKD/tmp
   if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then echo_out "[Init] Console typescript log for REDUCE_GLIBC_OR_SS_CRASHES: /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log"; fi
@@ -3782,8 +3782,8 @@ if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
     elif [ $TRIAL -eq 45 ]; then sed -e "s/'[^']\+'/'abcdefghijklm'/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 46 ]; then sed -e "s/'[^']\+'/'abcde'/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 47 ]; then sed -e "s/'[^']\+'/NULL/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 48 ]; then sed -e "s/'[^']\+'/'0'/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 49 ]; then sed -e "s/'[^']\+'/'a'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 48 ]; then sed -e "s/'[^']\+'/'a'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 49 ]; then sed -e "s/'[^']\+'/'0'/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 50 ]; then sed -e "s/'[^']\+'/''/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 51 ]; then sed -e "s/'[^']\+'/1/g" $WORKF > $WORKT
     elif [ $TRIAL -eq 52 ]; then sed -e "s/'[^']\+'/0/g" $WORKF > $WORKT
