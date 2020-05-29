@@ -21,27 +21,27 @@ if [ ! -r bin/mysqld ]; then
   exit 1
 fi
 
-if [ ! -r ./all_no_cl ]; then
+if [ ! -r ./all_no_cl ]; then  # Local
   echo "Assert: ./all_no_cl not available, please run this from a basedir which was prepared with ${SCRIPT_PWD}/startup.sh"
   exit 1
 fi
 
-if [ ! -r ../test_all ]; then
+if [ ! -r ../test_all ]; then  # Global
   echo "Assert: ../test_all not available - incorrect setup or structure"
   exit 1
 fi
 
-if [ ! -r ../kill_all ]; then
+if [ ! -r ../kill_all ]; then  # Global
   echo "Assert: ../kill_all not available - incorrect setup or structure"
   exit 1
 fi
 
-if [ ! -r ../gendirs.sh ]; then
+if [ ! -r ../gendirs.sh ]; then  # Global
   echo "Assert: ../gendirs.sh not available - incorrect setup or structure"
   exit 1
 fi
 
-if [ ! -r ./in.sql ]; then
+if [ ! -r ./in.sql ]; then  # Local
   echo "Assert: ./in.sql not available - incorrect setup or structure"
   exit 1
 fi
@@ -91,19 +91,33 @@ cp in.sql ..
 if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy attempt!"; exit 1; fi
 cd ..
 echo "Testing all..."
-./test_all ${MYEXTRA_OPT_CLEANED}
+if [ ${ASAN_MODE} -eq 0 ]; then
+  ./test_all ${MYEXTRA_OPT_CLEANED}
+else
+  ./test_all ASAN ${MYEXTRA_OPT_CLEANED}
+fi
 echo "Ensuring all servers are gone..."
-./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
+if [ ${ASAN_MODE} -eq 0 ]; then
+  ./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
+else
+  ./kill_all ASAN
+fi
 if [ -z "${TEXT}" ]; then
   echo "TEXT not set, scanning for corefiles..."
-  CORE_OR_TEXT_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+  if [ ${ASAN_MODE} -eq 0 ]; then
+    CORE_OR_TEXT_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+  else
+    echo "Assert: ASAN mode is enabled, but TEXT variable is not set!"
+    exit 1
+  fi
 else
   if [ ${ASAN_MODE} -eq 0 ]; then
     echo "TEXT set to '${TEXT}', searching error logs for the same"
+    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   else
     echo "TEXT set to '${TEXT}', searching error logs for the same (ASAN mode enabled)"
+    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh ASAN | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   fi
-  CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
 fi
 cd - >/dev/null || exit 1
 
