@@ -37,6 +37,7 @@ for CORE in $(find . | grep "core" | grep -v "mysql-test") ; do
     set print array on
     set print array-indexes on
     set print elements 4096
+    set print frame-arguments all
     set logging file gdb_${COREFILE}_FULL.txt
     set logging on
     thread apply all bt full

@@ -34,6 +34,7 @@ cp fs ${TARGET}
 cp gomd ${TARGET}
 cp gomdQC ${TARGET}
 cp gomdASAN ${TARGET}
+cp gomdMT ${TARGET}
 cp ka ${TARGET}
 cp kb ${TARGET}
 cp kba ${TARGET}

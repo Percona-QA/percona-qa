@@ -73,6 +73,7 @@ gdb ${BIN} ${CORE} >/dev/null 2>&1 <<EOF
   set print array on
   set print array-indexes on
   set print elements 4096
+  set print frame-arguments all
   set logging file gdb_bug${BUGNR}_${TIMEF}_FULL.txt
   set logging on
   thread apply all bt full

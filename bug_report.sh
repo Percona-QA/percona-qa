@@ -77,8 +77,13 @@ if [ ${ASAN_MODE} -eq 0 ]; then
     echo "Assert: too many (${CORE_COUNT}) cores found at data/*core*, this should not happen (as ./all_no_cl was used which should have created a clean data directory)"
     exit 1
   else
+    # set print array on
+    # set print array-indexes on
+    # set print elements 0
     gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdba 2>&1 << EOF
      set pagination off
+     set print pretty on
+     set print frame-arguments all
      bt
      quit
 EOF
