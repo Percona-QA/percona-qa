@@ -50,7 +50,9 @@ cp loop_screens_pr ${TARGET}
 cp monitor_run ${TARGET}
 cp monitor_runs ${TARGET}
 cp todaysruns ${TARGET}
-cp symlinks ${TARGET}
+cp allruns ${TARGET}
+cp scan_MYBUG ${TARGET}
+cp linkit ${TARGET}
 
 cd ${TARGET}
 git add *

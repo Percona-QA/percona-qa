@@ -2,18 +2,33 @@
 # Created by Roel Van de Paar, MariaDB
 
 if [ -z "${1}" ]; then
-  echo "This script expects one paramater; the bug to search for after testing of in.sql is complete"
+  echo "This script expects one paramater; the bug to search for after testing of in.sql is complete, OR the word 'ASAN' for *SAN runs with the environment variable TEXT pre-set."
   echo "It also expects that test_all was already executed"
   exit 1
+elif [ "${1}" == "ASAN" ]; then
+  if [ -z "${TEXT}" ]; then   # Passed normally by ~/b, bug_report.sh and test_all scripts
+    echo "Assert: TEXT is empty, use export TEXT= to set it!"
+    exit 1
+  fi
+  ASAN_MODE=1
 fi
 
 rm -f /tmp/pri.t /tmp/sec.t
 
 # Generate full list
-ls --color=never | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+if [ ${ASAN_MODE} -eq 1 ]; then
+  ls --color=never | grep "ASAN" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+else
+  ls --color=never | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+fi
 
 # Generate bug list
-./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
+if [ ${ASAN_MODE} -eq 1 ]; then
+  export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
+  ./findbug ASAN | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
+else
+  ./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
+fi
 
 # Output bug-present-in list
 echo "Bug confirmed present in:"

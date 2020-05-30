@@ -1,0 +1,3 @@
+#!/bin/bash
+set +H
+grep --binary-files=text -Fi "${1}" [0-9]*/[0-9]*/MYBUG

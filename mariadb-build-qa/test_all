@@ -1,7 +1,16 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+ASAN_MODE=0
 MYEXTRA_OPT="$*"
+if [ "${1}" == "ASAN" ]; then
+   if [ -z "${TEXT}" ]; then   # Passed normally by ~/b and bug_report.sh script
+    echo "Assert: TEXT is empty, use export TEXT= to set it!"
+    exit 1
+  fi
+  ASAN_MODE=1
+  MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||')"
+fi
 
 rm -f test.result
 
@@ -11,20 +20,37 @@ if [ ! -r ./in.sql ]; then
 fi
 
 # Startup all server fresh (clean data dir) (as background processes; end handling done by ./all_all)
-./all_all ${MYEXTRA_OPT}
+if [ ${ASAN_MODE} -eq 1 ]; then
+  ./all_all ASAN ${MYEXTRA_OPT}
+else
+  ./all_all ${MYEXTRA_OPT}
+fi
 rm -Rf MD*/data.PREV MS*/data.PREV  # Cleanup old data dirs for clean runs (defensive coding)
 
 # Copy in.sql to all instances
 ./copy_in.sql_all
 
 # Run the test and stop the servers
-./gendirs.sh | xargs -I{} echo "cd {}; ./test; rm -f {}/stopped.flag; ./stop; cd .." | xargs -P50 -I{} sh -c "{}"
+if [ ${ASAN_MODE} -eq 1 ]; then
+  ./gendirs.sh ASAN | xargs -I{} echo "cd {}; ./test; rm -f {}/stopped.flag; ./stop; cd .." | xargs -P50 -I{} sh -c "{}"
+else
+  ./gendirs.sh | xargs -I{} echo "cd {}; ./test; rm -f {}/stopped.flag; ./stop; cd .." | xargs -P50 -I{} sh -c "{}"
+fi
 
 # Ensure servers are gone
-./kill_all
+if [ ${ASAN_MODE} -eq 1 ]; then
+  ./kill_all ASAN
+else
+  ./kill_all
+fi
 
 sync
 
 # Output results and save copy of reasy bug reporting (mariadb-qa/bug_report.sh)
 # The 'signal' is a bit rudimentary, but it will locate all crashes in all distributions
-./findbug+ 'signal' | tee test.results
+if [ ${ASAN_MODE} -eq 1 ]; then
+  export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
+  ./findbug+ ASAN 'signal' | tee test.results
+else
+  ./findbug+ 'signal' | tee test.results
+fi

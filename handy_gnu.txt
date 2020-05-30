@@ -387,6 +387,8 @@ fuser -a /path_to/your_file
   http://wiki.bash-hackers.org/syntax/arrays
 # On using a named pipe
   http://stackoverflow.com/a/14893732
+# A search engine which does not ignore special characters, so you can search for code specific items
+  http://symbolhound.com/
 
 # ------ ~/.vimrc (copy and paste into file, sets mariadb-qa coding guidelines for vi) ------
 " tabstop:          Width of tab character

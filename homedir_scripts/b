@@ -3,11 +3,13 @@
 rm -f report.log
 if [ -r report.log ]; then echo "Assert: report.log still present though this script tried to delete it!"; exit 1; fi
 
+export TEXT=
+MYEXTRA_OPT="$*"
 if [ "${1}" == "ASAN" ]; then
-  sed -i "s|^TEXT=\"[^\"]\+\"|TEXT=\"${2}\"|" ~/mariadb-qa/bug_report.sh  # Ensure we're looking for a specific ASAN failure
-  ~/mariadb-qa/bug_report.sh ASAN | tee report.log
+  MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||')"
+  export TEXT="${2}"
+  ~/mariadb-qa/bug_report.sh ASAN "${MYEXTRA_OPT}" | tee report.log
 else
-  MYEXTRA_OPT="$*"
   sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Ensure we're looking for core files, not specific bugs for which bug_report.sh may have been updated
   ~/mariadb-qa/bug_report.sh "${MYEXTRA_OPT}" | tee report.log
   ~/tt | grep -A1 "URL"

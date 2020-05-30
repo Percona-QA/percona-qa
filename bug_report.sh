@@ -6,15 +6,27 @@
 #ps -ef | grep -v $$ | grep bug_report | grep -v grep | grep -v mass_bug_report | awk '{print $2}' | xargs kill -9 2>/dev/null
 
 ASAN_MODE=0
+MYEXTRA_OPT="$*"
 if [ "${1}" == "ASAN" ]; then
-  MYEXTRA_OPT=""
+  if [ -z "${TEXT}" ]; then   # Passed normally by ~/b preloader/wrapper sript
+    echo "Assert: TEXT is empty, use export TEXT= to set it!"
+    exit 1
+  else 
+    echo "NOTE: ASAN Mode: Looking for TEXT: ${TEXT} in the error log to valid issue existance."
+  fi
+  MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||')"
   ASAN_MODE=1
 else
-  MYEXTRA_OPT="$*"
+  if [ -z "${TEXT}" ]; then 
+    echo "NOTE: TEXT is empty, looking for corefiles and not specific strings in the error log!"
+    echo "If you want to scan for strings in the error log, use export TEXT= to set it before running this script"
+  else
+    echo "NOTE: Looking for TEXT: ${TEXT} in the error log to valid issue existance."
+  fi
 fi
+sleep 1
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 RUN_PWD=${PWD}
-TEXT=""  # Leave empty to look for corefiles, or set to look for a specific string in the error log instead
 
 if [ ! -r bin/mysqld ]; then
   echo "Assert: bin/mysqld not available, please run this from a basedir which had the SQL executed against it an crashed"
@@ -65,11 +77,11 @@ if [ "$(echo "${MYEXTRA_OPT_CLEANED}" | sed 's|[ \t]||g')" != "" ]; then
   sleep 0.2  # For visual confirmation
 fi
 
-./all_no_cl ${MYEXTRA_OPT_CLEANED}
-./test
-./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
-
 if [ ${ASAN_MODE} -eq 0 ]; then
+  ./all_no_cl ${MYEXTRA_OPT_CLEANED}
+  ./test
+  ./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
+
   CORE_COUNT=$(ls data/*core* 2>/dev/null | wc -l)
   if [ ${CORE_COUNT} -eq 0 ]; then
     echo "INFO: no cores found at data/*core*"
@@ -99,6 +111,7 @@ echo "Testing all..."
 if [ ${ASAN_MODE} -eq 0 ]; then
   ./test_all ${MYEXTRA_OPT_CLEANED}
 else
+  export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
   ./test_all ASAN ${MYEXTRA_OPT_CLEANED}
 fi
 echo "Ensuring all servers are gone..."

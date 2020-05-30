@@ -4,3 +4,5 @@ ln -s /test/monitor_runs /data/monitor_runs
 ln -s /test/multi_sr_all /data/multi_sr_all
 ln -s /test/sge_all /data/sge_all
 ln -s /test/todaysruns /data/todaysruns
+ln -s /test/allruns /data/allruns
+ln -s /test/scan_MYBUG /data/scan_MYBUG

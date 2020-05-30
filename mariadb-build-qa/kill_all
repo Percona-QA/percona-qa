@@ -3,6 +3,9 @@
 
 # The ./kill script ensures the correct PID is selected (via random PORT= assignment)
 
-./gendirs.sh | xargs -I{} echo "cd {}; if [ -r ./kill ]; then ./kill; else echo './kill did not exist for directory {} - please run ./startup_all or instead do cd {}; ~/mariadb-qa/startup.sh; cd -'; fi; cd .." | xargs -P50 -I{} sh -c "{}"
+ASAN=""
+if [ "${1}" == "ASAN" ]; then ASAN="ASAN"; fi
+set +H
+./gendirs.sh ${ASAN} | xargs -I{} echo "cd {}; if [ -r ./kill ]; then ./kill; else echo './kill did not exist for directory {} - please run ./startup_all or instead do cd {}; ~/mariadb-qa/startup.sh; cd -'; fi; cd .." | xargs -P50 -I{} sh -c "{}"
 
 sync
