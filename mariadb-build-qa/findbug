@@ -1,6 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+ASAN_MODE=0
 if [ -z "${1}" ]; then
   echo "This script expects a bug search string as input, OR the word 'ASAN' for *SAN runs with the environment variable TEXT pre-set."
   exit 1

@@ -1,4 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-./gendirs.sh | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
+if [ "${1}" == "ASAN" ]; then
+  ./gendirs.sh ASAN | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
+else
+  ./gendirs.sh | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
+fi

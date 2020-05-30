@@ -17,6 +17,7 @@ cp allbr ${TARGET}
 cp allbrs ${TARGET}
 cp b ${TARGET}
 cp backup_github ${TARGET}
+cp backup_all ${TARGET}
 cp c ${TARGET}
 cp cl ${TARGET}
 cp core ${TARGET}

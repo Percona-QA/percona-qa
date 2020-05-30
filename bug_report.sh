@@ -12,7 +12,7 @@ if [ "${1}" == "ASAN" ]; then
     echo "Assert: TEXT is empty, use export TEXT= to set it!"
     exit 1
   else 
-    echo "NOTE: ASAN Mode: Looking for TEXT: ${TEXT} in the error log to valid issue existance."
+    echo "NOTE: ASAN Mode: Looking for '${TEXT}' in the error log to validate issue occurence."
   fi
   MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||')"
   ASAN_MODE=1
@@ -21,7 +21,7 @@ else
     echo "NOTE: TEXT is empty, looking for corefiles and not specific strings in the error log!"
     echo "If you want to scan for strings in the error log, use export TEXT= to set it before running this script"
   else
-    echo "NOTE: Looking for TEXT: ${TEXT} in the error log to valid issue existance."
+    echo "NOTE: Looking for '${TEXT}' in the error log to validate issue occurence."
   fi
 fi
 sleep 1
@@ -168,8 +168,17 @@ if [ ${ASAN_MODE} -eq 0 ]; then
     NOCORE=1
     echo "THIS TESTCASE DID NOT CRASH ${SERVER_VERSION} (the version of the basedir in which you started this script), SO NO BACKTRACE IS SHOWN HERE. YOU CAN RE-EXECUTE THIS SCRIPT FROM ONE OF THE 'Bug confirmed present in' DIRECTORIES BELOW TO OBTAIN ONE, OR EXECUTE ./all_no_cl; ./test; ./gdb FROM WITHIN THAT DIRECTORY TO GET A BACKTRACE MANUALLY!"
   fi
-  echo -e '{noformat}\n'
+else
+  echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV}}"
+  grep "${TEXT}" ./log/master.err
 fi
+echo -e '{noformat}\n\n'
+echo '{noformat}'
+echo 'Compiled with GCC >=7.5.0 and:'
+echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
+echo 'Set before execution:'
+echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
+echo '{noformat}'
 if [ -z "${TEXT}" ]; then
   if [ -r ../test.results ]; then
     cat ../test.results
@@ -177,10 +186,22 @@ if [ -z "${TEXT}" ]; then
     echo "--------------------------------------------------------------------------------------------------------------"
     echo "ERROR: expected ../test.results to exist, but it did not. Running:  ./findbug+ 'signal'  though this may fail."
     echo "--------------------------------------------------------------------------------------------------------------"
-    cd ..; ./findbug+ 'signal'; cd -
+    cd ..; ./findbug+ 'signal'; cd - >/dev/null
   fi
 else
-  cd ..; ./findbug+ "${TEXT}"; cd -
+  if [ ${ASAN_MODE} -eq 1 ]; then
+    if [ -r ../test.results ]; then
+      cat ../test.results
+    else
+      echo "--------------------------------------------------------------------------------------------------------------"
+      echo "ERROR: expected ../test.results to exist, but it did not. Running:  ./findbug+ ASAN  with TEXT eportet, though this may fail."
+      echo "--------------------------------------------------------------------------------------------------------------"
+      export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
+      cd ..; ./findbug+ ASAN; cd - >/dev/null
+    fi
+  else
+    cd ..; ./findbug+ "${TEXT}"; cd - >/dev/null
+  fi
 fi
 echo '-------------------- /BUG REPORT --------------------'
 if [ ${ASAN_MODE} -eq 0 ]; then

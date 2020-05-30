@@ -28,7 +28,11 @@ fi
 rm -Rf MD*/data.PREV MS*/data.PREV  # Cleanup old data dirs for clean runs (defensive coding)
 
 # Copy in.sql to all instances
-./copy_in.sql_all
+if [ ${ASAN_MODE} -eq 1 ]; then
+  ./copy_in.sql_all ASAN
+else
+  ./copy_in.sql_all
+fi
 
 # Run the test and stop the servers
 if [ ${ASAN_MODE} -eq 1 ]; then
