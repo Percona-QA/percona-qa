@@ -6,7 +6,7 @@ if [ -r report.log ]; then echo "Assert: report.log still present though this sc
 export TEXT=
 MYEXTRA_OPT=
 if [ "${1}" == "ASAN" ]; then
-  export TEXT="${2}"
+  export TEXT="$(echo "${2}" | sed 's|[0-9]|0|g;s|[0:]\+|.*|')"
   # The following used statement has limitations, but the one on the next line did not work, likely due to sed limitations.
   # MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||;s|${TEXT}||')"
   MYEXTRA_OPT="$3 $4 $5 $6 $7 $8 $9"
