@@ -172,7 +172,7 @@ else
   echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV}}"
   grep "${TEXT}" ./log/master.err
 fi
-echo -e '{noformat}\n\n'
+echo -e '{noformat}\nSetup:\n'
 echo '{noformat}'
 echo 'Compiled with GCC >=7.5.0 and:'
 echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
