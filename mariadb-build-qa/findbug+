@@ -15,12 +15,13 @@ elif [ "${1}" == "ASAN" ]; then
 fi
 
 rm -f /tmp/pri.t /tmp/sec.t
+REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
 
 # Generate full list
 if [ ${ASAN_MODE} -eq 1 ]; then
-  ls --color=never | grep "ASAN" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+  ls --color=never | grep -vE "${REGEX_ECLUDE}" | grep "ASAN" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 else
-  ls --color=never | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+  ls --color=never | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 fi
 
 # Generate bug list

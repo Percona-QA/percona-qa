@@ -1,15 +1,21 @@
 #!/bin/bash
 COUNT=0
+clear
+echo "Generating inital list..."
 while true; do 
-  clear
-  ls */*/*_out | xargs wc -l | nl -nrz -w3 | grep -v "^$" | sed 's|^\(.............\)|\1/data/|;s|...\(.*\)total$|-->\1total|'
+  ls */*/*_out | xargs wc -l | nl -nrz -w3 | grep -v "^$" | sed 's|^\(.............\)|\1/data/|;s|...\(.*\)total$|-->\1total|' > /tmp/monitor_runs
+  if [ -r /tmp/monitor_runs ]; then
+    clear
+    cat /tmp/monitor_runs
+  fi
   echo -n "${COUNT}/12"
-  sleep 15
+  sleep 30
   COUNT=$[ ${COUNT} + 1]
-  if [ ${COUNT} -gt 12 ]; then # 3 minutes
+  if [ ${COUNT} -gt 6 ]; then # 5 minutes
     echo ""
     COUNT=0
     if [ -r ./clean_all ]; then
+      echo "Cleaning known bugs..."
       ./clean_all
     fi
   fi
