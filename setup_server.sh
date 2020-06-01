@@ -83,6 +83,20 @@ fi
 if [ "$(grep -m1 '^vm.swappiness=5' /etc/sysctl.conf)" != 'vm.swappiness=5' ]; then
   sudo sh -c 'echo "vm.swappiness=5" >> /etc/sysctl.conf'
 fi
+# Attemt to improve memory management for testing servers, with thanks:
+# https://superuser.com/a/1150229/457699
+# https://serverfault.com/a/142003/129146
+# https://sysctl-explorer.net/vm/oom_dump_tasks/
+# https://www.kernel.org/doc/Documentation/sysctl/vm.txt
+if [ "$(grep -m1 '^vm.overcommit_memory=1' /etc/sysctl.conf)" != 'vm.overcommit_memory=1' ]; then
+  sudo sh -c 'echo "vm.overcommit_memory=1" >> /etc/sysctl.conf'
+fi
+if [ "$(grep -m1 '^vm.oom_dump_tasks=0' /etc/sysctl.conf)" != 'vm.oom_dump_tasks=0' ]; then
+  sudo sh -c 'echo "vm.oom_dump_tasks=0" >> /etc/sysctl.conf'
+fi
+if [ "$(grep -m1 '^vm.panic_on_oom=0' /etc/sysctl.conf)" != 'vm.panic_on_oom=0' ]; then
+  sudo sh -c 'echo "vm.panic_on_oom=0" >> /etc/sysctl.conf'
+fi
 
 # Note that a high number (>20480) for soft+hard nproc may cause system instability/hang on Centos7
 sudo bash -c "cat << EOF > /etc/security/limits.conf

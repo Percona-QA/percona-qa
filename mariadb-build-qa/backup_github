@@ -53,6 +53,7 @@ cp todaysruns ${TARGET}
 cp allruns ${TARGET}
 cp scan_MYBUG ${TARGET}
 cp linkit ${TARGET}
+cp REGEX_EXCLUDE ${TARGET}
 
 cd ${TARGET}
 git add *

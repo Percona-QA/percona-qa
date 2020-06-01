@@ -172,13 +172,17 @@ else
   echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV}}"
   grep "${TEXT}" ./log/master.err
 fi
-echo -e '{noformat}\nSetup:\n'
-echo '{noformat}'
-echo 'Compiled with GCC >=7.5.0 and:'
-echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
-echo 'Set before execution:'
-echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
-echo '{noformat}'
+if [ ${ASAN_MODE} -eq 1 ]; then
+  echo -e '{noformat}\nSetup:\n'
+  echo '{noformat}'
+  echo 'Compiled with GCC >=7.5.0 and:'
+  echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
+  echo 'Set before execution:'
+  echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
+  echo '{noformat}'
+else
+  echo ''
+fi
 if [ -z "${TEXT}" ]; then
   if [ -r ../test.results ]; then
     cat ../test.results

@@ -5,7 +5,11 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysql_ha_read|mysql_execute_command                                                                                  ## DBG MDEV-20207*
 0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|do_handle_one_connection                                                                                          ## DBG MDEV-22663
 
+###### STACK SMASHING BUGS ######
+STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
+
 ###### CURRENT BUGS ######
+! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|my_message_sql                                        ## DBG MDEV-22768
 mon > 0 && mon < 13|SIGABRT|sec_since_epoch|Time_zone_offset::TIME_to_gmt_sec|TIME_to_timestamp|Timestamp::Timestamp                                                            ## DBG MDEV-22734
 SIGFPE|Unique::get_cost_calc_buff_size|prepare_search_best_index_intersect|get_best_index_intersect|SQL_SELECT::test_quick_select                                               ## OPT MDEV-22728
 thd->transaction->stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG MDEV-22726
@@ -19,6 +23,7 @@ nr != 0|SIGABRT|handler::update_auto_increment|ha_partition::write_row|handler::
 mode == 16 || mode == 12 || fix_block->page.status != buf_page_t::FREED|SIGABRT|buf_page_get_low|buf_page_get_gen|ibuf_remove_free_page|ibuf_free_excess_pages                  ## DBG MDEV-22710
 store.length() <= (256L*256L*256L-1)|SIGABRT|net_send_ok|Protocol::send_ok|Protocol::end_statement|dispatch_command                                                             ## DBG MDEV-22709
 !mysql_bin_log.is_open() || thd.is_current_stmt_binlog_format_row()|SIGABRT|Delayed_insert::handle_inserts|handle_delayed_insert|pfs_spawn_thread|start_thread                  ## DBG MDEV-22708
+!current|SIGABRT|PROFILING::start_new_query|dispatch_command|execute_init_command|handle_slave_sql                                                                              ## DBG MDEV-22706
 !current|SIGABRT|PROFILING::start_new_query|dispatch_command|execute_init_command|handle_slave_sql                                                                              ## DBG MDEV-22706
 llabs(next_free_value % real_increment) == offset|SIGABRT|sequence_definition::adjust_values|sequence_definition::check_and_adjust|MYSQLparse|parse_sql                         ## DBG MDEV-22705
 fixed == 0|SIGABRT|Item_func::fix_fields|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                             ## DBG MDEV-22662
@@ -157,7 +162,6 @@ index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_pl
 # !table->file->keyread_enabled()|SIGABRT|handler::ha_reset|THD::mark_tmp_table_as_free_for_reuse|THD::mark_tmp_tables_as_free_for_reuse|close_thread_tables           ## Fixed ## DBG MDEV-22237
 # SIGFPE|dict_index_add_to_cache|dict_create_index_step|que_thr_step|que_run_threads_low                                                                               ## Fixed ## DBG MDEV-22115
 # !is_owned()|SIGABRT|MutexDebug<TTASEventMutex<BlockMutexPolicy> >::enter|PolicyMutex<TTASEventMutex<BlockMutexPolicy> >::enter|buf_LRU_free_page|innodb_buffer_pool_evict_uncompressed  ## Fixed ## DBG MDEV-22114
-# field_nr < share->fields|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock                                ## Fixed ## DBG |MDEV-22111
 # SIGSEGV|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock                                                         ## Fixed ## OPT |MDEV-22111
 # !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                     ## Fixed ## DBG MDEV-22062
 # !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_create_table_like::execute|mysql_execute_command         ## Fixed ## DBG MDEV-22002
