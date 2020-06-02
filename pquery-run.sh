@@ -886,7 +886,7 @@ pquery_test() {
     fi
     if [ $(ls -l ${WORKDIR}/data.template/* | wc -l) -eq 0 ]; then
       echoit "Assert: ${WORKDIR}/data.template/ is empty? Check ${WORKDIR}/log/mysql_install_db.txt to see if the original template creation worked ok. Terminating."
-      echoit "Note that this can be caused by not having perl-Data-Dumper installed (sudo yum install perl-Data-Dumper), which is required for mysql_install_db."
+      echoit "Note that this can be caused by not having perl-Data-Dumper installed (sudo yum install perl-Data-Dumper  #OR#  sudo apt-get install libdata-dumper-simple-perl), which is required for mysql_install_db."
       exit 1
     elif [[ ${PQUERY3} -eq 1 && ${TRIAL} -gt 1 ]]; then
       cp -R ${WORKDIR}/$((${TRIAL} - 1))/data/* ${RUNDIR}/${TRIAL}/data 2>&1
@@ -2092,6 +2092,17 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE} || exit 1
   echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
+  if [ ! -r ${INIT_TOOL} ]; then  # TODO: This is a hack, improve it
+    ALT_INIT_TOOL="$(echo "${INIT_TOOL}" | sed 's|mariadb-install-db|mysql_install_db|')"
+    if [ -r ${ALT_INIT_TOOL} ]; then
+      echoit "Swapped ${INIT_TOOL} for ${ALT_INIT_TOOL}! (It's a hack, please improve this script to handle this version of MariaDB better)"
+      INIT_TOOL="${ALT_INIT_TOOL}"
+      ALT_INIT_TOOL=
+    else
+      echoit "Assert: neither ${INIT_TOOL} nor ${ALT_INIT_TOOL} were found/readable, please check. Terminating."
+      exit 1
+    fi
+  fi
   ${INIT_TOOL} ${INIT_OPT} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
   # Sysbench dataload
   diskspace

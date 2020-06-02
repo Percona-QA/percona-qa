@@ -1,8 +1,9 @@
 #!/bin/bash
 
-BASEDIR=/test/MD260520-mariadb-10.5.4-linux-x86_64-opt  # opt or dbg is fine, does not matter
-RUNSOPT=5
-RUNSDBG=5
+#BASEDIR=/test/MD300520-mariadb-10.5.4-linux-x86_64-dbg  # opt or dbg is fine, does not matter
+BASEDIR=/test/MD260520-mariadb-10.2.33-linux-x86_64-opt
+RUNSOPT=3
+RUNSDBG=3
 
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
 for RUN in $(seq 1 ${TOTALRUNS}); do

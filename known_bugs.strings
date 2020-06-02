@@ -9,6 +9,9 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+page_get_page_no(block->frame) == index->page|SIGABRT|btr_pcur_store_position|row_search_mvcc|ha_innobase::index_read|ha_innobase::index_first                                  ## DBG MDEV-22773
+SIGSEGV|fil_system_t::keyrotate_next|fil_crypt_find_space_to_rotate|fil_crypt_thread|start_thread                                                                               ## DBG MDEV-20399
+fields[i].same(instant.fields[i])|SIGABRT|dict_index_t::instant_add_field|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try             ## DBG MDEV-22771
 SIGABRT|ib::fatal::~fatal|sync_array_wait_event|TTASEventMutex<GenericPolicy>::enter|PolicyMutex<TTASEventMutex<GenericPolicy> >::enter                                         ## DBG MDEV-22770
 ! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|my_message_sql                                        ## DBG MDEV-22768
 mon > 0 && mon < 13|SIGABRT|sec_since_epoch|Time_zone_offset::TIME_to_gmt_sec|TIME_to_timestamp|Timestamp::Timestamp                                                            ## DBG MDEV-22734
@@ -33,7 +36,8 @@ time_type == MYSQL_TIMESTAMP_DATETIME|SIGABRT|Datetime::is_valid_datetime_slow|D
 level <= 50|SIGABRT|btr_page_set_level|PageBulk::init|BtrBulk::finish|row_merge_read_clustered_index                                                                            ## DBG MDEV-22653
 SIGSEGV|in_vector::find|Item_func_in::val_int|TABLE::verify_constraints|TABLE_LIST::view_check_option                                                                           ## DBG MDEV-22652
 dict_col_get_fixed_size(f.col, not_redundant()) <= 768|SIGABRT|dict_table_t::init_instant|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try  ## DBG MDEV-22651
-page_zip_verify_checksum(frame, bpage->zip_size())|SIGABRT|ut_dbg_assertion_failed|buf_flush_write_block_low|buf_flush_page|buf_flush_try_neighbors                             ## DBG MDEV-22650
+page_zip_verify_checksum(frame, bpage->zip_size())|SIGABRT|ut_dbg_assertion_failed|buf_flush_write_block_low|buf_flush_page|buf_flush_try_neighbors                             ## DBG |MDEV-22650
+page_zip_verify_checksum(frame, size)|SIGABRT|ut_dbg_assertion_failed|buf_flush_page|buf_flush_try_neighbors|buf_do_flush_list_batch                                            ## DBG |MDEV-22650
 SIGSEGV|ha_partition::create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute                                             ## OPT |MDEV-22649
 SIGSEGV|ha_partition::create_partitioning_metadata|handler::ha_create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table                                 ## OPT |MDEV-22649
 SIGSEGV|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add|init_sum_functions                                                                         ## OPT MDEV-22449/22640

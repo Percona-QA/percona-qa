@@ -18,8 +18,9 @@ if [ "${1}" == "ASAN" ]; then
   ASAN_MODE=1
 else
   if [ -z "${TEXT}" ]; then 
-    echo "NOTE: TEXT is empty, looking for corefiles and not specific strings in the error log!"
-    echo "If you want to scan for strings in the error log, use export TEXT= to set it before running this script"
+    echo "NOTE: TEXT is empty; looking for corefiles, and not specific strings in the error log!"
+    echo "If you want to scan for specific strings in the error log, then use:"
+    echo "  export TEXT='your_search_text'  # to set it before running this script"
   else
     echo "NOTE: Looking for '${TEXT}' in the error log to validate issue occurence."
   fi
