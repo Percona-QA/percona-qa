@@ -70,7 +70,6 @@ else
                           exit 1
                         fi
                       else
-echo ${SUBDIR}
                         AGESUBDIR=$(( $(date +%s) - $(stat -c %Z "${SUBDIR}") ))  # Current trial directory age in seconds
                         if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
                           echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
