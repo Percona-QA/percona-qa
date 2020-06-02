@@ -1,4 +1,4 @@
-1) watch "ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -16"
+1) watch -n1 "ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -16"
    > Find the PID of the process using excessive memory (top of list)
 2) ps -aux | grep ${PID}
    > Find the /dev/shm/... directory

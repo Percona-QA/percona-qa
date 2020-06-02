@@ -11,10 +11,14 @@ fi
 
 COUNT_FOUND_AND_DEL=0
 COUNT_FOUND_AND_NOT_DEL=0
-if [ $(ls -ld /dev/shm/* | wc -l) -eq 0 ]; then
+if [ $(ls --color=never -ld /dev/shm/* | wc -l) -eq 0 ]; then
   echo "> No /dev/shm/* directories found at all, it looks like tmpfs is empty. All good."
 else
-  for DIR in $(ls -ld /dev/shm/* | sed 's|^.*/dev/shm|/dev/shm|'); do
+  rm -f /tmp/tmpfs_clean_dirs
+  ls --color=never -ld /dev/shm/* | sed 's|^.*/dev/shm|/dev/shm|' >/tmp/tmpfs_clean_dirs 2>/dev/null
+  COUNT=$(wc -l /tmp/tmpfs_clean_dirs 2>/dev/null | sed 's| .*||')
+  for DIRCOUNTER in $(seq 1 ${COUNT}); do
+    DIR="$(head -n ${DIRCOUNTER} /tmp/tmpfs_clean_dirs | tail -n1)"
     STORE_COUNT_FOUND_AND_DEL=${COUNT_FOUND_AND_DEL}
     if [ -d ${DIR} ]; then  # Ensure it's a directory (avoids deleting pquery-reach.log for example)
       if [ $(ps -ef | grep -v grep | grep "${DIR}" | wc -l) -eq 0 ]; then
@@ -34,41 +38,45 @@ else
               else
                 DIRNAME=$(echo ${DIR} | sed 's|.*/||')
                 if [ "$(echo ${DIRNAME} | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9]||' | sed 's|[0-9][0-9][0-9][0-9][0-9][0-9][0-9]||')" == "" ]; then  # 6 or 7 Numbers subdir; this is likely a pquery-run.sh (6) or pquery-reach.sh (7) generated directory
-                  SUBDIRCOUNT=$(ls -d ${DIR} 2>/dev/null | wc -l)  # Number of trial subdirectories
+                  SUBDIRCOUNT=$(ls --color=never -dF ${DIR}/* 2>/dev/null | grep \/$ | sed 's|/$||' | wc -l)  # Number of trial subdirectories
                   if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
                     if [ $(ls ${DIR}/*pquery*reach* 2>/dev/null | wc -l) -gt 0 ]; then # A pquery-reach.sh directory
-                      PR_FILE_TO_CHECK=$(ls ${DIR}/*pquery*reach* 2>/dev/null | head -n1)  # Head -n1 is defensive, there should be only 1 file
-                      if [ -z ${PR_FILE_TO_CHECK} ]; then echo "Assert: \$PR_FILE_TO_CHECK empty"; exit 1; fi
-                      AGEFILE=$[ $(date +%s) - $(stat -c %Z ${PR_FILE_TO_CHECK}) ]  # File age in seconds
+                      PR_FILE_TO_CHECK=$(ls --color=never ${DIR}/*pquery*reach* 2>/dev/null | head -n1)  # Head -n1 is defensive, there should be only 1 file
+                      if [ -z ${PR_FILE_TO_CHECK} ]; then 
+                        echo "Assert: \$PR_FILE_TO_CHECK empty"
+                        exit 1
+                      fi
+                      AGEFILE=$(( $(date +%s) - $(stat -c %Z "${PR_FILE_TO_CHECK}")))  # File age in seconds 
                       if [ ${AGEFILE} -ge 1200 ]; then  # Delete pquery-reach.sh directories aged >=20 minutes
                         echo "Deleting pquery-reach.sh directory ${DIR} (pquery-reach log age: ${AGEFILE}s)"
                         COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
                         if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
                       fi
                     else
-                      SUBDIR=$(ls -d ${DIR}/* 2>/dev/null)
+                      SUBDIR=$(ls --color=never -dF ${DIR}/* 2>/dev/null | grep \/$ | sed 's|/$||')
                       for i in `seq 1 3`; do  # Try 3 times
                         if [ "${SUBDIR}" == "" ]; then  # Script may have caught a snapshot in-between pquery-run.sh trials
                           sync; sleep 3  # Delay (to provide pquery-run.sh (if running) time to generate new trial directory), then recheck
-                          SUBDIR=$(ls -d ${DIR}/* 2>/dev/null)
+                          SUBDIR=$(ls --color=never -dF ${DIR}/* 2>/dev/null | grep \/$ | sed 's|/$||')
                         else
                           break
                         fi
                       done
-		      if [ -z "${SUBDIR}" ]; then  # No subdir, if directory exists, then it is empty
+                      if [ -z "${SUBDIR}" ]; then  # No subdir, if directory exists, then it is empty
                         if [ -d ${DIR} ]; then
-    			  rmdir ${DIR}
-			else
-			  echo "Assert: script saw directory ${DIR} yet was unable to find any subdir in it, please check the contents of ls -la ${DIR} and improve script in this area."
-			  exit 1
-			fi
-		      else
-                        AGESUBDIR=$[ $(date +%s) - $(stat -c %Z ${SUBDIR}) ]  # Current trial directory age in seconds
+                          rmdir ${DIR}
+                        else
+                          echo "Assert: script saw directory ${DIR} yet was unable to find any subdir in it, please check the contents of ls -la ${DIR} and improve script in this area."
+                          exit 1
+                        fi
+                      else
+echo ${SUBDIR}
+                        AGESUBDIR=$(( $(date +%s) - $(stat -c %Z "${SUBDIR}") ))  # Current trial directory age in seconds
                         if [ ${AGESUBDIR} -ge 10800 ]; then  # Don't delete pquery-run.sh directories if they have recent trials in them (i.e. they are likely still running): >=3hr
                           echo "Deleting directory ${DIR} (trial subdirectory age: ${AGESUBDIR}s)"
                           COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
                           if [ ${ARMED} -eq 1 ]; then rm -Rf ${DIR}; fi
-			fi
+                        fi
                       fi
                     fi
                   else
@@ -101,3 +109,6 @@ else
 fi
 
 echo "> Done! /dev/shm available space is now: $(df -h | egrep "/dev/shm" | awk '{print $4}')"
+exit 0
+
+# With thanks, https://linoxide.com/linux-command/linux-commad-to-list-directories-directory-names-only/

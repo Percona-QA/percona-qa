@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-CHECKWARNINGS=0
+CHECKWARNINGS=1
 
 if [ -z "$(whereis shellcheck | awk '{print $2}')" ]; then
   sudo snap install shellcheck

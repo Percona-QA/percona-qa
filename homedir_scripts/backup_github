@@ -82,6 +82,7 @@ cp vi ${TARGET}
 cp drop_caches ${TARGET}
 cp asan ${TARGET}
 cp scanall ${TARGET}
+cp memory ${TARGET}
 
 cd ${TARGET}
 git add *

@@ -158,6 +158,8 @@
 # If you have made a process background (bg) (and not 'disown'ed it), or interrupted it with CTRL+z where, as an example, it will show you the background ID: [1], you can kill this particular background process, by using:
   kill %1  # Where 1 is the index of the background or interrupted process
 # Halt a process, move it to background, disown it (so that if you leave your shell session it will continue to execute in the background)
+# List subdirectories only, with thanks https://linoxide.com/linux-command/linux-commad-to-list-directories-directory-names-only/
+  ls --color=never -dF ${DIR}/* 2>/dev/null | grep \/$ | sed 's|/$||'  # Where DIR is the root/input
   Press CTRL+z on the running process, then type:  bg; disown
 
 # ------ Debugging ------
