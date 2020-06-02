@@ -1,0 +1,13 @@
+USE test;
+SET SQL_MODE='';
+SET @@GLOBAL.innodb_trx_rseg_n_slots_debug=1;
+CREATE TABLE t (b VARCHAR(10) NOT NULL UNIQUE) ENGINE=InnoDB;
+INSERT INTO t VALUES (12662),(54592);
+SET GLOBAL innodb_monitor_enable='buffer_flush_batches';
+INSERT INTO t VALUES (2822.75);
+CREATE TABLE t2(a INT NOT NULL PRIMARY KEY, b INT) ENGINE=InnoDB SELECT * FROM t LOCK IN SHARE MODE;
+INSERT INTO t VALUES (25215);
+CREATE TEMPORARY TABLE m(a INT) ENGINE=INNODB;
+SELECT SLEEP(5);
+SELECT SLEEP(5);
+# Then exit CLI, and shutdown using mysqladmin shutdown

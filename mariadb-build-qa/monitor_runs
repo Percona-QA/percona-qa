@@ -3,7 +3,7 @@ COUNT=0
 clear
 echo "Generating inital list..."
 while true; do 
-  ls */*/*_out | xargs wc -l | nl -nrz -w3 | grep -v "^$" | sed 's|^\(.............\)|\1/data/|;s|...\(.*\)total$|-->\1total|' > /tmp/monitor_runs
+  ls --color=never */*/*_out | grep -v "VARIOUS_BUILDS" | xargs wc -l | nl -nrz -w3 | grep -v "^$" | sed 's|^\(.............\)|\1/data/|;s|...\(.*\)total$|-->\1total|' > /tmp/monitor_runs
   if [ -r /tmp/monitor_runs ]; then
     clear
     cat /tmp/monitor_runs
@@ -16,7 +16,7 @@ while true; do
     COUNT=0
     if [ -r ./clean_all ]; then
       echo "Cleaning known bugs..."
-      ./clean_all
+      ./clean_all >/dev/null 2>&1
     fi
   fi
 done

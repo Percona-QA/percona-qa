@@ -181,7 +181,7 @@ if [ ${ASAN_MODE} -eq 1 ]; then
   echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
   echo '{noformat}'
 else
-  echo ''
+  echo -e '{noformat}\n'
 fi
 if [ -z "${TEXT}" ]; then
   if [ -r ../test.results ]; then

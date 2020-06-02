@@ -1,8 +1,12 @@
+#!/bin/bash
 ln -s /test/clean_all /data/clean_all 
 ln -s /test/monitor_run /data/monitor_run
 ln -s /test/monitor_runs /data/monitor_runs
 ln -s /test/multi_sr_all /data/multi_sr_all
 ln -s /test/sge_all /data/sge_all
+ln -s /test/kill_ge /data/kill_ge
+ln -s /test/kill_pr /data/kill_pr
 ln -s /test/todaysruns /data/todaysruns
 ln -s /test/allruns /data/allruns
 ln -s /test/scan_MYBUG /data/scan_MYBUG
+ln -s /test/find_deadlocks /data/find_deadlocks

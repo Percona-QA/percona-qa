@@ -1,0 +1,2 @@
+#!/bin/bash
+grep "Deadlock Detected" */*/log/master.err */log/master.err 2>/dev/null

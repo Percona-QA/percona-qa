@@ -25,6 +25,8 @@ cp findbug ${TARGET}
 cp findbug+ ${TARGET}
 cp gendirs.sh ${TARGET}
 cp kill_all ${TARGET}
+cp kill_ge ${TARGET}
+cp kill_pr ${TARGET}
 cp stop_all ${TARGET}
 cp start_all ${TARGET}
 cp startup_all ${TARGET}
@@ -54,6 +56,7 @@ cp allruns ${TARGET}
 cp scan_MYBUG ${TARGET}
 cp linkit ${TARGET}
 cp REGEX_EXCLUDE ${TARGET}
+cp find_deadlocks ${TARGET}
 
 cd ${TARGET}
 git add *

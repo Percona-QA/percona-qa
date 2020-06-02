@@ -1,0 +1,2 @@
+#!/bin/bash
+screen -d -r  | grep '\.pr[0-9]' | sed 's|\..*||' | xargs kill -9

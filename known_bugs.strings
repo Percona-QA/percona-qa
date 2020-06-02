@@ -9,6 +9,7 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGABRT|ib::fatal::~fatal|sync_array_wait_event|TTASEventMutex<GenericPolicy>::enter|PolicyMutex<TTASEventMutex<GenericPolicy> >::enter                                         ## DBG MDEV-22770
 ! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|my_message_sql                                        ## DBG MDEV-22768
 mon > 0 && mon < 13|SIGABRT|sec_since_epoch|Time_zone_offset::TIME_to_gmt_sec|TIME_to_timestamp|Timestamp::Timestamp                                                            ## DBG MDEV-22734
 SIGFPE|Unique::get_cost_calc_buff_size|prepare_search_best_index_intersect|get_best_index_intersect|SQL_SELECT::test_quick_select                                               ## OPT MDEV-22728

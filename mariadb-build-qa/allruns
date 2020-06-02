@@ -1,2 +1,2 @@
 #!/bin/bash
-grep -Hom1 "^BASEDIR=[^ ]\+" */pquery*.conf 2>/dev/null | sed 's|/pquery-pquery-run-|: |;s|:BASEDIR=|\t\t|'
+grep -Hom1 "^BASEDIR=[^ ]\+" */pquery*.conf 2>/dev/null | sed 's|/pquery-pquery-run-|: |;s|:BASEDIR=|\t\t|;s|\t\t|\t|g'

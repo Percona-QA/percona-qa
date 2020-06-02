@@ -83,7 +83,7 @@ fi
 if [ "$(grep -m1 '^vm.swappiness=5' /etc/sysctl.conf)" != 'vm.swappiness=5' ]; then
   sudo sh -c 'echo "vm.swappiness=5" >> /etc/sysctl.conf'
 fi
-# Attemt to improve memory management for testing servers, with thanks:
+# Attempt to improve memory management for testing servers, with thanks:
 # https://superuser.com/a/1150229/457699
 # https://serverfault.com/a/142003/129146
 # https://sysctl-explorer.net/vm/oom_dump_tasks/
