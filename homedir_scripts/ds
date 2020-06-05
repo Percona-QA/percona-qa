@@ -15,7 +15,7 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/2000"
+  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000"
   sleep 2
   if [ ${COUNT1} -ge 10 ]; then
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM
@@ -28,7 +28,7 @@ while true; do
     sync
     COUNT2=0
   fi
-  if [ ${COUNT3} -ge 2000 ]; then
+  if [ ${COUNT3} -ge 5000 ]; then
     rm -Rf /tmp/* >/dev/null 2>&1 &
     sync
     COUNT3=0

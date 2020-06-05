@@ -37,15 +37,21 @@ echo "----- Bug String  -----"
 echo "${TEXT}"
 
 echo "----- String Scan -----"
+FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
 OUT="$(grep -Fi --binary-files=text "${TEXT}" ~/mariadb-qa/known_bugs.strings)"
+OUT2="$(grep -Fi --binary-files=text "${FRAMEX}" ~/mariadb-qa/known_bugs.strings)"
 if [ -z "${OUT}" ]; then
-  echo "BUG NOT FOUND IN KNOWN BUGS LIST! POTENTIALLY NEW BUG; SEARCH FIRST:"
+  if [ -z "${OUT2}" ]; then 
+    echo "BUG NOT FOUND IN KNOWN BUGS LIST! POTENTIALLY NEW BUG; SEARCH FIRST:"
+  else 
+    echo "BUG NOT FOUND (IDENTICALLY) IN KNOWN BUGS LIST! HOWEVER, A PARTIAL MATCH BASED ON THE 1st FRAME ('${FRAMEX}') WAS FOUND, AS FOLLOWS: (PLEASE CHECK IT IS NOT THE SAME BUG):"
+    echo "${OUT2}"
 else
+  echo "ALREADY KNOWN BUG!"
   echo "${OUT}"
 fi
 
-echo "----- Search URL (3 significant frames) -----"
-FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
+echo "----- Search URL (3 significant frames) -----"  # First frame (FRAMEX): ref code above
 FRAMEY="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*$/\1/')"
 FRAMEZ="$(echo "${TEXT}" | sed 's/.*|\(.*\)$/\1/')"
 echo "https://jira.mariadb.org/issues/?jql=text%20~%20%22%5C%22${FRAMEX}%5C%22%22%20and%20text%20~%20%22%5C%22${FRAMEY}%5C%22%22%20and%20text%20~%20%22%5C%22${FRAMEZ}%5C%22%22%20ORDER%20BY%20status%20ASC"

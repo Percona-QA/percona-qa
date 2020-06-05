@@ -237,8 +237,15 @@ if [ ${ASAN_MODE} -eq 0 ]; then
           echo "${FINDBUG}"
         fi
       else
-        echo "NOT FOUND: Bug not found yet in known_bugs.strings!"
-        echo "*** THIS IS POSSIBLY A NEW BUG; BUT CHECK #4 BELOW FIRST! ***"
+        FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
+        OUT2="$(grep -Fi --binary-files=text "${FRAMEX}" ${SCRIPT_PWD}/known_bugs.strings)"
+        if [ -z "${OUT2}" ]; then        
+          echo "NOT FOUND: Bug not found yet in known_bugs.strings!"
+          echo "*** THIS IS POSSIBLY A NEW BUG; BUT CHECK #4 BELOW FIRST! ***"
+        else
+          echo "BUG NOT FOUND (IDENTICALLY) IN KNOWN BUGS LIST! HOWEVER, A PARTIAL MATCH BASED ON THE 1st FRAME ('${FRAMEX}') WAS FOUND, AS FOLLOWS: (PLEASE CHECK IT IS NOT THE SAME BUG):"
+          echo "${OUT2}"
+        fi
       fi
       FINDBUG=
     else

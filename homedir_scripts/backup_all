@@ -3,3 +3,5 @@ cd ${SCRIPT_PWD}
 ./backup_github
 /test/backup_github
 /test/TESTCASES/backup_github
+cd ~/mariadb-qa/BUGS
+git add *

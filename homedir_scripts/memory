@@ -1,2 +1,3 @@
 #!/bin/bash
+# See ~/mariadb-qa/memory_leaks_howto.txt
 watch -n1 "ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -16"

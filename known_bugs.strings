@@ -9,6 +9,10 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|set_field_to_null_with_conversions|Item::save_in_field|Item_result_field::save_in_result_field|copy_sum_funcs                                                           ## OPT MDEV-22814
+SIGSEGV|fts_add_index|ha_innobase::commit_inplace_alter_table|mysql_inplace_alter_table|mysql_alter_table                                                                       ## OPT MDEV-22811
+SIGSEGV|check_fields|Multiupdate_prelocking_strategy::handle_end|mysql_multi_update_prepare|mysql_execute_command                                                               ## OPT MDEV-22805
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_delete|mysql_execute_command                                          ## DBG MDEV-22783
 page_get_page_no(block->frame) == index->page|SIGABRT|btr_pcur_store_position|row_search_mvcc|ha_innobase::index_read|ha_innobase::index_first                                  ## DBG MDEV-22773
 SIGSEGV|fil_system_t::keyrotate_next|fil_crypt_find_space_to_rotate|fil_crypt_thread|start_thread                                                                               ## DBG MDEV-20399
 fields[i].same(instant.fields[i])|SIGABRT|dict_index_t::instant_add_field|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try             ## DBG MDEV-22771
@@ -38,6 +42,7 @@ SIGSEGV|in_vector::find|Item_func_in::val_int|TABLE::verify_constraints|TABLE_LI
 dict_col_get_fixed_size(f.col, not_redundant()) <= 768|SIGABRT|dict_table_t::init_instant|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try  ## DBG MDEV-22651
 page_zip_verify_checksum(frame, bpage->zip_size())|SIGABRT|ut_dbg_assertion_failed|buf_flush_write_block_low|buf_flush_page|buf_flush_try_neighbors                             ## DBG |MDEV-22650
 page_zip_verify_checksum(frame, size)|SIGABRT|ut_dbg_assertion_failed|buf_flush_page|buf_flush_try_neighbors|buf_do_flush_list_batch                                            ## DBG |MDEV-22650
+SIGSEGV|ha_partition::create_partitioning_metadata|mysql_write_frm|fast_alter_partition_table|mysql_alter_table                                                                 ## OPT |MDEV-22649/22804
 SIGSEGV|ha_partition::create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute                                             ## OPT |MDEV-22649
 SIGSEGV|ha_partition::create_partitioning_metadata|handler::ha_create_partitioning_metadata|cleanup_table_after_inplace_alter|mysql_alter_table                                 ## OPT |MDEV-22649
 SIGSEGV|Item_func_group_concat::add|Item_sum::aggregator_add|Item_sum::reset_and_add|init_sum_functions                                                                         ## OPT MDEV-22449/22640
