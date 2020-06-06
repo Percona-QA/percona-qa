@@ -27,6 +27,7 @@ cp gendirs.sh ${TARGET}
 cp kill_all ${TARGET}
 cp kill_ge ${TARGET}
 cp kill_pr ${TARGET}
+cp kill_s ${TARGET}
 cp stop_all ${TARGET}
 cp start_all ${TARGET}
 cp startup_all ${TARGET}

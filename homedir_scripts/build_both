@@ -1,0 +1,4 @@
+#!/bin/bash
+~/mariadb-qa/build_mdpsms_opt.sh &
+~/mariadb-qa/build_mdpsms_dbg.sh &
+echo "Two build threads started!"

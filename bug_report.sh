@@ -246,6 +246,8 @@ if [ ${ASAN_MODE} -eq 0 ]; then
           echo "BUG NOT FOUND (IDENTICALLY) IN KNOWN BUGS LIST! HOWEVER, A PARTIAL MATCH BASED ON THE 1st FRAME ('${FRAMEX}') WAS FOUND, AS FOLLOWS: (PLEASE CHECK IT IS NOT THE SAME BUG):"
           echo "${OUT2}"
         fi
+        FRAMEX=
+        OUT2=
       fi
       FINDBUG=
     else

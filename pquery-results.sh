@@ -235,8 +235,9 @@ OOS3=$(grep "bytes should have been written" */log/master.err | sed 's|/.*||' | 
 OOS4=$(grep "Operating system error number 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
 OOS5=$(grep "PerconaFT No space when writing" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
 OOS6=$(grep "OS errno 28 - No space left on device" */log/master.err | sed 's|/.*||' | tr '\n' ' ')  # MySQL 8.0 message
-OOS7=$(ls -s */data/*core* 2>/dev/null | grep -o "^ *0 [^/]\+" | awk '{print $2}' | tr '\n' ' ')
-OOS="$(echo "${OOS1} ${OOS2} ${OOS3} ${OOS4} ${OOS5} ${OOS6} ${OOS7}" | sed "s|  | |g")"
+OOS7=$(grep "error 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+OOS8=$(ls -s */data/*core* 2>/dev/null | grep -o "^ *0 [^/]\+" | awk '{print $2}' | tr '\n' ' ')
+OOS="$(echo "${OOS1} ${OOS2} ${OOS3} ${OOS4} ${OOS5} ${OOS6} ${OOS7} ${OOS8}" | sed "s|  | |g")"
 if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
   echo "================ Likely out of disk space trials:"
   echo "$(echo "${OOS}" | tr ' ' '\n' | sort -nu |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"

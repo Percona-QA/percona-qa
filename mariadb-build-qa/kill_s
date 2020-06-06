@@ -1,0 +1,4 @@
+#!/bin/bash
+screen -d -r  | grep '\.s[0-9]' | sed 's|\..*||' | xargs kill -9
+screen -wipe
+screen -ls

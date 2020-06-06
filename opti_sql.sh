@@ -1,5 +1,7 @@
 #!/bin/bash
 
+if [ ! -r new-main-md.sql ]; then echo "./new-main-md.sql not found!"; exit 1; fi
+
 mkdir -p optisql
 rm -f optisql/optisql.sql.tmp
 touch optisql/optisql.sql.tmp
@@ -12,6 +14,7 @@ grep --binary-files=text -iE "^ALTER TABLE "  new-main-md.sql | sed -e 's|t[2-9]
 grep --binary-files=text -iE "^TRUNCATE "     new-main-md.sql | sed -e 's|t[2-9]|t|g' >> optisql/optisql.sql.tmp
 grep --binary-files=text -iE "^SELECT "       new-main-md.sql | sed -e 's|t[2-9]|t|g' >> optisql/optisql.sql.tmp
 grep --binary-files=text -iE "^LOCK TABLE"    new-main-md.sql | sed -e 's|t[2-9]|t|g' >> optisql/optisql.sql.tmp
+grep --binary-files=text -iE "^FLUSH"         new-main-md.sql | sed -e 's|t[2-9]|t|g' >> optisql/optisql.sql.tmp
 #grep --binary-files=text -iE "^EXPLAIN "      new-main-md.sql | sed -e 's|t[2-9]|t|g' >> optisql/optisql.sql.tmp
 # The first two selectors of the grep exclude SET GLOBAL/SESSION with allocations > approx 5GB. This
 # prevents most OOM issues due to over-allocations like SET GLOBAL key_buffer_size=1125899906842624;

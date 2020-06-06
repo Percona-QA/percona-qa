@@ -715,14 +715,15 @@ else
 fi
 
 # Process shutdown timeout issues correctly
-# * The "grep -H "^MODE=4$" reducer*" ensures that we have only reducers which were not otherwise recognized
-# * Checking for a coredump ensures that there was no coredump found in the trial's directory
+# * Checking for a coredump ensures that there was no coredump found in the trial's directory, which would mean that this is not a shutdown issue
 # * The check for ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ensures that the issue was a shutdown issue
 # If these 3 all apply, it is safe to change the MODE to =0 and assume that this is a shutdown issue only
-for MATCHING_TRIAL in `grep -H "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+for MATCHING_TRIAL in `grep -H "^MODE=[1-9]$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
   if [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
     if [ -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
-      sed -i "s|^MODE=4|MODE=0|" reducer${MATCHING_TRIAL}.sh
+      sed -i "s|^MODE=[1-9]|MODE=0|" reducer${MATCHING_TRIAL}.sh
+      sed -i "s|^   TEXT=.*|TEXT=''|" reducer${MATCHING_TRIAL}.sh
+      sed -i "s|^USE_NEW_TEXT_STRING=1|USE_NEW_TEXT_STRING=0|" reducer${MATCHING_TRIAL}.sh
       # There is no "else" clause required here; this is a normal MODE=4 trial and not a shutdown timeout issue. It will be listed in the MODE=4 results line of pquery-results.sh, and not in the 'mysqld Shutdown Issues' line.
     fi
   else

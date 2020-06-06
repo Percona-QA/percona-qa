@@ -1,6 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+
 ASAN_MODE=0
 if [ -z "${1}" ]; then
   echo "This script expects one paramater; the bug to search for after testing of in.sql is complete, OR the word 'ASAN' for *SAN runs with the environment variable TEXT pre-set."
@@ -15,7 +17,6 @@ elif [ "${1}" == "ASAN" ]; then
 fi
 
 rm -f /tmp/pri.t /tmp/sec.t
-REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
 
 # Generate full list
 if [ ${ASAN_MODE} -eq 1 ]; then

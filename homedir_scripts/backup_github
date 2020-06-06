@@ -83,6 +83,7 @@ cp drop_caches ${TARGET}
 cp asan ${TARGET}
 cp scanall ${TARGET}
 cp memory ${TARGET}
+cp build_both ${TARGET}
 
 cd ${TARGET}
 git add *

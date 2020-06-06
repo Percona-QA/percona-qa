@@ -46,6 +46,7 @@ if [ -z "${OUT}" ]; then
   else 
     echo "BUG NOT FOUND (IDENTICALLY) IN KNOWN BUGS LIST! HOWEVER, A PARTIAL MATCH BASED ON THE 1st FRAME ('${FRAMEX}') WAS FOUND, AS FOLLOWS: (PLEASE CHECK IT IS NOT THE SAME BUG):"
     echo "${OUT2}"
+  fi
 else
   echo "ALREADY KNOWN BUG!"
   echo "${OUT}"
