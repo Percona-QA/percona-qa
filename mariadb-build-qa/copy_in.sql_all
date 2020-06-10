@@ -1,8 +1,11 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
+REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_ECLUDE="DUMMYSTRINGNEVERSEEN"; fi
+
 if [ "${1}" == "ASAN" ]; then
-  ./gendirs.sh ASAN | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
+  ./gendirs.sh ASAN | grep -vE "${REGEX_ECLUDE}" | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
 else
-  ./gendirs.sh | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
+  ./gendirs.sh | grep -vE "${REGEX_ECLUDE}" | xargs -I{} echo "cp ./in.sql ./{}/in.sql" | xargs -I{} sh -c "{}"
 fi

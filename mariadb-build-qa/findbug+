@@ -2,6 +2,7 @@
 # Created by Roel Van de Paar, MariaDB
 
 REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_ECLUDE="DUMMYSTRINGNEVERSEEN"; fi
 
 ASAN_MODE=0
 if [ -z "${1}" ]; then

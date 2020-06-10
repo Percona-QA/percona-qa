@@ -1,6 +1,8 @@
 #!/bin/bash
 
 REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_ECLUDE="DUMMYSTRINGNEVERSEEN"; fi
+
 FIRST=$(./gendirs.sh 2>/dev/null | wc -l)
 SECON=$(ls --color=never */bin/mysqld 2>/dev/null | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | wc -l)
 THIRD=$(ls --color=never */bin/mysql 2>/dev/null | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | wc -l)

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [ ! -r ~/ramdrive.sh ]; then
+  echo "Assert: ~/ramdrive.sh missing, you likely want to do something like:"
+  echo "cp ~/mariadb-qa/homedir_scripts/* ~"
+  exit 1
+fi
+
+if [ ! -z "$(mount | grep ramfs)" ]; then
+  ~/ramdrive.sh
+  if [ ! -z "$(mount | grep ramfs)" ]; then
+    echo "Assert: ram drive creation failed!"
+    exit 1 
+  fi
+fi
+
+cp -r MS* MD* /ram
+cp gendirs.sh /ram
+cp startup_all /ram
+cp start_all /ram
+cp stop_all /ram
+cp kill_all /ram
+cp test_all /ram
+cp all_all /ram
+cp check /ram
+cp copy_in.sql_all /ram
+cp count_all /ram
+cp clean_all /ram
+cp kill_* /ram
+cp findbug* /ram
+cp del_all_data /ram
+cp find_cores /ram
+cp find_deadlocks /ram
+cp REGEX_EXCLUDE /ram
+
+cd /ram
+./startup_all
+
+echo "Done! cd /ram"

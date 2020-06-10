@@ -1,5 +1,6 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
+# Note: use ~/mariadb-qa/mass_bug_report.sh from a dbg basedir to process testcases in /test/TESTCASES
 
 TARGET=~/mariadb-qa/testcase-scripts
 mkdir -p ${TARGET}
@@ -13,6 +14,9 @@ cp old_bugs_move ${TARGET}
 cp backup_github ${TARGET}
 cp gen_inprogress ${TARGET}
 cp optimizer_bugs ${TARGET}
+cp temp_move_away ${TARGET}
+cp move_nocore_back ${TARGET}
+cp move_too_long ${TARGET}
 
 cd ${TARGET}
 git add *

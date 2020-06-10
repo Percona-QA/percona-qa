@@ -1,1 +1,3 @@
+#!/bin/bash
 ~/mariadb-qa/pquery-clean-known.sh
+#~/mariadb-qa/pquery-eliminate-dups.sh -> needs work

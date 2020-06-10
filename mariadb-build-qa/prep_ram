@@ -1,6 +1,15 @@
 #!/bin/bash
 
-BASEDIR=MD210420-mariadb-10.5.3-linux-x86_64   # without -opt and -dbg
+# User variables
+VERSION="10.5"
+
+# Script variables
+BASEDIR="$(ls -d MD*${VERSION}* 2>/dev/null | sed 's|-[do][bp][gt]||' | sort -u)"   # without -opt and -dbg
+
+if [ -z "${BASEDIR}" ]; then
+  echo "Assert: BASEDIR is empty!"
+  exit 1
+fi
 
 if [ ! -r ~/ramdrive.sh ]; then
   echo "Assert: ~/ramdrive.sh missing, you likely want to do something like:"
@@ -10,6 +19,10 @@ fi
 
 if [ ! -z "$(mount | grep ramfs)" ]; then
   ~/ramdrive.sh
+  if [ ! -z "$(mount | grep ramfs)" ]; then
+    echo "Assert: ram drive creation failed!"
+    exit 1
+  fi
 fi
 
 cp -r ${BASEDIR}-opt /ram

@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir -p ./TEMP_MOVED_PUT_BACK
+ls *.report* | sed 's|.report.*||' | sort -u | xargs -I{} echo "mv {}* ./TEMP_MOVED_PUT_BACK" | xargs -I{} bash -c "{}" 
+

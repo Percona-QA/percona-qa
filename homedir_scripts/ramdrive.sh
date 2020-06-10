@@ -7,4 +7,4 @@ fi
 mount | grep ram
 
 # cd ~
-# sudo umount /mnt/ram
+# sudo umount /ram

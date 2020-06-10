@@ -1,0 +1,11 @@
+#!/bin/bash
+if [ ! -d ./TEMP_MOVED_PUT_BACK ]; then
+  echo "Assert: no ./TEMP_MOVED_PUT_BACK found!"
+  exit 1
+else
+  cd ./TEMP_MOVED_PUT_BACK
+  ls *NOCORE | sed 's|\..*||' | sort -u | xargs -I{} echo "mv {}* .." | xargs -I{} bash -c "{}"
+  cd - 2>/dev/null
+  echo "Done!"
+fi
+

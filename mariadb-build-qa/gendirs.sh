@@ -1,6 +1,7 @@
 # Created by Roel Van de Paar, MariaDB
 
 REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_ECLUDE="DUMMYSTRINGNEVERSEEN"; fi
 
 if [ "${1}" == "ASAN" ]; then
   ls --color=never -d ASAN_M* 2>/dev/null | grep -vE "${REGEX_ECLUDE}" | grep -v tar 
