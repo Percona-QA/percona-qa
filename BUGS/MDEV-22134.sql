@@ -8,3 +8,6 @@ SELECT 1;
 
 SET @@global.session_track_system_variables=NULL;
 INSERT DELAYED INTO t VALUES(0);
+
+SET GLOBAL session_track_system_variables=NULL;
+SET SESSION session_track_system_variables=DEFAULT;
