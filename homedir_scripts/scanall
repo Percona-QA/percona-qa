@@ -1,20 +1,25 @@
 #!/bin/bash
+set +H
 INPUT="${1}"
-echo "Searching for '${1}' in various places... This may take a while!"
-echo "1/8..."
+echo "Searching for '${INPUT}' in various places... This may take a while!"
+echo "1/10..."
 grep --binary-files=text -Ei "${INPUT}" /test/*/*/log/master.err 2>/dev/null
-echo "2/8..."
+echo "2/10..."
 grep --binary-files=text -Ei "${INPUT}" /data/*/*/log/master.err 2>/dev/null
-echo "3/8..."
+echo "3/10..."
 grep --binary-files=text -Ei "${INPUT}" /test/*/*/MYBUG 2>/dev/null
-echo "4/8..."
+echo "4/10..."
 grep --binary-files=text -Ei "${INPUT}" /data/*/*/MYBUG 2>/dev/null
-echo "5/8..."
+echo "5/10..."
 grep --binary-files=text -Ei "${INPUT}" /test/*/log/master.err 2>/dev/null
-echo "6/8..."
+echo "6/10..."
 grep --binary-files=text -Ei "${INPUT}" /data/*/log/master.err 2>/dev/null
-echo "7/8..."
+echo "7/10..."
 grep --binary-files=text -Ei "${INPUT}" /test/TESTCASES/*.report 2>/dev/null
-echo "8/8..."
+echo "8/10..."
 grep --binary-files=text -Ei "${INPUT}" /data/TESTCASES/*.report 2>/dev/null
+echo "9/10..."
+grep --binary-files=text -Ei "${INPUT}" /test/TESTCASES/*/*.report 2>/dev/null
+echo "10/10..."
+grep --binary-files=text -Ei "${INPUT}" /data/TESTCASES/*/*.report 2>/dev/null
 echo "Done!"

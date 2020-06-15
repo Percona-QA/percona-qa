@@ -29,7 +29,8 @@ while true; do
     COUNT2=0
   fi
   if [ ${COUNT3} -ge 5000 ]; then
-    rm -Rf /tmp/* >/dev/null 2>&1 &
+    rm -Rf /tmp/[0-9][0-9][0-9][0-9][0-9][0-9] >/dev/null 2>&1 &
+    rm -Rf /tmp/1[5-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9] >/dev/null 2>&1 &
     sync
     COUNT3=0
   fi

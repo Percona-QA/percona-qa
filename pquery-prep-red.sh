@@ -7,7 +7,7 @@
 # Query correctness: data (output) correctness (QC DC) trial handling was also added 11 May 2016
 
 # Improvement ideas
-# - It would be better if failing queries were added like this; 3x{query_from_err_log,query_from_core},3{SELECT 1},3{SELECT SLEEP(5)} instead of 3{query_from_core},3{query_from_err_log},3{SELECT 1},3{SELECT SLEEP(5)}
+# - It would be better if failing queries were added like this; 3x{query_from_err_log,query_from_core},3{SELECT 1},3{SELECT SLEEP(3)} instead of 3{query_from_core},3{query_from_err_log},3{SELECT 1},3{SELECT SLEEP(3)}
 
 # User configurable variables
 VALGRIND_OVERRIDE=0    # If set to 1, Valgrind issues are handled as if they were a crash (core dump required)
@@ -165,13 +165,13 @@ add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT
   echo "  > 3 'SELECT 1;' queries to the SQL trace"
 }
 
-add_select_sleep_to_trace(){  # Improve issue reproducibility by adding 2x SELECT SLEEP(5); to the sql trace
+add_select_sleep_to_trace(){  # Improve issue reproducibility by adding 2x SELECT SLEEP(3); to the sql trace
   echo "* Adding additional 'SELECT SLEEP(5);' queries to improve issue reproducibility"
   if [ ! -f ${INPUTFILE} ]; then touch ${INPUTFILE}; fi
   for i in {1..3}; do
-    echo "SELECT SLEEP(5);" >> ${INPUTFILE}
+    echo "SELECT SLEEP(3);" >> ${INPUTFILE}
   done
-  echo "  > 2 'SELECT SLEEP(5);' queries added to the SQL trace"
+  echo "  > 3 'SELECT SLEEP(3);' queries added to the SQL trace"
 }
 
 remove_non_sql_from_trace(){

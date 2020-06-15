@@ -1,0 +1,1 @@
+echo "MD120620-mariadb-10.5.4" > REGEX_EXCLUDE

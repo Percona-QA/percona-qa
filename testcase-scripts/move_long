@@ -1,7 +1,10 @@
 #!/bin/bash
 mkdir -p MORE_THEN_100_LINES
 if [ -d ./MORE_THEN_100_LINES ]; then
-  wc -l *.sql | sort -n | grep -v total | grep "^[0-9 ][0-9 ][0-9 ][0-9 ][0-9 ][0-9]" | sed 's|.* ||' | sed 's|\.sql||' | xargs -I{} echo "mv {}.* MORE_THEN_100_LINES" | xargs -I{} bash -c "{}" 
+  echo "Before: $(ls --color=never *.sql 2>/dev/null | wc -l)"
+  wc -l *.sql 2>/dev/null | sort -n | grep -v total | sed 's|^[ ]*||' | grep -vE '^[0-9][0-9] |^[0-9] ' | sed 's|.* ||' | sed 's|\.sql||' | xargs -I{} echo "mv {}.* MORE_THEN_100_LINES" | xargs -I{} bash -c "{}" 
+  echo "After: $(ls --color=never *.sql 2>/dev/null | wc -l)"
 else 
   echo "Assert: dir creation failed"
+  exit 1 
 fi

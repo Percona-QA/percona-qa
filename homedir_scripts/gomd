@@ -1,8 +1,12 @@
 #!/bin/bash
 
-BASEDIR=/test/MD060620-mariadb-10.5.4-linux-x86_64-opt  # opt or dbg is fine, does not matter
+BASEDIR=/test/MD150620-mariadb-10.5.4-linux-x86_64-opt  # opt or dbg is fine, does not matter
 RUNSOPT=4
 RUNSDBG=4
+
+echo "This script should show further output in 10-20 seconds. If it does not, see:"
+echo "screen -d -r pr1  # for the cause"
+echo ""
 
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
 for RUN in $(seq 1 ${TOTALRUNS}); do
@@ -19,8 +23,8 @@ for RUN in $(seq 1 ${TOTALRUNS}); do
     if [ -r /tmp/gomd_helper ]; then
       sleep 0.3
       DIR="$(cat /tmp/gomd_helper)"
-      rm -f /tmp/gomd_helper
       if [ -d "${DIR}" ]; then
+        rm -f /tmp/gomd_helper
         cd ${DIR}/..
         DIREND="$(echo "${DIR}" | sed 's|.*/||')"
         if [ ! -d ./${DIREND} ]; then

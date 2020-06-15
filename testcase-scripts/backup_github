@@ -10,13 +10,14 @@ cd ${SCRIPT_PWD}
 cp mvknown ${TARGET}
 cp mysql_scan ${TARGET}
 cp scan ${TARGET}
+cp scan_nojson_count ${TARGET}
 cp old_bugs_move ${TARGET}
 cp backup_github ${TARGET}
 cp gen_inprogress ${TARGET}
 cp optimizer_bugs ${TARGET}
 cp temp_move_away ${TARGET}
 cp move_nocore_back ${TARGET}
-cp move_too_long ${TARGET}
+cp move_long ${TARGET}
 
 cd ${TARGET}
 git add *

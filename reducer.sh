@@ -586,6 +586,7 @@ if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
   # With thanks, http://stackoverflow.com/a/26308092 from http://stackoverflow.com/questions/5985060/bash-script-using-script-command-from-a-bash-script-for-logging-a-session
   if [ -z "$REDUCER_TYPESCRIPT" ]; then
     TYPESCRIPT_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+    # TODO: this does not work for *** buffer overflow detected *** at all atm; it looks like the typescript is not being captured correctly until CTRL+C is pressed (even with SKIPV turned off). Needs bugfix, though the issue may be OS-related. Example contents in ~/ts_example.log
     # TODO: the following line does not work correctly when passing multiple variables to reducer (outside of the input file), or when such variables contain spaces. This is currenty only seen for the basedir local reducers as created by startup.sh, and is not a common issue otherwise. Workaround; just specify everything in the variables inside the script, without passing command line parameters.
     exec $SCRIPT_LOC -q -f /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log -c "REDUCER_TYPESCRIPT=1 TYPESCRIPT_UNIQUE_FILESUFFIX=${TYPESCRIPT_UNIQUE_FILESUFFIX} $0 $@"
   fi
@@ -2782,15 +2783,21 @@ process_outcome(){
           exit 1
         fi
         MYBUGFOUND="$($TEXT_STRING_LOC "${BIN}")"
+        NTSEXITCODE=${?}
         echo "${MYBUGFOUND}" >> ${WORKD}/MYBUG.FOUND
-        TSEXITCODE=${?}
-        echo ${TSEXITCODE} > ${WORKD}/MYBUG.FOUND.EXITCODE
-        if [ ${TSEXITCODE} -ne 0 ]; then
-          if ! egrep -qi 'no core file' ${WORKD}/MYBUG.FOUND; then
-            echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${TSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
-            exit 1
-          else  # 'no core file' was seen in ${WORKD}/MYBUG.FOUND; this is definitely not a newbug
+        echo ${NTSEXITCODE} > ${WORKD}/MYBUG.FOUND.EXITCODE
+        if [ ${NTSEXITCODE} -ne 0 ]; then
+          if egrep -qi 'no core file' ${WORKD}/MYBUG.FOUND; then
+            # 'no core file' was seen in ${WORKD}/MYBUG.FOUND; this is definitely not a newbug
             SKIP_NEWBUG=1
+          elif egrep -qi 'Assert: No parsable frames' ${WORKD}/MYBUG.FOUND; then
+            echo_out "Note: ${WORKD}/MYBUG.FOUND contains 'Assert: No parsable frames'. This may or may not affect reduction"
+            # TODO: not sure what to do this from a 'newbug' perspective yet (may or many not be a new bug, though somewhat unlikely. Skipping ftm, to see if we get other newbugs to appear (if there are none after this change it may mean that something is going wrong with the new_text_string.sh call and thus all 'newbugs' are in fact just 'Assert: No parsable frames' observed due to some error (likely files/disk related)
+            SKIP_NEWBUG=1
+          else
+            echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${NTSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
+            SKIP_NEWBUG=1
+            exit 1
           fi
         fi
         cd - >/dev/null
@@ -2812,7 +2819,7 @@ process_outcome(){
         else  # $TEXT_STRING_LOC yielded another output (error, or a different bug - new or already existing)
           FINDBUG=
           if [ ${SCAN_FOR_NEW_BUGS} -eq 1 -a ${SKIP_NEWBUG} -ne 1 ]; then
-            if [ ${TSEXITCODE} -eq 0 ]; then
+            if [ ${NTSEXITCODE} -eq 0 ]; then
               # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
               FINDBUG="$(grep -Fi --binary-files=text "${MYBUGFOUND}" ${KNOWN_BUGS} | tail -n1)"  # head -n1: fixed bugs are at the end of the list, so preference for "newbug found" is higher this way
               if [[ "${FINDBUG}" == "#"* ]]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
@@ -2834,7 +2841,7 @@ process_outcome(){
           fi
         fi
         MYBUGFOUND=
-        TSEXITCODE=
+        NTSEXITCODE=
         FINDBUG=
       else
         M3_OUTPUT_TEXT="ErrorLog"
