@@ -2791,8 +2791,7 @@ process_outcome(){
             # 'no core file' was seen in ${WORKD}/MYBUG.FOUND; this is definitely not a newbug
             SKIP_NEWBUG=1
           elif egrep -qi 'Assert: No parsable frames' ${WORKD}/MYBUG.FOUND; then
-            echo_out "Note: ${WORKD}/MYBUG.FOUND contains 'Assert: No parsable frames'. This may or may not affect reduction"
-            # TODO: not sure what to do this from a 'newbug' perspective yet (may or many not be a new bug, though somewhat unlikely. Skipping ftm, to see if we get other newbugs to appear (if there are none after this change it may mean that something is going wrong with the new_text_string.sh call and thus all 'newbugs' are in fact just 'Assert: No parsable frames' observed due to some error (likely files/disk related)
+            # This is seen when no core was generated, i.e. the bug did not reproduce and there is definitely not a newbug
             SKIP_NEWBUG=1
           else
             echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${NTSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
