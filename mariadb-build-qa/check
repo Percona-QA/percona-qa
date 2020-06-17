@@ -1,12 +1,12 @@
 #!/bin/bash
 
-REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
-if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_ECLUDE="DUMMYSTRINGNEVERSEEN"; fi
+REGEX_EXCLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_EXCLUDE="DUMMYSTRINGNEVERSEEN"; fi
 
 FIRST=$(./gendirs.sh 2>/dev/null | wc -l)
-SECON=$(ls --color=never */bin/mysqld 2>/dev/null | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | wc -l)
-THIRD=$(ls --color=never */bin/mysql 2>/dev/null | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | wc -l)
-FOURT=$(ls --color=never */all 2>/dev/null | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | wc -l)
+SECON=$(ls --color=never */bin/mysqld 2>/dev/null | grep -vE "${REGEX_EXCLUDE}" | grep -vE "ASAN|GAL" | wc -l)
+THIRD=$(ls --color=never */bin/mysql 2>/dev/null | grep -vE "${REGEX_EXCLUDE}" | grep -vE "ASAN|GAL" | wc -l)
+FOURT=$(ls --color=never */all 2>/dev/null | grep -vE "${REGEX_EXCLUDE}" | grep -vE "ASAN|GAL" | wc -l)
 
 if [ ${FIRST} -eq ${SECON} -a ${FIRST} -eq ${THIRD} -a ${FIRST} -eq ${FOURT} ]; then
   echo "All OK"

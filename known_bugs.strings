@@ -4,11 +4,15 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysqld_help_internal|mysqld_help                                                                                     ## DBG MDEV-22422
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysql_ha_read|mysql_execute_command                                                                                  ## DBG MDEV-20207*
 0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|do_handle_one_connection                                                                                          ## DBG MDEV-22663
+0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|threadpool_process_request                                                                                        ## DBG MDEV-22663
 
 ###### STACK SMASHING BUGS ######
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|Opt_trace_context::is_started|THD::trace_started|Json_writer::add_table_name|Json_value_helper::add_table_name                                                          ## DBG |MDEV-22910
+SIGSEGV|Json_writer::add_table_name|Json_value_helper::add_table_name|Json_writer_object::add_table_name|SQL_SELECT::test_quick_select                                          ## OPT |MDEV-22910
+(m_storage_engine_name.str != __null) == used_engine|SIGABRT|Sql_cmd_alter_table::execute|mysql_execute_command|Prepared_statement::execute|Prepared_statement::execute_loop    ## DBG MDEV-22907
 grant_table || grant_table_role|SIGABRT|check_grant_all_columns|insert_fields|setup_wild|JOIN::prepare                                                                          ## DBG MDEV-22884
 !parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|open_table_entry_fini|open_table|open_and_process_table                                               ## DBG MDEV-22883
 m_psi_batch_mode == PSI_BATCH_MODE_NONE|SIGABRT|handler::ha_close|create_internal_tmp_table_from_heap|select_unit::write_record|select_unit::send_data                          ## DBG |MDEV-22882
@@ -138,16 +142,19 @@ SIGABRT|ut_dbg_assertion_failed|trx_rollback_last_sql_stat_for_mysql|innobase_ro
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT |MDEV-15703*
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT |MDEV-15703*
 ls->length < 0xFFFFFFFFL && ((ls->length == 0 && !ls->str) || ls->length == strlen(ls->str))|SIGABRT|String::append|Sp_handler::show_create_sp|Sp_handler::sp_load_for_information_schema|store_schema_proc  # MDEV-16788*
+(key_del_current != 0) && ((key_del_current == (~ (my_off_t) 0)) || (key_del_current <= (share->state.state.key_file_length - block_size)))|SIGABRT|_ma_new|_ma_enlarge_root|_ma_ck_real_write_btree|_ma_ck_write_btree_with_log                                                       ## DBG |MDEV-18496
 (longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|ma_crypt_post_write_hook|write_page               ## OPT |MDEV-18496*
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|drop_routine|mysql_execute_command                                          ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|simple_rename_or_index_change|mysql_alter_table                             ## OPT |MDEV-18496*
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_rm_table|mysql_execute_command                                        ## OPT |MDEV-18496*
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_create_or_drop_trigger|mysql_execute_command                          ## DBG |MDEV-18496
+! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysql_admin_table|Sql_cmd_analyze_table::execute                                                                     ## DBG |MDEV-18496
 status_var.local_memory_used == 0 || !debug_assert_on_not_freed_memory|SIGABRT|THD::~THD|THD::~THD|one_thread_per_connection_end|do_handle_one_connection                       ## OPT |MDEV-18496*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item_func_as_wkt::val_str_ascii|Item_func::val_str_from_val_str_ascii             ## DBG |MDEV-19723*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send                 ## DBG |MDEV-19723*
 ! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|push_warning                                          ## DBG MDEV-17729*
 thd->transaction.stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|prepare_for_repair|mysql_admin_table             ## DBG |MDEV-17749*
+thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|prepare_for_repair|mysql_admin_table            ## DBG |MDEV-17749*
 thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|Locked_tables_list::reopen_tables|mysql_alter_table  ## DBG |MDEV-17749*
 SIGSEGV|Query_arena::set_query_arena|THD::set_n_backup_active_arena|Field::set_default|Item_default_value::calculate                                                            ## OPT MDEV-18216*
 (templ->is_virtual && !field) || (field && field->prefix_len ? field->prefix_len == len : templ->mysql_col_len == len)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_search_idx_cond_check|row_search_mvcc  ## DBG MDEV-18911*
@@ -175,6 +182,7 @@ SIGSEGV|heap_rnext|ha_heap::index_next|handler::index_next_same|handler::ha_inde
 subq_pred->engine->engine_type() == subselect_engine::SINGLE_SELECT_ENGINE|SIGABRT|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner|JOIN::optimize  ## DBG |MDEV-22700*
 SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner                                                                ## OPT |MDEV-22700*
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|copy_fields|end_write                                                                                  ## DBG MDEV-22702*
+0|SIGABRT|Item::val_native|Item::val_native_from_item|Item_ref::val_native|Type_handler_timestamp_common::Item_val_native_with_conversion                                       ## DBG MDEV-22885*
 part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
 index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                 ## OPT MDEV-22714*
 

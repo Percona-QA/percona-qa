@@ -19,10 +19,14 @@ ${SCRIPT_PWD}/pquery-results.sh | grep "Handlerton. error == 0" | grep -o "reduc
  sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 
 # Delete all 'TRIALS TO CHECK MANUALLY' trials which do not have an associated core file in their data directories
-for i in $(${SCRIPT_PWD}/pquery-results.sh | grep "TRIALS.*MANUALLY" | grep -o "reducers.*[^)]" | sed 's|reducers ||;s|,|\n|g'); do
-  if [ `ls $i/data/*core* 2>/dev/null | wc -l` -lt 1 ]; then
-    ${SCRIPT_PWD}/pquery-del-trial.sh $i
+rm -f ~/results_list++.tmp
+${SCRIPT_PWD}/pquery-results.sh | grep "TRIALS.*MANUALLY" | grep -o "reducers.*[^)]" | sed 's|reducers ||;s|,|\n|g' > ~/results_list++.tmp
+COUNT=$(wc -l ~/results_list++.tmp 2>/dev/null | sed 's| .*||')
+for RESULT in $(seq 1 ${COUNT}); do
+  if [ $(ls ${RESULT}/data/*core* 2>/dev/null | wc -l) -lt 1 ]; then
+    ${SCRIPT_PWD}/pquery-del-trial.sh ${RESULT}
   fi
 done
+rm -f ~/results_list++.tmp
 
 echo "Done!"

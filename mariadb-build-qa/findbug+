@@ -1,8 +1,8 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-REGEX_ECLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
-if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_ECLUDE="DUMMYSTRINGNEVERSEEN"; fi
+REGEX_EXCLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
+if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_EXCLUDE="DUMMYSTRINGNEVERSEEN"; fi
 
 ASAN_MODE=0
 if [ -z "${1}" ]; then
@@ -21,9 +21,9 @@ rm -f /tmp/pri.t /tmp/sec.t
 
 # Generate full list
 if [ ${ASAN_MODE} -eq 1 ]; then
-  ls --color=never | grep -vE "${REGEX_ECLUDE}" | grep "ASAN" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+  ls --color=never | grep -vE "${REGEX_EXCLUDE}" | grep "ASAN" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 else
-  ls --color=never | grep -vE "${REGEX_ECLUDE}" | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+  ls --color=never | grep -vE "${REGEX_EXCLUDE}" | grep -vE "ASAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 fi
 
 # Generate bug list

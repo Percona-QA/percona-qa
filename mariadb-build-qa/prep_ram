@@ -4,7 +4,7 @@
 VERSION="10.5"
 
 # Script variables
-BASEDIR="$(ls -d MD*${VERSION}* 2>/dev/null | sed 's|-[do][bp][gt]||' | sort -u)"   # without -opt and -dbg
+BASEDIR="$(ls -d MD*${VERSION}* 2>/dev/null | sed 's|-[do][bp][gt]||' | sort -ur | head -n1)"   # without -opt and -dbg
 
 if [ -z "${BASEDIR}" ]; then
   echo "Assert: BASEDIR is empty!"

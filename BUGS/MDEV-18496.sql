@@ -43,3 +43,36 @@ SET GLOBAL aria_encrypt_tables=1;
 CREATE TABLE t1 (c1 INT PRIMARY KEY) ENGINE=Aria;
 INSERT INTO t1 VALUES (1);
 CREATE TRIGGER t1_ai AFTER INSERT ON t1 FOR EACH ROW SET @a:='a';
+
+USE test;
+SET SQL_MODE='';
+SET @@global.table_open_cache = 0;
+CREATE TABLE ti (a SMALLINT UNSIGNED, b SMALLINT NOT NULL, c BINARY(15), d VARBINARY(5), e VARCHAR(3), f VARCHAR(42), g MEDIUMBLOB NOT NULL, h MEDIUMBLOB, id BIGINT NOT NULL, KEY(b), KEY(e), PRIMARY KEY(id));
+CREATE PROCEDURE p2 (OUT i1 VARCHAR(2037) BINARY CHARACTER SET 'Binary' COLLATE 'Binary') CONTAINS SQL SET @@GLOBAL.OPTIMIZER_SWITCH="loosescan=OFF";
+set global aria_encrypt_tables=ON;
+INSERT INTO ti VALUES (0,0,'a','a','a','a','a','D',6);
+CREATE TABLE t(a TINYINT NOT NULL,b TINYINT,PRIMARY KEY(b)) ENGINE=Aria;
+INSERT INTO t VALUES (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9),(10,10);
+CREATE TABLE t3 (a CHAR(2), KEY (a)) ENGINE = MEMORY;
+ALTER TABLE t3 ADD INDEX (c1);
+INSERT INTO ti VALUES (0,0,'a','a','a','a','a','a',3);
+DROP PROCEDURE IF EXISTS p2;
+
+USE test;
+SET GLOBAL aria_encrypt_tables=1;
+CREATE TABLE t (a INT AUTO_INCREMENT PRIMARY KEY, b INT) ENGINE=Aria;
+INSERT INTO t VALUES (6,2);
+ANALYZE NO_WRITE_TO_BINLOG TABLE t;
+
+USE test;
+SET SQL_MODE='';
+set global aria_encrypt_tables=1;
+SET @@session.enforce_storage_engine = Aria;
+CREATE TABLE ti (a TINYINT, b TINYINT, c CHAR(79), d VARCHAR(63), e VARCHAR(24) NOT NULL, f VARBINARY(8) NOT NULL, g BLOB, h MEDIUMBLOB NOT NULL, id BIGINT NOT NULL, KEY(b), KEY(e), PRIMARY KEY(id)) ;
+create temporary table t1(a int not null primary key, b int, key(b)) ;
+INSERT INTO t1 VALUES(0, 0);
+DELETE FROM t1  WHERE a BETWEEN 0 AND 20 OR b BETWEEN 10 AND 20;
+INSERT INTO t1 SELECT a, b+8192    FROM t1;
+INSERT INTO ti VALUES (3290419791330308384,3170882006491468321,'abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz',2);
+INSERT INTO t1 VALUES(4, 'abcdefghijklmnopqrstuvwxyz'); ;
+INSERT INTO t1 VALUES(4, 'abcdefghijklmnopqrstuvwxyz'); ;

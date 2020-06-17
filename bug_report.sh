@@ -116,6 +116,7 @@ else
   ./test_all ASAN ${MYEXTRA_OPT_CLEANED}
 fi
 echo "Ensuring all servers are gone..."
+sync
 if [ ${ASAN_MODE} -eq 0 ]; then
   ./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
 else
