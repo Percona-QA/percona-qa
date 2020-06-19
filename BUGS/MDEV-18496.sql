@@ -76,3 +76,10 @@ INSERT INTO t1 SELECT a, b+8192    FROM t1;
 INSERT INTO ti VALUES (3290419791330308384,3170882006491468321,'abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz','abcdefghijklmnopqrstuvwxyz',2);
 INSERT INTO t1 VALUES(4, 'abcdefghijklmnopqrstuvwxyz'); ;
 INSERT INTO t1 VALUES(4, 'abcdefghijklmnopqrstuvwxyz'); ;
+
+USE test;
+SET SQL_MODE='';
+SET GLOBAL aria_encrypt_tables=1;
+CREATE TABLE t1 (c1 INT PRIMARY KEY) ENGINE=Aria;
+INSERT INTO t1 VALUES (1);
+CREATE TRIGGER t1_ai AFTER INSERT ON t1 FOR EACH ROW SET @a:='a';

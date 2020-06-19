@@ -1,0 +1,7 @@
+https://jira.mariadb.org/browse/MDEV-18496
+https://jira.mariadb.org/browse/MDEV-22256
+https://jira.mariadb.org/browse/MDEV-20563
+https://jira.mariadb.org/browse/MDEV-22133
+https://jira.mariadb.org/browse/MDEV-22118
+https://jira.mariadb.org/browse/MDEV-22448
+https://jira.mariadb.org/browse/MDEV-17749

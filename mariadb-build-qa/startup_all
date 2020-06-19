@@ -8,6 +8,8 @@ if [ ! -r ~/mariadb-qa/startup.sh ]; then
   exit 1
 fi
 
+./kill_all
+sync
 ./gendirs.sh ALLALL | xargs -I{} echo "cd {}; ~/mariadb-qa/startup.sh; cd .." | xargs -P50 -I{} sh -c "{}"
 
 sync
