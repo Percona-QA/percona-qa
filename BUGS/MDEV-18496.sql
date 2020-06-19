@@ -83,3 +83,13 @@ SET GLOBAL aria_encrypt_tables=1;
 CREATE TABLE t1 (c1 INT PRIMARY KEY) ENGINE=Aria;
 INSERT INTO t1 VALUES (1);
 CREATE TRIGGER t1_ai AFTER INSERT ON t1 FOR EACH ROW SET @a:='a';
+
+USE test;
+SET SQL_MODE='';
+CREATE TABLE t (a INT PRIMARY KEY, b INT, KEY b_idx(b)) ;
+INSERT INTO t VALUES(1, 'abcdefghijklmnopqrstuvwxyz');
+SET SESSION enforce_storage_engine=Aria;
+SELECT * FROM t INTO OUTFILE 'abcdefghijklmnopqrstuvwxyz';
+set global aria_encrypt_tables=ON;
+CREATE TEMPORARY TABLE t (c1 INT, INDEX(c1)) UNION=(t1,t2);
+LOAD DATA INFILE 'abcdefghijklmnopqrstuvwxyz' INTO TABLE t;
