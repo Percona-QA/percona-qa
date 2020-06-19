@@ -10,6 +10,8 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+m_curr_row <= m_rows_end|SIGABRT|Rows_log_event::unpack_current_row|Rows_log_event::write_row|Write_rows_log_event::do_exec_row|Rows_log_event::do_apply_event                  ## OPT MDEV-22936
+binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|set_var::update                                                ## DBG MDEV-22921
 SIGSEGV|Opt_trace_context::is_started|THD::trace_started|Json_writer::add_table_name|Json_value_helper::add_table_name                                                          ## DBG |MDEV-22910
 SIGSEGV|Json_writer::add_table_name|Json_value_helper::add_table_name|Json_writer_object::add_table_name|SQL_SELECT::test_quick_select                                          ## OPT |MDEV-22910
 (m_storage_engine_name.str != __null) == used_engine|SIGABRT|Sql_cmd_alter_table::execute|mysql_execute_command|Prepared_statement::execute|Prepared_statement::execute_loop    ## DBG MDEV-22907
@@ -83,7 +85,8 @@ SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_write
 SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::causal_read                                                             ## OPT MDEV-22443
 cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connection|THD::free_connection|unlink_thd                                                               ## DBG MDEV-22420
 templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc  ## DBG MDEV-22395
-m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                           ## OPT MDEV-22390
+m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                           ## DBG |MDEV-22390
+SIGSEGV|my_b_write|write_keys|find_all_keys|filesort                       ## OPT |MDEV-22390
 0|SIGABRT|stored_field_cmp_to_item|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator                                     ## DBG MDEV-22385
 SIGSEGV|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command|mysql_parse                                                                                        ## DBG MDEV-22381
 thd->transaction.stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                      ## DBG MYSQL-99377

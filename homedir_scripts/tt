@@ -28,7 +28,7 @@ noformat_strings(){
 TEXT="$(~/t)"
 if [[ "${TEXT}" == *"no core file found"* ]]; then 
   echo "Assert: no core file found in */*core*"
-echo $-
+  #echo $-
   noformat_strings
   exit 1
 fi

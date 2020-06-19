@@ -1621,7 +1621,8 @@ init_workdir_and_files(){
       else
         echo_out "[Init] FORCE_SPORADIC active. Issue is assumed to be sporadic, even if verify stage shows otherwise"
       fi
-      echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
+      # TODO: this is shown, but no actual change is made and the output shown matches the original setting. Thus the output is invalid. Removed ftm. RV 19/06/2020
+      # echo_out "[Init] FORCE_SPORADIC, FORCE_SKIPV and/or PQUERY_MULTI active: STAGE1_LINES variable was overwritten and set to $STAGE1_LINES to match"
     fi
   fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
@@ -1712,6 +1713,13 @@ init_workdir_and_files(){
       elif [ "${VERSION_INFO_2}" == "MariaDB" ]; then
         VERSION_INFO="5.6"
         INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
+        if [ ! -r ${INIT_TOOL} ]; then 
+          INIT_TOOL="${BASEDIR}/scripts/mysql_install_db"
+          if [ ! -r ${INIT_TOOL} ]; then
+            echo "Assert: neither ${BASEDIR}/scripts/mariadb-install-db nor ${BASEDIR}/scripts/mysql_install_db was found! Please check."
+            exit 1
+          fi
+        fi
         INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
         START_OPT="--core-file"
       elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
