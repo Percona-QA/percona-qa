@@ -1,0 +1,6 @@
+#!/bin/bash
+cd /data
+./clean_all
+cd /test/TESTCASES/
+./mvknown
+cd - >/dev/null

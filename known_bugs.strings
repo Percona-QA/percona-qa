@@ -10,8 +10,9 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|row_create_prebuilt|ha_innobase::open|handler::ha_open|open_table_from_share                                                                                            ## OPT MDEV-23011
+SIGSEGV|get_field|get_field|acl_load|acl_reload                           ## OPT MDEV-23009
 marked_for_read()|SIGABRT|Field_varstring::val_str|Field::val_str|handler::calculate_checksum|mysql_checksum_table                                                              ## DBG MDEV-22943
-idx < array.elements|SIGABRT|Dynamic_array<st_mysql_const_lex_string*>::at|fill_schema_schemata|get_schema_tables_result|JOIN::exec_inner                                       ## DBG MDEV-22941
 m_curr_row <= m_rows_end|SIGABRT|Rows_log_event::unpack_current_row|Rows_log_event::write_row|Write_rows_log_event::do_exec_row|Rows_log_event::do_apply_event                  ## OPT MDEV-22936
 binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|set_var::update                                                ## DBG MDEV-22921
 SIGSEGV|Opt_trace_context::is_started|THD::trace_started|Json_writer::add_table_name|Json_value_helper::add_table_name                                                          ## DBG |MDEV-22910
@@ -43,7 +44,8 @@ SIGABRT|ib::fatal::~fatal|sync_array_wait_event|TTASEventMutex<GenericPolicy>::e
 ! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|my_message_sql                                        ## DBG MDEV-22768
 mon > 0 && mon < 13|SIGABRT|sec_since_epoch|Time_zone_offset::TIME_to_gmt_sec|TIME_to_timestamp|Timestamp::Timestamp                                                            ## DBG MDEV-22734
 SIGFPE|Unique::get_cost_calc_buff_size|prepare_search_best_index_intersect|get_best_index_intersect|SQL_SELECT::test_quick_select                                               ## OPT MDEV-22728
-thd->transaction->stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG MDEV-22726
+SIGSEGV|PolicyMutex<TTASEventMutex<GenericPolicy> >::enter|trx_undo_assign_low|trx_undo_report_row_operation|btr_cur_ins_lock_and_undo                                          ## OPT |MDEV-22726
+thd->transaction->stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG |MDEV-22726
 0|SIGABRT|Type_handler_row::subquery_type_allows_materialization|cmp_row_types|Item_func_in::in_predicate_to_in_subs_transformer|Item_func::transform                           ## DBG MDEV-22716
 (*select_ref)->is_fixed()|SIGABRT|resolve_ref_in_select_and_group|Item_ref::fix_fields|Item_field::fix_fields|Item::fix_fields_if_needed                                        ## DBG MDEV-22713
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_client_binlog_statement|mysql_execute_command                         ## DBG MDEV-22712
@@ -203,6 +205,7 @@ index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_pl
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  
+# idx < array.elements|SIGABRT|Dynamic_array<st_mysql_const_lex_string*>::at|fill_schema_schemata|get_schema_tables_result|JOIN::exec_inner                            ## Fixed ## DBG MDEV-22941
 # SIGSEGV|heap_rrnd|handler::ha_rnd_pos|rr_from_pointers|sub_select                                                                                                    ## Fixed ## OPT MDEV-22875
 # SIGSEGV|heap_rrnd|handler::ha_rnd_pos|rr_from_pointers|AGGR_OP::end_send                                                                                             ## Fixed ## OPT MDEV-22875
 # SIGSEGV|radixsort_for_str_ptr|Filesort_buffer::sort_buffer|SORT_INFO::sort_buffer|write_keys                                                                         ## Fixed ## OPT |MDEV-22715

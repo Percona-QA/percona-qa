@@ -62,6 +62,9 @@ cp prep_ram_full ${TARGET}
 cp REGEX_EXCLUDE ${TARGET}
 cp use_new ${TARGET}
 cp use_old ${TARGET}
+cp report_opt ${TARGET}
+cp report_dbg ${TARGET}
+cp clean ${TARGET}
 
 cd ${TARGET}
 git add *

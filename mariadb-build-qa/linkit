@@ -10,4 +10,6 @@ ln -s /test/todaysruns /data/todaysruns
 ln -s /test/allruns /data/allruns
 ln -s /test/scan_MYBUG /data/scan_MYBUG
 ln -s /test/find_deadlocks /data/find_deadlocks
+ln -s /test/report_opt /data/report_opt
+ln -s /test/report_dbg /data/report_dbg
 ln -s /home/${whoami}/newbug ./newbug

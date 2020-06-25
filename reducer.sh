@@ -1701,8 +1701,26 @@ init_workdir_and_files(){
       INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}"  # Compatible with     5.7,8.0 (mysqld init)
       INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
       VERSION_INFO=$(${BIN} --version | grep -E --binary-files=text -oe '[58]\.[01567]' | head -n1)
-      VERSION_INFO_2=$(${BIN} --version | grep -oe 'MariaDB' | head -n1)  # temp hack
-      if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
+      VERSION_INFO_2=$(${BIN} --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-5]' | head -n1)
+      if [ "${VERSION_INFO_2}" == "10.4" -o "${VERSION_INFO_2}" == "10.5" -o "${VERSION_INFO_2}" == "10.6" ]; then
+        VERSION_INFO="5.6"
+        INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
+        #This is now covered by 10.1-10.3 code below, alike to startup.sh
+        #if [ ! -r ${INIT_TOOL} ]; then 
+        #  INIT_TOOL="${BASEDIR}/scripts/mysql_install_db"
+        #  if [ ! -r ${INIT_TOOL} ]; then
+        #    echo "Assert: neither ${BASEDIR}/scripts/mariadb-install-db nor ${BASEDIR}/scripts/mysql_install_db was found! Please check."
+        #    exit 1
+        #  fi
+        #fi
+        INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
+        START_OPT="--core-file"
+      elif [ "${VERSION_INFO_2}" == "10.1" -o "${VERSION_INFO_2}" == "10.2" -o "${VERSION_INFO_2}" == "10.3" ]; then
+        VERSION_INFO="5.1"
+        INIT_TOOL="${PWD}/scripts/mysql_install_db"
+        INIT_OPT="--no-defaults --force"
+        START_OPT="--core"
+      elif [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
         if [ "${MID}" == "" ]; then
           echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
           exit 1
@@ -1710,18 +1728,6 @@ init_workdir_and_files(){
         INIT_TOOL="${MID}"
         INIT_OPT="--no-defaults --force ${MYINIT}"
         START_OPT="--core"
-      elif [ "${VERSION_INFO_2}" == "MariaDB" ]; then
-        VERSION_INFO="5.6"
-        INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
-        if [ ! -r ${INIT_TOOL} ]; then 
-          INIT_TOOL="${BASEDIR}/scripts/mysql_install_db"
-          if [ ! -r ${INIT_TOOL} ]; then
-            echo "Assert: neither ${BASEDIR}/scripts/mariadb-install-db nor ${BASEDIR}/scripts/mysql_install_db was found! Please check."
-            exit 1
-          fi
-        fi
-        INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
-        START_OPT="--core-file"
       elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
         echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may fail."
       fi
@@ -3074,8 +3080,16 @@ stop_mysqld_or_pxc(){
       # RV-22/03/17 To check for shutdown hangs, need to make sure that timeout of mysqladmin is longer then TIMEOUT_CHECK seconds + 10 seconds safety margin
       if [ $MODE -eq 0 ]; then
         timeout -k${MODE0_MIN_SHUTDOWN_TIME} -s9 ${MODE0_MIN_SHUTDOWN_TIME}s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/log/mysqld.out 2>&1
+        if grep -qi "Access denied for user" $WORKD/log/mysqld.out; then
+          echo_out "Assert: Access denied for user detected (ref $WORKD/log/mysqld.out)"
+          exit 1
+        fi
       else
         timeout -k40 -s9 40s $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/log/mysqld.out 2>&1  # Note it is myqladmin being terminated with -9, not mysqld !
+        if grep -qi "Access denied for user" $WORKD/log/mysqld.out; then
+          echo_out "Assert: Access denied for user detected (ref $WORKD/log/mysqld.out)"
+          exit 1
+        fi
       fi
       if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 1; fi
 
@@ -3084,7 +3098,15 @@ stop_mysqld_or_pxc(){
         sleep 1
         if kill -0 $PIDV >/dev/null 2>&1; then
           if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
-          if kill -0 $PIDV >/dev/null 2>&1; then $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/log/mysqld.out 2>&1; else break; fi  # Retry shutdown one more time
+          if kill -0 $PIDV >/dev/null 2>&1; then  # Retry shutdown one more time
+            $BASEDIR/bin/mysqladmin -uroot -S$WORKD/socket.sock shutdown >> $WORKD/log/mysqld.out 2>&1
+            if grep -qi "Access denied for user" $WORKD/log/mysqld.out; then
+              echo_out "Assert: Access denied for user detected (ref $WORKD/log/mysqld.out)"
+              exit 1
+            fi
+          else
+            break
+          fi
           if [ $MODE -eq 0 -o $MODE -eq 1 -o $MODE -eq 6 ]; then sleep 5; else sleep 2; fi
           if kill -0 $PIDV >/dev/null 2>&1; then echo_out "$ATLEASTONCE [Stage $STAGE] [WARNING] Attempting to bring down server failed at least twice. Is this server very busy?"; else break; fi
           sleep 5
