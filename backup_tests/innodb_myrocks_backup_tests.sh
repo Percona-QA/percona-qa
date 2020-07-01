@@ -13,10 +13,10 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_12_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_13_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export mysqldir="$HOME/Percona-Server-8.0.19-10-Linux.x86_64.ssl101"
-export datadir="$HOME/Percona-Server-8.0.19-10-Linux.x86_64.ssl101/data"
+export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
@@ -27,6 +27,7 @@ rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
 # Set sysbench variables
 num_tables=10
 table_size=1000
+random_type=uniform
 
 # Set stream and encryption key
 backup_stream="backup.xbstream"
@@ -62,13 +63,13 @@ initialize_db() {
     fi
 
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
-    if [[ "${MYSQLD_OPTIONS}" != *"encrypt"* ]]; then
+    if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
         # Create tables without encryption
-        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock prepare
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --rand-type=${random_type} prepare
     else
         # Create encrypted tables: changed the oltp_common.lua script to include mysql-table-options="Encryption='Y'"
         echo "Creating encrypted tables in innodb"
-        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --mysql-table-options="Encryption='Y'" prepare >/dev/null 2>&1
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --mysql-table-options="Encryption='Y'" --rand-type=${random_type} prepare >/dev/null 2>&1
         if [ "$?" -ne 0 ]; then
             for ((i=1; i<=${num_tables}; i++)); do
                 echo "Creating the table sbtest$i..."
@@ -76,14 +77,14 @@ initialize_db() {
             done
 
             echo "Adding data in tables..."
-            sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=30 run >/dev/null 2>&1 
+            sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=30 --rand-type=${random_type} run >/dev/null 2>&1 
         fi
     fi
 
     if [ "${rocksdb}" = "enabled" ]; then
         echo "Creating rocksdb data in database"
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test_rocksdb;"
-        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock prepare
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --rand-type=${random_type} prepare
     fi
 }
 
@@ -212,11 +213,11 @@ incremental_backup() {
 
     echo "Adding data in database"
     # Innodb data
-    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
+    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=20 --rand-type=${random_type} run >/dev/null 2>&1 &
 
     # Rocksdb data
     if [ "${rocksdb}" = "enabled" ]; then
-        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test_rocksdb --mysql-user=root --threads=50 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test_rocksdb --mysql-user=root --threads=50 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --time=20 --rand-type=${random_type} run >/dev/null 2>&1 &
     fi
     sleep 10
 
@@ -850,6 +851,69 @@ create_delete_encrypted_table() {
     done ) &
 }
 
+compressed_column() {
+    # This function compresses a table column
+
+    echo "Compress a table column"
+
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 MODIFY c VARCHAR(250) COLUMN_FORMAT COMPRESSED NOT NULL DEFAULT '';" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 MODIFY c CHAR(120) COLUMN_FORMAT DEFAULT NOT NULL DEFAULT '';" >/dev/null 2>&1
+    done ) &
+}
+
+compression_dictionary() {
+    # This function compresses a table column by using a compression dictionary
+
+    echo "Create a compression dictionary and use it to compress a table column"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE COMPRESSION_DICTIONARY numbers('08566691963-88624912351-16662227201-46648573979-64646226163-77505759394-75470094713-41097360717-15161106334-50535565977');"
+    if [ "$?" -ne 0 ]; then
+        echo "Skipping test as the compression dictionary sql was unsuccessful, the mysql server does not support it"
+        return
+    fi
+
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest$i MODIFY c VARCHAR(250) COLUMN_FORMAT COMPRESSED WITH COMPRESSION_DICTIONARY numbers NOT NULL DEFAULT '';" 
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest$i MODIFY c CHAR(120) COLUMN_FORMAT DEFAULT NOT NULL DEFAULT '';" >/dev/null 2>&1
+    done ) &
+}
+
+partitioned_tables() {
+    # This function creates partitioned tables
+
+    echo "Create innodb partitioned tables"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE sbtest1; DROP TABLE sbtest2; DROP TABLE sbtest3;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest1 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY HASH(id) PARTITIONS 10;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest2 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN (500), PARTITION p1 VALUES LESS THAN (1000), PARTITION p2 VALUES LESS THAN MAXVALUE);" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest3 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY KEY() PARTITIONS 5;" test
+
+    echo "Add data for innodb partitioned tables"
+    sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
+
+    if [ "${rocksdb}" = "enabled" ]; then
+        echo "Create myrocks partitioned tables"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE sbtest1; DROP TABLE sbtest2; DROP TABLE sbtest3;" test_rocksdb
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest1 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) ENGINE=ROCKSDB PARTITION BY HASH(id) PARTITIONS 10;" test_rocksdb
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest2 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) ENGINE=ROCKSDB PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN (500), PARTITION p1 VALUES LESS THAN (1000), PARTITION p2 VALUES LESS THAN MAXVALUE);" test_rocksdb
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest3 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) ENGINE=ROCKSDB PARTITION BY KEY() PARTITIONS 5;" test_rocksdb
+
+        echo "Add data for myrocks partitioned tables"
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
+    fi
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -1062,11 +1126,39 @@ test_create_drop_database() {
 
     echo "Test: Backup and Restore during create and drop of a database"
 
-    initialize_db
-
     create_drop_database
 
     incremental_backup "--lock-ddl"
+}
+
+test_compressed_column() {
+    # This test suite takes an incremental backup during column compression
+
+    echo "Test: Backup and Restore during column compression"
+
+    compressed_column
+
+    incremental_backup
+}
+
+test_compression_dictionary() {
+    # This test suite takes an incremental backup during column compression using compression dictionary
+
+    echo "Test: Backup and Restore during column compression using compression dictionary"
+
+    compression_dictionary
+
+    incremental_backup
+}
+
+test_partitioned_tables() {
+    # This test suite takes an incremental backup for partitioned tables
+
+    echo "Test: Backup and Restore during creation of partitioned tables"
+
+    partitioned_tables
+
+    incremental_backup
 }
 
 test_run_all_statements() {
@@ -1254,6 +1346,21 @@ test_inc_backup_encryption_8_0() {
     echo "Test: Backup and Restore during add and delete of an encrypted table"
     create_delete_encrypted_table
     eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore for partitioned tables"
+    partitioned_tables
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during column compression"
+    compressed_column
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during column compression using compression dictionary"
+    compression_dictionary
+    eval $lock_ddl_cmd
 }
 
 test_inc_backup_encryption_2_4() {
@@ -1356,10 +1463,12 @@ test_inc_backup_encryption_2_4() {
     fi
 
     # Running test suites with lock ddl backup command
-    echo "Test: Backup and Restore during add and drop index"
-    add_drop_index
-    eval $lock_ddl_cmd
-    echo "###################################################################################"
+
+    # Commented due to PXB-2092
+    #echo "Test: Backup and Restore during add and drop index"
+    #add_drop_index
+    #eval $lock_ddl_cmd
+    #echo "###################################################################################"
 
     echo "Test: Backup and Restore during add and drop tablespace"
     add_drop_tablespace
@@ -1371,10 +1480,11 @@ test_inc_backup_encryption_2_4() {
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    echo "Test: Backup and Restore during change in row format"
-    change_row_format
-    eval $lock_ddl_cmd
-    echo "###################################################################################"
+    # Commented due to PXB-2097
+    #echo "Test: Backup and Restore during change in row format"
+    #change_row_format
+    #eval $lock_ddl_cmd
+    #echo "###################################################################################"
 
     echo "Test: Backup and Restore during update and truncate of a table"
     update_truncate_table
@@ -1398,6 +1508,21 @@ test_inc_backup_encryption_2_4() {
 
     echo "Test: Backup and Restore during add and delete of an encrypted table"
     create_delete_encrypted_table
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during creation of partitioned tables"
+    partitioned_tables
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during column compression"
+    compressed_column
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during column compression using compression dictionary"
+    compression_dictionary
     eval $lock_ddl_cmd
 }
 
@@ -1532,7 +1657,7 @@ test_ssl_backup() {
 
 echo "Running Tests"
 # Various test suites
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_run_all_statements; do
+for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_run_all_statements; do
 
 # Cloud backup test suite
 #for testsuite in test_cloud_inc_backup; do
@@ -1550,7 +1675,7 @@ echo "Running Tests"
 #for testsuite in "test_inc_backup_encryption_2_4 keyring_file MS"; do
 
 # Encryption test suites for PXB8.0 and PS8.0
-for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
+#for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
 
 # Encryption test suites for PXB8.0 and MS8.0
 #for testsuite in "test_inc_backup_encryption_8_0 keyring_file"; do
