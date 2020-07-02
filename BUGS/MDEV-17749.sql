@@ -16,3 +16,15 @@ CREATE TEMPORARY TABLE t (c1 INT) ENGINE=InnoDB;
 LOCK TABLES t AS a READ, t AS b READ LOCAL;
 OPTIMIZE LOCAL TABLE t;
 REPAIR LOCAL TABLE t USE_FRM;
+
+# mysqld options required for replay: --log-bin
+USE test;
+SET SQL_MODE='';
+DROP TABLE t;
+SET @@MAX_STATEMENT_TIME=0.0001;
+CREATE TABLE t (a INT KEY, b TEXT) ROW_FORMAT=COMPACT ENGINE=InnoDB;
+UPDATE t SET NAME='U+039B GREEK CAPITAL LETTER LAMDA' WHERE ujis=0xA6AB;
+lock tables t write, t as t0 read, t as t2 read;
+SET @@GLOBAL.OPTIMIZER_SWITCH="table_elimination=ON";
+ALTER TABLE t ENGINE=InnoDB;
+# Sporadic; repeat at least twice

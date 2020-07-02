@@ -1,0 +1,10 @@
+USE test;
+SET SQL_MODE='';
+SET SESSION enforce_storage_engine=InnoDB;
+CREATE TABLE t(f0 INT) ENGINE=InnoDB;
+ALTER TABLE mysql.general_log ENGINE=MyISAM;
+XA START '0';
+INSERT INTO t VALUES (0);
+XA END '0';
+XA PREPARE '0';
+SET GLOBAL general_log=ON;

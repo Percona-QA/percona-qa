@@ -82,6 +82,7 @@ PQUERY_MULTI_CLIENT_THREADS=30  # Do not change (default=30), unless you fully u
 PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
 PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (default=0), unless you fully understand the change (reverses --no-shuffle into shuffle and vice versa)
                                 # On/Off (1/0) (Default=0: --no-shuffle is used for standard pquery replay, shuffle is used for PQUERY_MULTI. =1 reverses this)
+SAVE_RESULTS=1                  # On/Off (1/0) (Default=1: save a copy of reducer and related files to /tmp on completion, provided a volatile storage memory, like tmpfs, was used as workdir. A 0 setting will ensure no such copy is made)
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref USE_PQUERY and PQUERY_MULTI
 USE_PQUERY=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
@@ -3188,38 +3189,40 @@ finish(){
 
 copy_workdir_to_tmp(){
   WORKDIR_COPY_SUCCESS=0
-  if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
-    if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
-      echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
-      echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
-      if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
-        sudo cp -a $WORKD /tmp/$EPOCH
-        sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
-        cp $0 /tmp/$EPOCH  # Copy this reducer script
-        cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
-      else
-        cp -a $WORKD /tmp/$EPOCH
-        cp $0 /tmp/$EPOCH  # Copy this reducer script
-        cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
-      fi
-      # Check if the copy of directories (excluding the socket file,this reducer script,the original input file,and the current still-being-written-to log) is indentical (i.e. no output shown for the diff command)
-      DIFF_WORKDIR_COPY="not_empty"
-      if [ -d /tmp/$EPOCH ]; then
-        DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in /tmp/|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
-      fi
-      if [ "$DIFF_WORKDIR_COPY" == "" ]; then
-        WORKDIR_COPY_SUCCESS=1
-        echo_out "[Cleanup] Saved copy of work directory (+ the input file, this reducer script, and reducer.log) in /tmp/$EPOCH"
-        echo_out "[Cleanup] Now deleting temporary work directory $WORKD"
-        rm -Rf $WORKD
-      else
-        echo_out "[Non-fatal Error] Reducer tried saving a copy of the working directory ($WORKD), the input file ($INPUTFILE), this reducer ($0) and the reducer log in /tmp/$EPOCH, but on checkup after the copy, differences were found. The diff output was:"
-        echo_out "$DIFF_WORKDIR_COPY"
-        echo_out "Please check the diff output, and if necessary that the filesystem on which /tmp is stored is not full and that this script has write rights to /tmp. Note this error is non-fatal; the original work directory ($WORKD) was left, and the inputfile ($INPUTFILE) and this reducer ($0), if necessary, can still be accessed from their original location."
+  if [ "${SAVE_RESULTS}" == "1" ]; then
+    if [ "$MULTI_REDUCER" != "1" ]; then  # This is the parent/main reducer
+      if [ $WORKDIR_LOCATION -eq 1 -o $WORKDIR_LOCATION -eq 2 ]; then
+        echo_out "[Cleanup] Since tmpfs or ramfs (volatile memory) was used, reducer is now saving a copy of the work directory in /tmp/$EPOCH"
+        echo_out "[Cleanup] Storing a copy of reducer ($0) and it's original input file ($INPUTFILE) in /tmp/$EPOCH also"
+        if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
+          sudo cp -a $WORKD /tmp/$EPOCH
+          sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
+          cp $0 /tmp/$EPOCH  # Copy this reducer script
+          cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
+        else
+          cp -a $WORKD /tmp/$EPOCH
+          cp $0 /tmp/$EPOCH  # Copy this reducer script
+          cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
+        fi
+        # Check if the copy of directories (excluding the socket file,this reducer script,the original input file,and the current still-being-written-to log) is indentical (i.e. no output shown for the diff command)
+        DIFF_WORKDIR_COPY="not_empty"
+        if [ -d /tmp/$EPOCH ]; then
+          DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in /tmp/|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
+        fi
+        if [ "$DIFF_WORKDIR_COPY" == "" ]; then
+          WORKDIR_COPY_SUCCESS=1
+          echo_out "[Cleanup] Saved copy of work directory (+ the input file, this reducer script, and reducer.log) in /tmp/$EPOCH"
+          echo_out "[Cleanup] Now deleting temporary work directory $WORKD"
+          rm -Rf $WORKD
+        else
+          echo_out "[Non-fatal Error] Reducer tried saving a copy of the working directory ($WORKD), the input file ($INPUTFILE), this reducer ($0) and the reducer log in /tmp/$EPOCH, but on checkup after the copy, differences were found. The diff output was:"
+          echo_out "$DIFF_WORKDIR_COPY"
+          echo_out "Please check the diff output, and if necessary that the filesystem on which /tmp is stored is not full and that this script has write rights to /tmp. Note this error is non-fatal; the original work directory ($WORKD) was left, and the inputfile ($INPUTFILE) and this reducer ($0), if necessary, can still be accessed from their original location."
+        fi
       fi
     fi
   fi
-}
+}  
 
 report_linecounts(){
   if [ $MODE -ge 6 ]; then

@@ -14,6 +14,7 @@ if [ "${1}" == "ASAN" ]; then
 else
   MYEXTRA_OPT="$*"
   sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Ensure we're looking for core files, not specific bugs for which bug_report.sh may have been updated
+  rm -Rf ../MD*/data.PREV ../MS*/data.PREV  # Avoid data.PREV cores from being picked up
   ~/mariadb-qa/bug_report.sh "${MYEXTRA_OPT}" | tee report.log
   ~/tt | grep -A1 "URL" | tee -a report.log
 fi

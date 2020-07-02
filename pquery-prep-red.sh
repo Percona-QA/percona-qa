@@ -394,6 +394,7 @@ generate_reducer_script(){
     SI_CLEANUP1="0,/^[ \t]*REDUCE_STARTUP_ISSUES[ \t]*=.*$/s|^[ \t]*REDUCE_STARTUP_ISSUES[ \t]*=.*$|#REDUCE_STARTUP_ISSUES=<set_below_in_machine_variables_section>|"
     SI_STRING1="0,/#VARMOD#/s:#VARMOD#:REDUCE_STARTUP_ISSUES=1\n#VARMOD#:"
   fi
+  SAVE_RESULTS_CLEANUP="0,/^[ \t]*SAVE_RESULTS[ \t]*=.*$/s|^[ \t]*SAVE_RESULTS[ \t]*=.*$|#SAVE_RESULTS=<set_below_in_machine_variables_section>|"
   cat ${REDUCER} \
    | sed -e "0,/^[ \t]*INPUTFILE[ \t]*=.*$/s|^[ \t]*INPUTFILE[ \t]*=.*$|#INPUTFILE=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*MODE[ \t]*=.*$/s|^[ \t]*MODE[ \t]*=.*$|#MODE=<set_below_in_machine_variables_section>|" \
@@ -436,6 +437,8 @@ generate_reducer_script(){
    | sed -e "${MULTI_STRING3}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:USE_PQUERY=1\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
+   | sed -e "${SAVE_RESULTS_CLEANUP}" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:SAVE_RESULTS=0\n#VARMOD#:" \
    | sed -e "${PXC_STRING1}" \
    | sed -e "${GRP_RPL_STRING1}" \
    | sed -e "${QC_STRING1}" \

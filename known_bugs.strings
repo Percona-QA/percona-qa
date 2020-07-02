@@ -10,8 +10,11 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+tmp_table->file->stats.records == 1|SIGABRT|subselect_hash_sj_engine::exec|Item_subselect::exec|Item_in_subselect::exec|Item_in_subselect::val_bool                             ## DBG MDEV-23047
+SIGABRT|ut_dbg_assertion_failed|trx_mark_sql_stat_end|innobase_commit|commit_one_phase_2                                                                                        ## DBG MDEV-23046
+is_open()|SIGABRT|MYSQL_BIN_LOG::trx_group_commit_leader|MYSQL_BIN_LOG::write_transaction_to_binlog_events|MYSQL_BIN_LOG::write_transaction_to_binlog|binlog_flush_cache        ## DBG MDEV-23045
 SIGSEGV|row_create_prebuilt|ha_innobase::open|handler::ha_open|open_table_from_share                                                                                            ## OPT MDEV-23011
-SIGSEGV|get_field|get_field|acl_load|acl_reload                           ## OPT MDEV-23009
+SIGSEGV|get_field|get_field|acl_load|acl_reload                                                                                                                                 ## OPT MDEV-23009
 marked_for_read()|SIGABRT|Field_varstring::val_str|Field::val_str|handler::calculate_checksum|mysql_checksum_table                                                              ## DBG MDEV-22943
 m_curr_row <= m_rows_end|SIGABRT|Rows_log_event::unpack_current_row|Rows_log_event::write_row|Write_rows_log_event::do_exec_row|Rows_log_event::do_apply_event                  ## OPT MDEV-22936
 binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|set_var::update                                                ## DBG MDEV-22921
