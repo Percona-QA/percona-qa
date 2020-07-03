@@ -66,10 +66,13 @@ my_strnxfrm_unicode                                      ## https://bugs.mysql.c
 outer_select                                             ## https://bugs.mysql.com/bug.php?id=99018
 MYSQLlex                                                 ## https://bugs.mysql.com/bug.php?id=99017
 Acl_restrictions..size                                   ## https://bugs.mysql.com/bug.php?id=99023
+.var->check.thd                                          ## https://bugs.mysql.com/bug.php?id=99029
 
 
 
 ## =========== PS/MS 8.0
+compression_dict..create_zip_dict                        ## https://jira.percona.com/browse/PS-7151
+my_print_stacktrace.unsigned                             ## https://jira.percona.com/browse/PS-7150
 JOIN..create_root_iterator_for_join                      ## https://jira.percona.com/browse/PS-6937
 prepare_fields_and_keys                                  ## https://jira.percona.com/browse/PS-6903
 algorithm .= nullptr                                     ## https://jira.percona.com/browse/PS-6904
@@ -501,6 +504,7 @@ ha_innodb.cc line 3540                           ##DONOTREMOVE## https://jira.pe
 ha_innodb.cc line 3545                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.41
 ha_innodb.cc line 3557                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.43
 ha_innodb.cc line 3565                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.46
+ha_innodb.cc line 3566                           ##DONOTREMOVE## https://jira.percona.com/browse/PS-3443 (srv_log_block_size >= 512) PS 5.6.46
 btr0cur.c line 3918                              ##DONOTREMOVE## SET SESSION debug="+d,ib_corrupt_page_while_stats_calc" (PS 5.5.53)
 handler0alter.cc line 5083                       ##DONOTREMOVE## ref 'InnoDB: Assertion failure in file handler0alter.cc line 4966' email thread
 handler0alter.cc line 4966                       ##DONOTREMOVE## ^ same as line 5083 above. SET SESSION debug="+d,fil_rename_tablespace_failure_1";
@@ -969,6 +973,7 @@ next_insert_id >= auto_inc_interval_for_cur_row.minimum                         
 os0thread.cc line 209                                                                   ## https://jira.percona.com/browse/PS-4991
 os0thread.cc line 217                                                                   ## https://jira.percona.com/browse/PS-6931
 JOIN..create_root_iterator_for_join                                                     ## https://jira.percona.com/browse/PS-6931
+IB_thread create_detached_thread<void                                                   ## https://jira.percona.com/browse/PS-6931
 std..thread..thread<Runnable, void                                                      ## https://jira.percona.com/browse/PS-6931
 os0thread-create.h.119.old <= static_cast<int>.srv_max_n_threads. - 1                   ## https://jira.percona.com/browse/PS-5159
 #.options.use_direct_reads                                                     ## Fixed ## https://jira.percona.com/browse/PS-4990
