@@ -2,4 +2,4 @@
 echo "WARNING: This script will delete: */data */data.PREV"
 read -p "Press enter to continue, or CTRL+C to abort."
 sleep 2
-rm -Rf MD*/data MD*/data.PREV MS*/data MS*/data.PREV
+rm -Rf MD*/data MD*/data.PREV EMD*/data EMD*/data.PREV MS*/data MS*/data.PREV

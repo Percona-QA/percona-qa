@@ -26,7 +26,7 @@ else
   ./all_all ${MYEXTRA_OPT}
 fi
 sync
-rm -Rf MD*/data.PREV MS*/data.PREV  # Cleanup old data dirs for clean runs (defensive coding)
+rm -Rf MD*/data.PREV EMD*/data.PREV MS*/data.PREV  # Cleanup old data dirs for clean runs (after they were created (moved) by ./all scripts as started by ./all_all above
 
 # Copy in.sql to all instances
 if [ ${ASAN_MODE} -eq 1 ]; then

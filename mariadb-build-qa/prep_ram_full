@@ -14,7 +14,7 @@ if [ ! -z "$(mount | grep ramfs)" ]; then
   fi
 fi
 
-cp -r MS* MD* /ram
+cp -r MS* MD* EMD* /ram
 cp gendirs.sh /ram
 cp startup_all /ram
 cp start_all /ram

@@ -205,6 +205,7 @@ SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm
 0|SIGABRT|Item::val_native|Item::val_native_from_item|Item_ref::val_native|Type_handler_timestamp_common::Item_val_native_with_conversion                                       ## DBG MDEV-22885*
 part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
 index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                 ## OPT MDEV-22714*
+!col->mbmaxlen || len >= col->mbminlen * (fixed_len / col->mbmaxlen)|SIGABRT|row_merge_buf_add|row_merge_read_clustered_index|row_merge_build_indexes|ha_innobase::inplace_alter_table  ## DBG MDEV-22365*
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  
