@@ -34,13 +34,15 @@ SIGSEGV|report_json_error_ex|Item_func_json_merge_patch::val_str|Type_handler::I
 SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table                                                                                                         ## OPT MDEV-22852
 trx_is_registered_for_2pc(trx)|SIGABRT|innobase_xa_prepare|prepare_or_error|ha_commit_trans|trans_commit_implicit                                                               ## DBG MDEV-22848
 SIGSEGV|_ma_reset_history|_ma_trnman_end_trans_hook|trnman_end_trn|ma_commit                                                                                                    ## OPT MDEV-22829
-SIGSEGV|set_field_to_null_with_conversions|Item::save_in_field|Item_result_field::save_in_result_field|copy_sum_funcs                                                           ## OPT MDEV-22814
+SIGSEGV|set_field_to_null_with_conversions|Item::save_in_field|Item_result_field::save_in_result_field|copy_sum_funcs                                                           ## OPT |MDEV-22814
+0|SIGABRT|Item_sum_hybrid_simple::create_tmp_field|Item_sum::create_tmp_field_ex|create_tmp_field|Create_tmp_table::add_fields                                                  ## DBG |MDEV-22814
 SIGSEGV|fts_add_index|ha_innobase::commit_inplace_alter_table|mysql_inplace_alter_table|mysql_alter_table                                                                       ## OPT MDEV-22811
 SIGSEGV|check_fields|Multiupdate_prelocking_strategy::handle_end|mysql_multi_update_prepare|mysql_execute_command                                                               ## OPT |MDEV-22805
 thd->lex->sql_command == SQLCOM_UPDATE|SIGABRT|check_fields|Multiupdate_prelocking_strategy::handle_end|mysql_multi_update_prepare|mysql_execute_command                        ## DBG |MDEV-22805
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_delete|mysql_execute_command                                          ## DBG MDEV-22783
 page_get_page_no(block->frame) == index->page|SIGABRT|btr_pcur_store_position|row_search_mvcc|ha_innobase::index_read|ha_innobase::index_first                                  ## DBG MDEV-22773
 SIGSEGV|fil_system_t::keyrotate_next|fil_crypt_find_space_to_rotate|fil_crypt_thread|start_thread                                                                               ## DBG MDEV-20399
+trx_id_offset == instant.trx_id_offset|SIGABRT|dict_index_t::instant_add_field|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try        ## DBG |MDEV-22771
 fields[i].same(instant.fields[i])|SIGABRT|dict_index_t::instant_add_field|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try             ## DBG |MDEV-22771
 c.same_type(*o)|SIGABRT|dict_table_t::instant_column|ha_innobase_inplace_ctx::instant_column|innobase_instant_try|commit_try_norebuild                                          ## DBG |MDEV-22771
 SIGABRT|ib::fatal::~fatal|sync_array_wait_event|TTASEventMutex<GenericPolicy>::enter|PolicyMutex<TTASEventMutex<GenericPolicy> >::enter                                         ## DBG MDEV-22770
