@@ -1,0 +1,24 @@
+# mysqld options required for replay: --log-bin
+USE test;
+#SET SQL_MODE='';
+CREATE TABLE t1 (a INT, KEY(a)) ENGINE=MyISAM;
+CREATE TABLE t2 (a INT, b INT) ENGINE=InnoDB;
+XA START 'a';
+INSERT INTO t2 VALUES (1);
+SAVEPOINT sp;
+INSERT INTO t2 VALUES (1,1);
+ROLLBACK TO sp;
+INSERT INTO t1 VALUES (1);
+XA END 'a';
+XA PREPARE 'a';
+
+# mysqld options required for replay: --log-bin
+CREATE TABLE t1 (a INT) ENGINE=MyISAM;
+INSERT INTO t1 VALUES (1),(2);
+CREATE TABLE t2 (id INT PRIMARY KEY) ENGINE=InnoDB;
+INSERT INTO t2 VALUES (1),(2);
+XA BEGIN 'x';
+REPLACE INTO t1 SELECT * FROM t1;
+REPLACE INTO t2 SELECT * FROM t2;
+XA END 'x';
+XA PREPARE 'x';
