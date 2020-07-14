@@ -10,6 +10,9 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+level <= 50|SIGABRT|btr_page_get_level|btr_cur_search_to_nth_level_func|btr_insert_on_non_leaf_level_func|btr_attach_half_pages                                                 ## DBG MDEV-23165
+SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain_str|print_explain_for_slow_log                                       ## OPT |MDEV-23160
+SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain|Explain_query::print_explain_str                                     ## DBG |MDEV-23160
 table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_index_last|get_index_max_value|opt_sum_query|JOIN::optimize_inner                                ## DBG |MDEV-23159
 SIGSEGV|trnman_can_read_from|_ma_row_visible_transactional_table|maria_rprev|handler::ha_index_last                                                                             ## OPT |MDEV-23159
 tmp_table->file->stats.records == 1|SIGABRT|subselect_hash_sj_engine::exec|Item_subselect::exec|Item_in_subselect::exec|Item_in_subselect::val_bool                             ## DBG MDEV-23047
@@ -33,7 +36,8 @@ SIGSEGV|report_json_error_ex|Item_func_json_merge_patch::val_str|Type_handler::I
 !str || str != Ptr|SIGABRT|String::copy|Item_func::val_str_from_val_str_ascii|Item_str_ascii_func::val_str|Item::save_str_in_field                                              ## DBG MDEV-22856
 !field->prefix_len || field->fixed_len == field->prefix_len|SIGABRT|btr_node_ptr_max_size|btr_cur_search_to_nth_level_func|row_ins_sec_index_entry_low|row_ins_sec_index_entry  ## DBG MDEV-22855
 ! thd->in_sub_stmt|SIGABRT|mysql_execute_command|sp_instr_stmt::exec_core|sp_lex_keeper::reset_lex_and_exec_core|sp_instr_stmt::execute                                         ## DBG MDEV-22853
-SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table                                                                                                         ## OPT MDEV-22852
+SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table                                                                                                         ## OPT |MDEV-22852
+pos->field != __null || pos->item != __null|SIGABRT|Filesort::make_sortorder|filesort|create_sort_index|st_join_table::sort_table                                               ## DBG |MDEV-22852
 trx_is_registered_for_2pc(trx)|SIGABRT|innobase_xa_prepare|prepare_or_error|ha_commit_trans|trans_commit_implicit                                                               ## DBG MDEV-22848
 SIGSEGV|_ma_reset_history|_ma_trnman_end_trans_hook|trnman_end_trn|ma_commit                                                                                                    ## OPT MDEV-22829
 SIGSEGV|set_field_to_null_with_conversions|Item::save_in_field|Item_result_field::save_in_result_field|copy_sum_funcs                                                           ## OPT |MDEV-22814
@@ -153,7 +157,9 @@ end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_id
 end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse|parse_sql                                              ## DBG |MDEV-22022
 end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident|MYSQLparse|parse_sql|mysql_parse                                                            ## DBG |MDEV-22022
 SIGSEGV|next_breadth_first_tab|JOIN::cleanup|JOIN::destroy|st_select_lex::cleanup                                                                                               ## DBG MDEV-22019
-checksum_start + checksum_length == f->ptr|SIGABRT|handler::calculate_checksum|mysql_checksum_table|mysql_execute_command|mysql_parse                                           ## DBG MDEV-11783*
+checksum_start + checksum_length == f->ptr|SIGABRT|handler::calculate_checksum|mysql_checksum_table|mysql_execute_command|mysql_parse                                           ## DBG |MDEV-11783*
+SIGSEGV|sortlength|filesort|create_sort_index|Window_funcs_sort::exec                                                                                                           ## OPT |MDEV-11783*
+SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table                                                                                                         ## DBG |MDEV-15178*
 SIGABRT|ut_dbg_assertion_failed|trx_rollback_last_sql_stat_for_mysql|innobase_rollback|ha_rollback_trans                                                                        ## OPT MDEV-15494*
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT |MDEV-15703*
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT |MDEV-15703*
@@ -212,6 +218,7 @@ subq_pred->engine->engine_type() == subselect_engine::SINGLE_SELECT_ENGINE|SIGAB
 SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner                                                                ## OPT |MDEV-22700*
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|copy_fields|end_write                                                                                  ## DBG MDEV-22702*
 !binlog || exist_hton_without_prepare|SIGABRT|MYSQL_BIN_LOG::unlog_xa_prepare|ha_prepare|trans_xa_prepare|mysql_execute_command                                                 ## DBG MDEV-22757*
+len == ref_length|SIGABRT|ha_innobase::position|find_all_keys|filesort|create_sort_index                                                                                        ## DBG MDEV-22873*
 0|SIGABRT|Item::val_native|Item::val_native_from_item|Item_ref::val_native|Type_handler_timestamp_common::Item_val_native_with_conversion                                       ## DBG MDEV-22885*
 part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
 index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                 ## OPT MDEV-22714*
@@ -219,6 +226,7 @@ index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_pl
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  
+# 0|SIGABRT|Item_func_json_objectagg::reset_field|init_tmptable_sum_functions|end_update|AGGR_OP::put_record                                                           ## Fixed ## DBG MDEV-23029
 # idx < array.elements|SIGABRT|Dynamic_array<st_mysql_const_lex_string*>::at|fill_schema_schemata|get_schema_tables_result|JOIN::exec_inner                            ## Fixed ## DBG MDEV-22941
 # SIGSEGV|heap_rrnd|handler::ha_rnd_pos|rr_from_pointers|sub_select                                                                                                    ## Fixed ## OPT MDEV-22875
 # SIGSEGV|heap_rrnd|handler::ha_rnd_pos|rr_from_pointers|AGGR_OP::end_send                                                                                             ## Fixed ## OPT MDEV-22875

@@ -9,3 +9,8 @@ SELECT SCHEMA_NAME from information_schema.schemata where schema_name=REPEAT('a'
 
 SET COLLATION_CONNECTION=eucjpms_bin, SESSION CHARACTER_SET_CLIENT=cp932;
 SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.schemata WHERE schema_name='имя_базы_в_кодировке_утф8_длиной_больше_чем_45';
+
+SET @@global.character_set_connection=utf8; 
+SET NAMES sjis; 
+SET @@collation_connection=DEFAULT;
+SELECT SCHEMA_NAME FROM information_schema.schemata WHERE SCHEMA_NAME='имя_базы_в_кодировке_утф8_длиной_больше_чем_45';

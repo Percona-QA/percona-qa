@@ -7,3 +7,5 @@ SELECT ST_ASTEXT(ST_GEOMFROMGEOJSON("{ \"type\": [ \"Point\" ],\"coordinates\": 
 SELECT ST_GEOMFROMGEOJSON("{\"\":\"\",\"coordinates\":[0]}");
 
 SELECT ST_ASTEXT(ST_GEOMFROMGEOJSON("{ \"type\": \"GEOMETRYcLECTION\",\"coordinates\": [0.0,0.0]}"));
+
+SELECT ST_GEOMFROMGEOJSON("{ \"type\": \"FeatureCollection\", \"coordinates\": [10, 10] }");

@@ -1,0 +1,12 @@
+USE test;
+CREATE TABLE t1 (i1 int, a int);
+INSERT INTO t1 VALUES (1, 1), (2, 2),(3, 3);
+CREATE TABLE t2 (i2 int);
+INSERT INTO t2 VALUES (1),(2),(5),(1),(7),(4),(3);
+SELECT a, RANK() OVER (ORDER BY SUM(DISTINCT i1)) FROM t1, t2 WHERE t2.i2 = t1.i1 GROUP BY a;
+DROP TABLE t1, t2;
+
+USE test;
+SET SESSION SQL_BUFFER_RESULT=1;
+CREATE TABLE t (a INT);
+SELECT (SELECT 1 FROM t AS t_inner GROUP BY t_inner.a ORDER BY MAX(t_outer.a)) FROM t AS t_outer;
