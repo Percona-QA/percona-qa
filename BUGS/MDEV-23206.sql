@@ -1,0 +1,5 @@
+USE test;
+SET GLOBAL innodb_adaptive_hash_index=ON;
+CREATE TABLE t (c INT) ENGINE=InnoDB;
+ALTER TABLE t DISCARD TABLESPACE;
+DROP TABLE t;
