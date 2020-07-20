@@ -26,6 +26,11 @@ if [ -z "${MYSQLD}" ]; then
     MYSQLD="../mysqld"
   elif [ -r ../mysqld/mysqld -a ! -d ../mysqld/mysqld ]; then  # For direct use inside trial directories
     MYSQLD="../mysqld/mysqld"
+  elif [ -r ./log/master.err ]; then
+    POTENTIAL_MYSQLD="$(grep "ready for connections" ./log/master.err | sed 's|: .*||;s|^.* ||' | head -n1)"
+    if [ -r ${POTENTIAL_MYSQLD} ]; then
+      MYSQLD="${POTENTIAL_MYSQLD}"
+    fi
   else
     echo "Assert: mysqld not found at ./bin/mysqld, nor ../mysqld, nor ../mysqld/mysqld"
     exit 1

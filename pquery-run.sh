@@ -2074,7 +2074,7 @@ elif [ "${VERSION_INFO_2}" == "MariaDB" ]; then
   VERSION_INFO="5.6"
   INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
   INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal ${MYINIT}"
-  START_OPT="--core-file"
+  START_OPT="--core-file --core"
 elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
   echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the script will now try and continue as-is, but this may fail."
 fi

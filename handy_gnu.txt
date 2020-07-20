@@ -161,6 +161,8 @@
 # List subdirectories only, with thanks https://linoxide.com/linux-command/linux-commad-to-list-directories-directory-names-only/
   ls --color=never -dF ${DIR}/* 2>/dev/null | grep \/$ | sed 's|/$||'  # Where DIR is the root/input
   Press CTRL+z on the running process, then type:  bg; disown
+# See which processes are consuming the most memory, and how much memory they are consuming
+  watch -n1 "ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -16"
 
 # ------ Debugging ------
 # View complete output of all executed items, which is great for debugging

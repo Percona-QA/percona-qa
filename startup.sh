@@ -49,7 +49,7 @@ if [ "${VERSION_INFO_2}" == "10.4" -o "${VERSION_INFO_2}" == "10.5" -o "${VERSIO
   VERSION_INFO="5.6"
   INIT_TOOL="${PWD}/scripts/mariadb-install-db"
   INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal"
-  START_OPT="--core-file"
+  START_OPT="--core-file --core"
 elif [ "${VERSION_INFO_2}" == "10.1" -o "${VERSION_INFO_2}" == "10.2" -o "${VERSION_INFO_2}" == "10.3" ]; then
   VERSION_INFO="5.1"
   INIT_TOOL="${PWD}/scripts/mysql_install_db"
