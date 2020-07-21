@@ -2062,21 +2062,31 @@ START_OPT="--core-file"                                  # Compatible with 5.6,5
 INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}" # Compatible with 5.7,8.0 (mysqld init)
 INIT_TOOL="${BIN}"                                       # Compatible with 5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
-VERSION_INFO_2=$(${BIN} --version | grep -oe 'MariaDB' | head -n1)
-if [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
-  if [ "${MID}" == "" ]; then
-    echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
-    exit 1
-  fi
-  INIT_OPT="--no-defaults --force ${MYINIT}"
-  START_OPT="--core"
-elif [ "${VERSION_INFO_2}" == "MariaDB" ]; then
+VERSION_INFO_2=$(${BIN} --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-5]' | head -n1)
+if [ -z "${VERSION_INFO_2}" ]; then VERSION_INFO_2="NA"; fi
+
+if [ "${VERSION_INFO_2}" == "10.4" -o "${VERSION_INFO_2}" == "10.5" -o "${VERSION_INFO_2}" == "10.6" ]; then
   VERSION_INFO="5.6"
   INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
   INIT_OPT="--no-defaults --force --auth-root-authentication-method=normal ${MYINIT}"
   START_OPT="--core-file --core"
+elif [ "${VERSION_INFO_2}" == "10.1" -o "${VERSION_INFO_2}" == "10.2" -o "${VERSION_INFO_2}" == "10.3" ]; then
+  VERSION_INFO="5.1"
+  INIT_TOOL="${BASEDIR}/scripts/mysql_install_db"
+  INIT_OPT="--no-defaults --force ${MYINIT}"
+  START_OPT="--core"
+elif [ "${VERSION_INFO}" == "5.1" -o "${VERSION_INFO}" == "5.5" -o "${VERSION_INFO}" == "5.6" ]; then
+  if [ -z "${MID}" ]; then
+    echo "Assert: Version was detected as ${VERSION_INFO}, yet ./scripts/mysql_install_db nor ./bin/mysql_install_db is present!"
+    exit 1
+  fi
+  INIT_TOOL="${MID}"
+  INIT_OPT="--no-defaults --force ${MYINIT}"
+  START_OPT="--core"
 elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
-  echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld. Please expand this script to handle (which shoud be easy to do). Even so, the script will now try and continue as-is, but this may fail."
+  echo "=========================================================================================="
+  echo "WARNING: mysqld (${BIN}) version detection failed. This is likely caused by using this script with a non-supported distribution or version of mysqld, or simply because this directory is not a proper MySQL[-fork] base directory. Please expand this script to handle (which shoud be easy to do). Even so, the scipt will now try and continue as-is, but this may and will likely fail."
+  echo "=========================================================================================="
 fi
 
 if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
