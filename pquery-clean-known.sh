@@ -5,6 +5,7 @@
 
 # Internal variables
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
+set +H
 
 # Check if this an automated (pquery-reach.sh) run
 REACH=0  # Normal output

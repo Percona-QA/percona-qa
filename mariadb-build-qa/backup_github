@@ -65,6 +65,8 @@ cp use_old ${TARGET}
 cp report_opt ${TARGET}
 cp report_dbg ${TARGET}
 cp clean ${TARGET}
+cp allstrings_merged ${TARGET}
+cp allstrings ${TARGET}
 
 cd ${TARGET}
 git add *

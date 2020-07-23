@@ -1,0 +1,1 @@
+./gendirs.sh | xargs -I{} echo "cd {}; ~/t; cd .." | xargs -P20 -I{} bash -c "{}" | sort -u | grep -v "no core file found"
