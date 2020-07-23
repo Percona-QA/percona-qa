@@ -17,7 +17,9 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
-
+.remaining_tables_after .= 0                                ## https://bugs.mysql.com/bug.php?id=100288
+key .= 64U                                                  ## https://bugs.mysql.com/bug.php?id=100300 https://jira.percona.com/browse/PS-7210
+Field..val_str                                              ## https://bugs.mysql.com/bug.php?id=100286
 do_fill_information_schema_table                            ## https://jira.percona.com/browse/PS-6125
 JOIN..cleanup                                               ## https://bugs.mysql.com/bug.php?id=97928
 QEP_shared_owner..qs_cleanup                                ## https://bugs.mysql.com/bug.php?id=97930
@@ -591,7 +593,8 @@ ha_innodb.cc line 2128                           ## https://bugs.mysql.com/bug.p
 #ha_innodb.cc line 2102                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6, alike to 78732)
 #ha_innodb.cc line 2110                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.36, alike to 78732)
 #ha_innodb.cc line 2139                          ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.43, alike to 78732)
-ha_innodb.cc line 2147                           ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.46, alike to 78732)
+ha_innodb.cc line 2147                           ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.46, alike to 78732) row_format=redundant issue
+ha_innodb.cc line 2148                           ## https://bugs.mysql.com/bug.php?id=84825 (PS 5.6.49, alike to 78732) row_format=redundant issue
 #ha_innodb.cc line 1588                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) PS (old LP #1384616)
 #ha_innodb.cc line 1869                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) MS (old LP #1384616)
 #ha_innodb.cc line 1870                          ## https://bugs.mysql.com/bug.php?id=78732 (previously 74585) MS (old LP #1384616)
