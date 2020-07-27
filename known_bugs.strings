@@ -39,6 +39,7 @@ level <= 50|SIGABRT|btr_page_get_level|btr_cur_search_to_nth_level_func|btr_inse
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain_str|print_explain_for_slow_log                                       ## OPT |MDEV-23160
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain|Explain_query::print_explain_str                                     ## DBG |MDEV-23160
 table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_index_last|get_index_max_value|opt_sum_query|JOIN::optimize_inner                                ## DBG |MDEV-23159
+SIGSEGV|trnman_can_read_from|_ma_row_visible_transactional_table|maria_rnext|handler::ha_index_first                                                                            ## OPT |MDEV-23159
 SIGSEGV|trnman_can_read_from|_ma_row_visible_transactional_table|maria_rprev|handler::ha_index_last                                                                             ## OPT |MDEV-23159
 table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_index_first|get_index_min_value|opt_sum_query|JOIN::optimize_inner                               ## DBG |MDEV-23159
 tmp_table->file->stats.records == 1|SIGABRT|subselect_hash_sj_engine::exec|Item_subselect::exec|Item_in_subselect::exec|Item_in_subselect::val_bool                             ## DBG MDEV-23047
