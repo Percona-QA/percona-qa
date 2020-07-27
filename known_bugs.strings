@@ -10,6 +10,8 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+table_list->prelocking_placeholder == TABLE_LIST::PRELOCK_NONE|SIGABRT|check_lock_and_start_stmt|restart_trans_for_tables|create_table_impl|mysql_create_table_no_lock          ## DBG MDEV-23298
+info->dfile.file == share->bitmap.file.file|SIGABRT|_ma_scan_init_block_record|maria_scan_init|ha_maria::rnd_init|handler::ha_rnd_init                                          ## DBG MDEV-23297
 SIGSEGV|ft_boolean_check_syntax_string|check_ftb_syntax|sys_var::check|set_var::check                                                                                           ## OPT MDEV-23269
 SIGSEGV|OSMutex::enter|os_event::set|os_event_set|innodb_status_output_update                                                                                                   ## OPT |MDEV-23268
 SIGSEGV|__GI___pthread_mutex_lock|OSMutex::enter|os_event::set|os_event_set                                                                                                     ## OPT |MDEV-23268
@@ -46,7 +48,8 @@ SIGSEGV|row_create_prebuilt|ha_innobase::open|handler::ha_open|open_table_from_s
 SIGSEGV|get_field|get_field|acl_load|acl_reload                                                                                                                                 ## OPT MDEV-23009
 marked_for_read()|SIGABRT|Field_varstring::val_str|Field::val_str|handler::calculate_checksum|mysql_checksum_table                                                              ## DBG MDEV-22943
 m_curr_row <= m_rows_end|SIGABRT|Rows_log_event::unpack_current_row|Rows_log_event::write_row|Write_rows_log_event::do_exec_row|Rows_log_event::do_apply_event                  ## OPT MDEV-22936
-binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|set_var::update                                                ## DBG MDEV-22921
+binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|set_var::update                                                ## DBG |MDEV-22921
+binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|sys_var::set_default                                           ## DBG |MDEV-22921
 SIGSEGV|Opt_trace_context::is_started|THD::trace_started|Json_writer::add_table_name|Json_value_helper::add_table_name                                                          ## DBG |MDEV-22910
 SIGSEGV|Json_writer::add_table_name|Json_value_helper::add_table_name|Json_writer_object::add_table_name|SQL_SELECT::test_quick_select                                          ## OPT |MDEV-22910
 (m_storage_engine_name.str != __null) == used_engine|SIGABRT|Sql_cmd_alter_table::execute|mysql_execute_command|Prepared_statement::execute|Prepared_statement::execute_loop    ## DBG MDEV-22907
