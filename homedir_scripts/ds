@@ -5,10 +5,10 @@ COUNT1=0
 COUNT2=0
 COUNT3=0
 while true; do 
+  echo ''
   COUNT1=$[ ${COUNT1} + 1 ]
   COUNT2=$[ ${COUNT2} + 1 ]
   COUNT3=$[ ${COUNT3} + 1 ]
-  clear
   df -h | head -n1
   df -h | grep -vE "/snap/|/run/|/cgroup|/efi|udev|/run" | sed '1d' | sort   # | grep -v "shm"
   #cd /dev/shm

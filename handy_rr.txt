@@ -1,0 +1,22 @@
+# rr does not work on Google Cloud nor on AWS
+# https://github.com/mozilla/rr/issues/1610
+# https://stackoverflow.com/questions/43981547/launching-perf-from-bash-script-with-cap-sys-admin-and-cap-ipc-lock-capabilities
+
+# Installation
+sudo apt install linux-tools-common
+wget https://github.com/mozilla/rr/releases/download/5.3.0/rr-5.3.0-Linux-$(uname -m).deb
+sudo dpkg -i rr-5.3.0-Linux-$(uname -m).deb
+echo '-1' | sudo tee /proc/sys/kernel/perf_event_paranoid
+echo 'kernel.perf_event_paranoid=-1' | sudo tee -a /etc/sysctl.conf
+perf record  # And install first package suggested (alike to 'linux-gcp-5.3-tools-5.3.0-1030')
+perf record  # Should output something like 'You may not have permission to collect system-wide stats'
+sudo apt-get install cpufrequtils
+# Following commands may require to be executed after each reboot
+sudo systemctl disable ondemand
+echo 'GOVERNOR="performance"' | sudo tee /etc/default/cpufrequtils
+sudo cpufreq-set -g performance
+
+# This got a bit further on Google cloud, but the error remained the same when using rr: (even though under root 'perf record' did seem to record things - maybe log a rr github issue later on?)
+# setcap cap_ipc_lock+eip /usr/bin/perf
+# setcap cap_sys_admin+eip /usr/bin/perf
+# Error: [FATAL /home/roc/rr/rr/src/PerfCounters.cc:314:start_counter() errno: ENOENT] Unable to open performance counter with 'perf_event_open'; are perf events enabled? Try 'perf record'.
