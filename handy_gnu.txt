@@ -105,11 +105,16 @@
   if cat testfile.txt | egrep -qi "123"; then echo "yes"; else echo "no"; fi;   #OR#
 # Uppercase/lowercase a string. With thanks, http://stackoverflow.com/a/19411918/1580826
   V="Aa"; echo ${V^^}; echo ${V,,}  # Will output AA and aa respectively
-# Check a string for presence of a search/substring. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/
+# Check a string for presence of a search/substring. With thanks, http://timmurphy.org/2013/05/13/string-contains-substring-in-bash/ and https://stackoverflow.com/questions/26320553/case-insensitive-comparision-in-if-condition
   if [[ "$string" == *"$searchstring"* ]]; then echo "found"; else echo "not found"; fi  # This is much faster then grep -q (which is not recommended for strings) and always works
-  if [[ "$string" =~ $searchstring ]]; then echo "found"; else echo "not found"; fi
+  if [[ "$string" =~ $regex_searchstring ]]; then echo "found"; else echo "not found"; fi
   if [[ "$string" == *"={$searchstring1|$searchstring2}"* ]]; then echo "yes"; else echo "no"; fi;
   if [[ "${string^^}" == *"${searchstring^^}"* ]]; then echo "yes"; else echo "no"; fi;  # Case insensitive compare
+  TEXT='test '; echo "${TEXT^^}"  # TEST
+  TEXT='test '; echo "${TEXT,,}"  # test
+  TEXT='test '; echo "${TEXT^t}"  # Test
+  TEXT='test '; echo "${TEXT^^t}" # TesT
+  TEXT='test '; echo "${TEXT^^e}" # tEst
 # Check if sudo is installed and available
   if [ "$(sudo -A echo 'test' 2>/dev/null)" == "test" ]; then echo "SUDO installed & available"; else echo "SUDO not available, or password based access only"; fi
 # Sent all stdout/stderr output to a file while still on screen (With thanks http://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe)
