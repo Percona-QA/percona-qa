@@ -5,7 +5,7 @@ MAKE_THREADS=13         # Number of build threads. There may be a bug for builds
 WITH_EMBEDDED_SERVER=0  # 0 or 1 # Include the embedder server (removed in 8.0)
 WITH_LOCAL_INFILE=1     # 0 or 1 # Include the possibility to use LOAD DATA LOCAL INFILE (LOCAL option was removed in 8.0?)
 USE_BOOST_LOCATION=0    # 0 or 1 # Use a custom boost location to avoid boost re-download
-BOOST_LOCATION=/tmp/boost_043581/
+BOOST_LOCATION=/tmp/boost_465114
 USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
@@ -14,6 +14,9 @@ USE_SAN=0               # 0 or 1 # Use ASAN, MSAN, UBSAN
 CLANG_LOCATION="/usr/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 USE_AFL=0               # 0 or 1 # Use the American Fuzzy Lop gcc/g++ wrapper instead of gcc/g++
 AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
+IGNORE_WARNINGS=1       # 0 or 1 # Ignore warnings by using -DMYSQL_MAINTAINER_MODE=OFF. When ignoring warnings, regularly check that existing bugs are fixed. Related bugs:
+                                 # http://jira.mariadb.org/MDEV-21939
+                                 # http://jira.mariadb.org/MDEV-21940
 
 # To install the latest clang from Chromium devs (and this automatically updates previous version installed with this method too);
 # sudo yum remove clang    # Or sudo apt-get remove clang    # Only required if this procedure has never been followed yet
@@ -45,7 +48,7 @@ fi
 
 # Check RocksDB storage engine.
 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
-# For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
+# For daily builds of fb tree (opt and dbg) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 # This is also auto-turned off for all 5.5 and 5.6 builds
 MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" VERSION | sed 's|.*=||')
 MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" VERSION | sed 's|.*=||')
@@ -62,8 +65,7 @@ fi
 
 SSL_MYSQL57_HACK=0
 if [ -f /usr/bin/apt-get ]; then
-  #if [[ "$CURRENT_VERSION" < "050723" ]]; then  # This seems to have changed for 5.6 (opt only?)
-  if [[ "$CURRENT_VERSION" < "050640" ]]; then  # 050640 is a temporary guess/hack; find right rev
+  if [[ "$CURRENT_VERSION" < "050723" ]]; then
     SSL_MYSQL57_HACK=1
   fi
 fi
@@ -208,13 +210,18 @@ fi
 # Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters
 # little. Note that -k is not a compiler flag as -w is. It is a make option.
 
+# Ignore warnings
+if [ ${IGNORE_WARNINGS} -eq 1 ]; then
+  FLAGS="${FLAGS} -DMYSQL_MAINTAINER_MODE=OFF"
+fi
+
 CURPATH=$(echo $PWD | sed 's|.*/||')
 
 cd ..
-rm -Rf ${CURPATH}_opt
-rm -f /tmp/psms_opt_build_${RANDOMD}
-cp -R ${CURPATH} ${CURPATH}_opt
-cd ${CURPATH}_opt
+rm -Rf ${CURPATH}_dbg
+rm -f /tmp/psms_dbg_build_${RANDOMD}
+cp -R ${CURPATH} ${CURPATH}_dbg
+cd ${CURPATH}_dbg
 
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
@@ -236,48 +243,48 @@ fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build. Consider adding -DWITH_KEYRING_TEST=ON depeding on bug https://bugs.mysql.com/bug.php?id=90212 outcome
-  CMD="cmake . $CLANG $AFL $SSL -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DFORCE_INSOURCE_BUILD=1 ${SAN} ${FLAGS}"
+  CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DWITH_WSREP=ON -DWITH_INNODB_DISALLOW_WRITES=ON -DFORCE_INSOURCE_BUILD=1 ${SAN} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/psms_opt_build_${RANDOMD}
+  $CMD | tee /tmp/psms_dbg_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
-  # FB build
-  CMD="cmake . $CLANG $AFL $SSL -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=OFF ${FLAGS}"
+  # FB build, disabled for Galera builds
+  #CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/psms_opt_build_${RANDOMD}
+  $CMD | tee /tmp/psms_dbg_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 # Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
-make -j${MAKE_THREADS} | tee -a /tmp/psms_opt_build_${RANDOMD}
+make -j${MAKE_THREADS} | tee -a /tmp/psms_dbg_build_${RANDOMD}
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 
 if [ ! -r ./scripts/make_binary_distribution ]; then  # Note: ./scripts/binary_distribution is created on-the-fly during the make compile
   echo "Assert: ./scripts/make_binary_distribution was not found. Terminating."
   exit 1
 else
-  ./scripts/make_binary_distribution | tee -a /tmp/psms_opt_build_${RANDOMD}
+  ./scripts/make_binary_distribution | tee -a /tmp/psms_dbg_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for ./scripts/make_binary_distribution!"; exit 1; fi
 fi
 
-TAR_opt=`ls -1 *.tar.gz | grep -v "boost" | head -n1`
-if [[ "${TAR_opt}" == *".tar.gz"* ]]; then
-  DIR_opt=$(echo "${TAR_opt}" | sed 's|.tar.gz||')
-  TAR_opt_new=$(echo "${PREFIX}-${TAR_opt}" | sed 's|.tar.gz|-opt.tar.gz|')
-  DIR_opt_new=$(echo "${TAR_opt_new}" | sed 's|.tar.gz||')
-  if [ "${DIR_opt}" != "" ]; then rm -Rf ../${DIR_opt}; fi
-  if [ "${DIR_opt_new}" != "" ]; then rm -Rf ../${DIR_opt_new}; fi
-  if [ "${TAR_opt_new}" != "" ]; then rm -Rf ../${TAR_opt_new}; fi
-  mv ${TAR_opt} ../${TAR_opt_new}
+TAR_dbg=`ls -1 *.tar.gz | grep -v "boost" | head -n1`
+if [[ "${TAR_dbg}" == *".tar.gz"* ]]; then
+  DIR_dbg=$(echo "${TAR_dbg}" | sed 's|.tar.gz||')
+  TAR_dbg_new=$(echo "${PREFIX}-${TAR_dbg}" | sed 's|.tar.gz|-dbg.tar.gz|')
+  DIR_dbg_new=$(echo "${TAR_dbg_new}" | sed 's|.tar.gz||')
+  if [ "${DIR_dbg}" != "" ]; then rm -Rf ../${DIR_dbg}; fi
+  if [ "${DIR_dbg_new}" != "" ]; then rm -Rf ../${DIR_dbg_new}; fi
+  if [ "${TAR_dbg_new}" != "" ]; then rm -Rf ../${TAR_dbg_new}; fi
+  mv ${TAR_dbg} ../${TAR_dbg_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for moving of tarball!"; exit 1; fi
   cd ..
-  tar -xf ${TAR_opt_new}
+  tar -xf ${TAR_dbg_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for tar!"; exit 1; fi
-  mv ${DIR_opt} ${DIR_opt_new}
+  mv ${DIR_dbg} ${DIR_dbg_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for moving of tarball (2)!"; exit 1; fi
-  echo $CMD > ${DIR_opt_new}/BUILD_CMD_CMAKE
-  #rm -Rf ${CURPATH}_opt  # Best not to delete it; this way gdb debugging is better quality as source will be available!
+  echo $CMD > ${DIR_dbg_new}/BUILD_CMD_CMAKE
+  #rm -Rf ${CURPATH}_dbg  # Best not to delete it; this way gdb dbgging is better quality as source will be available!
   exit 0
 else
   echo "There was some unknown build issue... Have a nice day!"
