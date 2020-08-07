@@ -15,7 +15,7 @@ MYEXTRA="--plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-lo
 EARLYCOPY=0  # Make a copy to the COPYDIR before starting reducer. Not strictly required, but handy if your machine may power off and you were using /dev/shm as WORKDIR
 
 # Internal variables: Do not change!
-RANDOM=`date +%s%N | cut -b14-19`;
+RANDOM=`date +%s%N | cut -b10-19`;
 RANDOMR=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(.......\).*/\1/')  # Create random dir nr | 7 digits to separate it from other runs
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')   # Create random dir/file nr
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)

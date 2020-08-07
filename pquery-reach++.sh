@@ -52,7 +52,7 @@ rm -f /tmp/pqr_status.cnt
 echo "0" > /tmp/pqr_status.cnt
 
 # Generate random copydir
-RANDOM=`date +%s%N | cut -b14-19`;
+RANDOM=`date +%s%N | cut -b10-19`;
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(........\).*/\1/')   # Create random dir/file nr, 8 digits
 COPYDIR=$(echo "${COPYDIR}/${RANDOMD}")
 if [ -d ${COPYDIR} ]; then

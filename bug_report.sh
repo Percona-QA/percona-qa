@@ -67,7 +67,7 @@ echo 'Note that any mysqld options need to be listed as follows on the first lin
 echo '# mysqld options required for replay:  --someoption[=somevalue]'
 sleep 2
 
-RANDOM=`date +%s%N | cut -b14-19`  # Random entropy init
+RANDOM=`date +%s%N | cut -b10-19`  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 if [ ! -r bin/mysqld ]; then
