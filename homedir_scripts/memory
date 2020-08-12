@@ -4,6 +4,7 @@ PROCESS=
 MEMORY=
 TOO_MUCH_MEM=
 while true; do
+  clear
   ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n15
   TOO_MUCH_MEM="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | grep -E "mysqld|pquery2" | head -n1 | grep -o " *[0-9]\+ *[4-9][0-9]\.")"
   if [ "${TOO_MUCH_MEM}" != "" ]; then

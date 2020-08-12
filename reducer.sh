@@ -1173,13 +1173,7 @@ multi_reducer(){
     echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Waiting for all forked verification subreducer threads to finish/terminate"
     TXT_OUT="$ATLEASTONCE [Stage $STAGE] [MULTI] Finished/Terminated verification subreducer threads:"
     for t in $(eval echo {1..$MULTI_THREADS}); do
-      # An ideal situation would be to have a check here for 'Failed to start mysqld server' in the subreducer logs. However, this would require a change
-      # to how this section works; the "wait" for PID would have to be changed to some sort of loop. However, as a stopped verify thread (1 in 10 for starters)
-      # is quickly surpassed by a new set of threads - i.e. after 10 threads, 20 are started (a new run with +10 threads) - it is not deemed very necessary
-      # to change this atm. This error also would only show on very busy servers. However, this check SHOULD be done for non-verify MULTI stages, as for
-      # simplification, all threads keep running (if they remain live) untill a simplified testcase is found. Thus, if 8 out of 10 threads sooner or later
-      # end up with 'Failed to start mysqld server', then only 2 threads would remain that try and reproduce the issue (till ifinity). The 'Failed to start
-      # mysqld server' is seen on very busy servers (presumably some timeout hit). This second part (starting with 'However,...' is implemented already below.
+      # TODO: An ideal situation would be to have a check here for 'Failed to start mysqld server' in the subreducer logs. However, this would require a change to how this section works; the "wait" for PID would have to be changed to some sort of loop. However, as a stopped verify thread (1 in 10 for starters) is quickly surpassed by a new set of threads - i.e. after 10 threads, 20 are started (a new run with +10 threads) - it is not deemed very necessary to change this atm. This error also would only show on very busy servers. However, this check SHOULD be done for non-verify MULTI stages, as for simplification, all threads keep running (if they remain live) untill a simplified testcase is found. Thus, if 8 out of 10 threads sooner or later end up with 'Failed to start mysqld server', then only 2 threads would remain that try and reproduce the issue (till ifinity). The 'Failed to start mysqld server' is seen on very busy servers (presumably some timeout hit). This second part (starting with 'However,...' is implemented already below. RV update 12/8/20: When a different crash is seen then the one specified using TEXT, the thread will also get restarted, with the message being displayed being the 'busy server' one which is not correct. Some update to that output already made below.
       wait $(eval echo $(echo '$MULTI_PID'"$t"))
       TXT_OUT="$TXT_OUT #$t"
       echo_out_overwrite "$TXT_OUT"
@@ -1215,13 +1209,7 @@ multi_reducer(){
           done
           sleep 2
           echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Terminating simplification subreducer threads... done"
-          # The subshell in the following line simply retrieves the WORKO output file from the subreducer
-          # Then, the grep -v removes any mysqld option line before copying the file to the new/next WORKF for the next trial
-          # If this step was not done, the new/next WORKF testcase would always be +1 line longer. The way this would show for
-          # example in SKIPV mode is that the main reducer would indicate that it had found a shorter testcase (-1 line for example)
-          # whereas the next trial would start with the same line number (as +1 line was re-added). This is not so clear when
-          # large chunks are removed at the time, but it becomes very clear when only ~5-15 lines are left. This was fixed
-          # and the line below does not suffer from said problem
+          # The subshell in the following line simply retrieves the WORKO output file from the subreducer Then, the grep -v removes any mysqld option line before copying the file to the new/next WORKF for the next trial If this step was not done, the new/next WORKF testcase would always be +1 line longer. The way this would show for example in SKIPV mode is that the main reducer would indicate that it had found a shorter testcase (-1 line for example) whereas the next trial would start with the same line number (as +1 line was re-added). This is not so clear when large chunks are removed at the time, but it becomes very clear when only ~5-15 lines are left. This was fixed and the line below does not suffer from said problem
           grep -E --binary-files=text -v "^# mysqld options required for replay:" $(cat $MULTI_WORKD/VERIFIED | grep -E --binary-files=text "WORKO" | sed -e 's/^.*://' -e 's/[ ]*//g') > $WORKF
           if [ -r "$WORKO" ]; then  # First occurence: there is no $WORKO yet
             cp -f $WORKO ${WORKO}.prev

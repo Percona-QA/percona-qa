@@ -20,7 +20,7 @@ cp backup_github ${TARGET}
 cp backup_all ${TARGET}
 cp c ${TARGET}
 cp cl ${TARGET}
-cp core ${TARGET}
+cp findcore ${TARGET}
 cp count_reducers ${TARGET}
 cp cr ${TARGET}
 cp cr+ ${TARGET}

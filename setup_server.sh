@@ -44,11 +44,11 @@ bind k kill
 EOF
 fi
 echo "These settings are for a 128GB Memory server (google cloud instance of that size or similar)"
-if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%g.%s.%t.%e' ]; then
-  sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%g.%s.%t.%e" >> /etc/sysctl.conf'
+if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%s.%e.%t' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%s.%e.%t' ]; then
+  sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%s.%e.%t" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '^suid_dumpable=1' /etc/sysctl.conf)" != 'fs.suid_dumpable=1' ]; then
-  sudo sh -c 'echo "fs.suid_dumpable=1" >> /etc/sysctl.conf'
+if [ "$(grep -m1 '^suid_dumpable=2' /etc/sysctl.conf)" != 'fs.suid_dumpable=2' ]; then
+  sudo sh -c 'echo "fs.suid_dumpable=2" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 '^fs.aio-max-nr=99999999' /etc/sysctl.conf)" != 'fs.aio-max-nr=99999999' ]; then
   sudo sh -c 'echo "fs.aio-max-nr=99999999" >> /etc/sysctl.conf'

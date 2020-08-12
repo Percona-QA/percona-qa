@@ -5,7 +5,7 @@ COUNT1=0
 COUNT2=0
 COUNT3=0
 while true; do 
-  echo ''
+  clear
   COUNT1=$[ ${COUNT1} + 1 ]
   COUNT2=$[ ${COUNT2} + 1 ]
   COUNT3=$[ ${COUNT3} + 1 ]
@@ -15,7 +15,7 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000"
+  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000     Active reducers: $(~/count_reducers)    "
   sleep 2
   if [ ${COUNT1} -ge 10 ]; then
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM
