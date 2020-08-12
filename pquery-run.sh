@@ -17,7 +17,7 @@ CONFIGURATION_FILE=pquery-run.conf # Do not use any path specifiers, the .conf f
 
 # ========================================= MAIN CODE ============================================================================
 # Internal variables: DO NOT CHANGE!
-RANDOM=$(date +%s%N | cut -b14-19)
+RANDOM=$(date +%s%N | cut -b10-19)
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0)
 SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')

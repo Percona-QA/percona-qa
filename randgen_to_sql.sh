@@ -16,7 +16,7 @@ touch /tmp/newsql.sql
 for FILE in $(find . | grep "\.yy$"); do
   echo "Processing ${FILE}..."
   for LOOP in $(seq 0 ${RANDOM_RUNS_PER_GRAMMAR}); do
-     RANDOM=$(date +%s%N | cut -b14-19)  # RANDOM: Random entropy pool init
+     RANDOM=$(date +%s%N | cut -b10-19)  # RANDOM: Random entropy pool init
      SEED=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
      MASK=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random number generator (6 digits)
      MASK_LEVEL=$(echo $[ $RANDOM % 3 ])

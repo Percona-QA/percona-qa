@@ -13,7 +13,7 @@ head -n${TOADD} optimizer.sql >> new-main-md.sql.tmp
 
 CURRENT_LINES=$(wc -l new-main-md.sql.tmp 2>/dev/null | sed 's| .*||')
 echo "${CURRENT_LINES} in new-main-md.sql.tmp (max: 16777210) now. Now shuffling the file randomly..."
-RANDOM=$(date +%s%N | cut -b14-19)
+RANDOM=$(date +%s%N | cut -b10-19)
 shuf --random-source=/dev/urandom new-main-md.sql.tmp > new-main-md.sql
 rm -f new-main-md.sql.tmp
 

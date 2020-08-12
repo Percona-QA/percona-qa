@@ -27,7 +27,7 @@ FINAL_SQL=/tmp/mtr_to_sql${1}.sql  # Result SQL grammar (i.e. file name for outp
 #   - Scan original MTR file for multi-line statements and reconstruct (tr '\n' ' ' for example) to avoid half-statements ending up in resulting file
 
 # Internal variables
-RANDOM=$(date +%s%N | cut -b14-19)  # RANDOM: Random entropy pool init
+RANDOM=$(date +%s%N | cut -b10-19)  # RANDOM: Random entropy pool init
 TEMP_SQL=${FINAL_SQL}.tmp
 TESTS_PATH=$(echo ${DIRECTORY} | sed 's|$|/mysql-test/|;s|//|/|g')
 

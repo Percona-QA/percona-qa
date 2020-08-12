@@ -19,7 +19,7 @@
 # Random number between 0-9 based on nanosecond clock. To get random number between 0 and 99 do -b18-19 and so on
   date +%s%N | cut -b19-19
 # Random number between 1 and X
-  echo $(( RANDOM % 2000 + 1 ))  or  echo $[$RANDOM % 2000 + 1]  # Examples where X is 2000, change as needed
+  echo $(( $RANDOM % 2000 + 1 ))  or  echo $[$RANDOM % 2000 + 1]  # Examples where X is 2000, change as needed
 # Change all upper case letters to lower case (With thanks, http://www.linuxquestions.org/questions/linux-newbie-8/evaluate-strings-as-case-insensitive-676101/)
   echo "LoweR CasE" | tr [:upper:] [:lower:]  # Output: lower case
 # Ensure fault-free grep operation when grepping through a file which contains non-ASCII characters
@@ -282,12 +282,12 @@
           This will     work: $ if [[ "a-b" == *"a"[-_]"b"* ]]; then echo "yes"; fi  # With thanks, http://wiki.bash-hackers.org/syntax/pattern
 # Gotcha: sh -x != bash -x. If you use sh -x instead of bash -x to see the debug output of a complex script, you may see errors like this:
   ./script.sh: 5: ./script.sh: [[: not found  # The reason is that sh -x cannot handle "[[" if statements whereas bash -x can
-# Consider difference between
-for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -I{} bash -c "{}"
-# And the next line. The first one will run sequentially, whereas the -P10 version will start 10 threads at once
-for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -P10 -I{} bash -c "{}"
+# Consider difference between:
+  for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -I{} bash -c "{}"
+  # And the next line. The first one will run sequentially, whereas the -P10 version will start 10 threads at once
+  for i in $(seq 1 10); do echo $RANDOM | sed 's|\(^.\)|\1.|'; done | xargs -I{} echo "sleep {}; echo {}" | xargs -P10 -I{} bash -c "{}"
 # See what processes are accessing a given file
-fuser -a /path_to/your_file
+  fuser -a /path_to/your_file
 
 
 # ------ GNU 'screen' usage ------
