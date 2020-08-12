@@ -1,8 +1,8 @@
 #!/bin/bash
 
-BASEDIR=/test/MD270720-mariadb-10.5.5-linux-x86_64-opt   # opt or dbg is fine, does not matter
-RUNSOPT=5
-RUNSDBG=0
+BASEDIR=/test/MD110820-mariadb-10.4.15-linux-x86_64-opt  # opt or dbg is fine, does not matter
+RUNSOPT=4
+RUNSDBG=4
 
 echo "This script should show further output in 10-20 seconds. If it does not, see:"
 echo "screen -d -r pr1  # for the cause"

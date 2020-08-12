@@ -1,1 +1,9 @@
-cd MD270720-mariadb-10.5.5-linux-x86_64-opt
+#!/bin/bash
+
+if [ "${_}" == "${0}" ]; then
+  echo "Source me instead! Like this:"
+  echo ". ./opt"
+  exit 1
+fi
+
+cd MD110820-mariadb-10.5.6-linux-x86_64-opt

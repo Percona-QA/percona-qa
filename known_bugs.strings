@@ -10,6 +10,8 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|fil_system_t::keyrotate_next|fil_space_next|fil_crypt_find_space_to_rotate|fil_crypt_thread                                                                             ## OPT MDEV-23447
+fd != -1|SIGABRT|my_seek|azrewind|ha_archive::read_data_header|ha_archive::rnd_init                                                                                             ## DBG MDEV-23448
 table_list->prelocking_placeholder == TABLE_LIST::PRELOCK_NONE|SIGABRT|check_lock_and_start_stmt|restart_trans_for_tables|create_table_impl|mysql_create_table_no_lock          ## DBG MDEV-23298
 info->dfile.file == share->bitmap.file.file|SIGABRT|_ma_scan_init_block_record|maria_scan_init|ha_maria::rnd_init|handler::ha_rnd_init                                          ## DBG MDEV-23297
 SIGSEGV|ft_boolean_check_syntax_string|check_ftb_syntax|sys_var::check|set_var::check                                                                                           ## OPT MDEV-23269

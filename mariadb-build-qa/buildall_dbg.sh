@@ -8,4 +8,4 @@ cd ${DIR}/10.2 && ~/mariadb-qa/build_mdpsms_dbg.sh &
 cd ${DIR}/10.3 && ~/mariadb-qa/build_mdpsms_dbg.sh &
 cd ${DIR}/10.4 && ~/mariadb-qa/build_mdpsms_dbg.sh &
 cd ${DIR}/10.5 && ~/mariadb-qa/build_mdpsms_dbg.sh &
-#cd ${DIR}/10.6 && ~/mariadb-qa/build_mdpsms_dbg.sh &
+cd ${DIR}/10.6 && ~/mariadb-qa/build_mdpsms_dbg.sh &

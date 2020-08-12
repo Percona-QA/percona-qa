@@ -79,7 +79,11 @@ MS=0
 MD=0
 if [ ${MYSQL_VERSION_MAJOR} -eq 10 ]; then
   MD=1
-  PREFIX="MD${DATE}"
+  if [ $(ls support-files/rpm/*enterprise* 2>/dev/null | wc -l) -gt 0 ]; then
+    PREFIX="EMD${DATE}"
+  else
+    PREFIX="MD${DATE}"
+  fi
   ZLIB="-DWITH_ZLIB=bundled"  # 10.1 will fail with requirement for WITH_ZLIB=bundled. Building 10.1-10.5 with bundled ftm.
 elif [ ! -d rocksdb ]; then  # MS, PS
   VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"

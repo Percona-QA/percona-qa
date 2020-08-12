@@ -79,15 +79,19 @@ MS=0
 MD=0
 if [ ${MYSQL_VERSION_MAJOR} -eq 10 ]; then
   MD=1
-  PREFIX="MD${DATE}"
+  if [ $(ls support-files/rpm/*enterprise* 2>/dev/null | wc -l) -gt 0 ]; then
+    PREFIX="GAL_EMD${DATE}"
+  else
+    PREFIX="GAL_MD${DATE}"
+  fi
   ZLIB="-DWITH_ZLIB=bundled"  # 10.1 will fail with requirement for WITH_ZLIB=bundled. Building 10.1-10.5 with bundled ftm.
 elif [ ! -d rocksdb ]; then  # MS, PS
   VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
   if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" -o "${VERSION_EXTRA}" == "-rc" ]; then  # MS has no extra version number, or shows '-dmr' or '-rc' (both exactly and only) in this place
     MS=1
-    PREFIX="MS${DATE}"
+    PREFIX="GAL_MS${DATE}"
   else
-    PREFIX="PS${DATE}"
+    PREFIX="GAL_PS${DATE}"
   fi
 else
   PREFIX="FB${DATE}"
@@ -243,7 +247,7 @@ fi
 
 if [ $FB -eq 0 ]; then
   # PS,MS,PXC build. Consider adding -DWITH_KEYRING_TEST=ON depeding on bug https://bugs.mysql.com/bug.php?id=90212 outcome
-  CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DWITH_WSREP=ON -DWITH_INNODB_DISALLOW_WRITES=ON -DFORCE_INSOURCE_BUILD=1 ${SAN} ${FLAGS}"
+  CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -WITH-WSREP -DFORCE_INSOURCE_BUILD=1 ${SAN} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
   $CMD | tee /tmp/psms_dbg_build_${RANDOMD}
