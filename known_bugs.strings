@@ -10,6 +10,8 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|row_make_new_pathname|row_merge_rename_tables_dict|commit_try_rebuild|ha_innobase::commit_inplace_alter_table                                                           ## OPT MDEV-22939
+SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|Item_func_wsrep_last_seen_gtid::val_str_ascii                                                ## OPT MDEV-23466
 SIGSEGV|fil_system_t::keyrotate_next|fil_space_next|fil_crypt_find_space_to_rotate|fil_crypt_thread                                                                             ## OPT MDEV-23447
 fd != -1|SIGABRT|my_seek|azrewind|ha_archive::read_data_header|ha_archive::rnd_init                                                                                             ## DBG MDEV-23448
 table_list->prelocking_placeholder == TABLE_LIST::PRELOCK_NONE|SIGABRT|check_lock_and_start_stmt|restart_trans_for_tables|create_table_impl|mysql_create_table_no_lock          ## DBG MDEV-23298
@@ -185,7 +187,8 @@ nr != 0|SIGABRT|handler::update_auto_increment|ha_maria::write_row|handler::ha_w
 nr != 0|SIGABRT|handler::update_auto_increment|ha_innobase::write_row|handler::ha_write_row|write_record                                                                        ## DBG |MDEV-22118
 table->file->stats.records > 0 || error|SIGABRT|join_read_const_table|make_join_statistics|JOIN::optimize_inner|JOIN::optimize                                                  ## DBG MDEV-22117
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_sql_stmt_prepare|mysql_execute_command                                ## DBG MDEV-22058
-strlen(name_arg) <= (64*3)|SIGABRT|MDL_key::mdl_key_init|MDL_request::init_with_source|lock_object_name|Sp_handler::sp_drop_routine                                             ## DBG MDEV-22044
+strlen(name_arg) <= (64*3)|SIGABRT|MDL_key::mdl_key_init|MDL_request::init_with_source|lock_object_name|Sp_handler::sp_drop_routine                                             ## DBG |MDEV-22044
+strlen(name_arg) <= (64U*3)|SIGABRT|MDL_key::mdl_key_init|MDL_request::init|lock_object_name|Sp_handler::sp_drop_routine                                                        ## DBG |MDEV-22044
 0|SIGABRT|my_wc_to_printable_generic|my_convert_using_func|convert_error_message|net_send_error_packet                                                                          ## DBG MDEV-22043
 end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|ORAparse|parse_sql                                                ## DBG |MDEV-22022
 end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse|parse_sql                                              ## DBG |MDEV-22022

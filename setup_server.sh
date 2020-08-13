@@ -4,9 +4,10 @@
 # cat /sys/fs/cgroup/pids/user.slice/user-${UID}.slice/pids.max  # or use ${EUID}, change pids.max to others
 # cat /sys/fs/cgroup/pids/user.slice/user-${UID}.slice/pids.current
 
-# References
+# References, with thanks
 # https://www.ibm.com/support/knowledgecenter/SSEPGG_11.1.0/com.ibm.db2.luw.qb.server.doc/doc/t0008238.html
 # https://www.serverwatch.com/server-tutorials/set-user-limits-with-pamlimits-and-limits.conf.html
+# https://sigquit.wordpress.com/2009/03/13/the-core-pattern/
 
 echo "Substantial changes will be made to the system configuration of this machine. Press CTRL+C within the next 7 seconds to abort if you are not sure if that is a wise idea."
 echo "Script assumes that this machine is a Ubuntu 18.04 server!"
