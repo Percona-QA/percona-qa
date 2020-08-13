@@ -1,5 +1,5 @@
 cat "${1}" | \
-  sed "s|. mysqld options required for replay: ..sql_mode=[ \t]*$|SET SQL_MODE=''|" | \
+  sed "s|. mysqld options required for replay: ..sql_mode=[ \t]*$|SET SQL_MODE='';|" | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
   sed 's|t1|t|g' | \
   sed 's|int|INT|gi;s|integer|INT|gi' | \
