@@ -93,3 +93,9 @@ SELECT * FROM t INTO OUTFILE 'abcdefghijklmnopqrstuvwxyz';
 set global aria_encrypt_tables=ON;
 CREATE TEMPORARY TABLE t (c1 INT, INDEX(c1)) UNION=(t1,t2);
 LOAD DATA INFILE 'abcdefghijklmnopqrstuvwxyz' INTO TABLE t;
+
+USE test;
+SET GLOBAL aria_encrypt_tables=ON;
+CREATE TABLE t(a INT PRIMARY KEY) ENGINE=Aria KEY_BLOCK_SIZE=1 ROW_FORMAT=COMPACT;
+INSERT INTO t VALUES (0),(1),(2),(3);
+TRUNCATE t;

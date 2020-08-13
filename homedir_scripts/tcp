@@ -1,0 +1,52 @@
+cat "${1}" | \
+  sed "s|. mysqld options required for replay: ..sql_mode=[ \t]*$|SET SQL_MODE=''|" | \
+  sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
+  sed 's|t1|t|g' | \
+  sed 's|int|INT|gi;s|integer|INT|gi' | \
+  sed 's|create|CREATE|gi' | \
+  sed 's|table|TABLE|gi' | \
+  sed 's|where|WHERE|gi' | \
+  sed 's|set @@global\.|SET GLOBAL |gi' | \
+  sed 's|set @@session\.|SET SESSION |gi' | \
+  sed 's|use|USE|gi' | \
+  sed 's|versioning|VERSIONING|gi' | \
+  sed 's|blob|BLOB|gi' | \
+  sed 's|text|TEXT|gi' | \
+  sed 's|small|SMALL|gi' | \
+  sed 's|large|LARGE|gi' | \
+  sed 's|medium|MEDIUM|gi' | \
+  sed 's|from|FROM|gi' | \
+  sed 's|union|UNION|gi' | \
+  sed 's|select|SELECT|gi' | \
+  sed 's|update|UPDATE|gi' | \
+  sed 's|delete|DELETE|gi' | \
+  sed 's|truncate|TRUNACE|gi' | \
+  sed 's|explain|EXPLAIN|gi' | \
+  sed 's|extended|EXTENDED|gi' | \
+  sed 's|repair|REPAIR|gi' | \
+  sed 's|order by|ORDER BY|gi' | \
+  sed 's|drop|DROP|gi' | \
+  sed 's|set|SET|gi' | \
+  sed 's|session|SESSION|gi' | \
+  sed 's|global|GLOBAL|gi' | \
+  sed 's|primary|PRIMARY|gi' | \
+  sed 's|key|KEY|gi' | \
+  sed 's|null|NULL|gi' | \
+  sed 's|not |NOT |gi' | \
+  sed 's|linestring|LINESTRING|gi' | \
+  sed 's|polygon|POLYGON|gi' | \
+  sed 's|geometry|GEOMETRY|gi' | \
+  sed 's| in | IN |gi' | \
+  sed 's|aria|Aria|gi' | \
+  sed 's|memory|MEMORY|gi' | \
+  sed 's|innodb|InnoDB|gi' | \
+  sed 's|myisam|MyISAM|gi' | \
+  sed 's|csv|CSV|gi' | \
+  sed 's|archive|ARCHIVE|gi' | \
+  sed 's|values|VALUES|gi' | \
+  sed 's|st_|ST_|gi' | \
+  sed 's|geomfromtext|GEOMFROMTEXT|gi' | \
+  sed 's|row_format|ROW_FORMAT|gi' | \
+  sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
+  sed 's|compressed|COMPRESSED|gi' | \
+  sed 's| [ \t]| |g'

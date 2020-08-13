@@ -27,6 +27,7 @@ cp cr+ ${TARGET}
 cp ds ${TARGET}
 cp dt ${TARGET}
 cp er ${TARGET}
+cp eb ${TARGET}
 cp f-master ${TARGET}
 cp f-slave ${TARGET}
 cp fb ${TARGET}
@@ -73,6 +74,7 @@ cp stop_all_pr ${TARGET}
 cp swapoffon ${TARGET}
 cp t ${TARGET}
 cp tc ${TARGET}
+cp tcp ${TARGET}
 cp tr ${TARGET}
 cp ts+ ${TARGET}
 cp tsm ${TARGET}

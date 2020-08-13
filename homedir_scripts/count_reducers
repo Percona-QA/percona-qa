@@ -1,1 +1,1 @@
-ps -ef | grep -o 'reducer[0-9]\+.sh' | sort -u | wc -l
+ps -ef | grep -vE 'SCREEN|bash -c' | grep -o 'reducer[0-9]\+.sh' | sort -u | wc -l

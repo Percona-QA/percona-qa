@@ -10,6 +10,7 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|fill_record|fill_record_n_invoke_before_triggers|mysql_insert|mysql_execute_command                                                                                     ## OPT MDEV-23467
 SIGSEGV|row_make_new_pathname|row_merge_rename_tables_dict|commit_try_rebuild|ha_innobase::commit_inplace_alter_table                                                           ## OPT MDEV-22939
 SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|Item_func_wsrep_last_seen_gtid::val_str_ascii                                                ## OPT MDEV-23466
 SIGSEGV|fil_system_t::keyrotate_next|fil_space_next|fil_crypt_find_space_to_rotate|fil_crypt_thread                                                                             ## OPT MDEV-23447
@@ -42,6 +43,7 @@ thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.
 level <= 50|SIGABRT|btr_page_get_level|btr_cur_search_to_nth_level_func|btr_insert_on_non_leaf_level_func|btr_attach_half_pages                                                 ## DBG MDEV-23165
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain_str|print_explain_for_slow_log                                       ## OPT |MDEV-23160
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain|Explain_query::print_explain_str                                     ## DBG |MDEV-23160
+SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_node::print_explain_for_children|Explain_select::print_explain                            ## OPT |MDEV-23160
 table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_index_last|get_index_max_value|opt_sum_query|JOIN::optimize_inner                                ## DBG |MDEV-23159
 SIGSEGV|trnman_can_read_from|_ma_row_visible_transactional_table|maria_rnext|handler::ha_index_first                                                                            ## OPT |MDEV-23159
 SIGSEGV|trnman_can_read_from|_ma_row_visible_transactional_table|maria_rprev|handler::ha_index_last                                                                             ## OPT |MDEV-23159
@@ -51,7 +53,8 @@ SIGABRT|ut_dbg_assertion_failed|trx_mark_sql_stat_end|innobase_commit|commit_one
 is_open()|SIGABRT|MYSQL_BIN_LOG::trx_group_commit_leader|MYSQL_BIN_LOG::write_transaction_to_binlog_events|MYSQL_BIN_LOG::write_transaction_to_binlog|binlog_flush_cache        ## DBG MDEV-23045
 SIGSEGV|row_create_prebuilt|ha_innobase::open|handler::ha_open|open_table_from_share                                                                                            ## OPT MDEV-23011
 SIGSEGV|get_field|get_field|acl_load|acl_reload                                                                                                                                 ## OPT MDEV-23009
-marked_for_read()|SIGABRT|Field_varstring::val_str|Field::val_str|handler::calculate_checksum|mysql_checksum_table                                                              ## DBG MDEV-22943
+marked_for_read()|SIGABRT|Field_varstring::val_str|Field::val_str|handler::calculate_checksum|mysql_checksum_table                                                              ## DBG |MDEV-22943
+marked_for_read()|SIGABRT|Field_blob::val_str|Field::val_str|handler::calculate_checksum|mysql_checksum_table                                                                   ## DBG |MDEV-22943
 m_curr_row <= m_rows_end|SIGABRT|Rows_log_event::unpack_current_row|Rows_log_event::write_row|Write_rows_log_event::do_exec_row|Rows_log_event::do_apply_event                  ## OPT MDEV-22936
 binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|set_var::update                                                ## DBG |MDEV-22921
 binlog_checksum_options == value|SIGABRT|binlog_checksum_update|sys_var_pluginvar::global_update|sys_var::update|sys_var::set_default                                           ## DBG |MDEV-22921
@@ -205,6 +208,7 @@ table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_r
 SIGSEGV|find_field_in_table|find_field_in_table_ref|find_field_in_tables|Item_field::fix_fields                                                                                 ## OPT |MDEV-18163*
 table_list->table|SIGABRT|find_field_in_table_ref|find_field_in_tables|Item_field::fix_fields|Item::fix_fields_if_needed                                                        ## DBG |MDEV-18163*
 (key_del_current != 0) && ((key_del_current == (~ (my_off_t) 0)) || (key_del_current <= (share->state.state.key_file_length - block_size)))|SIGABRT|_ma_new|_ma_enlarge_root|_ma_ck_real_write_btree|_ma_ck_write_btree_with_log  ## DBG |MDEV-18496
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_truncate_table::execute|mysql_execute_command                       ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_load|mysql_execute_command                                            ## DBG |MDEV-18496
 (longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|ma_crypt_post_write_hook|write_page               ## OPT |MDEV-18496*
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|drop_routine|mysql_execute_command                                          ## DBG |MDEV-18496

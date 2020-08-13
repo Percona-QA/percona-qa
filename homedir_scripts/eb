@@ -1,0 +1,1 @@
+vi ~/mariadb-qa/BUGS/MDEV-${1}.sql
