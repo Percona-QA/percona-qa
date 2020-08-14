@@ -71,6 +71,7 @@ USE_NEW_TEXT_STRING=0           # On/off (1/0) If enabled, when using MODE=3, th
 TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
 SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
 KNOWN_BUGS="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS file, it will not be considered a new issue when it is seen by reducer.sh
+NEW_BUGS_COPY_DIR="/data/NEWBUGS"  # Make an additional copy of any new bugs into this directory
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -973,6 +974,14 @@ options_check(){
       echo "SCAN_FOR_NEW_BUGS was set to 1, yet file specified in KNOWN_BUGS (${KNOWN_BUGS}) does not exist?"
       echo "Terminating now."
       exit 1
+    fi
+    if [ ! -d ${NEW_BUGS_COPY_DIR} ]; then
+      mkdir -p ${NEW_BUGS_COPY_DIR}
+      if [ ! -d ${NEW_BUGS_COPY_DIR} ]; then
+        echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_COPY_DIR was set to '${NEW_BUGS_COPY_DIR}'. As this directory did not exist yet, this script tried to create it, and failed. Please check."
+        echo "Terminating now."
+        exit 1
+      fi
     fi
   fi
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
@@ -2829,9 +2838,20 @@ process_outcome(){
                 NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
                 echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: $(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)"
                 cp ${WORKT} ${NEWBUGSO}
-                echo_out "[NewBug] Saved a copy of the new bug testcase to:    ${NEWBUGSO}"
+                echo_out "[NewBug] Saved the new testcase to: ${NEWBUGSO}"
                 cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
-                echo_out "[NewBug] Saved a copy of the new bug TEXT string to: ${NEWBUGTO}"
+                echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
+                if [ ! -z "${NEW_BUGS_COPY_DIR}" ]; then  # We also need to copy this new bug to the NEW_BUGS_COPY_DIR
+                  if [ ! -d ${NEW_BUGS_COPY_DIR} ]; then
+                    echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_COPY_DIR was set to '${NEW_BUGS_COPY_DIR}'. This directory already existed, or was created succesfully at the start of this script run. However, it is not present anymore. Please check cause."
+                    echo "Terminating now."
+                    exit 1
+                  fi
+                  cp ${WORKT} ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.sql
+                  echo_out "[NewBug] Also saved the new testcase to: ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.sql"
+                  cp ${WORKD}/MYBUG.FOUND ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.string
+                  echo_out "[NewBug] Also saved the unique bugid to: ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.string"
+                fi
                 EPOCH_RAN=
                 NEWBUGSO=
                 NEWBUGTO=

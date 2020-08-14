@@ -19,6 +19,7 @@ cat "${1}" | \
   sed 's|union|UNION|gi' | \
   sed 's|select|SELECT|gi' | \
   sed 's|update|UPDATE|gi' | \
+  sed 's|insert|INSERT|gi' | \
   sed 's|delete|DELETE|gi' | \
   sed 's|truncate|TRUNACE|gi' | \
   sed 's|explain|EXPLAIN|gi' | \
@@ -49,4 +50,5 @@ cat "${1}" | \
   sed 's|row_format|ROW_FORMAT|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|compressed|COMPRESSED|gi' | \
+  sed 's|InnoDB_|innodb|g' | \
   sed 's| [ \t]| |g'

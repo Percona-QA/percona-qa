@@ -37,6 +37,7 @@ cp clean_all ${TARGET}
 cp multi_sr_all ${TARGET}
 cp dbg ${TARGET}
 cp opt ${TARGET}
+cp my ${TARGET}
 cp test_all ${TARGET}
 cp find_cores ${TARGET}
 cp untar ${TARGET}
@@ -67,6 +68,7 @@ cp report_dbg ${TARGET}
 cp clean ${TARGET}
 cp allstrings_merged ${TARGET}
 cp allstrings ${TARGET}
+cp semaphore ${TARGET}
 
 cd ${TARGET}
 git add *

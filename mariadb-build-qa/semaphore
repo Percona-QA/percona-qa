@@ -1,0 +1,2 @@
+#!/bin/bash
+grep -A1 -Ei --binary-files=text 'seconds the semaphore' */*/log/master.err
