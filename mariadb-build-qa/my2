@@ -1,0 +1,4 @@
+#!/bin/bash
+clear
+./my > out
+cat out | sed 's|.* ||' | sort -u | grep out_out | xargs -I{} echo "echo '======== {}';cat {};echo '----';~/tcp {}" | xargs -I{} bash -c "{}" | more

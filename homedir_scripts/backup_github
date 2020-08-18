@@ -86,6 +86,7 @@ cp asan ${TARGET}
 cp scanall ${TARGET}
 cp memory ${TARGET}
 cp build_both ${TARGET}
+cp repeat ${TARGET}
 
 cd ${TARGET}
 git add *

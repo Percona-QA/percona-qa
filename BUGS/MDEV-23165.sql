@@ -18,3 +18,18 @@ INSERT INTO t SELECT * FROM t;
 INSERT INTO t SELECT * FROM t;  # Approx crash location
 INSERT INTO t SELECT * FROM t; 
 INSERT INTO t SELECT * FROM t; 
+
+SET SQL_MODE='';
+USE test;
+SET GLOBAL innodb_limit_optimistic_INSERT_debug=2;
+CREATE TABLE t (a INT,b VARCHAR(20),KEY(a));
+INSERT INTO t (a) VALUES ('a'),('b'),('c'),('d'),('e');
+INSERT INTO t VALUES (1,''),(2,''),(3,''),(4,''),(5,''),(6,''),(7,'');
+INSERT INTO t SELECT * FROM t;
+INSERT INTO t SELECT a,a FROM t;
+INSERT INTO t SELECT * FROM t;
+INSERT INTO t SELECT * FROM t;
+INSERT INTO t SELECT * FROM t;
+INSERT INTO t SELECT * FROM t;
+INSERT INTO t SELECT * FROM t;
+INSERT INTO t SELECT * FROM t;

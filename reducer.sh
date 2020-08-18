@@ -975,9 +975,9 @@ options_check(){
       echo "Terminating now."
       exit 1
     fi
-    if [ ! -d ${NEW_BUGS_COPY_DIR} ]; then
-      mkdir -p ${NEW_BUGS_COPY_DIR}
-      if [ ! -d ${NEW_BUGS_COPY_DIR} ]; then
+    if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
+      mkdir -p "${NEW_BUGS_COPY_DIR}"
+      if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
         echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_COPY_DIR was set to '${NEW_BUGS_COPY_DIR}'. As this directory did not exist yet, this script tried to create it, and failed. Please check."
         echo "Terminating now."
         exit 1
@@ -1115,7 +1115,7 @@ multi_reducer(){
   # Create (or remove/create) main multi-reducer path
   rm -Rf $WORKD/subreducer/
   sync; sleep 0.5
-  if [ -d $WORKD/subreducer/ ]; then
+  if [ -d "$WORKD/subreducer/" ]; then
     echo_out "ASSERT: $WORKD/subreducer/ still exists after it has been deleted"
     echo "Terminating now."
     exit 1
@@ -1272,7 +1272,8 @@ multi_reducer(){
             fi
           else
             # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?). This may also happen due to any of the following reasons: 1) mysqld startup timeouts etc., 2) the server is crashing, but not on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log. Pausing 120 seconds to give you time to do so."
+            sleep 120
           fi
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
@@ -1472,7 +1473,7 @@ init_workdir_and_files(){
       fi
       WORKD="/tmp/$EPOCH"
     fi
-    if [ -d $WORKD ]; then
+    if [ -d "$WORKD" ]; then
       EPOCH=$[EPOCH-1]
     else
       break
@@ -1726,7 +1727,7 @@ init_workdir_and_files(){
       fi
       generate_run_scripts
       ${INIT_TOOL} ${INIT_OPT} --basedir=$BASEDIR --datadir=$WORKD/data ${MID_OPTIONS} --user=$MYUSER > $WORKD/init.log 2>&1
-      if [ ! -d $WORKD/data ]; then
+      if [ ! -d "$WORKD/data" ]; then
         echo_out "$ATLEASTONCE [Stage $STAGE] [ERROR] data directory at $WORKD/data does not exist... check $WORKD/log/master.err, $WORKD/log/mysqld.out and $WORKD/init.log"
         echo "Terminating now."
         exit 1
@@ -2842,7 +2843,7 @@ process_outcome(){
                 cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
                 echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
                 if [ ! -z "${NEW_BUGS_COPY_DIR}" ]; then  # We also need to copy this new bug to the NEW_BUGS_COPY_DIR
-                  if [ ! -d ${NEW_BUGS_COPY_DIR} ]; then
+                  if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
                     echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_COPY_DIR was set to '${NEW_BUGS_COPY_DIR}'. This directory already existed, or was created succesfully at the start of this script run. However, it is not present anymore. Please check cause."
                     echo "Terminating now."
                     exit 1
@@ -3212,7 +3213,7 @@ copy_workdir_to_tmp(){
         fi
         # Check if the copy of directories (excluding the socket file,this reducer script,the original input file,and the current still-being-written-to log) is indentical (i.e. no output shown for the diff command)
         DIFF_WORKDIR_COPY="not_empty"
-        if [ -d /tmp/$EPOCH ]; then
+        if [ -d "/tmp/$EPOCH" ]; then
           DIFF_WORKDIR_COPY="$(diff -qr $WORKD /tmp/$EPOCH | grep -vE "is a socket|Only in /tmp/|Files.*dev.*shm.*reducer\.log.*tmp.*reducer\.log differ")"
         fi
         if [ "$DIFF_WORKDIR_COPY" == "" ]; then

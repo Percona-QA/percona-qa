@@ -1,1 +1,2 @@
-vi ~/mariadb-qa/BUGS/MDEV-${1}.sql
+BUG="$(echo "${1}" | grep -o '[0-9]\+')"
+vi ~/mariadb-qa/BUGS/MDEV-${BUG}.sql

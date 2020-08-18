@@ -38,6 +38,7 @@ cp multi_sr_all ${TARGET}
 cp dbg ${TARGET}
 cp opt ${TARGET}
 cp my ${TARGET}
+cp my2 ${TARGET}
 cp test_all ${TARGET}
 cp find_cores ${TARGET}
 cp untar ${TARGET}

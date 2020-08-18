@@ -40,7 +40,8 @@ tl->table == __null|SIGABRT|THD::open_temporary_table|THD::open_temporary_tables
 SIGSEGV|btr_search_sys_t::get_part|dict_index_t::n_ahi_pages|dict_index_remove_from_cache_low|dict_sys_t::remove                                                                ## DBG MDEV-23206
 thd->mdl_context.is_lock_owner(MDL_key::TABLE, db.str, table_name.str, MDL_SHARED)|SIGABRT|mysql_rm_table_no_locks|mysql_rm_table|mysql_execute_command|mysql_parse             ## |DBG MDEV-23205
 thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.str, MDL_SHARED)|SIGABRT|mysql_rm_table_no_locks|mysql_rm_table|mysql_execute_command|mysql_parse  ## |DBG MDEV-23205
-level <= 50|SIGABRT|btr_page_get_level|btr_cur_search_to_nth_level_func|btr_insert_on_non_leaf_level_func|btr_attach_half_pages                                                 ## DBG MDEV-23165
+level <= 50|SIGABRT|btr_page_get_level|btr_cur_search_to_nth_level_func|btr_insert_on_non_leaf_level_func|btr_attach_half_pages                                                 ## DBG |MDEV-23165
+level <= 50|SIGABRT|btr_page_set_level|btr_page_empty|btr_root_raise_and_insert|btr_cur_pessimistic_insert                                                                      ## DBG |MDEV-23165
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain_str|print_explain_for_slow_log                                       ## OPT |MDEV-23160
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_query::print_explain|Explain_query::print_explain_str                                     ## DBG |MDEV-23160
 SIGSEGV|Explain_node::print_explain_for_children|Explain_union::print_explain|Explain_node::print_explain_for_children|Explain_select::print_explain                            ## OPT |MDEV-23160
@@ -131,6 +132,8 @@ SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock  ## OPT |MDEV-22448
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|THD::cleanup|unlink_thd                                                                      ## OPT |MDEV-22448
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|backup_lock|mysql_execute_command                                                            ## OPT |MDEV-22448
+SIGSEGV|MDL_lock::hog_lock_types_bitmap|MDL_lock::reschedule_waiters|MDL_lock::remove_ticket|MDL_context::release_lock                                                          ## OPT |MDEV-22448
+SIGSEGV|free () from|MDL_context::release_locks_stored_before|MDL_context::rollback_to_savepoint|THD::restore_backup_open_tables_state                                          ## OPT |MDEV-22448
 SIGSEGV|Item::val_uint|handle_select|execute_sqlcom_select|mysql_execute_command                                                                                                ## OPT MDEV-22447
 SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::init_table_handle_for_HANDLER|mysql_ha_read                                                        ## OPT MDEV-22445
 SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_writer_object::add                                                                                   ## OPT |MDEV-22444
@@ -203,11 +206,13 @@ SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table         
 SIGABRT|ut_dbg_assertion_failed|trx_rollback_last_sql_stat_for_mysql|innobase_rollback|ha_rollback_trans                                                                        ## OPT MDEV-15494*
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT |MDEV-15703*
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT |MDEV-15703*
+strcmp(share->unique_file_name,filename) || share->last_version|SIGABRT|test_if_reopen|mi_open|ha_myisam::open|handler::ha_open                                                 ## DBG MDEV-16985
 ls->length < 0xFFFFFFFFL && ((ls->length == 0 && !ls->str) || ls->length == strlen(ls->str))|SIGABRT|String::append|Sp_handler::show_create_sp|Sp_handler::sp_load_for_information_schema|store_schema_proc  # MDEV-16788*
 table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_rnd_next|rr_sequential|READ_RECORD::read_record|join_init_read_record                            ## DBG |MDEV-18163*
 SIGSEGV|find_field_in_table|find_field_in_table_ref|find_field_in_tables|Item_field::fix_fields                                                                                 ## OPT |MDEV-18163*
 table_list->table|SIGABRT|find_field_in_table_ref|find_field_in_tables|Item_field::fix_fields|Item::fix_fields_if_needed                                                        ## DBG |MDEV-18163*
 (key_del_current != 0) && ((key_del_current == (~ (my_off_t) 0)) || (key_del_current <= (share->state.state.key_file_length - block_size)))|SIGABRT|_ma_new|_ma_enlarge_root|_ma_ck_real_write_btree|_ma_ck_write_btree_with_log  ## DBG |MDEV-18496
+!(offset < ((7 + 1 + 1 + 2 + 1) + (share)->crypt_page_header_space))|SIGABRT|_ma_scan_block_record|sort_get_next_record|sort_key_read|find_all_keys                             ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_truncate_table::execute|mysql_execute_command                       ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_load|mysql_execute_command                                            ## DBG |MDEV-18496
 (longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|ma_crypt_post_write_hook|write_page               ## OPT |MDEV-18496*
@@ -222,6 +227,7 @@ file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::enable_indexes|ha_myisam::end_bulk_insert|handler::ha_end_bulk_insert        ## DBG |MDEV-19011*
 expr == default_value->expr|SIGABRT|make_empty_rec_store_default|make_empty_rec|build_frm_image|mysql_create_frm_image                                                          ## DBG |MDEV-19336*
 entry->pos_in_table_list->table == entry|SIGABRT|free_tmp_table|close_thread_tables|mysql_execute_command|mysql_parse                                                           ## DBG |MDEV-19336*
+inited==NONE|SIGABRT|handler::ha_index_read_idx_map|write_record|Delayed_insert::handle_inserts|handle_delayed_insert                                                           ## DBG MDEV-19596*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item_func_as_wkt::val_str_ascii|Item_func::val_str_from_val_str_ascii             ## DBG |MDEV-19723*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send                 ## DBG |MDEV-19723*
 log_descriptor.bc.buffer->prev_last_lsn == ((LSN)0)|SIGABRT|translog_flush_buffers|translog_flush|ma_commit|ha_maria::external_lock                                             ## DBG MDEV-17225
@@ -251,6 +257,7 @@ m_psi_batch_mode == PSI_BATCH_MODE_NONE|SIGABRT|handler::ha_close|create_interna
 !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                                ## DBG MDEV-22062*
 marked_for_read()|SIGABRT|Field_blob::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                                                         ## DBG ~MDEV-22551*
 SIGSEGV|traverse_role_graph_impl|traverse_role_graph_up|propagate_role_grants|mysql_grant                                                                                       ## OPT MDEV-22521*
+SIGSEGV|check_vcol_forward_refs|parse_vcol_defs|Delayed_insert::get_local_table|delayed_get_table                                                                               ## OPT MDEV-22525*
 SIGSEGV|is_versioning_timestamp|Vers_parse_info::check_sys_fields|Table_scope_and_contents_source_st::vers_check_system_fields|Table_scope_and_contents_source_st::check_fields ## OPT MDEV-22660*
 offset < table->s->reclength|SIGABRT|dump_leaf_key|Item_func_group_concat::add|Item_func_group_concat::add|Aggregator_simple::add
 bitmap_is_set(&(m_part_info->read_partitions), m_last_part)|SIGABRT|ha_partition::position|multi_delete::send_data|select_result_sink::send_data_with_check|end_send            ## DBG MDEV-22667*
