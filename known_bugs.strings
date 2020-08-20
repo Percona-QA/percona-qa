@@ -225,6 +225,7 @@ status_var.local_memory_used == 0 || !debug_assert_on_not_freed_memory|SIGABRT|T
 !parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|Table_triggers_list::drop_all_triggers|mysql_rm_table_no_locks|mysql_rm_table                         ## DBG |MDEV-18496
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::repair|handler::ha_repair|mysql_admin_table                                  ## DBG |MDEV-19011
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::enable_indexes|ha_myisam::end_bulk_insert|handler::ha_end_bulk_insert        ## DBG |MDEV-19011*
+(create_info->tmp_table()) || thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.str, MDL_EXCLUSIVE)|SIGABRT|mysql_create_like_table|Sql_cmd_create_table_like::execute|mysql_execute_command|mysql_parse  # MDEV-19198
 expr == default_value->expr|SIGABRT|make_empty_rec_store_default|make_empty_rec|build_frm_image|mysql_create_frm_image                                                          ## DBG |MDEV-19336*
 entry->pos_in_table_list->table == entry|SIGABRT|free_tmp_table|close_thread_tables|mysql_execute_command|mysql_parse                                                           ## DBG |MDEV-19336*
 inited==NONE|SIGABRT|handler::ha_index_read_idx_map|write_record|Delayed_insert::handle_inserts|handle_delayed_insert                                                           ## DBG MDEV-19596*
@@ -240,16 +241,17 @@ SIGSEGV|Query_arena::set_query_arena|THD::set_n_backup_active_arena|Field::set_d
 (templ->is_virtual && !field) || (field && field->prefix_len ? field->prefix_len == len : templ->mysql_col_len == len)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_search_idx_cond_check|row_search_mvcc  ## DBG MDEV-18911*
 !((col->prtype ^ prtype) & ~(16384U|32768U))|SIGABRT|innobase_rename_or_enlarge_column_try|innobase_rename_or_enlarge_columns_try|commit_try_norebuild|ha_innobase::commit_inplace_alter_table  ## DBG MDEV-18780*
 SIGSEGV|fk_prepare_copy_alter_table|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command                                                                        ## DBG MDEV-19194*
+((((*af)->unireg_check) & 127U) == Field::NEXT_NUMBER) == (((f->unireg_check) & 127U) == Field::NEXT_NUMBER)|SIGABRT|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command  ## DBG MDEV-19272*
 SIGSEGV|st_select_lex::mark_as_dependent|mark_as_dependent|Item_field::fix_outer_field|Item_field::fix_fields                                                                   ## OPT MDEV-20325*
 SIGSEGV|row_upd_del_mark_clust_rec|row_upd_clust_step|row_upd|row_upd_step                                                                                                      ## OPT |MDEV-20563*
 SIGSEGV|wsrep_row_upd_index_is_foreign|row_upd_clust_step|row_upd|row_upd_step                                                                                                  ## OPT |MDEV-20563*
 update->n_fields < ulint(table->n_cols + table->n_v_cols)|SIGABRT|upd_node_t::make_versioned_helper|upd_node_t::make_versioned_update|row_update_for_mysql|ha_innobase::delete_row  ## OPT |MDEV-20563*
 SIGABRT|ut_dbg_assertion_failed|que_graph_free_recursive|row_prebuilt_free|ha_innobase::close                                                                                   ## OPT |MDEV-20563*
-SIGSEGV|report_json_error_ex|Item_func_json_merge_patch::val_str|Type_handler::Item_send_str|Protocol::send_result_set_row                                                      ## OPT MDEV-20593*
 maybe_null || !null_value|SIGABRT|Item_func_round::date_op|Item_func_hybrid_field_type::date_op_with_null_check|Item_func_hybrid_field_type::val_real_from_date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_val_real  ## DBG |MDEV-20501*
 maybe_null || !null_value|SIGABRT|Item_func_round::date_op|Type_handler_temporal_result::Item_func_hybrid_field_type_get_date|Type_handler::Item_func_hybrid_field_type_get_date_with_warn|Item_func_hybrid_field_type::get_date  ## DBG |MDEV-20501*
+SIGSEGV|report_json_error_ex|Item_func_json_merge_patch::val_str|Type_handler::Item_send_str|Protocol::send_result_set_row                                                      ## OPT MDEV-20593*
 maybe_null || !null_value|SIGABRT|Item_func_round::time_op|Item_func_hybrid_field_type::time_op_with_null_check|Item_func_hybrid_field_type::val_str_from_time_op|Type_handler_time_common::Item_func_hybrid_field_type_val_str  ## DBG MDEV-20816*
-((((*af)->unireg_check) & 127U) == Field::NEXT_NUMBER) == (((f->unireg_check) & 127U) == Field::NEXT_NUMBER)|SIGABRT|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command  ## DBG MDEV-19272*
+part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
 SIGSEGV|ha_partition::compare_number_of_records|my_qsort2|ha_partition::info|ha_partition::open                                                                                 ## DBG MDEV-21134*
 inited==RND|SIGABRT|handler::ha_rnd_end|mysql_checksum_table|mysql_execute_command|mysql_parse                                                                                  ## DBG MDEV-21415*
 SIGSEGV|myrocks::Rdb_drop_index_thread::run|myrocks::Rdb_thread::thread_func|start_thread|clone                                                                                 ## DBG MDEV-21927*
@@ -268,11 +270,13 @@ SIGSEGV|heap_rnext|ha_heap::index_next|handler::index_next_same|handler::ha_inde
 subq_pred->engine->engine_type() == subselect_engine::SINGLE_SELECT_ENGINE|SIGABRT|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner|JOIN::optimize  ## DBG |MDEV-22700*
 SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm_semi_joins|JOIN::optimize_inner                                                                ## OPT |MDEV-22700*
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|copy_fields|end_write                                                                                  ## DBG MDEV-22702*
+index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                 ## OPT MDEV-22714*
 !binlog || exist_hton_without_prepare|SIGABRT|MYSQL_BIN_LOG::unlog_xa_prepare|ha_prepare|trans_xa_prepare|mysql_execute_command                                                 ## DBG MDEV-22757*
 len == ref_length|SIGABRT|ha_innobase::position|find_all_keys|filesort|create_sort_index                                                                                        ## DBG MDEV-22873*
 0|SIGABRT|Item::val_native|Item::val_native_from_item|Item_ref::val_native|Type_handler_timestamp_common::Item_val_native_with_conversion                                       ## DBG MDEV-22885*
-part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
-index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                 ## OPT MDEV-22714*
+!table || table->in_use == _current_thd()|SIGABRT|Field_long::val_int|Field_int::val_decimal|Item_field::val_decimal|VDec::set                                                  ## DBG |MDEV-23294*
+!table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Field::val_str|Field::save_in_field_str|Field_str::save_in_field                                        ## DBG |MDEV-23294*
+!table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                               ## DBG |MDEV-23294*
 !col->mbmaxlen || len >= col->mbminlen * (fixed_len / col->mbmaxlen)|SIGABRT|row_merge_buf_add|row_merge_read_clustered_index|row_merge_build_indexes|ha_innobase::inplace_alter_table  ## DBG MDEV-22365*
 
 ###### FIXED BUGS ######

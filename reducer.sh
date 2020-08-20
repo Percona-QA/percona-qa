@@ -4001,7 +4001,12 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     elif [ $TRIAL -eq 139 ]; then sed -e 's/INTEGER/INT/gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 140 ]; then sed -e 's/MAX[ \t]\+[0-9]\+//gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 141 ]; then sed -e 's/MAX[ \t]\+//gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 142 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
+    elif [ $TRIAL -eq 142 ]; then sed -e 's/NOT NULL//gi' $WORKF > $WORKT  # All 
+    elif [ $TRIAL -eq 143 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # First occurence only
+    elif [ $TRIAL -eq 144 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # Second occurence only
+    elif [ $TRIAL -eq 145 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # Third occurence only
+    elif [ $TRIAL -eq 146 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # Fourth occurence only
+    elif [ $TRIAL -eq 147 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/DROP DATABASE transforms;CREATE DATABASE transforms;//' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`

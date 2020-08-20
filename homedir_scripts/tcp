@@ -70,6 +70,7 @@ cat "${1}" | \
   sed 's|compressed|COMPRESSED|gi' | \
   sed 's|InnoDB_|innodb_|g' | \
   sed 's|into|INTO|gi' | \
+  sed 's|threads|THREADS|gi' | \
   sed 's|unique|UNIQUE|gi' | \
   sed 's| [ \t]| |g'
 
