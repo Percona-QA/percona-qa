@@ -1,0 +1,6 @@
+rm -Rf ./logs/mysql
+mkdir -p ./logs/mysql
+export SEED=$(date +%s%N | cut -b10-19)
+echo "${SEED}" > ./logs/mysql/seed
+java -jar SQLancer-0.0.1-SNAPSHOT.jar --num-threads 200 --max-expression-depth 10 --max-num-inserts 50 --num-queries 25000 --num-statement-kind-retries 1000 --num-tries 100000 --random-seed=${SEED} --timeout-seconds -1 --print-statements false --print-succeeding-statements false --password 'sqlancer' mysql --oracle TLP_WHERE 2>&1 | grep 'Threads shut down|Caused by'
+echo "seed: ${SEED}"

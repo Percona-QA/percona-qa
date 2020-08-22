@@ -4,6 +4,7 @@
 RND_DELAY_FUNCTION=0     # If set to 1, insert random delays after starting a new repetition in a thread. This may help to decrease locking issues.
 RND_REPLAY_ORDER=1       # If set to 1, the tool will shuffle the input SQL in various ways
 REPORT_END_THREAD=0      # If set to 1, report the outcome of ended threads (slows things down considerably)
+REPORT_THREADS=0         # If set to 1, report the outcome of ongoing threads (slows things down considerably)
 
 if [ "" == "$5" ]; then
   echo "This script expects exactly 5 options. Execute as follows:"
@@ -49,6 +50,9 @@ if [ -r "${4}admin" ]; then
 fi
 
 echo -e "\n===== Starting CLI processes"
+if [ ${REPORT_THREADS} -eq 0 ]; then
+  echo 'Running...'
+fi
 for (( ; ; )); do
   # Loop through threads
   for (( thread=1; thread<=$1; thread++ )); do
@@ -57,17 +61,22 @@ for (( ; ; )); do
       # Check if repeats are exhaused
       if [ ${RPT_LEFT[$thread]} -ne 0 ]; then
         REPETITION=$[ $2 - ${RPT_LEFT[$thread]} + 1 ]
-        echo -n "Thread: $thread | Repetition: ${REPETITION}/$2 | "
-	if [ $RND_REPLAY_ORDER -eq 1 ]; then
-          shuf --random-source=/dev/urandom $3 > /tmp/tmp_mr.sql
-          CLI_CMD="$4 -uroot -S$5 -f < /tmp/tmp_mr.sql > multirun.$thread 2>&1"
+        if [ ${REPORT_THREADS} -eq 1 ]; then
+          echo -n "Thread: $thread | Repetition: ${REPETITION}/$2 | "
+        fi
+        if [ $RND_REPLAY_ORDER -eq 1 ]; then
+          shuf --random-source=/dev/urandom $3 > /tmp/tmp_mr.$thread.sql
+          CLI_CMD="$4 -uroot -S$5 -f < /tmp/tmp_mr.$thread.sql > multirun.$thread 2>&1"
         else
           CLI_CMD="$4 -uroot -S$5 -f < $3 > multirun.$thread 2>&1"
-	fi
+        fi
+        # In background; a must to ensure threads run concurrently
         # For testing: CLI_CMD="sleep $[ $RANDOM % 10 ]"
-        eval ${CLI_CMD} &
+        eval "${CLI_CMD} &"  # With thanks, https://stackoverflow.com/questions/4339756/
         PID[$thread]=$!
-        echo "Started! [PID: ${PID[$thread]}]"
+        if [ ${REPORT_THREADS} -eq 1 ]; then
+          echo "Started! [PID: ${PID[$thread]}]"
+        fi
         RPT_LEFT[$thread]=$[ ${RPT_LEFT[$thread]} - 1 ]
         # Check to see if server is still alive - provided mysqladmin can be found in same location as mysql binary
         if [ -r "${4}admin" ]; then

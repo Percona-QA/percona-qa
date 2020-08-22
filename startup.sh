@@ -80,7 +80,7 @@ fi
 
 # Setup scritps
 rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb stack wipe_group_replication
-BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | sysbench_prepare | sysbench_run | sysbench_measure | gdb | stack | myrocks_tokudb_init"
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | gdb | stack | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
@@ -323,6 +323,13 @@ tail -n1 start >> start_gypsy
 echo "timeout -k90 -s9 90s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop  # 90 seconds to allow core dump to be written if needed (seems ~60 is the minimum for busy high-end severs)
 echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
+echo "#!/bin/bash" > multirun
+echo "if [ ! -d ~/mariadb-qa/multirun_cli.sh ]; then echo 'Missing ~/mariadb-qa/multirun_cli.sh - did you pull mariadb-qa from GitHub?'; exit 1; fi" >> multirun
+echo "sed -i 's|^RND_DELAY_FUNCTION=[0-9]|RND_DELAY_FUNCTION=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
+echo "sed -i 's|^RND_REPLAY_ORDER=[0-9]|RND_REPLAY_ORDER=1|' ~/mariadb-qa/multirun_cli.sh" >> multirun
+echo "sed -i 's|^REPORT_END_THREAD=[0-9]|REPORT_END_THREAD=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
+echo "sed -i 's|^REPORT_THREADS=[0-9]|REPORT_THREADS=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
+echo "~/mariadb-qa/multirun_cli.sh 150 100000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
 echo "./init;./start;./cl;./stop;./kill >/dev/null 2>&1;tail log/master.err" > setup
 if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then
   echo "./start; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
@@ -441,7 +448,7 @@ echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --in
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
 if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe sqlmode binlog all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb stack myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe sqlmode binlog all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb stack myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup multirun 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init

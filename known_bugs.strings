@@ -127,7 +127,7 @@ part_id == m_last_part|SIGABRT|ha_partition::delete_row|handler::ha_delete_row|T
 SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|Sys_var_multi_source_ulonglong::get_master_info_ulonglong_value|Sys_var_multi_source_ulonglong::session_value_ptr           ## DBG MDEV-22524
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|mysql_load                                                              ## DBG |MDEV-22500
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                              ## DBG |MDEV-22500
-(uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock  # DBG MDEV-22499
+(uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock  ## DBG MDEV-22499
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_lock|MDL_context::release_lock                                                                  ## OPT |MDEV-22448
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock  ## OPT |MDEV-22448
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|THD::cleanup|unlink_thd                                                                      ## OPT |MDEV-22448
@@ -207,7 +207,7 @@ SIGABRT|ut_dbg_assertion_failed|trx_rollback_last_sql_stat_for_mysql|innobase_ro
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::make_empty_rec_store_default_value|make_empty_rec_store_default                                                  ## OPT |MDEV-15703*
 SIGSEGV|TABLE_LIST::top_table|Item_param::save_in_field|Field::sp_prepare_and_store_item|THD::sp_eval_expr                                                                      ## OPT |MDEV-15703*
 strcmp(share->unique_file_name,filename) || share->last_version|SIGABRT|test_if_reopen|mi_open|ha_myisam::open|handler::ha_open                                                 ## DBG MDEV-16985
-ls->length < 0xFFFFFFFFL && ((ls->length == 0 && !ls->str) || ls->length == strlen(ls->str))|SIGABRT|String::append|Sp_handler::show_create_sp|Sp_handler::sp_load_for_information_schema|store_schema_proc  # MDEV-16788*
+ls->length < 0xFFFFFFFFL && ((ls->length == 0 && !ls->str) || ls->length == strlen(ls->str))|SIGABRT|String::append|Sp_handler::show_create_sp|Sp_handler::sp_load_for_information_schema|store_schema_proc  ## MDEV-16788*
 table_share->tmp_table != NO_TMP_TABLE || m_lock_type != 2|SIGABRT|handler::ha_rnd_next|rr_sequential|READ_RECORD::read_record|join_init_read_record                            ## DBG |MDEV-18163*
 SIGSEGV|find_field_in_table|find_field_in_table_ref|find_field_in_tables|Item_field::fix_fields                                                                                 ## OPT |MDEV-18163*
 table_list->table|SIGABRT|find_field_in_table_ref|find_field_in_tables|Item_field::fix_fields|Item::fix_fields_if_needed                                                        ## DBG |MDEV-18163*
@@ -225,7 +225,7 @@ status_var.local_memory_used == 0 || !debug_assert_on_not_freed_memory|SIGABRT|T
 !parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|Table_triggers_list::drop_all_triggers|mysql_rm_table_no_locks|mysql_rm_table                         ## DBG |MDEV-18496
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::repair|handler::ha_repair|mysql_admin_table                                  ## DBG |MDEV-19011
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::enable_indexes|ha_myisam::end_bulk_insert|handler::ha_end_bulk_insert        ## DBG |MDEV-19011*
-(create_info->tmp_table()) || thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.str, MDL_EXCLUSIVE)|SIGABRT|mysql_create_like_table|Sql_cmd_create_table_like::execute|mysql_execute_command|mysql_parse  # MDEV-19198
+(create_info->tmp_table()) || thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.str, MDL_EXCLUSIVE)|SIGABRT|mysql_create_like_table|Sql_cmd_create_table_like::execute|mysql_execute_command|mysql_parse  ## MDEV-19198
 expr == default_value->expr|SIGABRT|make_empty_rec_store_default|make_empty_rec|build_frm_image|mysql_create_frm_image                                                          ## DBG |MDEV-19336*
 entry->pos_in_table_list->table == entry|SIGABRT|free_tmp_table|close_thread_tables|mysql_execute_command|mysql_parse                                                           ## DBG |MDEV-19336*
 inited==NONE|SIGABRT|handler::ha_index_read_idx_map|write_record|Delayed_insert::handle_inserts|handle_delayed_insert                                                           ## DBG MDEV-19596*
@@ -254,6 +254,8 @@ maybe_null || !null_value|SIGABRT|Item_func_round::time_op|Item_func_hybrid_fiel
 part_share->auto_inc_initialized || !can_use_for_auto_inc_init()|SIGABRT|ha_partition::set_auto_increment_if_higher|ha_partition::write_row|handler::ha_write_row|write_record  ## DBG MDEV-21027*
 SIGSEGV|ha_partition::compare_number_of_records|my_qsort2|ha_partition::info|ha_partition::open                                                                                 ## DBG MDEV-21134*
 inited==RND|SIGABRT|handler::ha_rnd_end|mysql_checksum_table|mysql_execute_command|mysql_parse                                                                                  ## DBG MDEV-21415*
+share->in_trans == 0|SIGABRT|maria_close|ha_maria::close|handler::ha_close|closefrm                                                                                             ## DBG |MDEV-21830*
+share->in_trans == 0|SIGABRT|maria_close|ha_maria::close|handler::ha_close|ha_partition::close                                                                                  ## DBG |MDEV-21830*
 SIGSEGV|myrocks::Rdb_drop_index_thread::run|myrocks::Rdb_thread::thread_func|start_thread|clone                                                                                 ## DBG MDEV-21927*
 m_psi_batch_mode == PSI_BATCH_MODE_NONE|SIGABRT|handler::ha_close|create_internal_tmp_table_from_heap|select_unit::write_record|select_unit::send_data                          ## DBG |MDEV-22104*
 !table->file->keyread_enabled()|SIGABRT|close_thread_table|close_thread_tables|mysql_execute_command|mysql_parse                                                                ## DBG MDEV-22062*
