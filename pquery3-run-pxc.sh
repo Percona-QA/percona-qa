@@ -15,7 +15,7 @@ CONFIGURATION_FILE=pquery3-run-single.cnf  # Do not use any path specifiers, the
 
 # ========================================= MAIN CODE ============================================================================
 # Internal variables: DO NOT CHANGE!
-RANDOM=`date +%s%N | cut -b10-19`; RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
+RANDOM=$(date +%s%N | cut -b10-19); RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
 SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||'); SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0;
 

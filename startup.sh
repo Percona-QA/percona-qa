@@ -80,7 +80,7 @@ fi
 
 # Setup scritps
 rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb stack wipe_group_replication
-BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | gdb | stack | myrocks_tokudb_init"
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | gdb | stack | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
@@ -405,19 +405,19 @@ echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.so
 #  fi
 #fi
 
-# Add handy local reducer
+# Add handy local reducers
 if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   cp ${SCRIPT_PWD}/reducer.sh ./reducer_new_text_string.sh
   sed -i 's|somebug|${2}|' ./reducer_new_text_string.sh
   sed -i 's|^\(MYEXTRA="[^"]\+\)"|\1 ${3}"|' ./reducer_new_text_string.sh
   sed -i 's|^MODE=4|MODE=3|' ./reducer_new_text_string.sh
   sed -i 's|^SCAN_FOR_NEW_BUGS=0|SCAN_FOR_NEW_BUGS=1|' ./reducer_new_text_string.sh
-  sed -i 's|^KNOWN_BUGS=[^#]\+|KNOWN_BUGS="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_new_text_string.sh
   sed -i 's|^FORCE_SKIPV=0|FORCE_SKIPV=1|' ./reducer_new_text_string.sh
   sed -i 's|^STAGE1_LINES=[^#]\+|STAGE1_LINES=10   |' ./reducer_new_text_string.sh
-  sed -i 's|^TEXT_STRING_LOC=[^#]\+|TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"   |' ./reducer_new_text_string.sh
   cp ./reducer_new_text_string.sh ./reducer_errorlog.sh
   sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_new_text_string.sh
+  cp ./reducer_new_text_string.sh ./reducer_fireworks.sh
+  sed -i 's|^FIREWORKS=0|FIREWORKS=1|' ./reducer_fireworks.sh
 fi
 
 echo "${SCRIPT_PWD}/stack.sh" > stack

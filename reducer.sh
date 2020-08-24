@@ -68,7 +68,7 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
 USE_NEW_TEXT_STRING=0           # On/off (1/0) If enabled, when using MODE=3, this uses new_text_string.sh (from mariadb-qa) instead of searching the entire error log. No effect otherwise. Note: enabling this makes $TEXT non-regex aware.
-TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh binary in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
+TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh script in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
 SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
 KNOWN_BUGS="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS file, it will not be considered a new issue when it is seen by reducer.sh
 NEW_BUGS_COPY_DIR="/data/NEWBUGS"  # Make an additional copy of any new bugs into this directory
@@ -87,7 +87,7 @@ SAVE_RESULTS=1                  # On/Off (1/0) (Default=1: save a copy of reduce
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref USE_PQUERY and PQUERY_MULTI
 USE_PQUERY=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC=~/mariadb-qa/pquery/pquery  # The pquery binary in mariadb-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
+PQUERY_LOC="${SCRIPT_PWD}/pquery/pquery2-md"  # The pquery binary in mariadb-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
 
 # === Other options             # The options are not often changed
 CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
@@ -109,9 +109,14 @@ USE_GRP_RPL=0                   # On/Off (1/0) Enable to reduce testcases using 
 GRP_RPL_ISSUE_NODE=0            # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 
 # === MODE=5 Settings           # Only applicable when MODE5 is used
-MODE5_COUNTTEXT=1               # Number of times the text should appear (default=minimum=1). Currently only used for MODE=5
+MODE5_COUNTTEXT=1               # Number of times the text should appear (default=1 = minimum). Currently only used for MODE=5
 MODE5_ADDITIONAL_TEXT=""        # An additional string to look for in the CLI output when using MODE 5. When not using this set to "" (=default)
-MODE5_ADDITIONAL_COUNTTEXT=1    # Number of times the additional text should appear (default=minimum=1). Only used for MODE=5 and where MODE5_ADDITIONAL_TEXT is not ""
+MODE5_ADDITIONAL_COUNTTEXT=1    # Number of times the additional text should appear (default=1 = minimum). Only used for MODE=5 and where MODE5_ADDITIONAL_TEXT is not ""
+
+# === FIREWORKS Settings
+FIREWORKS=0                     # Fireworks mode: setups reducer.sh in such a way that any new bug observed, using a given input file, will be stored, and no actual reduction will be done. Expert use only; turning this on changes many settings, and thus changes the operation of reducer completely (default=0 = off)
+FIREWORKS_BUGS_LOC="/data/FIREWORKS"  # The path where to save new bugs found
+FIREWORKS_LINES=200000          # How many lines to slice from the provided input file. Previous testing seems to shows an almost even distribution of original testcase lenght. High number: higher possibility of hitting a bug per run, but slower. Low number: the same, both in reverse. (default=200000, needs testing with 50000, 100000 etc.)
 
 # === Old ThreadSync options    # No longer commonly used
 TS_TRXS_SETS=0
@@ -177,129 +182,72 @@ TS_VARIABILITY_SLEEP=1
 # - WORKDIR_M3_DIRECTORY: If WORKDIR_LOCATION is set to 3, then this directory is used
 # - STAGE1_LINES: When the testcase becomes smaller than this number of lines, proceed to STAGE2 (default=90)
 #   Only change if reducer keeps trying to reduce by 1 line in STAGE1 for a long time (seen very rarely)
-# - MYEXTRA: Extra options to pass to myqsld (for instance "--core" is handy in some cases, for instance with highly sporadic issues to capture a core)
-#   (Btw, --core should generally be left disabled to obtain cleaner output ("core dumped" stdout messages, less space used, faster reducer runs)
+# - MYEXTRA: Extra options to pass to myqsld 
 #   - Also, --no-defaults as set in the default is removed automatically later on. It is just present here to highlight it's effectively (seperately) set.
 # - BASEDIR: Full path to MySQL basedir (example: "/mysql/mysql-5.6").
 #   If the directory name starts with '/mysql/' then this may be ommited (example: BASEDIR="mysql-5.6-trunk")
-# - MULTI_THREADS: This option was an internal one only before. Set it to change the number of threads Reducer uses for the verify stage intially, and for
-#   reduction of sproradic issues if the verify stage found it is a sporadic issue. Recommended: 10, based on experience/testing/time-proven correctness.
-#   Do not change unless you need to. Where this may come in handy, for a single occassion, is when an issue is hard to reproduce and very sporadic. In this
-#   case you could activate FORCE_SKIPV (and thus automatically also FORCE_SPORADIC) which would skip the verify stage, and set this to a higher number for
+# - MULTI_THREADS: This option was an internal one only before. Set it to change the number of threads Reducer uses for the verify stage intially, and for reduction of sproradic issues if the verify stage found it is a sporadic issue. Recommended: 10, based on experience/testing/time-proven correctness.
+#   Do not change unless you need to. Where this may come in handy, for a single occassion, is when an issue is hard to reproduce and very sporadic. In this case you could activate FORCE_SKIPV (and thus automatically also FORCE_SPORADIC) which would skip the verify stage, and set this to a higher number for
 #   example 20 or 30. This would then immediately boot into 20 or 30 threads trying to reduce the issue with subreducers (note: thus 20 or 30x mysqld...)
 #   A setting less then 10 is really not recommended as a start since sporadic issues regularly only crash a few threads in 10 or 20 run threads.
-# - MULTI_THREADS_INCREASE: this option configures how many threads are added to MULTI_THREADS if the original MULTI_THREADS setting did not prove to be
-#   sufficient to trigger a (now declared highly-) sporadic issue. Recommended is setting 5 or 10. Note that reducer has a limit of MULTI_THREADS_MAX (50)
-#   threads (this literally means 50x mysqld + client thread(s)) as most systems (including high-end servers) start to seriously fail at this level (and
-#   earlier) Example; if you set MULTI_THREADS to 10 and MULTI_THREADS_INCREASE to 10, then the sequence (if no single reproduce can be established) will be:
+# - MULTI_THREADS_INCREASE: this option configures how many threads are added to MULTI_THREADS if the original MULTI_THREADS setting did not prove to be sufficient to trigger a (now declared highly-) sporadic issue. Recommended is setting 5 or 10. Note that reducer has a limit of MULTI_THREADS_MAX (50)
+#   threads (this literally means 50x mysqld + client thread(s)) as most systems (including high-end servers) start to seriously fail at this level (and earlier) Example; if you set MULTI_THREADS to 10 and MULTI_THREADS_INCREASE to 10, then the sequence (if no single reproduce can be established) will be:
 #   10->20->30->40->50->Issue declared non-reproducible and program end. By this stage, the testcase has executed 6 verify levels *(10+20+30+40+50)=900 times.
-#   Still, even in this case there are methods that can be employed to let the testcase reproduce. For further ideas what to do in these cases, see;
-#   http://bazaar.launchpad.net/~percona-core/mariadb-qa/trunk/view/head:/reproducing_and_simplification.txt
-# - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3, unless it was set to a non-default number (i.e. !=90 - to enable
-#   reduction of issues via MULTI until a given amount of lines is reached, which is handy for tools like pquery-reach.sh where a mix of sporadic and
-#   non-sporadic issues may be seen). MULTI reducer mode is used after verify, even if issue is found to seemingly not be sporadic (i.e. all verify
-#   threads reproduced the issue). This can be handy for issues which are very slow to reduce or which, on visual inspection of the testcase reduction
-#   process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines in the testcase and/or there are many trials without the
-#   issue being observed. Another situation which would call for use of this parameter is when produced testcases are still greater then 15 to 80 lines -
-#   this also indicates a possibly sporadic issue (even if verify stage manages to produce it against all started subreducer threads).
-#   Note that this may be a bug in reducer too - i.e. a mismatch between verify stage and stage 1. Yet, if that were true, the issue would likely not
-#   reproduce to start with. Another plausible reason for this occurence (all threads verified in verify stage but low frequency reproduction later on) is
-#   the existence of all threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the
-#   code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this option will help.
-# - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction
-#   mode. Ideal for issues that have a very low reproducibility, at least initially (usually either increases or decreases during a simplification run.)
-#   Note that skipping the verify stage means that you may not be sure if the issue is reproducibile untill it actually reproduces (how long is a piece of
-#   string), and the other caveat is that the verify stage normally does some very important inital simplifications which is now skipped. It is suggested that
+#   Still, even in this case there are methods that can be employed to let the testcase reproduce. For further ideas what to do in these cases, see; https://github.com/mariadb-corporation/mariadb-qa/blob/master/reproducing_and_simplification.txt
+# - FORCE_SPORADIC=0 or 1: If set to 1, STAGE1_LINES setting is ignored and set to 3, unless it was set to a non-default number (i.e. !=90 - to enable reduction of issues via MULTI until a given amount of lines is reached, which is handy for tools like pquery-reach.sh where a mix of sporadic and non-sporadic issues may be seen). MULTI reducer mode is used after verify, even if issue is found to seemingly not be sporadic (i.e. all verify threads reproduced the issue). This can be handy for issues which are very slow to reduce or which, on visual inspection of the testcase reduction
+#   process are clearly sporadic (i.e. it comes to 2 line chunks with still thousands of lines in the testcase and/or there are many trials without the issue being observed. Another situation which would call for use of this parameter is when produced testcases are still greater then 15 to 80 lines - this also indicates a possibly sporadic issue (even if verify stage manages to produce it against all started subreducer threads).
+#   Note that this may be a bug in reducer too - i.e. a mismatch between verify stage and stage 1. Yet, if that were true, the issue would likely not reproduce to start with. Another plausible reason for this occurence (all threads verified in verify stage but low frequency reproduction later on) is the existence of all threads in verify stage vs 1 thread in stage 1. It has been observed that a very loaded server (or using Valgrind as it also slows the code down significantly) is better at reproducing (many) issues then a low-load/single-thread-running machine. Whatever the case, this option will help.
+# - FORCE_SKIV=0 or 1: If set to 1, FORCE_SPORADIC is automatically set to 1 also. This option skips the verify stage and goes straight into testcase reduction mode. Ideal for issues that have a very low reproducibility, at least initially (usually either increases or decreases during a simplification run.)
+#   Note that skipping the verify stage means that you may not be sure if the issue is reproducibile untill it actually reproduces (how long is a piece of string), and the other caveat is that the verify stage normally does some very important inital simplifications which is now skipped. It is suggested that
 #   if the issue becomes more reproducible during simplification, to restart reducer with this option turned off. This way you get the best of both worlds.
-# - PQUERY_MULTI=0 or 1: If set to 1, FORCE_SKIV (and thus FORCE_SPORADIC) are automatically set to 1 also. This is true multi-threaded testcase reduction,
-#   and it is based on random replay. Likely this will be slow, but effective. Alpha quality. This option removes the --no-shuffle option for pquery (i.e.
-#   random replay) and sets pquery options --threads=x (x=PQUERY_MULTI_CLIENT_THREADS) and --queries=5*testcase size. It also sets the number of subreducer
-#   threads to PQUERY_MULTI_THREADS. To track success/status, view reducer output and/or check error logs;
+# - PQUERY_MULTI=0 or 1: If set to 1, FORCE_SKIV (and thus FORCE_SPORADIC) are automatically set to 1 also. This is true multi-threaded testcase reduction, and it is based on random replay. Likely this will be slow, but effective. Beta quality. This option removes the --no-shuffle option for pquery (i.e.
+#   random replay) and sets pquery options --threads=x (x=PQUERY_MULTI_CLIENT_THREADS) and --queries=5*testcase size. It also sets the number of subreducer threads to PQUERY_MULTI_THREADS. To track success/status, view reducer output and/or check error logs;
 #   $ grep -E --binary-files=text "Assertion failure" /dev/shm/{reducer's epoch}/subreducer/*/error.log
-#   Note that, idem to when you use FORCE_SKIV and/or FORCE_SPORADIC, STAGE1_LINES is set to 3. Thus, reducer will likely never completely "finish" (3 line
-#   testases are somewhat rare), as it tries to continue to reduce the test to 3 lines. Just watch the output (reducer continually reports on remaining number
-#   of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.
+#   Note that, idem to when you use FORCE_SKIV and/or FORCE_SPORADIC, STAGE1_LINES is set to 3. Thus, reducer will likely never completely "finish" (3 line testases are somewhat rare), as it tries to continue to reduce the test to 3 lines. Just watch the output (reducer continually reports on remaining number of lines and/or filesize) and decide when you are happy with the lenght of any reduced testcase. Suggested for developer convenience; 5-10 lines or less.
 # - PQUERY_MULTI_THREADS: Think of this variable as "the initial setting for MULTI_THREADS" when PQUERY_MULTI mode is enabled; the initial number of subreducers
 # - PQUERY_MULTI_CLIENT_THREADS: The number of client threads used for PQUERY_MULTI (see above) replays (i.e. --threads=x for pquery)
-# - PQUERY_MULTI_QUERIES: The number of queries to execute for each and every trial before pquery ends (unless the server crashes/asserts). Must be
-#   sufficiently high, given that the random replay which PQUERY_MULTI employs may not easily trigger an issue (and especially not if also sporadic)
-# - PQUERY_REVERSE_NOSHUFFLE_OPT=0 or 1: If set to 1, PQUERY_MULTI runs will use --no-shuffle (the reverse of normal operation), and standard pquery (not multi-
-#   threaded) will use shuffle (again the reverse of normal operation). This is a very handy option to increase testcase reproducibility. For example, when
-#   reducing a non-multithreaded testcase (i.e. normally --no-shuffle would be in use), and reducer.sh gets 'stuck' at around 60 lines, setting this to
-#   on will start replaying the testcase randomly (shuffled). This may increase reproducibility. The final run scripts will have matching --no-shuffle or
-#   shuffle (i.e. no --no-shuffle present) set. Note that this may mean that a testcase has to be executed a few or more times given that if shuffle is
-#   active (pquery's default, i.e. no --no-shuffle present), the testcase may replay differently then to what is needed. Powerful option, slightly confusing.
-# - TIMEOUT_COMMAND: this can be used to set a timeout command for mysqld. It is prefixed to the mysqld startup. This is handy when encountering a shutdown
-#   or server hang issue. When the timeout is reached, mysqld is terminated, but reduction otherwise happens as normal. Note that reducer will need some way
-#   to establish that an actual problem was triggered. For example, suppose that a shutdown issue shows itself in the error log by starting to output INNODB
-#   STATUS MONITOR output whenever the shutdown issue is occuring (i.e. server refuses to shutdown and INNODB STATUS MONITOR output keeps looping & end of
-#   the SQL input file is apparently never reached). In this case, after a timeout of x minutes, thanks to the TIMEOUT_COMMAND, mysqld is terminated. After
-#   the termination, reducer checks for "INNODB MONITOR OUTPUT" (MODE=3). It sees or not sees this output, and hereby it can continue to reduce the testcase
-#   further. This would have been using MODE=3 (check error log output). Another method may be to interleave the SQL with a SHOW PROCESSLIST; and then
-#   check the client output (MODE=2) for (for example) a runaway query. Different are issues where there is a 1) complete hang or 2) an issue that does not
-#   or cannot!) represent itself in the error log/client log etc. In such cases, use TIMEOUT_CHECK and MODE=0.
-# - TIMEOUT_CHEK: used when MODE=0. Though there is no connection with TIMEOUT_COMMAND, the idea is similar; When MODE=0 is active, a timeout command prefix
-#   for mysqld is auto-generated by reducer.sh. Note that MODE=0 does NOT check for specific TEXT string issues. It just checks if a timeout was reached
-#   at the end of each trial run. Thus, if a server was hanging, or a statement ran for a very long time (if not terminated by the QUERYTIMEOUT setting), or
-#   a shutdon was initiated but never completed etc. then reducer.sh will notice that the timeout was reached, and thus assume the issue reproduced. Always
-#   set this setting at least to 2x the expected testcase run/duration lenght in seconds + 30 seconds extra. This longer duration is to prevent false
-#   positives. Reducer auto-sets this value as the timeout for mysqld, and checks if the termination of mysqld was within 30 seconds of this duration.
-# - FORCE_KILL=0 or 1: If set to 1, then reducer.sh will forcefully terminate mysqld instead of using mysqladmin. This can be used when for example
-#   authentication issues prevent mysqladmin from shutting down the server cleanly. Normally it is recommended to leave this =0 as certain issues only
-#   present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used. Auto-disabled for MODE=0.
+# - PQUERY_MULTI_QUERIES: The number of queries to execute for each and every trial before pquery ends (unless the server crashes/asserts). Must be sufficiently high, given that the random replay which PQUERY_MULTI employs may not easily trigger an issue (and especially not if also sporadic)
+# - PQUERY_REVERSE_NOSHUFFLE_OPT=0 or 1: If set to 1, PQUERY_MULTI runs will use --no-shuffle (the reverse of normal operation), and standard pquery (not multi-threaded) will use shuffle (again the reverse of normal operation). This is a very handy option to increase testcase reproducibility. For example, when
+#   reducing a non-multithreaded testcase (i.e. normally --no-shuffle would be in use), and reducer.sh gets 'stuck' at around 60 lines, setting this to on will start replaying the testcase randomly (shuffled). This may increase reproducibility. The final run scripts will have matching --no-shuffle or
+#   shuffle (i.e. no --no-shuffle present) set. Note that this may mean that a testcase has to be executed a few or more times given that if shuffle is active (pquery's default, i.e. no --no-shuffle present), the testcase may replay differently then to what is needed. Powerful option, slightly confusing.
+# - TIMEOUT_COMMAND: this can be used to set a timeout command for mysqld. It is prefixed to the mysqld startup. This is handy when encountering a shutdown or server hang issue. When the timeout is reached, mysqld is terminated, but reduction otherwise happens as normal. Note that reducer will need some way to establish that an actual problem was triggered. For example, suppose that a shutdown issue shows itself in the error log by starting to output INNODB
+#   STATUS MONITOR output whenever the shutdown issue is occuring (i.e. server refuses to shutdown and INNODB STATUS MONITOR output keeps looping & end of the SQL input file is apparently never reached). In this case, after a timeout of x minutes, thanks to the TIMEOUT_COMMAND, mysqld is terminated. After the termination, reducer checks for "INNODB MONITOR OUTPUT" (MODE=3). It sees or not sees this output, and hereby it can continue to reduce the testcase further. This would have been using MODE=3 (check error log output). Another method may be to interleave the SQL with a SHOW PROCESSLIST; and then
+#   check the client output (MODE=2) for (for example) a runaway query. Different are issues where there is a 1) complete hang or 2) an issue that does not or cannot!) represent itself in the error log/client log etc. In such cases, use TIMEOUT_CHECK and MODE=0.
+# - TIMEOUT_CHEK: used when MODE=0. Though there is no connection with TIMEOUT_COMMAND, the idea is similar; When MODE=0 is active, a timeout command prefix for mysqld is auto-generated by reducer.sh. Note that MODE=0 does NOT check for specific TEXT string issues. It just checks if a timeout was reached at the end of each trial run. Thus, if a server was hanging, or a statement ran for a very long time (if not terminated by the QUERYTIMEOUT setting), or a shutdon was initiated but never completed etc. then reducer.sh will notice that the timeout was reached, and thus assume the issue reproduced. Always set this setting at least to 2x the expected testcase run/duration lenght in seconds + 30 seconds extra. This longer duration is to prevent false positives. Reducer auto-sets this value as the timeout for mysqld, and checks if the termination of mysqld was within 30 seconds of this duration.
+# - FORCE_KILL=0 or 1: If set to 1, then reducer.sh will forcefully terminate mysqld instead of using mysqladmin. This can be used when for example authentication issues prevent mysqladmin from shutting down the server cleanly. Normally it is recommended to leave this =0 as certain issues only present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used. Auto-disabled for MODE=0.
 
 # ======== Gotcha's
-# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, USE_PQUERY=1, then reducer
-#   will replay the SQL file, using pquery (USE_PQUERY=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order
-#   (PQUERY_REVERSE_NOSHUFFLE_OPT=1) untill (FORCE_SKIPV=1 and FORCE_SPORADIC=1) it hits a bug. But notice that when the partially reduced file is written
-#   as _out, it is normally not valid to re-start reducer using this _out file (for further reduction) using PQUERY_REVERSE_NOSHUFFLE_OPT=0. The reason is
-#   that the sql replay order was random, but _out is generated based on the original testcase (sequential). Thus, the _out, when replayed sequentially,
-#   may not re-hit the same issue. Especially when things are really sporadic this can mean having to wait long and be confused about the results. Thus,
-#   if you start off with a random replay, finish with a random replay, and let the final bug testcase (auto-generated as {epoch}.*) be random replay too!
+# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, USE_PQUERY=1, then reducer will replay the SQL file, using pquery (USE_PQUERY=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order (PQUERY_REVERSE_NOSHUFFLE_OPT=1) untill (FORCE_SKIPV=1 and FORCE_SPORADIC=1) it hits a bug. But notice that when the partially reduced file is written as _out, it is normally not valid to re-start reducer using this _out file (for further reduction) using PQUERY_REVERSE_NOSHUFFLE_OPT=0. The reason is that the sql replay order was random, but _out is generated based on the original testcase (sequential). Thus, the _out, when replayed sequentially, may not re-hit the same issue. Especially when things are really sporadic this can mean having to wait long and be confused about the results. Thus, if you start off with a random replay, finish with a random replay, and let the final bug testcase (auto-generated as {epoch}.*) be random replay too!
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer.
 #   At the moment there are only two such specific roles: verfication (reproducible yes/no + sporadic yes/no) and simplification (terminate a subreducer batch
 #   (all of it) once a simpler testcase is found by one of the subthreads (subreducers), and use that testcase to again start new simplification subreducers.)
-# - The files that are initially seen in the root working directory (i.e. $WORKD) are those generated by the step "[Init] Setting up standard working template",
-#   they are not an actual replay of any SQL file, at least not intitially; once the processing continues past this initial template creation, then the results
+# - The files that are initially seen in the root working directory (i.e. $WORKD) are those generated by the step "[Init] Setting up standard working template", they are not an actual replay of any SQL file, at least not intitially; once the processing continues past this initial template creation, then the results
 #   (i.e. the results of actual replays of SQL) will be in either;
 #   - The subreducer directories $WORKD/subreducer/<nr>/ (ref above), provided reducer.sh is working in MULTI mode (even the standard VERIFY stage is [MULTI])
-#   - Or, they will be in the same aforementioned directory $WORKD (and the output files from the initial template creation will now have been overwritten,
-#     though not the actual template), provided reducer.sh is working in single-threaded reduction mode (i.e. [MULTI] mode is not active).
+#   - Or, they will be in the same aforementioned directory $WORKD (and the output files from the initial template creation will now have been overwritten, though not the actual template), provided reducer.sh is working in single-threaded reduction mode (i.e. [MULTI] mode is not active).
 # - Never use grep, always use egrep. See the next line why. Remember also that [0-9]\+ (a regex valid for grep) is written as [0-9]+ when using egrep/grep -E --binary-files=text.
 #   grep -E --binary-files=text is the same as egrep. It is best to use grep -E --binary-files=text because egrep will likely be deprecated from various OS'es at some point.
-# - When using grep -E --binary-files=text, ALWAYS use --binary-files=text to avoid issues with hex characters causing non-reproducibility and/or grep playing up. If you see
-#   things like 'Binary file ... matches' as grep output it means you have executed grep against a file with binary chars, which is seen by the system as a
-#   binary file (even though it may be a flat sql text file with a few hex characters in it). Adding the --binary-files=text will correctly process the file.
+# - When using grep -E --binary-files=text, ALWAYS use --binary-files=text to avoid issues with hex characters causing non-reproducibility and/or grep playing up. If you see things like 'Binary file ... matches' as grep output it means you have executed grep against a file with binary chars, which is seen by the system as a binary file (even though it may be a flat sql text file with a few hex characters in it). Adding the --binary-files=text will correctly process the file.
 
 # ======== Ideas for improvement
 # - The write of the file should be atomic - i.e. if reducer is interrupted during a testcase_out write, the file may be faulty. Check if this is so & fix
-# - STAGE8 does currently know/consider whetter an issue is sporadic (alike to other STAGES, except STAGE 1). We could have an additional option like
-#   STAGE8_FORCE_SPORADIC=0/1 Which would - specifically for STAGE 8 - try each option x times (STAGE8_SPORADIC_ATTEMPTS) when an issue is found to be (by the
-#   auto-sporadic issue detection) or is forced to be (by STAGE8_FORCE_SPORADIC=1) sporadic. This allows easier reduction of mysqld options for sporadic issues)
-# - A new mode could do this; main thread (single): run SQL, secondary thread (new functionality): check SHOW PROCESSLIST for certain regex TEXT regularly. This
-#   would allow creating testcases for queries that have a long runtime. This new functionality likely will live outside process_outcome() as it is a live check
+# - STAGE8 does currently know/consider whetter an issue is sporadic (alike to other STAGES, except STAGE 1). We could have an additional option like STAGE8_FORCE_SPORADIC=0/1 Which would - specifically for STAGE 8 - try each option x times (STAGE8_SPORADIC_ATTEMPTS) when an issue is found to be (by the auto-sporadic issue detection) or is forced to be (by STAGE8_FORCE_SPORADIC=1) sporadic. This allows easier reduction of mysqld options for sporadic issues)
+# - A new mode could do this; main thread (single): run SQL, secondary thread (new functionality): check SHOW PROCESSLIST for certain regex TEXT regularly. This would allow creating testcases for queries that have a long runtime. This new functionality likely will live outside process_outcome() as it is a live check
 # - Incorporate 3+ different playback options: SOURCE ..., redirection with <, redirection with cat, (stretch goal; replay via MTR), etc. (there may be more)
 #   THIS FUNCTIONALITY WAS ADDED 09-06-2016. "An expansion of this..." below is not implmeneted yet
-#   - It has been clearly shown that different ways of replaying SQL may trigger a bug where other replay options do not. This looks to be more related to for
-#     example timing/server access method then to an inherent/underlying bug in for example the mysql client (CLI) workings. As such, the "resolution" is not
-#     to change ("fix") the client instead exploit this difference between replay options to trigger/reproduce bugs/replay test cases in multiple ways.
+#   - It has been clearly shown that different ways of replaying SQL may trigger a bug where other replay options do not. This looks to be more related to for example timing/server access method then to an inherent/underlying bug in for example the mysql client (CLI) workings. As such, the "resolution" is not to change ("fix") the client instead exploit this difference between replay options to trigger/reproduce bugs/replay test cases in multiple ways.
 #   - An expansion of this could be where the initial stage (as it goes through it's iterations) replays each next iteration with a different replay method.
-#     This is not 100% covering however, as the last stage (with the least amount of changes to the SQL input file) would replay with replay method/option x,
-#     while x may not be the replay option which triggers the bug at hand. As such, a few more verify stage rounds (there's 6 atm - each with 10 replay threads)
-#     may be needed to replay (partly "again", but this time with the least changed SQL file) the same SQL with each replay option. This would thus result in
-#     reducer needing a bit more time to do the VERIFY stage, but likely with good improved bug reproducibility. Untill this functionality is implemented,
-#     see the following file/page for reproducing & simplification ideas, which (if all followed diligently) usually result in bugs becoming reproducible;
-#     http://bazaar.launchpad.net/~percona-core/mariadb-qa/trunk/view/head:/reproducing_and_simplification.txt
+#     This is not 100% covering however, as the last stage (with the least amount of changes to the SQL input file) would replay with replay method/option x, while x may not be the replay option which triggers the bug at hand. As such, a few more verify stage rounds (there's 6 atm - each with 10 replay threads) may be needed to replay (partly "again", but this time with the least changed SQL file) the same SQL with each replay option. This would thus result in reducer needing a bit more time to do the VERIFY stage, but likely with good improved bug reproducibility. Untill this functionality is implemented, see the following file/page for reproducing & simplification ideas, which (if all followed diligently) usually result in bugs becoming reproducible; https://github.com/mariadb-corporation/mariadb-qa/blob/master/reproducing_and_simplification.txt
 # - PXC Node work: rm -Rf's in other places (non-supported subreducers for example) will need sudo. Also test for sudo working correctly upfront
-# - Add a MYEXRA simplificator at end (extra stage) so that mysqld options are minimal
+# - Add a MYEXTRA simplificator at end (extra stage) so that mysqld options are minimal
 # - Improve ";" work in STAGE4 (";" sometimes missing from results - does not affect reproducibility)
 # - Improve VALGRIND/ERRORLOG run work (complete?)
 # - Improve clause elimination when sub queries are used: "ORDER BY f1);" is not filtered due to the ending ")"
 # - Keep 'success counters' over time of regex replacements so that reducer can eliminate those that are not effective
 #   Do this by proceduralizing the sed and then writing the regexes to a file with their success/failure rates
-# - Include a note for Valgrind runs on a "universal" string - a string which would be found if there were any valgrind erros
+# - Include a note for Valgrind runs on a "universal" string - a string which would be found if there were any valgrind errors
 #   Something like "[1-9]* ERRORS" or something
 # - Keep counters over time of which sed's have been successfull or not. If after many different runs, a sed remains 0 success, remove it
 # - Proceduralize stages and re-run STAGE2 after the last stage as this is often beneficial for # of lines (and remove last [Info] line in [Finish])
@@ -316,10 +264,8 @@ TS_VARIABILITY_SLEEP=1
 #   | 2013-08-19 10:35:04 [*] [Stage 6] [Trial 2] [Column 22/22] Trying to eliminate column '/*Indices*/' in table '`table0_myisam`'
 #   | sed: -e expression #1, char 41: unknown command: `*'
 # - Need another MODE which will look for *any* Valgrind issue based on the error count not being 0 (instead of named MODE1)
-#   Make a note that this may cause issues to be missed: often, after simplification, less Valgrind errors are seen as the entire
-#   SQL trace likely contained a number of issues, each originating from different Valgrind statements (can multi-issue be automated?)
-# - Need another MODE which will attempt to crash the server using the crashing statement from the log, directly starting the vardir
-#   left by RQG. If this works, dump the data, add crashing statement and load in a fresh instance and re-try. If this works, simplify.
+#   Make a note that this may cause issues to be missed: often, after simplification, less Valgrind errors are seen as the entire SQL trace likely contained a number of issues, each originating from different Valgrind statements (can multi-issue be automated?)
+# - Need another MODE which will attempt to crash the server using the crashing statement from the log, directly starting the vardir left by RQG. If this works, dump the data, add crashing statement and load in a fresh instance and re-try. If this works, simplify.
 # - "Previous good testcase backed up as $WORKO.prev" was only implemented for 1) parent seeing a new simplification subreducer testcase and
 #   2) main single-threaded reducer seeing a new testcase. It still needs to be added to multi-threaded (ThreadSync) (i.e. MODE6+) simplification. (minor)
 # - Multi-threaded simplification: thread-elimination > DATA + SQL threads simplified as if "one file" but accross files.
@@ -370,6 +316,9 @@ TS_VARIABILITY_SLEEP=1
 
 # Disable history substitution and avoid  -bash: !: event not found  like errors
 set +H 
+
+# Random entropy init
+RANDOM=$(date +%s%N | cut -b10-19)  
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -983,6 +932,12 @@ options_check(){
         exit 1
       fi
     fi
+    if [ "${USE_NEW_TEXT_STRING}" != "1" ]; then
+      echo "SCAN_FOR_NEW_BUGS was set to 1, yet USE_NEW_TEXT_STRING is not set to 1 (set to '${USE_NEW_TEXT_STRING}'). This setup is not covered by this script yet. Ref inside reducer for more info." 
+      # Reason is that the new text string script is used in confunction with the new bugs string list. This could be expanded to include the older bugs string list also, but this would seem to be wasted effort as that list is no longer maintained inside MariaDB (the new unique bug id's are used instead and are much better/of much higher quality). Rather, and this is also provides additional ROI in other areas; update the new text string script to call the old script for any case where a new unique bug ID can not be obtained (quite limited limited amount of cases; usually only when incorrect core dumps (stack smashing, OOS, mysqld failed to create a coredump) are used.
+      echo "Terminating now."
+      exit 1
+    fi
   fi
   export -n MYEXTRA=`echo ${MYEXTRA} | sed 's|[ \t]*--no-defaults[ \t]*||g'`  # Ensuring --no-defaults is no longer part of MYEXTRA. Reducer already sets this itself always.
 }
@@ -1038,9 +993,7 @@ set_internal_options(){  # Internal options: do not modify!
       ulimit -c 0 >/dev/null
     fi
   fi
-  SEED=$(head -1 /dev/urandom | od -N 1 | awk '{print $2 }')
-  RANDOM=$SEED
-  sleep 0.1$RANDOM  # Subreducer OS slicing?
+  sleep 0.1$RANDOM  # Subreducer OS slicing
   WHOAMI=$(whoami)
   if [ "$MULTI_REDUCER" != "1" ]; then  # This is the main reducer. For subreducers, EPOCH, SKIPV, SPORADIC is set in #VARMOD#
     EPOCH=$(date +%s)  # Used for /dev/shm work directory name and WORK_INIT, WORK_START etc. file names
@@ -1272,8 +1225,15 @@ multi_reducer(){
             fi
           else
             # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?). This may also happen due to any of the following reasons: 1) mysqld startup timeouts etc., 2) the server is crashing, but not on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log. Pausing 120 seconds to give you time to do so."
-            sleep 120
+            echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))"
+            echo_out "[Debug Aid] This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?). This may also happen due to any of the following reasons: 1) Antoher server running on the same port (check error logs: grep 'already in use' /dev/shm/*/*/*/log/master.err  2) mysqld startup timeouts etc., 3) the server is crashing, but not on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log. Pausing 5 seconds, you may want to press CTRL+Z to allow you to debug this further now."
+            # TODO: Reason 1 does happen. Observed:
+            # 2020-08-24  9:55:45 0 [ERROR] Can't start server: Bind on TCP/IP port. Got error: 98: Address already in use
+            # 2020-08-24  9:55:45 0 [ERROR] Do you already have another mysqld server running on port: 49504 ?
+            # 2020-08-24  9:55:45 0 [ERROR] Aborting
+            # But it should not (and reducer does check for duplicate port use). One (unlikely) reason may be that the server crashed on a bug not-being-looked for and then restarted or something. Not sure what is causing this, needs work. Only very minor incovience in runs as happens infrequently and reducer does handle the restart correctly.
+            # Also search for 'A server likely crashed on a different bug' for additional related code. Also odd is that that other code is before this one; why did that code not pickup the 'already in use' before being caught here?
+            sleep 5
           fi
         fi
         sleep 1  # Hasten slowly, server already busy with subreducers
@@ -1519,6 +1479,61 @@ init_workdir_and_files(){
   fi
   WORK_CL=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}_cl|")
   WORK_OUT=$(echo $INPUTFILE | sed "s|/[^/]\+$|/|;s|$|${EPOCH}.sql|")
+  if [ "${FIREWORKS}" == "1" ]; then
+    echo_out "[Init] FIREWORKS mode active, so automatically set:"
+    echo_out "[Init] > USE_PQUERY=1: fireworks mode will use pquery"  # This is not strictly necessary. The CLI could be used also, but pquery is likely faster? Test later. TODO
+    USE_PQUERY=1
+    echo_out "[Init] > USE_NEW_TEXT_STRING=1: fireworks mode will use the new text string script"
+    USE_NEW_TEXT_STRING=1
+    if [ ! -d "${FIREWORKS_BUGS_LOC}" ]; then
+      echo_out "[Init] > Did not find the FIREWORKS_BUGS_LOC directory (${FIREWORKS_BUGS_LOC}), attempting to create it"
+      mkdir -p "${FIREWORKS_BUGS_LOC}" 2>/dev/null
+      if [ ! -d "${FIREWORKS_BUGS_LOC}" ]; then
+        echo_out "[Init] > Failed to create the FIREWORKS_BUGS_LOC directory (${FIREWORKS_BUGS_LOC}). Terminating."
+        exit 1
+      fi
+    fi
+    if [ -z "${FIREWORKS_LINES}" ]; then
+      echo "Assert: FIREWORKS mode is active, yet FIREWORKS_LINES is empty. Terminating."
+      exit 1
+    fi
+    if [ ${FIREWORKS_LINES} -lt 10000 ]; then
+      echo "[Init] > FIREWORKS_LINES=10000: FIREWORKS_LINES was set to less then 10000, which is unlikely to produce desirable results (minimum)"
+      FIREWORKS_LINES=10000
+    fi
+    PQUERY_MULTI_QUERIES=$[ ${FIREWORKS_LINES} + 1000 ]  # 1000: Arbritary safety buffer addition, likely only about 5 is required (for CREATE DABATASE test; etc.)
+    echo_out "[Init] > PQUERY_MULTI_QUERIES=${PQUERY_MULTI_QUERIES}: ensures FIREWORKS_LINES (${FIREWORKS_LINES} queries can be executed"
+    if [ "${SCAN_FOR_NEW_BUGS}" != "1" ]; then
+      echo_out "[Init] > SCAN_FOR_NEW_BUGS=1: enabled new bug scanning (required)"
+      SCAN_FOR_NEW_BUGS=1
+    fi
+    if [ -r "${KNOWN_BUGS}" ]; then
+      echo_out "[Init] > Failed to read KNOWN_BUGS file at '${KNOWN_BUGS}'. Please check. Terminating."
+      exit 1
+    fi
+    echo_out "[Init] > STAGE1_LINES=-1: Avoid STAGE1 from ever terminating (required)"
+    STAGE1_LINES=-1
+    echo_out "[Init] > MULTI_THREADS=20: If you run into system issues, decrease this in-code (preference)"
+    MULTI_THREADS=20  # Setting this to a low number (1-5) will likely not yield great results. If the server supports it (think 32 threads and 128GB and /dev/shm resized to 90GB), you likely want to increase this, though watch out for OOS issues on /dev/shm tmpfs.
+    # Note that MULTI_THREADS_INCREASE and MULTI_THREADS_MAX are of no significance as long as a reasonably lenght input SQL file is used; reducer will never reach this.
+    if [ "${PQUERY_MULTI}" != "0" ]; then
+      echo_out "[Init] > PQUERY_MULTI=0: disabled PQUERY_MULTI (not required)"
+      PQUERY_MULTI=0
+    fi
+    if [ "${PQUERY_REVERSE_NOSHUFFLE_OPT}" != "0" ]; then
+      # Requires --no-shuffle option to pquery as reducer (in fireworks mode) will pre-shuffle the in.tmp (i.e. WORKT) file before execution. Using pquery without --no-shuffle is not the best solution for this, as it requires grabbing the SQL by pquery, whereas if it is pre-shuffled by reducer, issue reproducibility will, presumably, be much more perfect as there is zero post or re-parsing (i.e. the same SQL file can be used again in exactly the same way)
+      echo_out "[Init] > PQUERY_REVERSE_NOSHUFFLE_OPT=0: disabled reversing the no shuffle option (required)"  
+      PQUERY_REVERSE_NOSHUFFLE_OPT=0
+    fi
+    if [ "${FORCE_SKIPV}" != "1" ]; then
+      echo_out "[Init] > FORCE_SKIPV=1: enabled skipping verify stage (ensures 'free' runs)"
+      FORCE_SKIPV=1
+    fi
+    echo_out "[Init] > MODE=3: enabling endless-loop MODE=3 with a dummy unfindable TEXT string"
+    MODE=3
+    echo_out "[Init] > TEXT='fireworksmodeenabled': dummy unfindable TEXT string"
+    TEXT='fireworksmodeenabled'
+  fi 
   if [ $MODE -ge 6 ]; then
     mkdir $WORKD/out
     mkdir $WORKD/log
@@ -1821,10 +1836,10 @@ generate_run_scripts(){
   echo "    if [ ! -h \${BASEDIR}/share -o ! -f \${BASEDIR}/share ]; then ln -s \${SOURCE_DIR}/scripts \${BASEDIR}/share ; fi" >> $WORK_INIT
   echo -e "    if [ ! -h \${BASEDIR}/share/errmsg.sys -o ! -f \${BASEDIR}/share/errmsg.sys ]; then ln -s \${BASEDIR}/sql/share/english/errmsg.sys \${BASEDIR}/share/errmsg.sys ; fi;\n  fi\nelse" >> $WORK_INIT
   echo -e "  echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;\nfi" >> $WORK_INIT
-  echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mariadb-install-db -o -name mysql_install_db\`" >> $WORK_INIT
+  echo "MID=\`find \${BASEDIR} -maxdepth 2 -name mariadb-install-db -o -name mysql_install_db | head -n1\`" >> $WORK_INIT
   echo "VERSION=\"\`\$BIN --version | grep -E --binary-files=text -oe '[58]\.[15670]' | head -n1\`\"" >> $WORK_INIT
   echo "VERSION2=\"\`\$BIN --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-5]' | head -n1\`\"" >> $WORK_INIT
-  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--no-defaults --initialize-insecure ${MYINIT}'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--no-defaults --force ${MYINIT}'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force ${MYINIT}';elif [ \"\${VERSION2}\" == \"10.1\" -o \"\${VERSION2}\" == \"10.2\" -o \"\${VERSION2}\" == \"10.3\" ]; then MID_OPTIONS='--no-defaults --force ${MYINIT}'; elif [ \"\${VERSION2}\" == \"10.4\" -o \"\${VERSION2}\" == \"10.5\" -o \"\${VERSION2}\" == \"10.6\" ]; then MID_OPTIONS='--no-defaults --force --auth-root-authentication-method=normal ${MYINIT}'; else MID_OPTIONS='${MYINIT}'; fi\"" >> $WORK_INIT
+  echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then MID_OPTIONS='--no-defaults --initialize-insecure ${MYINIT}'; elif [ \"\$VERSION\" == \"5.6\" ]; then MID_OPTIONS='--no-defaults --force ${MYINIT}'; elif [ \"\${VERSION}\" == \"5.5\" ]; then MID_OPTIONS='--force ${MYINIT}';elif [ \"\${VERSION2}\" == \"10.1\" -o \"\${VERSION2}\" == \"10.2\" -o \"\${VERSION2}\" == \"10.3\" ]; then MID_OPTIONS='--no-defaults --force ${MYINIT}'; elif [ \"\${VERSION2}\" == \"10.4\" -o \"\${VERSION2}\" == \"10.5\" -o \"\${VERSION2}\" == \"10.6\" ]; then MID_OPTIONS='--no-defaults --force --auth-root-authentication-method=normal ${MYINIT}'; else MID_OPTIONS='${MYINIT}'; fi" >> $WORK_INIT
   echo "if [ \"\$VERSION\" == \"5.7\" -o \"\$VERSION\" == \"8.0\" ]; then \$BIN \${MID_OPTIONS} --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data; else \$MID \${MID_OPTIONS} --basedir=\${BASEDIR} --datadir=/dev/shm/${EPOCH}/data; fi" >> $WORK_INIT
   if [ $MODE -ge 6 ]; then
     # This still needs implementation for MODE6 or higher ("else line" below simply assumes a single $WORKO atm, while MODE6 and higher has more then 1)
@@ -2230,7 +2245,7 @@ start_mysqld_main(){
   SCHEDULER_OR_NOT=
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then SCHEDULER_OR_NOT="--event-scheduler=ON "; fi
   CORE_FOR_NEW_TEXT_STRING=
-  if [ $USE_NEW_TEXT_STRING -gt 0 ]; then CORE_FOR_NEW_TEXT_STRING="--core-file"; fi
+  if [ $USE_NEW_TEXT_STRING -gt 0 ]; then CORE_FOR_NEW_TEXT_STRING="--core-file --core"; fi
 
   # Change --port=$MYPORT to --skip-networking instead once BUG#13917335 is fixed and remove all MYPORT + MULTI_MYPORT coding
   if [ $MODE -ge 6 -a $TS_DEBUG_SYNC_REQUIRED_FLAG -eq 1 ]; then
@@ -2287,7 +2302,7 @@ start_valgrind_mysqld_main(){
   echo "BIN=\`find -L \${BASEDIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f -o -name mysqld -type l -o -name mysqld-debug -type l | head -1\`;if [ -z "\$BIN" ]; then echo \"Assert! mysqld binary '\$BIN' could not be read\";exit 1;fi" >> $WORK_START_VALGRIND
   echo "valgrind --suppressions=\${BASEDIR}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes \$BIN --no-defaults --basedir=\${BASEDIR} --datadir=$WORKD/data --port=$MYPORT --tmpdir=$WORKD/tmp --pid-file=$WORKD/pid.pid --log-error=$WORKD/log/master.err --socket=$WORKD/socket.sock $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA ${SCHEDULER_OR_NOT}>>$WORKD/log/master.err 2>&1 &" | sed 's/ \+/ /g' >> $WORK_START_VALGRIND
   sed -i "s|$WORKD|/dev/shm/${EPOCH}|g" $WORK_START_VALGRIND
-  sed -i "s|pid.pid|pid.pid --core-file|" $WORK_START_VALGRIND
+  sed -i "s|pid.pid|pid.pid --core-file --core|" $WORK_START_VALGRIND
   sed -i "s|\.so\;|\.so\\\;|" $WORK_START_VALGRIND
   chmod +x $WORK_START_VALGRIND
   for X in $(seq 1 360); do
@@ -2410,6 +2425,12 @@ cut_random_chunk(){
 cut_fixed_chunk(){
   echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Now filtering line $CURRENTLINE (Current chunk size: fixed to 1)"
   sed -n "$CURRENTLINE ! p" $WORKF > $WORKT
+}
+
+cut_fireworks_chunk_and_shuffle(){
+  echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Fireworks] Chunking and shuffling ${FIREWORKS_LINES} lines"
+  RANDOM=$(date +%s%N | cut -b10-19)  # Resseting random entropy to ensure highest quality entropy
+  shuf -n${FIREWORKS_LINES} --random-source=/dev/urandom ${INPUTFILE} > ${WORKT}
 }
 
 cut_threadsync_chunk(){
@@ -3204,6 +3225,7 @@ copy_workdir_to_tmp(){
         if [[ $USE_PXC -eq 1 || $USE_GRP_RPL -eq 1 ]]; then
           sudo cp -a $WORKD /tmp/$EPOCH
           sudo chown -R `whoami`:`whoami` /tmp/$EPOCH
+          sudo chown -R `whoami` /tmp/$EPOCH  # Google cloud will fail on trying to use groups
           cp $0 /tmp/$EPOCH  # Copy this reducer script
           cp $INPUTFILE /tmp/$EPOCH  # Copy the original input file
         else
@@ -3735,8 +3757,12 @@ if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
         # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_OR_SS_CRASHES as it is always single-threaded
         multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below). Also note that the use of $WORKF is necessary due to the dropc code in init_workdir_and_files() - i.e. we need the modified WORKF file, not the original INPUTFILE.
       else
-        determine_chunk
-        cut_random_chunk
+        if [ "${FIREWORKS}" == "1" ]; then
+          cut_fireworks_chunk_and_shuffle
+        else
+          determine_chunk
+          cut_random_chunk
+        fi
         run_and_check
       fi
       TRIAL=$[$TRIAL+1]

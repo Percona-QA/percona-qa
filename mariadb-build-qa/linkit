@@ -15,6 +15,7 @@ ln -s /test/report_dbg /data/report_dbg
 ln -s /test/clean /data/clean
 ln -s /test/my /data/my
 ln -s /test/my2 /data/my2
+ln -s /test/copy_newbugs /data/copy_newbugs
 ln -s /test/semaphore /data/semaphore
 ln -s /test/copy_all_tests /data/copy_all_tests
 ln -s /home/$(whoami)/newbug ./newbug

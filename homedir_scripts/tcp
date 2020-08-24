@@ -1,3 +1,5 @@
+#!/bin/bash
+OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1)"
 cat "${1}" | \
   sed "s|. mysqld options required for replay: ..sql_mode=[ \t]*$|SET SQL_MODE='';|" | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
@@ -42,6 +44,7 @@ cat "${1}" | \
   sed 's|extended|EXTENDED|gi' | \
   sed 's|repair|REPAIR|gi' | \
   sed 's|repeat|REPEAT|gi' | \
+  sed 's|replicate_do|REPLICATE_DO|gi' | \
   sed 's|order by|ORDER BY|gi' | \
   sed 's|drop|DROP|gi' | \
   sed 's|set|SET|gi' | \
@@ -74,6 +77,11 @@ cat "${1}" | \
   sed 's|into|INTO|gi' | \
   sed 's|threads|THREADS|gi' | \
   sed 's|unique|UNIQUE|gi' | \
+  sed 's|innodb_random|INNODB_RANDOM|gi' | \
+  sed 's|read_ahead|READ_AHEAD|gi' | \
+  sed 's|innodb_limit_optimistic_insert_debug|INNODB_LIMIT_OPTIMISTIC_INSERT_DEBUG|gi' | \
+  sed 's|innodb_file_per_TABLE|INNODB_FILE_PER_TABLE|gi' | \
+  sed "s|^. mysqld options required for replay.*|${OPTIONS}|i" | \
   sed 's| [ \t]| |g'
 
 #  sed 's|||gi' | \
