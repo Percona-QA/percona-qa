@@ -407,6 +407,7 @@ echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.so
 
 # Add handy local reducers
 if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
+  # -------------------
   cp ${SCRIPT_PWD}/reducer.sh ./reducer_new_text_string.sh
   sed -i 's|somebug|${2}|' ./reducer_new_text_string.sh
   sed -i 's|^\(MYEXTRA="[^"]\+\)"|\1 ${3}"|' ./reducer_new_text_string.sh
@@ -415,15 +416,18 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|^KNOWN_BUGS=[^#]\+|KNOWN_BUGS="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_new_text_string.sh
   sed -i 's|^FORCE_SKIPV=0|FORCE_SKIPV=1|' ./reducer_new_text_string.sh
   sed -i 's|^STAGE1_LINES=[^#]\+|STAGE1_LINES=10   |' ./reducer_new_text_string.sh
+  sed -i 's|^SCAN_FOR_NEW_BUGS=[^#]\+|SCAN_FOR_NEW_BUGS=1   |' ./reducer_new_text_string.sh
+  sed -i 's|^NEW_BUGS_COPY_DIR=[^#]\+|NEW_BUGS_COPY_DIR="/data/NEWBUGS"   |' ./reducer_new_text_string.sh
   sed -i 's|^TEXT_STRING_LOC=[^#]\+|TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"   |' ./reducer_new_text_string.sh
   sed -i 's|^PQUERY_LOC=[^#]\+|PQUERY_LOC="/home/$(whoami)/mariadb-qa/pquery/pquery2-md"   |' ./reducer_new_text_string.sh
+  # -------------------
   cp ./reducer_new_text_string.sh ./reducer_errorlog.sh
-  sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_new_text_string.sh
+  sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_errorlog.sh
+  sed -i 's|^SCAN_FOR_NEW_BUGS=[^#]\+|SCAN_FOR_NEW_BUGS=0   |' ./reducer_errorlog.sh
+  # -------------------
   cp ./reducer_new_text_string.sh ./reducer_fireworks.sh
   sed -i 's|^FIREWORKS=0|FIREWORKS=1|' ./reducer_fireworks.sh
-  sed -i 's|^KNOWN_BUGS=[^#]\+|KNOWN_BUGS="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_fireworks.sh
-  sed -i 's|^TEXT_STRING_LOC=[^#]\+|TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"   |' ./reducer_fireworks.sh
-  sed -i 's|^PQUERY_LOC=[^#]\+|PQUERY_LOC="/home/$(whoami)/mariadb-qa/pquery/pquery2-md"   |' ./reducer_fireworks.sh
+  sed -i 's|^NEW_BUGS_COPY_DIR=[^#]\+|NEW_BUGS_COPY_DIR="/data/FIREWORKS"   |' ./reducer_fireworks.sh
 fi
 
 echo "${SCRIPT_PWD}/stack.sh" > stack

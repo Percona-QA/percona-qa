@@ -100,7 +100,7 @@ SKIPSTAGEABOVE=99               # Usually not changed (default=99), skips stages
 FORCE_KILL=0                    # On/Off (1/0) Enable to forcefully kill mysqld instead of using mysqladmin shutdown etc. Auto-disabled for MODE=0.
 
 # === Percona XtraDB Cluster
-USE_PXC=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables USE_PQUERYE=1
+USE_PXC=0                       # On/Off (1/0) Enable to reduce testcases using a Percona XtraDB Cluster. Auto-enables USE_PQUERY=1
 PXC_ISSUE_NODE=0                # The node on which the issue would/should show (0,1,2 or 3) (default=0 = check all nodes to see if issue occured)
 WSREP_PROVIDER_OPTIONS=""       # wsrep_provider_options to be used (and reduced).
 
@@ -115,7 +115,6 @@ MODE5_ADDITIONAL_COUNTTEXT=1    # Number of times the additional text should app
 
 # === FIREWORKS Settings
 FIREWORKS=0                     # Fireworks mode: setups reducer.sh in such a way that any new bug observed, using a given input file, will be stored, and no actual reduction will be done. Expert use only; turning this on changes many settings, and thus changes the operation of reducer completely (default=0 = off)
-FIREWORKS_BUGS_COPY_DIR="/data/FIREWORKS"  # The path where to save new bugs found
 FIREWORKS_LINES=200000          # How many lines to slice from the provided input file. Previous testing seems to shows an almost even distribution of original testcase lenght. High number: higher possibility of hitting a bug per run, but slower. Low number: the same, both in reverse. (default=200000, needs testing with 50000, 100000 etc.)
 
 # === Old ThreadSync options    # No longer commonly used
@@ -944,6 +943,11 @@ options_check(){
       echo "Terminating now."
       exit 1
     fi
+    if [ -z "${NEW_BUGS_COPY_DIR}" ]; then
+      echo "Assert: SCAN_FOR_NEW_BUGS was set to 1, yet NEW_BUGS_COPY_DIR is empty. Please set it to a target directory for the SQL testcases to be saved"
+      echo "Terminating now."
+      exit 1
+    fi
     if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
       mkdir -p "${NEW_BUGS_COPY_DIR}"
       if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
@@ -1535,26 +1539,28 @@ init_workdir_and_files(){
     echo_out "[Init] Input file: $INPUTFILE"
     echo_out "[Init] EPOCH ID: $EPOCH (used for various file and directory names)"
     # Initial INPUTFILE to WORKF copy
-    if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
-      if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-        echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
-      else  # pquery is used; use a multi-line format for DROPC
+    if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not need a WORKF file (ref cut_fireworks_chunk_and_shuffle and note ${INPUTFILE} is used instead. The reason for setting it up this way is 1) it greatly improves /dev/shm diskspace as WORKF is not created per-thread, thereby saving let's say 450MB for a standard SQL input file, per-thread, 2) There is no need to maintain a working file (WORKF) as the input is never changed/reduced. INPUTFILE is shuffled and chuncked (as per FIREWORKS_LINES setting) and saved as in.tmp, and if a new bug is found, that file is copied to NEW_BUGS_COPY_DIR.
+      if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
+        if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
+          echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+        else  # pquery is used; use a multi-line format for DROPC
+          cp $INPUTFILE $WORKF
+          # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
+          remove_dropc $WORKF
+          # Re-setup DROPC using multiple lines (ref remove_dropc() for more information)
+          DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
+          echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep --binary-files=text -vE '^$')" > /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
+          cat $WORKF >> /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
+          rm -f $WORKF
+          mv /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKF
+        fi
+      else  # This is a subreducer, or a normal run with FORCE_SKIPV=0, thus do not remove/add dropc again (i.e. do not modify what the main reducer has passed)
         cp $INPUTFILE $WORKF
-        # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
-        remove_dropc $WORKF
-        # Re-setup DROPC using multiple lines (ref remove_dropc() for more information)
-        DROPC_UNIQUE_FILESUFFIX=$RANDOM$RANDOM
-        echo "$(echo "$DROPC" | sed 's|;|;\n|g' | grep --binary-files=text -vE '^$')" > /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
-        cat $WORKF >> /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp
-        rm -f $WORKF
-        mv /tmp/WORKF_${DROPC_UNIQUE_FILESUFFIX}.tmp $WORKF
       fi
-    else  # This is a subreducer, or a normal run with FORCE_SKIPV=0, thus do not remove/add dropc again (i.e. do not modify what the main reducer has passed)
-      cp $INPUTFILE $WORKF
-    fi
-    # If QC we don't need queries after first difference found
-    if [ ! -z "$QCTEXT" ]; then
-      sed -i "/$QCTEXT/q" $WORKF
+      # If QC we don't need queries after first difference found
+      if [ ! -z "$QCTEXT" ]; then
+        sed -i "/$QCTEXT/q" $WORKF
+      fi
     fi
   fi
   if [ $USE_PXC -eq 1 ]; then
@@ -1635,6 +1641,11 @@ init_workdir_and_files(){
   fi
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then
     echo_out "[Init] Querytimeout: ${QUERYTIMEOUT}s (For RQG-originating testcase reductions, ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
+  fi
+  if [ "${FIREWORKS}" != "1" ]; then
+    echo_out "[Init] FIREWORKS Mode active. Newly discovered bugs will be saved to ${NEW_BUGS_COPY_DIR}"
+  elif [ "${SCAN_FOR_NEW_BUGS}" == "1" ]; then
+    echo_out "[Init] SCAN_FOR_NEW_BUGS active. Newly discovered bugs will be saved to ${NEW_BUGS_COPY_DIR}"
   fi
   if [ $USE_PQUERY -eq 0 ]; then
     if   [ ${CLI_MODE} -eq 0 ]; then echo_out "[Init] Using the mysql client for SQL replay. CLI_MODE: 0 (cat input.sql | mysql)";
@@ -2416,8 +2427,8 @@ cut_fixed_chunk(){
 
 cut_fireworks_chunk_and_shuffle(){
   echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Fireworks] Chunking and shuffling ${FIREWORKS_LINES} lines"
-  RANDOM=$(date +%s%N | cut -b10-19)  # Resseting random entropy to ensure highest quality entropy
-  shuf -n${FIREWORKS_LINES} --random-source=/dev/urandom ${WORKF} > ${WORKT}
+  RANDOM=$(date +%s%N | cut -b10-19)  # Resetting random entropy to ensure highest quality entropy
+  shuf -n${FIREWORKS_LINES} --random-source=/dev/urandom ${INPUTFILE} > ${WORKT}
 }
 
 cut_threadsync_chunk(){
@@ -2811,7 +2822,8 @@ process_outcome(){
             SKIP_NEWBUG=1
           elif egrep -qi 'Assert: No parsable frames' ${WORKD}/MYBUG.FOUND; then
             # This is seen when no core was generated, i.e. the bug did not reproduce and there is definitely not a newbug
-            SKIP_NEWBUG=1
+            # RV update 24-08-20: Is the above correct? No parsable frames may be OOS or a smashes stack, but in general this message would be only there IF a core was generated, but could somehow not be parsed. Disabled the next line to debug based on cases of it seen in the future.
+            #SKIP_NEWBUG=1
           else
             echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${NTSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
             SKIP_NEWBUG=1
@@ -3263,7 +3275,11 @@ report_linecounts(){
     done
     echo_out "$TXT_OUT"
   else
-    LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+    if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+      LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+    else
+      LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+    fi
     if [ "$STAGE" = "V" ]; then
       echo_out "[Init] Initial number of lines in restructured input file: $LINECOUNTF"
     else
@@ -3579,16 +3595,6 @@ fireworks_setup(){
   USE_PQUERY=1
   echo_out "[Init] > USE_NEW_TEXT_STRING=1: fireworks mode will use the new text string script"
   USE_NEW_TEXT_STRING=1
-  if [ ! -d "${FIREWORKS_BUGS_COPY_DIR}" ]; then
-    echo_out "[Init] > Did not find the FIREWORKS_BUGS_COPY_DIR directory (${FIREWORKS_BUGS_COPY_DIR}), attempting to create it"
-    mkdir -p "${FIREWORKS_BUGS_COPY_DIR}" 2>/dev/null
-    if [ ! -d "${FIREWORKS_BUGS_COPY_DIR}" ]; then
-      echo_out "[Init] > Failed to create the FIREWORKS_BUGS_COPY_DIR directory (${FIREWORKS_BUGS_COPY_DIR}). Terminating."
-      exit 1
-    fi
-  fi
-  echo_out "[Init] > NEW_BUGS_COPY_DIR=\"${FIREWORKS_BUGS_COPY_DIR}\" as per FIREWORKS_BUGS_COPY_DIR setting"
-  NEW_BUGS_COPY_DIR="${FIREWORKS_BUGS_COPY_DIR}"
   if [ -z "${FIREWORKS_LINES}" ]; then
     echo "Assert: FIREWORKS mode is active, yet FIREWORKS_LINES is empty. Terminating."
     exit 1
@@ -3797,7 +3803,11 @@ if [ $MODE -ge 6 ]; then
 fi
 
 #STAGE1: Reduce large size files fast
-LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+  LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+else
+  LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+fi
 if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
   NEXTACTION="& try removing next random line(set)"
   STAGE=1
@@ -3809,7 +3819,11 @@ if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
       if [ $TRIAL -gt 1 ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining number of lines in input file: $LINECOUNTF"; fi
       if [ "$MULTI_REDUCER" != "1" -a $SPORADIC -eq 1 -a $REDUCE_GLIBC_OR_SS_CRASHES -le 0 ]; then
         # This is the parent/main reducer AND the issue is sporadic (so; need to use multiple threads). Disabled for REDUCE_GLIBC_OR_SS_CRASHES as it is always single-threaded
-        multi_reducer $WORKF  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below). Also note that the use of $WORKF is necessary due to the dropc code in init_workdir_and_files() - i.e. we need the modified WORKF file, not the original INPUTFILE.
+        if [ "${FIREWORKS}" == "1" ]; then  # Fireworks mode does not use WORKF but INPUTFILE
+          multi_reducer ${INPUTFILE}
+        else
+          multi_reducer ${WORKF}  # $WORKT is not used by the main reducer in this case. The subreducer uses $WORKT it's own session however (in the else below). Also note that the use of $WORKF is necessary due to the dropc code in init_workdir_and_files() - i.e. we need the modified WORKF file, not the original INPUTFILE.
+        fi
       else
         if [ "${FIREWORKS}" == "1" ]; then
           cut_fireworks_chunk_and_shuffle
@@ -3820,7 +3834,11 @@ if [ $SKIPSTAGEBELOW -lt 1 -a $SKIPSTAGEABOVE -gt 1 ]; then
         run_and_check
       fi
       TRIAL=$[$TRIAL+1]
-      LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+      if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+        LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+      else
+        LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+      fi
     done
   else
     echo_out "$ATLEASTONCE [Stage $STAGE] Skipping stage $STAGE as remaining number of lines in input file <= $STAGE1_LINES"
@@ -3845,8 +3863,13 @@ if [ $SKIPSTAGEBELOW -lt 2 -a $SKIPSTAGEABOVE -gt 2 ]; then
     if [ $? -eq 0 ]; then CURRENTLINE=$[$CURRENTLINE+1]; fi  # Only advance the column number if there was no issue, otherwise stay on the same column (An issue will remove the current column and shift all other columns down by one, hence you have to stay in the same place as it will contain the next column)
     REALLINE=$[$REALLINE+1]
     TRIAL=$[$TRIAL+1]
-    SIZEF=`stat -c %s $WORKF`
-    LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
+    if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+      SIZEF=$(stat -c %s ${WORKF})
+      LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+    else
+      SIZEF=$(stat -c %s ${INPUTFILE})
+      LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+    fi
   done
 fi
 
@@ -3922,8 +3945,13 @@ if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
     else
       if [ -f $WORKD/log/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi
       run_and_check
-      LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-      SIZEF=`stat -c %s $WORKF`
+      if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+        SIZEF=$(stat -c %s ${WORKF})
+        LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+      else
+        SIZEF=$(stat -c %s ${INPUTFILE})
+        LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+      fi
     fi
     TRIAL=$[$TRIAL+1]
   done
@@ -4095,8 +4123,13 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     else
       if [ -f $WORKD/log/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi
       run_and_check
-      LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-      SIZEF=`stat -c %s $WORKF`
+      if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+        SIZEF=$(stat -c %s ${WORKF})
+        LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+      else
+        SIZEF=$(stat -c %s ${INPUTFILE})
+        LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+      fi
     fi
     TRIAL=$[$TRIAL+1]
   done
@@ -4194,8 +4227,13 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
               COUNTCOLS=$[$COUNTCOLS-1]
             fi
             COLUMN=$[$COLUMN+1]
-            LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-            SIZEF=`stat -c %s $WORKF`
+            if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+              SIZEF=$(stat -c %s ${WORKF})
+              LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+            else
+              SIZEF=$(stat -c %s ${INPUTFILE})
+              LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+            fi
           else
             if [ -f $WORKD/log/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Not renaming column '$COL' as it's name is already optimal"; fi
           fi
@@ -4323,8 +4361,13 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
           run_and_check
           if [ $? -eq 0 ]; then
             if [ "$COL" != "c$C_COL_COUNTER" ]; then
-              LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-              SIZEF=`stat -c %s $WORKF`
+              if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+                SIZEF=$(stat -c %s ${WORKF})
+                LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+              else
+                SIZEF=$(stat -c %s ${INPUTFILE})
+                LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+              fi
 
               # This column was not removed. Try and rename column now to cx to make testcase cleaner
               if [ -f $WORKD/log/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] [Column $COLUMN/$COUNTCOLS] Now attempting to rename this column ('$COL') to a more uniform 'c$C_COL_COUNTER'"; fi
@@ -4343,8 +4386,13 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
             # This column was removed, reducing column count
             COUNTCOLS=$[$COUNTCOLS-1]
           fi
-          LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-          SIZEF=`stat -c %s $WORKF`
+          if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+            SIZEF=$(stat -c %s ${WORKF})
+            LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+          else
+            SIZEF=$(stat -c %s ${INPUTFILE})
+            LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+          fi
         done
       fi
       TRIAL=$[$TRIAL+1]
@@ -4544,8 +4592,13 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     else
       if [ -f $WORKD/log/mysql.out ]; then echo_out "$ATLEASTONCE [Stage $STAGE] [Trial $TRIAL] Remaining size of input file: $SIZEF bytes ($LINECOUNTF lines)"; fi
       run_and_check
-      LINECOUNTF=`cat $WORKF | wc -l | tr -d '[\t\n ]*'`
-      SIZEF=`stat -c %s $WORKF`
+      if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not use WORKF but INPUTFILE
+        SIZEF=$(stat -c %s ${WORKF})
+        LINECOUNTF=$(cat ${WORKF} | wc -l | tr -d '[\t\n ]*')
+      else
+        SIZEF=$(stat -c %s ${INPUTFILE})
+        LINECOUNTF=$(cat ${INPUTFILE} | wc -l | tr -d '[\t\n ]*')
+      fi
     fi
     TRIAL=$[$TRIAL+1]
   done
