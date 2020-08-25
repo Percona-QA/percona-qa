@@ -42,11 +42,11 @@ else
                   if [ ${SUBDIRCOUNT} -le 1 ]; then  # pquery-run.sh directories generally have 1 (or 0 when in between trials) subdirectories. Both 0 and 1 need to be covered
                     if [ $(ls ${DIR}/*pquery*reach* 2>/dev/null | wc -l) -gt 0 ]; then # A pquery-reach.sh directory
                       PR_FILE_TO_CHECK=$(ls --color=never ${DIR}/*pquery*reach* 2>/dev/null | head -n1)  # Head -n1 is defensive, there should be only 1 file
-                      if [ -z ${PR_FILE_TO_CHECK} ]; then 
+                      if [ -z ${PR_FILE_TO_CHECK} ]; then
                         echo "Assert: \$PR_FILE_TO_CHECK empty"
                         exit 1
                       fi
-                      AGEFILE=$(( $(date +%s) - $(stat -c %Z "${PR_FILE_TO_CHECK}")))  # File age in seconds 
+                      AGEFILE=$(( $(date +%s) - $(stat -c %Z "${PR_FILE_TO_CHECK}")))  # File age in seconds
                       if [ ${AGEFILE} -ge 1200 ]; then  # Delete pquery-reach.sh directories aged >=20 minutes
                         echo "Deleting pquery-reach.sh directory ${DIR} (pquery-reach log age: ${AGEFILE}s)"
                         COUNT_FOUND_AND_DEL=$[ ${COUNT_FOUND_AND_DEL} + 1 ]
@@ -93,7 +93,7 @@ else
       fi
     fi
     if [ ${STORE_COUNT_FOUND_AND_DEL} -eq ${COUNT_FOUND_AND_DEL} ]; then  # A directory was found but not deleted
-      COUNT_FOUND_AND_NOT_DEL=$[ ${COUNT_FOUND_AND_NOT_DEL} + 1 ] 
+      COUNT_FOUND_AND_NOT_DEL=$[ ${COUNT_FOUND_AND_NOT_DEL} + 1 ]
     fi; STORE_COUNT_FOUND_AND_DEL=
   done
   if [ ${COUNT_FOUND_AND_NOT_DEL} -ge 1 -a ${COUNT_FOUND_AND_DEL} -eq 0 ]; then

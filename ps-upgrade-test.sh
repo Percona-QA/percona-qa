@@ -61,7 +61,7 @@ normalize_version(){
   local major=0
   local minor=0
   local patch=0
- 
+
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -77,7 +77,7 @@ check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
- 
+
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -231,7 +231,7 @@ for X in $(seq 0 ${PS_START_TIMEOUT}); do
     exit 1
     fi
 done
-	 
+
 echoit "Sysbench Run: Prepare stage"
 sysbench_run innodb test
 $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$WORKDIR/ps_lower.sock prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
@@ -275,7 +275,7 @@ if [ -r ${PS_UPPER_BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
 
     echoit "Loading employees database with tokudb engine for upgrade testing.."
     create_emp_db employee_5 tokudb employees.sql
- 
+
     if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
       echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
       create_emp_db employee_6 tokudb employees_partitioned.sql

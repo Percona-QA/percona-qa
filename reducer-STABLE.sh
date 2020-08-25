@@ -368,7 +368,7 @@ TS_VARIABILITY_SLEEP=1
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 # Disable history substitution and avoid  -bash: !: event not found  like errors
-set +H 
+set +H
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -390,7 +390,7 @@ normalize_version(){
   local major=0
   local minor=0
   local patch=0
- 
+
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -406,7 +406,7 @@ check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
- 
+
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -1707,7 +1707,7 @@ init_workdir_and_files(){
         VERSION_INFO="5.6"
         INIT_TOOL="${BASEDIR}/scripts/mariadb-install-db"
         #This is now covered by 10.1-10.3 code below, alike to startup.sh
-        #if [ ! -r ${INIT_TOOL} ]; then 
+        #if [ ! -r ${INIT_TOOL} ]; then
         #  INIT_TOOL="${BASEDIR}/scripts/mysql_install_db"
         #  if [ ! -r ${INIT_TOOL} ]; then
         #    echo "Assert: neither ${BASEDIR}/scripts/mariadb-install-db nor ${BASEDIR}/scripts/mysql_install_db was found! Please check."
@@ -3222,7 +3222,7 @@ copy_workdir_to_tmp(){
       fi
     fi
   fi
-}  
+}
 
 report_linecounts(){
   if [ $MODE -ge 6 ]; then
@@ -4172,7 +4172,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
               echo "Terminating now."
               exit 1
             fi
- 
+
             # First count how many actual INSERT rows there are
             COUNTINSERTS=0
             COUNTINSERTS=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \

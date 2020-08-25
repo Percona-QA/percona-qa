@@ -13,9 +13,10 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 ###### CURRENT BUGS ######
 SIGILL|typeinfo for Item_func_set_collation|Item_singlerow_subselect::reset|Item_singlerow_subselect::bring_value|Arg_comparator::compare_e_row                                 ## OPT |MDEV-23535
 SIGSEGV|typeinfo for Item_func_set_collation|Item_singlerow_subselect::reset|Item_singlerow_subselect::bring_value|Arg_comparator::compare_e_row                                ## OPT |MDEV-23535
+SIGABRT|__cxa_pure_virtual () from|Arg_comparator::compare_e_string|Arg_comparator::compare|Arg_comparator::compare_e_row                                                       ## OPT |MDEV-23535
 SIGSEGV|fill_record|fill_record_n_invoke_before_triggers|mysql_insert|mysql_execute_command                                                                                     ## OPT MDEV-23467
 SIGSEGV|row_make_new_pathname|row_merge_rename_tables_dict|commit_try_rebuild|ha_innobase::commit_inplace_alter_table                                                           ## OPT MDEV-22939
-SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|Item_func_wsrep_last_seen_gtid::val_str_ascii                                                ## OPT MDEV-23466
+SIGABRT|__cxa_throw () from|wsrep::server_state::provider|Item_func_wsrep_last_seen_gtid::val_str_ascii|Item_func::val_str_from_val_str_ascii                                   ## OPT MDEV-23466
 SIGSEGV|fil_system_t::keyrotate_next|fil_space_next|fil_crypt_find_space_to_rotate|fil_crypt_thread                                                                             ## OPT MDEV-23447
 fd != -1|SIGABRT|my_seek|azrewind|ha_archive::read_data_header|ha_archive::rnd_init                                                                                             ## DBG MDEV-23448
 table_list->prelocking_placeholder == TABLE_LIST::PRELOCK_NONE|SIGABRT|check_lock_and_start_stmt|restart_trans_for_tables|create_table_impl|mysql_create_table_no_lock          ## DBG MDEV-23298
@@ -145,7 +146,7 @@ SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::ini
 SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_writer_object::add                                                                                   ## OPT |MDEV-22444
 SIGSEGV|__strlen_avx2|String_list::append_str|Explain_index_use::set|st_join_table::save_explain_data                                                                           ## OPT |MDEV-22444
 SIGSEGV|Field_iterator_table::create_item|Field_iterator_table_ref::create_item|insert_fields|setup_wild                                                                        ## DBG |MDEV-22444
-SIGABRT|std::terminate() () from|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::causal_read                                                             ## OPT MDEV-22443
+SIGABRT|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::causal_read|wsrep::client_state::sync_wait                                                       ## OPT MDEV-22443
 cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connection|THD::free_connection|unlink_thd                                                               ## DBG MDEV-22420
 templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc  ## DBG MDEV-22395
 m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                           ## DBG |MDEV-22390

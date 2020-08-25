@@ -1,0 +1,4 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+./gendirs.sh | xargs -I{} echo "cd {}; ~/t" | xargs -P50 -I{} sh -c "{}" | sort -u

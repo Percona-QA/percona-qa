@@ -1,5 +1,5 @@
 * Approximate issue description;
-  
+
   When using --log-bin as an option to MTR, one cannot change the binlog format from the default STATEMENT to ROW or MIXED
 
   For example when using;
@@ -15,25 +15,25 @@
       ; # Dont add --binlog-format when running without binlog
     }
 
-  This looks somewhat incorrect because somehow skip_binlog is always activated automatically. 
+  This looks somewhat incorrect because somehow skip_binlog is always activated automatically.
 
   It is not clear how exactly, but maybe, it is taking from some default file, like;
 
   $ cat t/skip_log_bin-master.opt
     --loose-skip-log-bin
 
-  or 
-  
+  or
+
    lib/mtr_cases.pm:    push(@{$tinfo->{'master_opt'}}, "--loose-skip-log-bin");
    lib/mtr_cases.pm:    push(@{$tinfo->{'slave_opt'}}, "--loose-skip-log-bin");
 
 * If you want to use --binlog-format, comment out the lines around line number 5223 (i.e. all elsif code shown above)
-  
+
 * This leads also to another question; how come the replication suite can use ROW/MIXED etc.
 
   It may be that the replication suite is able to still use ROW and MIXED via this file;
 
-  mysql-test $ cat suite/rpl/combinations 
+  mysql-test $ cat suite/rpl/combinations
   [row]
   binlog-format=row
 

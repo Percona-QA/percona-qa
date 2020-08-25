@@ -1,21 +1,25 @@
 #!/bin/bash
-ln -s /test/clean_all /data/clean_all 
-ln -s /test/monitor_run /data/monitor_run
-ln -s /test/monitor_runs /data/monitor_runs
-ln -s /test/multi_sr_all /data/multi_sr_all
-ln -s /test/sge_all /data/sge_all
-ln -s /test/kill_ge /data/kill_ge
-ln -s /test/kill_pr /data/kill_pr
-ln -s /test/todaysruns /data/todaysruns
-ln -s /test/allruns /data/allruns
-ln -s /test/scan_MYBUG /data/scan_MYBUG
-ln -s /test/find_deadlocks /data/find_deadlocks
-ln -s /test/report_opt /data/report_opt
-ln -s /test/report_dbg /data/report_dbg
-ln -s /test/clean /data/clean
-ln -s /test/my /data/my
-ln -s /test/my2 /data/my2
-ln -s /test/copy_newbugs /data/copy_newbugs
-ln -s /test/semaphore /data/semaphore
-ln -s /test/copy_all_tests /data/copy_all_tests
-ln -s /home/$(whoami)/newbug ./newbug
+ln -s /test/clean_all /data/clean_all  2>&1 | grep -v 'File exists'
+ln -s /test/monitor_run /data/monitor_run 2>&1 | grep -v 'File exists'
+ln -s /test/monitor_runs /data/monitor_runs 2>&1 | grep -v 'File exists'
+ln -s /test/multi_sr_all /data/multi_sr_all 2>&1 | grep -v 'File exists'
+ln -s /test/sge_all /data/sge_all 2>&1 | grep -v 'File exists'
+ln -s /test/kill_ge /data/kill_ge 2>&1 | grep -v 'File exists'
+ln -s /test/kill_pr /data/kill_pr 2>&1 | grep -v 'File exists'
+ln -s /test/todaysruns /data/todaysruns 2>&1 | grep -v 'File exists'
+ln -s /test/allruns /data/allruns 2>&1 | grep -v 'File exists'
+ln -s /test/scan_MYBUG /data/scan_MYBUG 2>&1 | grep -v 'File exists'
+ln -s /test/find_deadlocks /data/find_deadlocks 2>&1 | grep -v 'File exists'
+ln -s /test/report_opt /data/report_opt 2>&1 | grep -v 'File exists'
+ln -s /test/report_dbg /data/report_dbg 2>&1 | grep -v 'File exists'
+ln -s /test/clean /data/clean 2>&1 | grep -v 'File exists'
+ln -s /test/my /data/my 2>&1 | grep -v 'File exists'
+ln -s /test/my2 /data/my2 2>&1 | grep -v 'File exists'
+ln -s /test/copy_newbugs /data/copy_newbugs 2>&1 | grep -v 'File exists'
+ln -s /test/semaphore /data/semaphore 2>&1 | grep -v 'File exists'
+ln -s /test/copy_all_tests /data/copy_all_tests 2>&1 | grep -v 'File exists'
+ln -s /home/$(whoami)/newbug ./newbug 2>&1 | grep -v 'File exists'
+ln -s /test/newbug_clean /home/$(whoami)/nc 2>&1 | grep -v 'File exists'
+
+echo 'Done!'
+exit 0

@@ -80,7 +80,7 @@ normalize_version(){
   local major=0
   local minor=0
   local patch=0
- 
+
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -96,7 +96,7 @@ check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
- 
+
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -315,7 +315,7 @@ function ps_start(){
         exit 1
         fi
     done
-   
+
   done
 }
 
@@ -336,12 +336,12 @@ function proxysql_start(){
     ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps${i}.sock -e"create user monitor@'%' identified with mysql_native_password by 'monitor';create user testuser_W@'%' identified with mysql_native_password by 'test';grant all on *.* to testuser_W@'%';create user testuser_R@'%' identified with mysql_native_password by 'test';grant all on *.* to testuser_R@'%';create user testuser_RW@'%' identified with mysql_native_password by 'test';grant all on *.* to testuser_RW@'%';"
   done
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK;"
- 
+
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_users (username,password,active,default_hostgroup,default_schema) values ('testuser_W','test',1,$READ_HG,'sbtest_db');"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_users (username,password,active,default_hostgroup,default_schema) values ('testuser_R','test',1,$WRITE_HG,'sbtest_db');"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_users (username,password,active,default_hostgroup,default_schema) values ('testuser_RW','test',1,$RW_HG,'sbtest_db');"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
- 
+
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_query_rules (username,destination_hostgroup,active,flagIN,retries,match_digest,apply) values('testuser_RW',$RW_HG,1,100,3,'^INSERT ',1);"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_query_rules (username,destination_hostgroup,active,flagIN,retries,match_digest,apply) values('testuser_RW',$RW_HG,1,100,3,'^UPDATE ',1);"
   ${PS_BASEDIR}/bin/mysql --user=admin --password=admin --host=127.0.0.1 --port=6032 --default-auth=mysql_native_password -e "insert into mysql_query_rules (username,destination_hostgroup,active,flagIN,retries,match_digest,apply) values('testuser_RW',$RW_HG,1,100,3,'^DELETE ',1);"
@@ -359,7 +359,7 @@ function proxysql_qa(){
   echoit "PS server initialization"
   ps_start 3
   proxysql_start 3
- 
+
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps1.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps2.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
   ${PS_BASEDIR}/bin/mysql -uroot --socket=/tmp/ps3.sock -e "drop database if exists sbtest_db;create database sbtest_db;"
@@ -374,13 +374,13 @@ function proxysql_qa(){
   sysbench_insert_run sbtest_db "testuser_W"
   sysbench_insert_run sbtest_db "testuser_W"
   sysbench_insert_run sbtest_db "testuser_W"
- 
+
   sysbench_rw_run sbtest_db "testuser_RW"
   sysbench_rw_run sbtest_db "testuser_RW"
   sysbench_rw_run sbtest_db "testuser_RW"
- 
+
   sleep 5
- 
+
   $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps1.sock -u root shutdown
   $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps2.sock -u root shutdown
   $PS_BASEDIR/bin/mysqladmin  --socket=/tmp/ps3.sock -u root shutdown

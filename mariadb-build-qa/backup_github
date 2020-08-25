@@ -31,6 +31,7 @@ cp kill_s ${TARGET}
 cp stop_all ${TARGET}
 cp start_all ${TARGET}
 cp startup_all ${TARGET}
+cp t_all ${TARGET}
 cp all_all ${TARGET}
 cp sge_all ${TARGET}
 cp clean_all ${TARGET}
@@ -67,6 +68,7 @@ cp use_old ${TARGET}
 cp report_opt ${TARGET}
 cp report_dbg ${TARGET}
 cp clean ${TARGET}
+cp newbug_clean ${TARGET}
 cp allstrings_merged ${TARGET}
 cp allstrings ${TARGET}
 cp semaphore ${TARGET}

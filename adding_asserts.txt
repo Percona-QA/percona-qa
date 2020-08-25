@@ -17,7 +17,7 @@ To rebuild percona server, you can use percona-qa/build_percona.sh (ignore the '
 
 # Note that the assert condition must fail; i.e. DBUG_ASSERT(1==1); will mean the server continues, as the assertion is valid. Read the assertion like this: "assert that 1==1" to make it easier to follow/read. DBUG_ASSERT(1!=1); will make it assert as the assertion is invalid. This seems self-evident, but consider a situation where you want to catch a problem when the examined row count as shown in SHOW PROCESSLIST is > 1000. Another way to express this is 'an assert condition must never fail [for the server to continue]'
 
-  So, one could _seemingly_ assert on DBUG_ASSERT(get_examined_row_count()>1000) in sql/sql_show.cc. But this is incorrect in two ways: if the examined number of rows is 0 (an often seen situation), then get_examined_row_count()=0 and 0 is not greater then 1000, hence the server asserts. Then (second issue), if the number of rows would be larger then 1000 on any given query, 2000 for example, 2000>1000 which is true, so the server would not assert. 
+  So, one could _seemingly_ assert on DBUG_ASSERT(get_examined_row_count()>1000) in sql/sql_show.cc. But this is incorrect in two ways: if the examined number of rows is 0 (an often seen situation), then get_examined_row_count()=0 and 0 is not greater then 1000, hence the server asserts. Then (second issue), if the number of rows would be larger then 1000 on any given query, 2000 for example, 2000>1000 which is true, so the server would not assert.
 
   The correct syntax is thus DBUG_ASSERT(get_examined_row_count()<1000). i.e. continue when < 1000, assert when > 1000.
 
@@ -47,7 +47,7 @@ To rebuild percona server, you can use percona-qa/build_percona.sh (ignore the '
   (gdb) p now_utime
   $1 = 1412938018519405
   (gdb) p tmp->start_utime
-  $2 = 1412938018523469     
+  $2 = 1412938018523469
   (gdb) p ((now_utime - tmp->start_utime) / 1000)
   $3 = 18446744073709547   # note that ((1412938018519405 - 1412938018523469) / 1000) = -4.064
 
@@ -181,7 +181,7 @@ $3 = 1412938018519405
 (gdb) p tmp->start_utime
 +p tmp->start_utime
 $4 = 1412938018523469
-(gdb) # started in the future 
+(gdb) # started in the future
 
 This resulted in https://bugs.launchpad.net/percona-server/+bug/1379582
 

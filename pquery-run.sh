@@ -498,7 +498,7 @@ pxc_startup() {
               removetrial
               sleep 1800
               echoit "Slept 0.5h, resuming pquery-run.sh run..."
-            else 
+            else
               savetrial
               echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
               exit 1
@@ -700,7 +700,7 @@ gr_startup() {
           removetrial
           sleep 1800
           echoit "Slept 0.5h, resuming pquery-run.sh run..."
-        else 
+        else
           savetrial
           echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
           exit 1
@@ -1080,7 +1080,7 @@ pquery_test() {
                 removetrial
                 sleep 1800
                 echoit "Slept 0.5h, resuming pquery-run.sh run..."
-              else 
+              else
                 savetrial
                 echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
                 exit 1

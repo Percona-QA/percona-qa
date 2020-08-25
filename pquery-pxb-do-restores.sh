@@ -21,7 +21,7 @@ while read line ; do
     rm -rf $WORKD_PWD/$line/data_bkp
     mv $WORKD_PWD/$line/data $WORKD_PWD/$line/data_bkp
     ${PXB_BASEDIR}/bin/xtrabackup --copy-back --target-dir=$WORKD_PWD/$line/xb_full --datadir=$WORKD_PWD/$line/data --lock-ddl > $WORKD_PWD/$line/copy_backup.log 2>&1
-    $line/start_recovery 
+    $line/start_recovery
     for X in $(seq 0 60); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S$WORKD_PWD/$line/socket.sock ping > /dev/null 2>&1; then

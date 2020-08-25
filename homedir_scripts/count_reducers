@@ -1,1 +1,1 @@
-ps -ef | grep -vE 'SCREEN|bash -c' | grep -o 'reducer[0-9]\+.sh' | sort -u | wc -l
+ps -ef | grep -vE 'SCREEN|bash -c' | grep -oE 'reducer[0-9]\+.sh|reducer_errorlog.sh|reducer_new_text_string.sh|reducer_fireworks.sh' | sort -u | wc -l

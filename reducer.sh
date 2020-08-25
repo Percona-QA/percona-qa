@@ -181,7 +181,7 @@ TS_VARIABILITY_SLEEP=1
 # - WORKDIR_M3_DIRECTORY: If WORKDIR_LOCATION is set to 3, then this directory is used
 # - STAGE1_LINES: When the testcase becomes smaller than this number of lines, proceed to STAGE2 (default=90)
 #   Only change if reducer keeps trying to reduce by 1 line in STAGE1 for a long time (seen very rarely)
-# - MYEXTRA: Extra options to pass to myqsld 
+# - MYEXTRA: Extra options to pass to myqsld
 #   - Also, --no-defaults as set in the default is removed automatically later on. It is just present here to highlight it's effectively (seperately) set.
 # - BASEDIR: Full path to MySQL basedir (example: "/mysql/mysql-5.6").
 #   If the directory name starts with '/mysql/' then this may be ommited (example: BASEDIR="mysql-5.6-trunk")
@@ -315,10 +315,10 @@ TS_VARIABILITY_SLEEP=1
 #   of them use ${EPOCH} in the filename, so you get {some_epochnr}_start/_stop/_cl/_run/_run_pquery/.sql
 
 # Disable history substitution and avoid  -bash: !: event not found  like errors
-set +H 
+set +H
 
 # Random entropy init
-RANDOM=$(date +%s%N | cut -b10-19)  
+RANDOM=$(date +%s%N | cut -b10-19)
 
 # Set ASAN coredump options
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
@@ -340,7 +340,7 @@ normalize_version(){
   local major=0
   local minor=0
   local patch=0
- 
+
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -356,7 +356,7 @@ check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
- 
+
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -957,7 +957,7 @@ options_check(){
       fi
     fi
     if [ "${USE_NEW_TEXT_STRING}" != "1" ]; then
-      echo "SCAN_FOR_NEW_BUGS was set to 1, yet USE_NEW_TEXT_STRING is not set to 1 (set to '${USE_NEW_TEXT_STRING}'). This setup is not covered by this script yet. Ref inside reducer for more info." 
+      echo "SCAN_FOR_NEW_BUGS was set to 1, yet USE_NEW_TEXT_STRING is not set to 1 (set to '${USE_NEW_TEXT_STRING}'). This setup is not covered by this script yet. Ref inside reducer for more info."
       # Reason is that the new text string script is used in confunction with the new bugs string list. This could be expanded to include the older bugs string list also, but this would seem to be wasted effort as that list is no longer maintained inside MariaDB (the new unique bug id's are used instead and are much better/of much higher quality). Rather, and this is also provides additional ROI in other areas; update the new text string script to call the old script for any case where a new unique bug ID can not be obtained (quite limited limited amount of cases; usually only when incorrect core dumps (stack smashing, OOS, mysqld failed to create a coredump) are used.
       echo "Terminating now."
       exit 1
@@ -1256,7 +1256,7 @@ multi_reducer(){
               echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Thread #$t disappeared (mysqld start failed) due to running out of diskspace. Restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))."
               #echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review. Otherwise, please ignore the \"check...\" message just above; the files are no longer there given the restart above)"
             else
-              if [ "${FIREWORKS}" != "1" -o ${OVERALL_RESTART_ISSUES_IN_FIREWORKS_MODE_COUNT} -gt 100 ]; then  # Only show this is in non-fireworks mode, or when it is seen a lot (>100). In fireworks more, seeing this from time to time is somewhat expected. 
+              if [ "${FIREWORKS}" != "1" -o ${OVERALL_RESTART_ISSUES_IN_FIREWORKS_MODE_COUNT} -gt 100 ]; then  # Only show this is in non-fireworks mode, or when it is seen a lot (>100). In fireworks more, seeing this from time to time is somewhat expected.
                 echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared due to a failed start of mysqld inside a subreducer thread, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t")) (This can happen irregularly on busy servers. If the message is scrolling however, please investigate; reducer has copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review. Otherwise, please ignore the \"Failed to start..., check...\" message just above, the files are no longer there/it does not apply, given the restart)"  # Due to mysqld startup timeouts etc. | Check last few lines of subreducer log to find reason (you may need a pause above before the thread is restarted!)
               else
                 echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared due to a failed start of mysqld inside a subreducer thread, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))"
@@ -1863,7 +1863,7 @@ generate_run_scripts(){
         echo "export LD_LIBRARY_PATH=\${BASEDIR}/lib" >> $WORK_RUN_PQUERY
         if [ $PQUERY_MULTI -eq 1 ]; then
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE="--no-shuffle"; else PQUERY_SHUFFLE=""; fi
-           
+
           echo "$(echo $PQUERY_LOC | sed "s|.*/|./${EPOCH}_|") --database=test --infile=./${EPOCH}.sql $PQUERY_SHUFFLE --threads=$PQUERY_MULTI_CLIENT_THREADS --queries=$PQUERY_MULTI_QUERIES --user=root --socket=/dev/shm/${EPOCH}/node1/node1_socket.sock --log-all-queries --log-failed-queries $PQUERY_EXTRA_OPTIONS" >> $WORK_RUN_PQUERY
         else
           if [ $PQUERY_REVERSE_NOSHUFFLE_OPT -ge 1 ]; then PQUERY_SHUFFLE=""; else PQUERY_SHUFFLE="--no-shuffle"; fi
@@ -1982,7 +1982,7 @@ start_mysqld_or_valgrind_or_pxc(){
           echo "Terminating now."
           exit 1
         fi
-      else  
+      else
         # Ref discussion RV/RS 27 Nov 19 via 1:1 (RV;should be covered in SQL,RS;issue seen)
         # RV update 24-08-2020: Added back in to provision for using test db always in CLI/pquery startup
         ${BASEDIR}/bin/mysql -uroot -S$WORKD/socket.sock -e "create database if not exists test" > /dev/null 2>&1
@@ -2824,6 +2824,7 @@ process_outcome(){
             # This is seen when no core was generated, i.e. the bug did not reproduce and there is definitely not a newbug
             # RV update 24-08-20: Is the above correct? No parsable frames may be OOS or a smashes stack, but in general this message would be only there IF a core was generated, but could somehow not be parsed. Disabled the next line to debug based on cases of it seen in the future.
             #SKIP_NEWBUG=1
+            sleep 0.00001  # dummy sleep to allow leaving the IF active
           else
             echo_out "Assert: exit code for $TEXT_STRING_LOC was not 0; this should not happen. Exitcode was ${NTSEXITCODE} and message was; '$(cat ${WORKD}/MYBUG.FOUND)'. Please check files in ${WORKD}. Terminating."
             SKIP_NEWBUG=1
@@ -3256,7 +3257,7 @@ copy_workdir_to_tmp(){
       fi
     fi
   fi
-}  
+}
 
 report_linecounts(){
   if [ $MODE -ge 6 ]; then
@@ -3624,7 +3625,7 @@ fireworks_setup(){
   fi
   if [ "${PQUERY_REVERSE_NOSHUFFLE_OPT}" != "0" ]; then
     # Requires --no-shuffle option to pquery as reducer (in fireworks mode) will pre-shuffle the in.tmp (i.e. WORKT) file before execution. Using pquery without --no-shuffle is not the best solution for this, as it requires grabbing the SQL by pquery, whereas if it is pre-shuffled by reducer, issue reproducibility will, presumably, be much more perfect as there is zero post or re-parsing (i.e. the same SQL file can be used again in exactly the same way)
-    echo_out "[Init] > PQUERY_REVERSE_NOSHUFFLE_OPT=0: disabled reversing the no shuffle option (required)"  
+    echo_out "[Init] > PQUERY_REVERSE_NOSHUFFLE_OPT=0: disabled reversing the no shuffle option (required)"
     PQUERY_REVERSE_NOSHUFFLE_OPT=0
   fi
   if [ "${FORCE_SKIPV}" != "1" ]; then
@@ -4109,7 +4110,7 @@ if [ $SKIPSTAGEBELOW -lt 4 -a $SKIPSTAGEABOVE -gt 4 ]; then
     elif [ $TRIAL -eq 139 ]; then sed -e 's/INTEGER/INT/gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 140 ]; then sed -e 's/MAX[ \t]\+[0-9]\+//gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 141 ]; then sed -e 's/MAX[ \t]\+//gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 142 ]; then sed -e 's/NOT NULL//gi' $WORKF > $WORKT  # All 
+    elif [ $TRIAL -eq 142 ]; then sed -e 's/NOT NULL//gi' $WORKF > $WORKT  # All
     elif [ $TRIAL -eq 143 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # First occurence only
     elif [ $TRIAL -eq 144 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # Second occurence only
     elif [ $TRIAL -eq 145 ]; then sed -e 's/NOT NULL//i' $WORKF > $WORKT  # Third occurence only
@@ -4302,7 +4303,7 @@ if [ $SKIPSTAGEBELOW -lt 6 -a $SKIPSTAGEABOVE -gt 6 ]; then
               echo "Terminating now."
               exit 1
             fi
- 
+
             # First count how many actual INSERT rows there are
             COUNTINSERTS=0
             COUNTINSERTS=$(for INSERT in $(cat $WORKT2 | awk "/INSERT.*INTO.*$TABLENAME.*VALUES/,/;/" | \

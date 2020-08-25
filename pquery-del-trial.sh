@@ -30,7 +30,7 @@ elif [ -d ./${TRIAL} ]; then
   else
     #if grep -qi "ERROR. Aborting" $ERROR_LOG; then
     #  if grep -qi "TCP.IP port.*Address already in use" $ERROR_LOG; then
-       
+
     rm -Rf ./${TRIAL} > /dev/null 2>&1
   fi
 else
