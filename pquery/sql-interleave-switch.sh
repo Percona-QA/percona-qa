@@ -12,7 +12,7 @@ CHUNK_SIZE=100;   # Copy x number of lines ('chunks') from the INPUT_FILE before
                   # Weigh off the following: Low setting (ie. low nr) = (too) large resulting a file. High setting = (too) infrequent hits of the interleaved SQL
                   # Setting this even to something like 40 will take an overnight run to complete
 #INPUT_FILE=./main-merged.sql
-INPUT_FILE=./main-ms-ps-md.sql
+INPUT_FILE=/home/$(whoami)/newsql/main-ms-ps-md.sql
 OUTPUT_FILE=./main-interleaved-switch.sql
 RANDOM_NUMBER_OF_OPTIONS=9;  # If this is changed from the default (9), then the case/esac switch needs to be updated in the code also.
                              # It is easier to just use "" (a blank string) for the slots ('options') you do not want to use. This way the code stays as-is.

@@ -11,6 +11,8 @@ SIGSEGV|sf_malloc_usable_size|my_free|delete_dynamic|my_hash_free               
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
 ###### CURRENT BUGS ######
+SIGSEGV|mtr_t::init|fsp_init_file_page|fsp_page_create|fsp_alloc_free_page                                                                                                      ## |MDEV-23566
+SIGSEGV|mtr_t::init|fsp_init_file_page|fsp_page_create|fseg_alloc_free_page_low                                                                                                 ## |MDEV-23566
 SIGILL|typeinfo for Item_func_set_collation|Item_singlerow_subselect::reset|Item_singlerow_subselect::bring_value|Arg_comparator::compare_e_row                                 ## OPT |MDEV-23535
 SIGSEGV|typeinfo for Item_func_set_collation|Item_singlerow_subselect::reset|Item_singlerow_subselect::bring_value|Arg_comparator::compare_e_row                                ## OPT |MDEV-23535
 SIGABRT|__cxa_pure_virtual () from|Arg_comparator::compare_e_string|Arg_comparator::compare|Arg_comparator::compare_e_row                                                       ## OPT |MDEV-23535

@@ -1461,7 +1461,15 @@ pquery_test() {
           grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
         fi
       else # Not a query correctness testing run
-        echo "gdb ../mysqld/mysqld ./data/core" > ${RUNDIR}/${TRIAL}/gdb && chmod +x ${RUNDIR}/${TRIAL}/gdb
+        # Add handy gdb script
+        echo "echo 'Handy copy and paste script:'" > ${RUNDIR}/${TRIAL}/gdb
+        echo "echo '  set pagination off'" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "echo '  set print pretty on'" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "echo '  set print frame-arguments all'" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "echo '  bt'" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "sleep 5" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "gdb ../mysqld/mysqld ./data/core" >> ${RUNDIR}/${TRIAL}/gdb
+        chmod +x ${RUNDIR}/${TRIAL}/gdb
         echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
         if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then # Query duration testing run
           if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
