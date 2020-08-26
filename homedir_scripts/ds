@@ -15,7 +15,9 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000     Active reducers: $(~/count_reducers)    "
+  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000     "
+  echo -n "Active reducers: $(~/count_reducers)    "
+  echo -n "Active mysqld's: $(ps -ef | grep mysqld | grep "no-defaults" | sed "s|..user=.*||;s|.*no-defaults ||" | sort -u | wc -l)"
   sleep 2
   if [ ${COUNT1} -ge 10 ]; then
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM

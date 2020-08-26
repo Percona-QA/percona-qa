@@ -1,1 +1,3 @@
-ps -ef | grep -vE 'SCREEN|bash -c' | grep -o 'reducer[0-9]\+.sh' | sort -u | wc -l
+#!/bin/bash
+set +H
+ps -ef | grep --binary-files=text 'SCREEN' | grep --binary-files=text 'reducer[0-9]\+.sh' | sed 's|.*reducer|reducer|;s|;bash||' | sort -u | wc -l

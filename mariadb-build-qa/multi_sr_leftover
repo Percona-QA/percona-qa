@@ -1,0 +1,94 @@
+#!/bin/bash
+# This script will start sr (start reducer) for all trials (in work DIRs) which have never been reduced 
+# The script will auto-check if any reducer is already running
+
+RUN_MODE=0         # 0: Re-attempt previously failed reducers + start new reducers
+                   # 1: NOT_IMPLEMENTED_YET Start reducers only for trials which have had no prior work done
+                   # 2: NOT_IMPLEMENTED_YET Re-attempt previously failed reducers only
+MAX_TO_START=25    # Maximum number of reducers to start (in addition to what is already running)
+START_DUPS=0       # If more then one reducer is available per issue seen, start them all
+EXCLUDE='no core file found|SHUTDOWN TIMEOUT|No parsable frames'  # What strings (seen in ~/pr) to exclude
+
+rm -f /tmp/multi_sr_missing.set1 /tmp/multi_sr_missing.set2
+ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] > /tmp/multi_sr_missing.set1 2>/dev/null
+
+if [ ! -r ~/sr -o ! ~/pr ]; then
+  echo "Incorrect setup: ~/sr and/or ~/pr not found. You likely want to cp ~/mariadb-qa/homedir_scripts/* ~"
+  exit 1
+fi
+
+NR_OF_DIRS=$(wc -l /tmp/multi_sr_missing.set1 | sed 's| .*||')
+if [ "${NR_OF_DIRS}" -eq 0 ]; then echo "No work directories found!"; exit 1; fi
+echo "Processing ${NR_OF_DIRS} directories"
+
+ORIG_PWD="${PWD}"
+STARTED=0
+
+for (( DIR=1; DIR<=${NR_OF_DIRS}; DIR++ )); do
+  WORKDIR="$(head -n${DIR} /tmp/multi_sr_missing.set1 | tail -n1)"
+  if [ ! -d "${WORKDIR}" ]; then
+    echo "> Directory ${DIR}/${NR_OF_DIRS} (./${WORKDIR}) no longer present, did someone delete it?"
+    continue
+  else
+    echo "> Processing directory ${DIR}/${NR_OF_DIRS} (./${WORKDIR})"
+  fi
+  PWD1="${PWD}"
+  cd "${WORKDIR}"  # Change into work directory (containing the reducers)
+  if [ "${PWD}" == "${PWD1}" ]; then 
+    echo "Assert: tried to change directory (cd) to ${WORKDIR} and failed." 
+    exit 1
+  fi
+  if [ "$(ls reducer*.sh 2>/dev/null)" == "" ]; then 
+    echo "> No reducers found in directory ${WORKDIR}... Did you run pquery-go-expert.sh for this directory?"
+    continue
+  fi
+  if [ "${START_DUPS}" == "1" ]; then
+    ~/pr | grep --binary-files=text '(Seen' | grep --binary-files=text -vE '${EXCLUDE}' | sed 's|.*times: reducers ||;s|)||' | tr ',' '\n' > /tmp/multi_sr_missing.set2
+  else
+    ~/pr | grep --binary-files=text '(Seen' | grep --binary-files=text -vE '${EXCLUDE}' | sed 's|.*times: reducers ||;s|)||;s|,.*||' > /tmp/multi_sr_missing.set2
+  fi
+  NR_OF_REDUCERS=$(wc -l /tmp/multi_sr_missing.set2 | sed 's| .*||')
+  for (( SUBDIR=1; SUBDIR<=${NR_OF_REDUCERS}; SUBDIR++ )); do
+    TRIAL="$(head -n${SUBDIR} /tmp/multi_sr_missing.set2 | tail -n1)"
+    if [ ! -r ./${TRIAL}/default.node.tld_thread-0.sql ]; then
+      echo ">> Skipping ${WORKDIR}/${TRIAL} as no default.node.tld_thread-0.sql was found!"
+      continue
+    fi
+    # Overwrite protection
+    if [ "$(ls --color=never ./${TRIAL}/default.node.tld_thread-0.sql_out* 2>/dev/null)" != "" ]; then
+      echo ">> Skipping ${WORKDIR}/${TRIAL} as default.node.tld_thread-0.sql_out* found (previous work found)"
+      continue
+    fi
+    if [ "$(ls --color=never ./${TRIAL}/1*_init 2>/dev/null)" != "" ]; then
+      echo ">> Skipping ${WORKDIR}/${TRIAL} as 1*_init was found (previous work found)"
+      continue
+    fi
+    if grep --binary-files=text -qiE 'INPUTFILE=.*_out"' reducer${TRIAL}.sh; then
+      echo ">> Skipping ${WORKDIR}/${TRIAL} as it's reducer has a ..._out INPUTFILE (previous work found)"
+      continue
+    fi
+    # Check if reducer already running 
+    PS="$(ps -ef | grep --binary-files=text "reducer${TRIAL}.sh" | grep -i --binary-files=text "screen" | awk '{print $2}')"
+    if [ "${PS}" != "" ]; then  # There is a reducer with the same $TRIAL trial nr running, checking start PWD
+      START_PWD="$(grep --binary-files=text -o 'USER=.*PWD=.*HOME' "/proc/${PS}/environ" | sed 's|.*PWD=||;s|HOME||')"
+      if [ "${START_PWD}" == "${PWD}" ]; then 
+        echo ">> Skipping ${WORKDIR}/${TRIAL} as the reducer for this trial is already running (previous work found)"
+        continue
+      fi
+    fi
+    STARTED=$[ ${STARTED} + 1 ]
+    echo ">> No evidence of previous work found, starting reducer${TRIAL}.sh (${STARTED}/${MAX_TO_START})"
+    ~/sr ${TRIAL}
+    if [ ${STARTED} -ge ${MAX_TO_START} ]; then
+      echo "Maximum number (${MAX_TO_START}) of reducers reached. Terminating"
+      exit 1
+    fi
+  done
+  cd "${PWD1}" && PWD1=
+  if [ "${PWD}" != "${ORIG_PWD}" ]; then  # Directory changing safety check
+    echo "Assert: PWD!=ORIG_PWD (${PWD}!=${ORIG_PWD} PWD1=${PWD1}), this should not happen!"
+    exit 1
+  fi
+  rm -f /tmp/multi_sr_missing.set2
+done
+rm -f /tmp/multi_sr_missing.set1 /tmp/multi_sr_missing.set2

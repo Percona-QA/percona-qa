@@ -9,21 +9,21 @@ Or use percona-qa/build_postgresql_debug.sh
 
 2) Steps to build debug binary;
 
-   ./configure --enable-debug --prefix=/pgsql/base  # change prefix to the path where you want to build PostgreSQL to 
-   gmake  # or make 
-   gmake install  # not an actual install, only a "install" (i.e. copy) into the target directory (i.e. the one specified in prefix) 
-   
+   ./configure --enable-debug --prefix=/pgsql/base  # change prefix to the path where you want to build PostgreSQL to
+   gmake  # or make
+   gmake install  # not an actual install, only a "install" (i.e. copy) into the target directory (i.e. the one specified in prefix)
+
    This will install postgres binary files under /pgsql/base.
 
 3) Steps to start postgresql database server
 
    # Database initialization command
    /pgsql/base/bin/initdb -D /pgsql/base/data
-   # Startup command 
+   # Startup command
    /pgsql/base/bin/pg_ctl -D /pgsql/base/data -l /pgsql/base/data/pgsql.log start
      ** To generate coredump start postgres with `-c` option
-4) Detailed steps that need to be executed for Postgre SQL installation from Binaries can be found here: 
-https://confluence.percona.com/pages/viewpage.action?pageId=42206890 
+4) Detailed steps that need to be executed for Postgre SQL installation from Binaries can be found here:
+https://confluence.percona.com/pages/viewpage.action?pageId=42206890
 
 Notes;
   ** Report PostgeSQL bugs here : https://www.postgresql.org/account/submitbug/

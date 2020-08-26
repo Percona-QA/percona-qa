@@ -6,7 +6,7 @@ However, for issues that fail to reproduce, try these things (in this order):
 * Remember that OOS (out of disk space) may have resulted in the _out and even the _out.prev file(s) not to be saved correctly. If so, you would have to restart from the original input file.
 
 * If the issue reproduced before and now no longer does, check the <filename>_out.prev file line count (wc -l <trial_nr>/<filename>_out.prev) vs
-  the linecount in the current file (wc -l <trial_nr>/<filename>_out). If the line number in the <filename>_out.prev file is bigger, copy that 
+  the linecount in the current file (wc -l <trial_nr>/<filename>_out). If the line number in the <filename>_out.prev file is bigger, copy that
   one over the current file and restart reducer without changes. Things like a simple out-of-disk-space may cause the this type of issue
   Note that out-of-disk-space are not always evident; if runs are going in /dev/shm and reducers are using /dev/shm, they may conflict. Also
   /tmp in /root gets used for the storing of reducer logs, and reducer.sh temporary files. Then there are the main reducer work directories etc.
@@ -14,9 +14,9 @@ However, for issues that fail to reproduce, try these things (in this order):
 * If the issue reproduces in 'Verify stage' in reducer, set FORCE_SPORADIC=1 in settings to reducer faster/more easily (uses 10 threads for stage 1).
   End somewhere during stage 1 when you have 5-10 lines left and reduction does not seem to progress much anymore. Edit manually further if needed.
 
-* Reducer, when using the mysql client for replay may not be replaying the full SQL log. To check this, check the reducer client output log for errors like: 
+* Reducer, when using the mysql client for replay may not be replaying the full SQL log. To check this, check the reducer client output log for errors like:
   "No connection. Trying to reconnect... ERROR 2005 (HY000): Unknown MySQL server host '{some random string}' (0)" if you are using the mysql client for replay.
-  Then search the SQL input for {some random string}. Likely some sort of parsing error pointed the client at another server. When the mysql client is used for 
+  Then search the SQL input for {some random string}. Likely some sort of parsing error pointed the client at another server. When the mysql client is used for
   replay (as opposed to pquery which (no matter if it is using random or sequential replay) re-connects to the server for each query), the connection with the
   server is made only once (i.e. no reconnection happen). Thus, if something disconnects the client from the server, further SQL replay will fail this error.
 
@@ -29,12 +29,12 @@ However, for issues that fail to reproduce, try these things (in this order):
 * Change the TEXT="..." to a much more simplified form. Regex capable. You can also use another string then the one suggested (like a stack excerpt) An example:
   Change "scale >= 0 .... precision > 0 .... scale <= precision" to "scale.*precision". If it works, verify correct functioning of percona-qa/text_string.sh
 
-* Check the error log and search for the assertion, or first few crashing frames as shown by gdb. The issue may have already been logged. 
+* Check the error log and search for the assertion, or first few crashing frames as shown by gdb. The issue may have already been logged.
   Add it to percona-qa/known_bugs.strings[.notestcase] if you find it please.
 
 * Check the client output of the original pquery trial (/<trial>/*thread-x.sql) against the output of reducer's subreducer's directory /subreducer/nr/<TBD>
 
-* Set FORCE_SKIPV=1 in reducer, which auto-enables FORCE_SPORADIC=1 and skips verify, so immediately goes into MULTI stage 1 (and one can let it sit there 
+* Set FORCE_SKIPV=1 in reducer, which auto-enables FORCE_SPORADIC=1 and skips verify, so immediately goes into MULTI stage 1 (and one can let it sit there
   churning away for an hour to see if the issue reproduces at all). This is ideal for highly sporadic issues, where verify stage failed to reproduce the issue.
 
 * If the last step fails, do this; still have FORCE_SPORADIC=1 and FORCE_SKIPV=1, but search in reducer for MULTI_THREADS=10 and change it to =25 or even =40.
@@ -51,7 +51,7 @@ However, for issues that fail to reproduce, try these things (in this order):
   one file worked. The testcase was still reduced to normal size.
 
 * If you ever run into a situation where reducer happily reduces from many (10-30k) lines to ~30 lines and then gets completely stuck, just re-start the
-  reduction altogether. The random chunk selection may make the issue more/less reproducible/pronounced. Note; this happens only infrequently (that it 
+  reduction altogether. The random chunk selection may make the issue more/less reproducible/pronounced. Note; this happens only infrequently (that it
   gets stuck in such a solid way) - usually with a few tweaks further reduction is possible.
 
 * Is the issue a failing shutdown, server hang, or runaway query? Use the new MODE=0 in reducer.sh if the issue does not produce any specific output. If the
@@ -62,27 +62,27 @@ However, for issues that fail to reproduce, try these things (in this order):
 
 * Set USE_PQUERY=0 instead of USE_PQUERY=1. This forces CLI replay instead of pquery replay and this may, for some issues, improve reproducibility again.
 
-* Along the lines of the USE_PQUERY=0 method, after having reduced any issue for some time using the USE_PQUERY=1 option (which is btw automatically set by 
-  pquery-prep-red.sh), and if the issue no longer reproduces well or simplification stagnates, then set USE_PQUERY=0 to enable mysql CLI (instead of pquery 
-  binary) replay. This may work to reproduce and/or simplify further, and even more so in combination with the "double cat testcase" solution mentioned above 
+* Along the lines of the USE_PQUERY=0 method, after having reduced any issue for some time using the USE_PQUERY=1 option (which is btw automatically set by
+  pquery-prep-red.sh), and if the issue no longer reproduces well or simplification stagnates, then set USE_PQUERY=0 to enable mysql CLI (instead of pquery
+  binary) replay. This may work to reproduce and/or simplify further, and even more so in combination with the "double cat testcase" solution mentioned above
   (i.e. first double up the testcase first).
 
-* With USE_PQUERY=1, change the pquery binary from pquery to pquery-ms. (The idea here is similar as changing USE_PQUERY=1 to USE_PQUERY=0 - we are using 
+* With USE_PQUERY=1, change the pquery binary from pquery to pquery-ms. (The idea here is similar as changing USE_PQUERY=1 to USE_PQUERY=0 - we are using
   another binary, slightly different (in this case a different compilation of pquery) to trigger the issue.) This has helped in one difficult case so far
 
 * Interleave your SQL file with SELECT SLEEP(1); after every command. It will cause slow replay, but a timeout triggered in the original run may be re-
   triggered correctly this way. Put SELECT SLEEP(1); (with cr/lf at end) in a file B.txt, then sed "0~75 r B.txt" A.txt > C.txt; A=original & C=outcome SQL
 
 * If you get really stuck on a bug, analyze the stack traces and core file. What is happening at the time of the crash? If CREATE TABLE statements were
-  running, select a number of them from the SQL trace (the relevant ones according to their SQL) and put them in a seperate file. Make the SQL much more 
-  uniform for this handfull of statements (20-30), for example, all table names become t1, all tablespace names become ts1. Insert for example a few 
+  running, select a number of them from the SQL trace (the relevant ones according to their SQL) and put them in a seperate file. Make the SQL much more
+  uniform for this handfull of statements (20-30), for example, all table names become t1, all tablespace names become ts1. Insert for example a few
   DROP TABLE and DROP TABLESPACE statements so that there is some re-iteration possible (relevant in this case, may not be in yours). Etc. Then re-run
   the original run with the new SQL file to see if this new (much smaller) SQL input file still generates the same bug. If so, at the very least you now
   have a ~50 lines testcase. You can reduce it further by hand (if the issue is still not reproducible otherwise). You can also increase threads to trigger
   the issue more easily (recommended for hard to trigger issues).
 
-* Test the current partly-simplified SQL testcase against mysqld (easy way is just to SOURCE the test case file from the CLI, or use the generated {epoch} 
-  scripts). If it crashes with the same crash, you can set USE_PQUERY=0, FORCE_SPORADIC=0, FORCE_SKIPV=1 etc. Another strategy here is to replay the testcase 
+* Test the current partly-simplified SQL testcase against mysqld (easy way is just to SOURCE the test case file from the CLI, or use the generated {epoch}
+  scripts). If it crashes with the same crash, you can set USE_PQUERY=0, FORCE_SPORADIC=0, FORCE_SKIPV=1 etc. Another strategy here is to replay the testcase
   against upstream when you were testing PS. Does it crash there too? If so, you can try changing MYBASE to see if the issue replays/reduces better on upstream.
 
 * Note that some testcases require SOURCEing them at the mysql> CLI command prompt. If reducer.sh reduced all the way down to a few lines, but the resulting
@@ -91,7 +91,7 @@ However, for issues that fail to reproduce, try these things (in this order):
 
 * Review the code where the bug happened, and add in SQL specificially related to the area. For example, in one case there was the following text surrounding
   a debug assertion: /* If the transaction is DD attachable trx, it should be AC-NL-RO-RC (AutoCommit-NonLocking-ReadOnly-ReadCommited) trx */
-  So, adding in lots (20+ queries) of SET ... TRANSACTION ISOLATION LEVEL ..., START TRANSACTION ..., COMMIT, and autocommit on/off SQL (sourced from main.sql) 
+  So, adding in lots (20+ queries) of SET ... TRANSACTION ISOLATION LEVEL ..., START TRANSACTION ..., COMMIT, and autocommit on/off SQL (sourced from main.sql)
   into the sql file ({epoch}.sql as generated by reducer.sh) and also changing the pquery replay file generated ({epoch}_run_pquery) by removing "--no-shuffle",
   increasing the --threads to =150 and finally adding/setting --queries=999999 options, the issue now replayed quite ok - still with a short testcase overall.
 
@@ -101,10 +101,10 @@ However, for issues that fail to reproduce, try these things (in this order):
 * Try with and without jemalloc. In one instance, this made the difference between reproducibility or not. The other thing to check is that all more generic
   mysqld options (--no-defaults, --sql_mode=ONLY_FULL_GROUP_BY, --event-scheduler=ON etc.) also match between tests.
 
-* If all else fails, set MODE=4 instead of MODE=3. This will now look for any crash. 
+* If all else fails, set MODE=4 instead of MODE=3. This will now look for any crash.
   Note that as reducer is randomly chunking, you may run into different crashes and as such have to restart reducer a few times to reduce to the correct one.
 
-* Open the sql file in vi and execute   :%s/^#.*\n//g   in vi. This will drop all comment lines. 
+* Open the sql file in vi and execute   :%s/^#.*\n//g   in vi. This will drop all comment lines.
   This will only help for CLI-replayed issue (i.e. when not using pquery mode in reducer, which is default for all pquery runs handled by percona-qa scripts)
 
 Summary: if you dilegently tried all of the above, reproducibility for all issues is near 100%.

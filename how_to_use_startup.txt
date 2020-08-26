@@ -17,9 +17,9 @@ cd Percona-Server-5.7.23-25-Linux.x86_64.ssl100
 To build latest PS, you can use;
 
 sudo mkdir /git && sudo chmod -R 777 /git && sudo chown -R $(whoami):$(whoami) /git && cd /git && git init
-rm -Rf PS-5.7-trunk; git clone --recursive --depth=1 https://github.com/percona/percona-server.git -b 5.7 PS-5.7-trunk 
+rm -Rf PS-5.7-trunk; git clone --recursive --depth=1 https://github.com/percona/percona-server.git -b 5.7 PS-5.7-trunk
 cd PS-5.7-trunk
-~/percona-qa/build_psms_debug.sh 
+~/percona-qa/build_psms_debug.sh
 cd ../<just_build_directory>/   # Or move that directory somewhere else (like to homedir for example) then cd into it
 
 The startup.sh script can also setup group replication.

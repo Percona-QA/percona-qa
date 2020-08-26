@@ -4,11 +4,11 @@
    > Find the /dev/shm/... directory
 3) grep -om1 "Output dir:.*" /dev/shm/.../reducer.log  # Change ... to the right directory
    > Get the workdir and the trial
-4) Now you have the source SQL, available in: 
+4) Now you have the source SQL, available in:
    /your_workdir/your_trial/default.node.tld_thread-0.sql[_out] etc.
 5) Reduce the same based on the memory use becoming excessive or not (split in 2; divide and conquer)
 
 Handy links:
 * https://gperftools.github.io/gperftools/heapprofile.html (w/ Thanks to Marko)
 * https://askubuntu.com/a/966041/682596
-* https://askubuntu.com/a/383874/682596 
+* https://askubuntu.com/a/383874/682596

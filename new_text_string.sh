@@ -52,7 +52,7 @@ if [ -z "${ERROR_LOG}" ]; then
   exit 1
 fi
 
-RANDOM=`date +%s%N | cut -b10-19`  # Random entropy init
+RANDOM=$(date +%s%N | cut -b10-19)  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 rm -f /tmp/${RANDF}.gdb*
@@ -107,7 +107,7 @@ fi
 rm -f /tmp/${RANDF}.gdb1
 
 # Stack catch
-grep --binary-files=text -A100 'signal handler called' /tmp/${RANDF}.gdb2 | grep --binary-files=text -vE '__GI_raise |__GI_abort |__assert_fail_base |__GI___assert_fail |memmove|memcpy|\?\? \(\)|\(gdb\)|signal handler called' | sed 's|^#[0-9]\+[ \t]\+||' | sed 's|(.*) at ||;s|:[ 0-9]\+$||' > /tmp/${RANDF}.gdb4
+grep --binary-files=text -A100 'signal handler called' /tmp/${RANDF}.gdb2 | grep --binary-files=text -vE 'std::terminate.*from|__GI_raise |__GI_abort |__assert_fail_base |__GI___assert_fail |memmove|memcpy|\?\? \(\)|\(gdb\)|signal handler called' | sed 's|^#[0-9]\+[ \t]\+||' | sed 's|(.*) at ||;s|:[ 0-9]\+$||' > /tmp/${RANDF}.gdb4
 rm -f /tmp/${RANDF}.gdb2
 
 # Cleanup do_command and higher frames, provided sufficient frames will remain

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set +H
+rm -f /tmp/nc.tmp
+touch /tmp/nc.tmp
+if [ ! -r /tmp/nc.tmp ]; then echo "Assert: /tmp/nc.tmp not found after creation attempt!"; fi
+
+echo 'set +H' > /tmp/nc.tmp
+
+ls --color=never *.string | sed 's|\.string$||' | xargs -I{} echo 'export NCTEXT="$(set +H; cat {}.string | head -n1)"; if [ ! -z "${NCTEXT}" ]; then if grep --binary-files=text -Fiq "${NCTEXT}" ~/mariadb-qa/known_bugs.strings; then rm {}.string {}.sql; fi; fi' > /tmp/nc.tmp
+
+if [ -r /tmp/nc.tmp ]; then 
+  chmod +x /tmp/nc.tmp && /tmp/nc.tmp && rm -f /tmp/nc.tmp
+else
+  echo 'Nothing to do here...'
+fi

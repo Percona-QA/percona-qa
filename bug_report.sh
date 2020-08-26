@@ -11,13 +11,13 @@ if [ "${1}" == "ASAN" ]; then
   if [ -z "${TEXT}" ]; then   # Passed normally by ~/b preloader/wrapper sript
     echo "Assert: TEXT is empty, use export TEXT= to set it!"
     exit 1
-  else 
+  else
     echo "NOTE: ASAN Mode: Looking for '${TEXT}' in the error log to validate issue occurence."
   fi
   MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||')"
   ASAN_MODE=1
 else
-  if [ -z "${TEXT}" ]; then 
+  if [ -z "${TEXT}" ]; then
     echo "NOTE: TEXT is empty; looking for corefiles, and not specific strings in the error log!"
     echo "If you want to scan for specific strings in the error log, then use:"
     echo "  export TEXT='your_search_text'  # to set it before running this script"
@@ -67,7 +67,7 @@ echo 'Note that any mysqld options need to be listed as follows on the first lin
 echo '# mysqld options required for replay:  --someoption[=somevalue]'
 sleep 2
 
-RANDOM=`date +%s%N | cut -b10-19`  # Random entropy init
+RANDOM=$(date +%s%N | cut -b10-19)  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
 if [ ! -r bin/mysqld ]; then
@@ -250,7 +250,7 @@ if [ ${ASAN_MODE} -eq 0 ]; then
       else
         FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
         OUT2="$(grep -Fi --binary-files=text "${FRAMEX}" ${SCRIPT_PWD}/known_bugs.strings)"
-        if [ -z "${OUT2}" ]; then        
+        if [ -z "${OUT2}" ]; then
           echo "NOT FOUND: Bug not found yet in known_bugs.strings!"
           echo "*** THIS IS POSSIBLY A NEW BUG; BUT CHECK #4 BELOW FIRST! ***"
         else

@@ -4,7 +4,7 @@
 # To cat two files and immediately redirect the output back so that it becomes the content of the first file, one cannot use 'cat a b > a', instead use:
   echo '1' > a; echo '2' > b; echo "$(cat a b)" > a; cat a  # i.e. echo "$(cat a b)" > a
   echo '1' > a; echo '2' >> a; echo '3' > b; echo "$(echo 'inserted 1'; cat a | grep -v '1'; cat b)" > a; cat a  # More complex example with extra insert/remove
-# Start output of a file after a certain string is seen (i.e. delete all output upto a certain string)    Second example uses 'delete (d)' line numbers instead 
+# Start output of a file after a certain string is seen (i.e. delete all output upto a certain string)    Second example uses 'delete (d)' line numbers instead
   sed '0,/3/d' test  # If test had 6 lines with numbers 1->6, then output would be 4,5,6 (3 lines)        sed '1,3d' test  # Note functionality is quite different
 # Print a single line from a file
   sed -n "1p" file  # Where 1 is the line number to print
@@ -27,9 +27,9 @@
 # Shuffle lines of a file. Much better then sort -R --random-source=/dev/urandom. sort -R will still sort according to hash, leaving similar lines clustered
   shuf --random-source=/dev/urandom inputfile > outputfile
 # The same, but with a set number of lines extracted
-  shuf -n10 --random-source=/dev/urandom inputfile > outputfile 
+  shuf -n10 --random-source=/dev/urandom inputfile > outputfile
 # The same as original, with random entropy pool initialization (TODO: confirm that RANDOM=x entropy pool init also inits /dev/urandom)
-  RANDOM=`date +%s%N | cut -b14-19`; shuf --random-source=/dev/urandom inputfile > outputfile 
+  RANDOM=`date +%s%N | cut -b14-19`; shuf --random-source=/dev/urandom inputfile > outputfile
 # Delete all alpha chars from a string
   echo "string" | tr -d '[:alpha:]'
 # Re-use filename based output as input for a new command
@@ -64,7 +64,7 @@
   for i in $(seq 1 10); do echo $i; done | sed "0~2 s|$|\ninsert_text|";     cat test | sed "0~2 s|$|\ninsert_text|"
 # If a variable [partially] matches a pre-determinted value, print another value instead (match needs to be from start of line)
   VAR1="abc"; echo "${VAR1/#ab/c}"  # output: cc ("ab" matches and is replaced by "c". A search for "bc" would fail, as it is not from start of line)
-# Terminate a long-running/(or 'screen scrolling') command (which does not respond to CTRL+C quickly: 
+# Terminate a long-running/(or 'screen scrolling') command (which does not respond to CTRL+C quickly:
   1) Press CTRL+z, 2) jobs -l; kill -9 {PID_seen_in_jobs_-l_output}
 # Timeout a given script/program after a set time. In the example, 1h=1 hour, but one can also use 10s=10 seconds etc.
   timeout --signal=9 1h ./pquery-run.sh
@@ -72,7 +72,7 @@
   if [ ! -r aaa -o ! -r bbb -o ! -r ccc ]; then echo "One or more files not found: aaa, bbb and ccc!"; fi
 # Multi-threaded (3 threads in example) xargs call with direct input using cat. Output will be 1 then 2 then 3 after respective pauses (start at same time):
   CONCURRENCY=3; cat << EOC |
-  sleep 1; echo "1" % sleep 2; echo "2" % sleep 3; echo "3" 
+  sleep 1; echo "1" % sleep 2; echo "2" % sleep 3; echo "3"
   EOC
   xargs -d"%" -P${CONCURRENCY} -i^ sudo sh -c '^'
 # xargs can be used as follows: INPUT | xargs | PROCESSOR - i.e. "pipe the INPUT directly into the PROCESSOR". Note this is conceptually somewhat similar to
@@ -80,9 +80,9 @@
   echo "INPUT" | xargs | sed "s/INPUT/PROCESSOR/"
   echo ls | xargs | sh -x  # Conceptually similar to echo ls | xargs bash -c
   echo -n "echo\necho" | xargs | sed 's|DUMMY|NO ACTION|'  # When used like this, a \n is added to the output. This is not the case if 'xargs |' is dropped
-# For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop 
+# For all lines in a file, action something. Note that the for loop has limitations (spaces) which require IFS to be set. This is not so with the while loop
   ORIG_IFS=${IFS}; IFS=$'\n'; for LINE in $(cat ./file.txt); do echo ${LINE}; done; IFS=${ORIG_IFS}   #OR#  while read line; do echo ${line}; done < ./file.txt
-# Obtain a fully qualified directory and script name 
+# Obtain a fully qualified directory and script name
   SCRIPT_AND_PATH=$(readlink -f $0); SCRIPT=$(echo ${SCRIPT_AND_PATH} | sed 's|.*/||')
 # Change the file contents (inline replace used here) of multiple files in subdirectories
   ls ./*/somefiles | xargs -I{} sed -i 's|find|replace|' {}
@@ -149,7 +149,7 @@
   P=$(ppid); echo $P
 # Combine multiple lines of sql untill a ';' is seen near EOL (; followed by spaces or tabs and then EOL will work as well). Ideal for combining multi-line SQL statements into one
   # With thanks, https://www.unix.com/shell-programming-and-scripting/80633-sed-combining-multiple-lines-into-one.html & https://www.gnu.org/software/sed/manual/sed.html#Multiline-techniques
-  cat multiple_unterminated_lines.sql | sed -e :x -e '/;[ \t]*$/b' -e N -e 's/\n//' -e bx  
+  cat multiple_unterminated_lines.sql | sed -e :x -e '/;[ \t]*$/b' -e N -e 's/\n//' -e bx
 # Sed can be used to "add/insert" a line behind another one. In the example (output is (on 3 lines): 1 2 3), 2 is inserted after the search term of "1". The 'a' is command for 'add'
   echo -e "1\n3" | sed '/1/a\2'
 # Generate a random string of any lenght, with thanks @MichaelC
@@ -194,10 +194,10 @@
 
 # ------ Compiling / Compiler Issues ------
 # If you see for example "/usr/bin/ld: cannot find -lzlib" in your compilation/build of MySQL, and the build fails because of it, then check:
-  ld -lzlib --verbose  # Execute in a user writeable directory. If all entries fail, the lib could not be found. 
+  ld -lzlib --verbose  # Execute in a user writeable directory. If all entries fail, the lib could not be found.
   You need to just link one of them to the real zlib on your system  ## With thanks, https://stackoverflow.com/a/21647591/1208218
   sudo ln -s /usr/lib64/libz.so.1.2.7 /usr/lib/libzlib.so  ## Though you may have to search for "libz.so" in /usr (cd /usr; find . | grep libz.so)
-  This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...) 
+  This likely works with any linker issue (ld -l{failed lib} --verbose && sudo ln -s ...)
   Another example;
   ld -ltensorflow --verbose  # Note the "{somelib}.so needed by {somelib}.so" and next line "found {somelib}.so {path}"
   ld /usr/local/lib/libtensorflow.so  # This part; "ld: warning: cannot find entry symbol _start; not setting start address" can be ignored (it is likely just looking for a start address, which will be there in the program which links with this library)
@@ -237,7 +237,7 @@
 # Along the same lines of the last issue, it is an easy mistake to make not to include double quotes around variables when checking for (in)equality. Use;
   if [ "${SOME_VAR}" == "Some Text" ]; then ...; fi  instead of not using double quotes (which fails when the variable is empty).
 # If you see an error like '/usr/bin/ld: cannot find -lsnappy' when compiling, then it means that the snappy (for example) library cannot be found.
-  To discover the real source, run  ld -lsnappy --verbose  and look near the end for the locations is scans for 'attempt to open ...' 
+  To discover the real source, run  ld -lsnappy --verbose  and look near the end for the locations is scans for 'attempt to open ...'
   If you have the library in a specific location, you can use;  sudo ln -s /usr/lib64/libsnappy.so.1 /usr/lib64/libsnappy.so  or use -L option to your compiler!
   With thanks, http://stackoverflow.com/questions/16710047/usr-bin-ld-cannot-find-lnameofthelibrary
 # Find out symbols for a library
@@ -246,13 +246,13 @@
   cp -a  # Always use cp -a instead of cp -R (or -r) which does not copy hidden files/directories
 # The first echo below will output an asterix, the second will output a directory listing
   echo "$(echo "*")"; echo "----"; echo $(echo "*");
-# Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and 
+# Except for searching files (if grep -qi "search string" file.txt...), it's best not to use: echo "text" | grep -q "text" to search strings for substrings. It is very slow, and
   has a gotcha: Test this:  LINE='test'; DONE=0; echo ${LINE} | if grep -q 'test'; then DONE=1; echo "DONE"; fi; echo $DONE  # DONE is 0 because (as per Bash team); 'All elements
   of a pipeline are executed in subshells.  A subshell cannot affect its parent's environment. The 'lastpipe' shell option can change this when job control is not active.'
   Instead, see 'Check a string for presence of a search/substring' above for substring searches. Another gotcha can be seen in this one; echo "abc123xyz457" | grep -o '[^0-9]'
 # In Bash, a calling function needs to be declared ABOVE the line it is called from. An example script (place the following 3 lines in a script) will show this (output on right):
   echo "does not work (error will be shown before this line): `works`"         # ./test.sh: line 1: works: command not found
-  works(){ echo "works"; }                                                     # does not work (error will be shown before this line): 
+  works(){ echo "works"; }                                                     # does not work (error will be shown before this line):
   echo "does work (will show 'works' output after semicolon): `works`"         # does work (will show 'works' output after semicolon): works
 # However, the following does work, as all the functions are "read" before one of them is called (even though works1 calls a function defined LOWER then the calling line itself):
   works1(){ echo "`works2`"; }
@@ -293,7 +293,7 @@
 
 
 # ------ GNU 'screen' usage ------
-# Want to scroll inside a screen session? 
+# Want to scroll inside a screen session?
   Use CTRL+a+ESC (i.e press CTRL+a, keep CTRL in, then press ESC), then use cursor up (or down) to scroll, ESC or q to escape
 # Want to find which screen session is doing what?
   pstree -g  # Great for finding the screen PID (i.e. for use with screen -d -r {pid}) that is runnnig a particular script/binary
@@ -325,7 +325,7 @@
 # Reset all directories to 755 (needed to be able to browse them) and all files to 644. This cannot be done in a single chmod command.
   find . -type d -exec chmod 0755 {} \; find . -type f -exec chmod 0644 {} \;  # With thanks https://help.directadmin.com/item.php?id=589
 # Cleanup a broken installation of some program (example; someprog - note that someprog needs to be a recognized program name by the package manager). Confirmed to fix things.
-  sudo apt-get purge someprog; sudo apt-get autoclean; sudo apt-get clean; sudo apt-get update; sudo apt-get install someprog; [optional:] sudo apt-get install -f someprog 
+  sudo apt-get purge someprog; sudo apt-get autoclean; sudo apt-get clean; sudo apt-get update; sudo apt-get install someprog; [optional:] sudo apt-get install -f someprog
 # Get the IP address of the host (hostname --ip-address may produce 127.0.0.1 which is not usefull if you need the network interface IP)
   ip route get 1 | awk '{print $NF;exit}'  # With thanks, https://stackoverflow.com/questions/13322485/how-to-i-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
 # Raise the priority of a certain process  # With thanks, https://serverfault.com/a/228632
@@ -349,11 +349,11 @@
   timedatectl && timedatectl list-timezones | grep "Australia"  # or similar
   sudo timedatectl set-timezone Australia/Sydney                # or similar
   # If timedatectl is not available (older systems), use dpkg-reconfigure tzdata
-  
+
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax
   sudo yum install cabal-install; cabal update; cabal install shellcheck; ~/.cabal/bin/shellcheck
-# Expand DEB files 
+# Expand DEB files
   ar x yourfile.deb; tar -xf data.tar.xz  # Each deb file has control.tar.xz and data.tar.xz
 
 # ------ Shortcuts ------
@@ -383,7 +383,7 @@
   # cd .. ; cp -r ${YOURBRANCH} ${YOURBRANCH_COPY}  # Important: Make a copy of your branch!
   git reset --hard ${SHA}  # Reset the branch to a known good state/commit (warning; deletes everything newer than the state of the branch at the moment the ${SHA} commit was made
   # Now, make any changes necessary, like for example copying in files etc. from ${YOURBRANCH_COPY}
-  git commit -a -m "My new commit"  # Commit any changes 
+  git commit -a -m "My new commit"  # Commit any changes
   git push -f  # Forces an overwrite of history. Anyone else using your branch must rebase or repul
 # Handy git fix reference; https://sethrobertson.github.io/GitFixUm/fixup.html
 

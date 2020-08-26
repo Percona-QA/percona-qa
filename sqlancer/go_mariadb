@@ -1,0 +1,6 @@
+rm -Rf ./logs/mariadb
+mkdir -p ./logs/mariadb
+export SEED=$(date +%s%N | cut -b10-19)
+echo "${SEED}" > ./logs/mariadb/seed
+java -jar SQLancer-0.0.1-SNAPSHOT.jar --num-threads 1 --max-expression-depth 10 --max-num-inserts 50 --num-queries 25000 --num-statement-kind-retries 1000 --num-tries 100000 --random-seed=${SEED} --timeout-seconds -1 --print-statements false --print-succeeding-statements false --password 'sqlancer' mariadb --oracle NOREC 2>&1 | grep 'Threads shut down|Caused by'
+echo "seed: ${SEED}"

@@ -1,8 +1,8 @@
 Deadlocks vs hangs
 ==================
-* If the server completely hangs (mysqld still running, not possible to connect with client) == hang 
+* If the server completely hangs (mysqld still running, not possible to connect with client) == hang
   > likely bug, try attaching gdb and getting thread apply all bt and thread apply all bt full
-* If the server does not completely hang (mysqld running, possible to connect with client, queries are running too long and never timeout/terminate properly) == mutex deadlock 
+* If the server does not completely hang (mysqld running, possible to connect with client, queries are running too long and never timeout/terminate properly) == mutex deadlock
   > likely bug, try attaching gdb and getting thread apply all bt and thread apply all bt full
 * If the server does not completely hang (mysqld running, possible to connect with client, queries are running too long but after lock wait timeout (50 sec from memory by default) they auto-terminate/free == deadlock
   > may be user error, or may be bug, but is less likely to be a bug then the two above, try and reduce testcase

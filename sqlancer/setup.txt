@@ -1,0 +1,41 @@
+1) sudo apt install maven
+   #sudo apt-get install java8-runtime
+   sudo apt-get install openjdk-8-jre
+2) Setup server to use port 3306 (hard coded in src/sqlancer/mariadb/MariaDBProvider.java)
+   cd BASEDIR
+   ~/mariadb-qa/startup.sh
+   sed -i 's|port=[0-9]\+|port=3306|g' start* kill
+   ./all
+3) Make this patch in src/sqlancer/mariadb/MariaDBProvider.java
+   -        String url = "jdbc:mariadb://localhost:3306";
+   +        String url = "jdbc:mariadb://127.0.0.1:3306";
+4) Make this patch in src/sqlancer/mysql/MySQLProvider.java
+   -        String url = "jdbc:mysql://localhost:3306/?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+   +        String url = "jdbc:mysql://127.0.0.1:3306/?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+5) Recompile:
+   cd ~/sqlancer
+   mvn package -DskipTests
+6) cd BASEDIR && ./cl
+   CREATE USER 'sqlancer'@'localhost';
+   GRANT ALL PRIVILEGES ON *.* TO 'sqlancer'@'localhost' WITH GRANT OPTION;  # Not sure if GO is needed
+   SET PASSWORD FOR 'sqlancer'@'localhost' = PASSWORD('sqlancer');
+7) Run from sqlancer/target:
+   java -jar SQLancer-0.0.1-SNAPSHOT.jar --num-threads 10 --password 'sqlancer' mariadb --oracle NOREC
+   # OR #
+     ~/sqlancer/target$ cat go_mariadb
+       rm -Rf ./logs/mariadb
+       mkdir -p ./logs/mariadb
+       export SEED=$(date +%s%N | cut -b10-19)
+       echo "${SEED}" > ./logs/mariadb/seed
+       java -jar SQLancer-0.0.1-SNAPSHOT.jar --num-threads 1 --max-expression-depth 10 --max-num-inserts 50 --num-queries 25000 --num-statement-kind-retries 1000 --num-tries 100000 --random-seed=${SEED} --timeout-seconds -1 --print-statements false --print-succeeding-statements false --password 'sqlancer' mariadb --oracle NOREC 2>&1 | grep 'Threads shut down|Caused by'
+       echo "seed: ${SEED}"
+     ~/sqlancer/target$ cat go_mysql
+       rm -Rf ./logs/mysql
+       mkdir -p ./logs/mysql
+       export SEED=$(date +%s%N | cut -b10-19)
+       echo "${SEED}" > ./logs/mysql/seed
+       java -jar SQLancer-0.0.1-SNAPSHOT.jar --num-threads 1 --max-expression-depth 10 --max-num-inserts 50 --num-queries 25000 --num-statement-kind-retries 1000 --num-tries 100000 --random-seed=${SEED} --timeout-seconds -1 --print-statements false --print-succeeding-statements false --password 'sqlancer' mysql --oracle TLP_WHERE 2>&1 | grep 'Threads shut down|Caused by'
+       echo "seed: ${SEED}"
+8) Analyze:
+   cd ~/sqlancer/logs/mariadb  #OR#  cd ~/sqlancer/logs/mysql  # Both can be executed against MariaDB, and mysql one produces most interesting results (but few of them)
+   grep --binary-files=text 'Caused by' mysql/*.log | grep --binary-files=text -vE 'Unknown system variable|key was too long|Illegal mix of collations|Regex error|You have an error in your SQL syntax|Unknown option|DELAYED option not supported for table|can.t be set to the value of|Unknown storage engine .ARCHIVE|Wrong create options|ALGORITHM=INSTANT is not supported|Out of sort memory|Key column.*doesn.t exist|Out of range value for column|Incorrect double value|Incorrect string value'

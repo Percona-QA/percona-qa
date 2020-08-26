@@ -179,7 +179,7 @@ normalize_version(){
   local major=0
   local minor=0
   local patch=0
- 
+
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -195,7 +195,7 @@ check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
- 
+
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -421,25 +421,25 @@ function create_regular_tbl(){
   echo "CREATE DATABASE sysbench_myisam_db;" | $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
   sysbench_run myisam sysbench_myisam_db
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_myisam_prepare.txt
- 
+
   $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"CREATE TABLE sbtest_mrg like sbtest1" || true
- 
+
   SBTABLE_LIST=`$LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root -Bse "SELECT GROUP_CONCAT(table_name SEPARATOR ',') FROM information_schema.tables WHERE table_schema='sysbench_myisam_db' and table_name!='sbtest_mrg'"`
 
   $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root sysbench_myisam_db -e"ALTER TABLE sbtest_mrg UNION=($SBTABLE_LIST), ENGINE=MRG_MYISAM" || true
- 
+
   echoit "Loading sakila test database"
   $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root < ${SCRIPT_PWD}/sample_db/sakila.sql
- 
+
   echoit "Loading world test database"
   $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root < ${SCRIPT_PWD}/sample_db/world.sql
- 
+
   echoit "Loading employees database with innodb engine.."
   create_emp_db employee_1 innodb employees.sql
- 
+
   echoit "Loading employees database with myisam engine.."
   create_emp_db employee_3 myisam employees.sql
- 
+
 }
 function test_row_format_tbl(){
   local SOCKET=$1
@@ -469,7 +469,7 @@ function start_mysql_upper_main(){
       echo "ALTER TABLE sysbench_partition.sbtest4 CHECK PARTITION p2;" | $LOWER_BASEDIR/bin/mysql --socket=$WORKDIR/mysql_upper.sock -u root || true
     fi
   done
-  
+
   $UPPER_BASEDIR/bin/mysql -S $WORKDIR/mysql_upper.sock  -u root -e "show global variables like 'version';"
 }
 
@@ -501,9 +501,9 @@ function start_mysql_downgrade_main(){
 
 function mysql_downgrade_datacheck(){
   ${LOWER_BASEDIR}/bin/mysql --socket=$WORKDIR/mysql_lower_down.sock -uroot < $WORKDIR/dbdump.sql 2>&1
- 
+
   CHECK_DBS=`$UPPER_BASEDIR/bin/mysql --socket=$WORKDIR/mysql_upper.sock -uroot -Bse "SELECT GROUP_CONCAT(schema_name SEPARATOR ' ') FROM information_schema.schemata WHERE schema_name NOT IN ('mysql','performance_schema','information_schema','sys','mtr');"`
- 
+
   echoit "Checking table status..."
   ${LOWER_BASEDIR}/bin/mysqlcheck -uroot --socket=$WORKDIR/mysql_lower_down.sock --check-upgrade --databases $CHECK_DBS 2>&1
 
@@ -516,17 +516,17 @@ function mysql_downgrade_datacheck(){
 }
 
 function non_partition_test(){
-  local SOCKET=${1:-}	
+  local SOCKET=${1:-}
 
   echoit "##### START: non_partition_test #####"
   echoit "Creating non partitioned tables"
   start_mysql_lower_main
   echoit "Create regular tables with different storage engines"
   create_regular_tbl $SOCKET
- 
+
   echoit "Create tables with different row formats"
   test_row_format_tbl $SOCKET
- 
+
   if [ "$ENCRYPTION" == 1 ];then
     $LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLESPACE test_gen_ts1 ADD DATAFILE 'test_gen_ts1.ibd' ENCRYPTION='Y'"  2>&1
     $LOWER_BASEDIR/bin/mysql -uroot --socket=$SOCKET test -e "CREATE TABLE test_gen_ts_tb1(id int auto_increment, str varchar(32), primary key(id)) TABLESPACE test_gen_ts1" 2>&1
@@ -555,15 +555,15 @@ function non_partition_test(){
       #Install TokuDB plugin
       echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET
       $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET < ${SCRIPT_PWD}/TokuDB.sql
- 
+
       echoit "Loading employees database with tokudb engine for upgrade testing.."
       #create_emp_db employee_5 tokudb employees.sql
-   
+
       if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
         echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
         create_emp_db employee_6 tokudb employees_partitioned.sql
       fi
- 
+
     fi
   fi
 
@@ -572,9 +572,9 @@ function non_partition_test(){
       #Install RocksDB plugin
       echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET
       $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET < ${SCRIPT_PWD}/MyRocks.sql
- 
+
       echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET
- 
+
       echoit "Sysbench rocksdb data load"
       sysbench_run rocksdb rocksdb_test
       $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_rocksdb_prepare.txt
@@ -596,16 +596,16 @@ function partition_test(){
   echoit "Sysbench Run: Prepare stage"
   sysbench_run innodb sysbench_partition
   $SBENCH $SYSBENCH_OPTIONS --mysql-socket=$SOCKET prepare  2>&1 | tee $WORKDIR/logs/sysbench_partition_prepare.txt
-	
+
   #Partition testing with sysbench data
   echo "ALTER TABLE sysbench_partition.sbtest1 PARTITION BY HASH(id) PARTITIONS 8;" | $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
   echo "ALTER TABLE sysbench_partition.sbtest2 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
   echo "ALTER TABLE sysbench_partition.sbtest3 PARTITION BY HASH(id) PARTITIONS 8;" | $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
   echo "ALTER TABLE sysbench_partition.sbtest4 PARTITION BY LINEAR KEY ALGORITHM=2 (id) PARTITIONS 32;" | $LOWER_BASEDIR/bin/mysql --socket=$SOCKET -u root || true
- 
+
   echoit "Loading employees partitioned database with innodb engine.."
   create_emp_db employee_2 innodb employees_partitioned.sql
- 
+
   if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
     echoit "Loading employees partitioned database with myisam engine.."
     create_emp_db employee_4 myisam employees_partitioned.sql
@@ -616,12 +616,12 @@ function partition_test(){
       #Install TokuDB plugin
       echo "INSTALL PLUGIN tokudb SONAME 'ha_tokudb.so'" | $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET
       $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET < ${SCRIPT_PWD}/TokuDB.sql
-   
+
       if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
         echoit "Loading employees partitioned database with tokudb engine for upgrade testing.."
         #create_emp_db employee_6 tokudb employees_partitioned.sql
       fi
- 
+
     fi
   fi
 
@@ -630,9 +630,9 @@ function partition_test(){
       #Install RocksDB plugin
       echo "INSTALL PLUGIN rocksdb SONAME 'ha_rocksdb.so'" | $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET
       $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET < ${SCRIPT_PWD}/MyRocks.sql
- 
+
       echo "DROP DATABASE IF EXISTS rocksdb_test;CREATE DATABASE IF NOT EXISTS rocksdb_test; set global default_storage_engine = ROCKSDB " | $LOWER_BASEDIR/bin/mysql -uroot  --socket=$SOCKET
- 
+
       if ! check_for_version $MYSQL_VERSION "8.0.0" ; then
         echoit "Creating rocksdb partitioned tables"
         for i in `seq 1 10`; do
@@ -661,7 +661,7 @@ function partition_test(){
       fi
     fi
   fi
- 
+
   start_mysql_downgrade_main
   mysql_downgrade_datacheck
   echoit "##### END: partition_test #####"
@@ -683,7 +683,7 @@ function compression_test(){
      ${LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "optimize table test.sbtest$i;" 1>/dev/null
      ${LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i modify c varchar(250) column_format compressed with compression_dictionary numbers;"
   done
- 
+
   echoit "Compressing and optimizing tables sbtest6 to sbtest10"
   for i in {6..10}; do
      ${LOWER_BASEDIR}/bin/mysql -uroot --socket=$SOCKET --force -e "alter table test.sbtest$i compression='zlib';"
@@ -728,7 +728,7 @@ function startup_check(){
     sleep 1
     if ${UPPER_BASEDIR}/bin/mysqladmin -uroot -S$1 ping > /dev/null 2>&1; then
       break
-    fi 
+    fi
   done
 }
 

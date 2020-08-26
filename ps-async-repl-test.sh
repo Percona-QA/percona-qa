@@ -131,7 +131,7 @@ normalize_version(){
   local major=0
   local minor=0
   local patch=0
- 
+
   # Only parses purely numeric version numbers, 1.2.3
   # Everything after the first three values are ignored
   if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
@@ -147,7 +147,7 @@ check_for_version()
 {
   local local_version_str="$( normalize_version $1 )"
   local required_version_str="$( normalize_version $2 )"
- 
+
   if [[ "$local_version_str" < "$required_version_str" ]]; then
     return 1
   else
@@ -285,7 +285,7 @@ function check_xb_dir(){
   PXBBASE="$ROOT_FS/$PXBBASE"
   popd
 }
- 
+
 #Check sysbench
 if [[ ! -e `which sysbench` ]];then
   echoit "Sysbench not found"
@@ -656,20 +656,20 @@ function async_rpl_test(){
     if [[ -z $ENCRYPTION ]]; then
       ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 > $WORKDIR/logs/xb_backup.log 2>&1
 
-      echoit "Prepare xtrabackup"	
+      echoit "Prepare xtrabackup"
 	  ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full > $WORKDIR/logs/xb_prepare_backup.log 2>&1
 
     else
       if [[ "$KEYRING_PLUGIN" == "file" ]]; then
         ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
-       
-        echoit "Prepare xtrabackup"	
+
+        echoit "Prepare xtrabackup"
         ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --keyring-file-data=${WORKDIR}/psnode1/keyring --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin > $WORKDIR/logs/xb_prepare_backup.log 2>&1
-       
+
       elif [[ "$KEYRING_PLUGIN" == "vault" ]]; then
         ${PXBBASE}/bin/xtrabackup --user=root --password='' --backup --target-dir=${WORKDIR}/backupdir/full -S${SOCKET} --datadir=${WORKDIR}/psnode1 --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault_ps.cnf --generate-transition-key > $WORKDIR/logs/xb_backup.log 2>&1
-       
-        echoit "Prepare xtrabackup"	
+
+        echoit "Prepare xtrabackup"
         ${PXBBASE}/bin/xtrabackup --prepare --target-dir=${WORKDIR}/backupdir/full --xtrabackup-plugin-dir=${PXBBASE}/lib/plugin --keyring-vault-config=$WORKDIR/vault/keyring_vault_ps.cnf > $WORKDIR/logs/xb_prepare_backup.log 2>&1
       fi
     fi
@@ -1208,7 +1208,7 @@ function async_rpl_test(){
       mgr_test
     fi
 	  xb_master_slave_test
-  fi 
+  fi
 }
 
 async_rpl_test

@@ -6,12 +6,13 @@
 
 # User configurable variables
 WORKDIR="/dev/shm"                               ## Working directory ("/dev/shm" preferred)
-SQLFILE="./test.sql"                             ## SQL Input file
+SQLFILE="./in.sql"                               ## SQL Input file
 MYEXTRA="--no-defaults --event-scheduler=ON"     ## MYEXTRA: Extra --options required for msyqld (may not be required)
-MYEXTRA=" --no-defaults --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/roel/mariadb-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047 "
-SERVER_THREADS=(2 10 20 30 40 50)                  ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
-CLIENT_THREADS=1                                 ## Number of client threads (y threads) which will execute the SQLFILE input file against each mysqld
-AFTER_SHUTDOWN_DELAY=60                          ## Wait this many seconds for mysqld to shutdown properly. If it does not shutdown within the allotted time, an error shows
+MYEXTRA=" --no-defaults"
+# --plugin-load=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0 --init-file=/home/roel/mariadb-qa/plugins_57.sql --binlog-group-commit-sync-delay=2047 "
+SERVER_THREADS=(2 10 20 30 40 50)                 ## Number of server threads (x mysqld's). This is a sequence: (10 20) means: first 10, then 20 server if no crash was observed
+CLIENT_THREADS=1                                  ## Number of client threads (y threads) which will execute the SQLFILE input file against each mysqld
+AFTER_SHUTDOWN_DELAY=60                           ## Wait this many seconds for mysqld to shutdown properly. If it does not shutdown within the allotted time, an error shows
 
 # Internal variables
 MYUSER=$(whoami)

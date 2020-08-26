@@ -1,13 +1,14 @@
 #!/bin/bash
-RANDOM=`date +%s%N | cut -b10-19`  # Random entropy init
+RANDOM=$(date +%s%N | cut -b10-19)  # Random entropy init
 RANDF=$(echo $RANDOM$RANDOM$RANDOM$RANDOM | sed 's|.\(..........\).*|\1|')  # Random 10 digits filenr
 
-if [ ! -r bin/mysqld ]; then
-  echo "Assert: bin/mysqld not found!"
-  exit 1
-fi
-SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||;s|version_source_revision||')"
-SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
+BIN=
+if [ -r ./bin/mysqld ]; then BIN='./bin/mysqld'; fi
+if [ -z "${BIN}" -a -r ../mysqld/mysqld ]; then BIN='../mysqld/mysqld'; fi
+if [ -z "${BIN}" ]; then echo "Assert: bin/mysqld not found!" exit 1; fi
+
+SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" ${BIN} 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||;s|version_source_revision||')"
+SERVER_VERSION="$(${BIN} --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
 LAST_THREE="$(echo "${PWD}" | sed 's|.*\(...\)$|\1|')"
 BUILD_TYPE=
 if [ "${LAST_THREE}" == "opt" ]; then BUILD_TYPE=" (Optimized)"; fi
@@ -33,7 +34,7 @@ if [ ! -z "${ERROR_LOG}" ]; then
   fi
 fi
 
-gdb -q bin/mysqld $(ls data/*core*) >/tmp/${RANDF}.gdba 2>&1 << EOF
+gdb -q ${BIN} $(ls data/*core*) >/tmp/${RANDF}.gdba 2>&1 << EOF
  set pagination off
  set print pretty on
  set print frame-arguments all
