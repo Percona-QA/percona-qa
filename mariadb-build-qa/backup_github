@@ -36,6 +36,7 @@ cp all_all ${TARGET}
 cp sge_all ${TARGET}
 cp clean_all ${TARGET}
 cp multi_sr_all ${TARGET}
+cp multi_sr_leftover ${TARGET}
 cp dbg ${TARGET}
 cp opt ${TARGET}
 cp my ${TARGET}
