@@ -37,7 +37,7 @@ INPUTFILE=                      # The SQL file to be reduced. This can also be g
 MODE=4                          # Required. Most often used modes: 4=Any crash (TEXT not required), 3=Search for a specific TEXT in mysqld error log, 2=Idem, but in client log
 TEXT="somebug"                  # The text string you want reducer to search for, in specific locations depending on the MODE selected. Regex capable. Use with MODEs=1,2,3,5,6,7,8
 WORKDIR_LOCATION=1              # 0: use /tmp (disk bound) | 1: use tmpfs (default) | 2: use ramfs (needs setup) | 3: use storage at WORKDIR_M3_DIRECTORY
-WORKDIR_M3_DIRECTORY="/ssd"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
+WORKDIR_M3_DIRECTORY="/data"     # Only relevant if WORKDIR_LOCATION is set to 3, use a specific directory/mount point
 MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysqld options to be used (and reduced). Note: TokuDB plugin loading is checked/done automatically
 MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
 BASEDIR="${PWD}"                # Path to the MySQL BASE directory to be used

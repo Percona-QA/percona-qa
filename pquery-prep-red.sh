@@ -721,7 +721,7 @@ fi
 # * Checking for a coredump ensures that there was no coredump found in the trial's directory, which would mean that this is not a shutdown issue
 # * The check for ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ensures that the issue was a shutdown issue
 # If these 3 all apply, it is safe to change the MODE to =0 and assume that this is a shutdown issue only
-for MATCHING_TRIAL in `grep -H "^MODE=[1-9]$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
+for MATCHING_TRIAL in `grep -H "^MODE=[0-9]$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
   if [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
     if [ -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
       sed -i "s|^MODE=[1-9]|MODE=0|" reducer${MATCHING_TRIAL}.sh

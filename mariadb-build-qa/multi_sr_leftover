@@ -7,12 +7,13 @@ RUN_MODE=0         # 0: Re-attempt previously failed reducers + start new reduce
                    # 2: NOT_IMPLEMENTED_YET Re-attempt previously failed reducers only
 MAX_TO_START=25    # Maximum number of reducers to start (in addition to what is already running)
 START_DUPS=0       # If more then one reducer is available per issue seen, start them all
+EXCLUDE='no core file found|SHUTDOWN TIMEOUT|No parsable frames'  # What strings (seen in ~/pr) to exclude
 
 rm -f /tmp/multi_sr_missing.set1 /tmp/multi_sr_missing.set2
 ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] > /tmp/multi_sr_missing.set1 2>/dev/null
 
-if [ ! -r ~/sr ]; then
-  echo "Incorrect setup: ~/sr not found. You likely want to cp ~/mariadb-qa/homedir_scripts/* ~"
+if [ ! -r ~/sr -o ! ~/pr ]; then
+  echo "Incorrect setup: ~/sr and/or ~/pr not found. You likely want to cp ~/mariadb-qa/homedir_scripts/* ~"
   exit 1
 fi
 
@@ -42,9 +43,9 @@ for (( DIR=1; DIR<=${NR_OF_DIRS}; DIR++ )); do
     continue
   fi
   if [ "${START_DUPS}" == "1" ]; then
-    ~/pr | grep --binary-files=text '(Seen' | grep --binary-files=text -vE 'SHUTDOWN TIMEOUT|No parsable frames' | sed 's|.*times: reducers ||;s|)||' | tr ',' '\n' > /tmp/multi_sr_missing.set2
+    ~/pr | grep --binary-files=text '(Seen' | grep --binary-files=text -vE '${EXCLUDE}' | sed 's|.*times: reducers ||;s|)||' | tr ',' '\n' > /tmp/multi_sr_missing.set2
   else
-    ~/pr | grep --binary-files=text '(Seen' | grep --binary-files=text -vE 'SHUTDOWN TIMEOUT|No parsable frames' | sed 's|.*times: reducers ||;s|)||;s|,.*||' > /tmp/multi_sr_missing.set2
+    ~/pr | grep --binary-files=text '(Seen' | grep --binary-files=text -vE '${EXCLUDE}' | sed 's|.*times: reducers ||;s|)||;s|,.*||' > /tmp/multi_sr_missing.set2
   fi
   NR_OF_REDUCERS=$(wc -l /tmp/multi_sr_missing.set2 | sed 's| .*||')
   for (( SUBDIR=1; SUBDIR<=${NR_OF_REDUCERS}; SUBDIR++ )); do

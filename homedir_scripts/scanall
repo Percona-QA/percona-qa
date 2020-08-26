@@ -4,24 +4,28 @@ INPUT="${1}"
 echo "Searching for '${INPUT}' in known bugs strings file..."
 ~/kbs "${INPUT}"
 echo "Searching for '${INPUT}' in various places... This may take a while!"
-echo "1/10..."
+echo "1/12..."
 grep --binary-files=text -Ei "${INPUT}" /test/*/*/log/master.err 2>/dev/null
-echo "2/10..."
+echo "2/12..."
 grep --binary-files=text -Ei "${INPUT}" /data/*/*/log/master.err 2>/dev/null
-echo "3/10..."
+echo "3/12..."
 grep --binary-files=text -Ei "${INPUT}" /test/*/*/MYBUG 2>/dev/null
-echo "4/10..."
+echo "4/12..."
 grep --binary-files=text -Ei "${INPUT}" /data/*/*/MYBUG 2>/dev/null
-echo "5/10..."
+echo "5/12..."
 grep --binary-files=text -Ei "${INPUT}" /test/*/log/master.err 2>/dev/null
-echo "6/10..."
+echo "6/12..."
 grep --binary-files=text -Ei "${INPUT}" /data/*/log/master.err 2>/dev/null
-echo "7/10..."
+echo "7/12..."
 grep --binary-files=text -Ei "${INPUT}" /test/TESTCASES/*.report 2>/dev/null
-echo "8/10..."
+echo "8/12..."
 grep --binary-files=text -Ei "${INPUT}" /data/TESTCASES/*.report 2>/dev/null
-echo "9/10..."
+echo "9/12..."
 grep --binary-files=text -Ei "${INPUT}" /test/TESTCASES/*/*.report 2>/dev/null
-echo "10/10..."
+echo "10/12..."
 grep --binary-files=text -Ei "${INPUT}" /data/TESTCASES/*/*.report 2>/dev/null
+echo "11/12..."
+grep --binary-files=text -Ei "${INPUT}" /data/NEWBUGS/*.string 2>/dev/null
+echo "12/12..."
+grep --binary-files=text -Ei "${INPUT}" /data/FIREWORKS/*.string 2>/dev/null
 echo "Done!"

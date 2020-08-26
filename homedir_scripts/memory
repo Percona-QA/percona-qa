@@ -1,21 +1,26 @@
 #!/bin/bash
 # Also see ~/mariadb-qa/memory_leaks_howto.txt for related throubleshooting info, otherwise unrelated to the monitoring script below
-PROCESS=
-MEMORY=
-TOO_MUCH_MEM=
+
+# User variables
+KILL_LARGE=1  # Will kill any process consuming more then KILL_PERCENT percent of memory
+KILL_PERCENT=13
+
+# Script variables
 while true; do
   clear
   ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n15
-  TOO_MUCH_MEM="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | grep -E "mysqld|pquery2" | head -n1 | grep -o " *[0-9]\+ *[4-9][0-9]\.")"
-  if [ "${TOO_MUCH_MEM}" != "" ]; then
-    PROCESS="$(echo "${TOO_MUCH_MEM}" | sed 's|^ *||' | sed 's| .*||' | sed 's| ||g')"
-    MEMORY="$(echo "${TOO_MUCH_MEM}" | sed 's|^ *||' | sed 's|.* ||' | sed 's| ||g')"
-    echo "Process ${PROCESS} is consuming too much memory (${TOO_MUCH_MEM}%): terminating..."
-    kill -9 ${PROCESS}
-    PROCESS=
-    MEMORY=
-    TOO_MUCH_MEM=
-    sleep 2  # Allows user to notice/read message
+  HEADLINE=;PERCENT=;PID=
+  if [ "${KILL_LARGE}" -eq 1 ]; then
+    HEADLINE="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n2 | tail -n1)"
+    PERCENT="$(echo ${HEADLINE} | awk '{print $2}' | sed 's|\.[0-9]\+||;s|[ \t]||g')"
+    PID="$(echo ${HEADLINE} | awk '{print $1}' | sed 's|[ \t]||g')"
+    if [ ${PERCENT} -gt ${KILL_PERCENT} ]; then
+      echo "Process ${PID} is consuming too much memory (${PERCENT}%): terminating..."
+      kill -9 ${PID}
+      kill -9 ${PID}
+      kill -9 ${PID}
+      sleep 2  # Allows user to notice/read message
+    fi
   fi
   sleep 3
 done

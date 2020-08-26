@@ -1866,6 +1866,7 @@ pquery_test() {
         if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null | wc -l) -ge 1 ]; then
           echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null)"
           cd ${RUNDIR}/${TRIAL} || exit 1
+          echo "${SCRIPT_PWD}/stack.sh" > ./stack && chmod +x ${RUNDIR}/${TRIAL}/stack
           TEXT=$(${SCRIPT_PWD}/new_text_string.sh)
           echo "${TEXT}" > ${RUNDIR}/${TRIAL}/MYBUG
           cd - >/dev/null || exit 1
