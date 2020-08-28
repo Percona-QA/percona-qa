@@ -3,7 +3,7 @@
 
 # User variables
 KILL_LARGE=1  # Will kill any process consuming more then KILL_PERCENT percent of memory
-KILL_PERCENT=13
+KILL_PERCENT=3
 
 # Script variables
 while true; do

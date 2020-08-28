@@ -5,6 +5,7 @@
 # reducer scripts are ready when needed. This script furthermore modifies some more expert reducer.sh settings which aid in mass-bug handling, though they require some more
 # manual work once reductions are nearing completion;
 # FORCE_SKIPV is set to 1
+# FORCE_KILL is set to 1, for MODE=3 and MODE=4 issues only: better and faster reduction, though misses some shutdown errors (may need a bit of tweaking for some trials to get it to reproduce in that case), though most of those cases (which are likely rare to start with) are now covered below, search for SHUTDOWN_OFFSET and see surrounding code.
 # MULTI_THREADS is set to 3
 # MULTI_THREADS_INCREASE is set to 3
 # MULTI_THREADS_MAX is set to 9
@@ -73,15 +74,30 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
   while [ true ]; do
     touch ${MUTEX}                                  # Create mutex (indicating that background_sed_loop is live)
     sleep 2                                         # Ensure that we have a clean mutex/lock which will not be terminated by the main code anymore (ref: do sleep 1)
-    for REDUCER in $(ls reducer*.sh 2>/dev/null); do
+    for REDUCER in $(ls --color=never reducer*.sh 2>/dev/null); do
       if egrep -q '^finish .INPUTFILE' ${REDUCER}; then  # Ensure that pquery-prep-red.sh has fully finished writing this file (grep is for a string present on the last line only)
-        if ! egrep -q '#DONEDONE' ${REDUCER}; then       # Ensure that we're only updating files that were not updated previously (and possibly subsequently edited manually)
+        if ! grep --binar-files=text -q '^.DONEDONE' ${REDUCER}; then       # Ensure that we're only updating files that were not updated previously (and possibly subsequently edited manually)
           sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${REDUCER}
           sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3 |" ${REDUCER}
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER}
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER}
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${REDUCER}
-          # sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
+          # Next, we consider if we will set FORCE_KILL=1 by doing many checks to see if it makes sense
+          if grep --binary-files=text -qiE "^MODE=3|^MODE=4" ${REDUCER}; then  # Mode 3 or 4 (and not 0)
+            TRIAL="$(echo ${REDUCER} | grep -o '[0-9]\+')"
+            if [ ! -r "./${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE" ]; then  # Not a shutdown timeout issue
+              TERRIBLY_OFFSET=$(grep --binary-files=text -ihbm1 'terribly' ${TRIAL}/log/master.err | head -n1 | sed 's|^\([0-9]\+\).*|\1|')
+              SHUTDOWN_OFFSET=$(grep --binary-files=text -hb 'shutdown' ${TRIAL}/log/master.err | grep -v srv_shutdown | head -n1 | sed 's|^\([0-9]\+\).*|\1|')
+              if [ ! -z "${TERRIBLY_OFFSET}" -a ! -z "${SHUTDOWN_OFFSET}" ]; then
+                if [ ${TERRIBLY_OFFSET} -lt ${SHUTDOWN_OFFSET} ]; then  # Ensure crash came before shutdown
+                  sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
+                fi
+              elif [ -z "${SHUTDOWN_OFFSET}" ]; then  # No shutdown seen; safe to proceed
+                sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
+              fi
+            fi
+            TRIAL=;TERRIBLY_OFFSET=;SHUTDOWN_OFFSET=
+          fi 
           echo '#DONEDONE' >> ${REDUCER}
         fi
       fi

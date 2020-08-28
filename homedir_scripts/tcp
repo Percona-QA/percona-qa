@@ -1,7 +1,6 @@
 #!/bin/bash
-OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1)"
+OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1 | sed "s|. mysqld options required for replay:[ \t]\+..sql_mode=[ \t]*$|SET SQL_MODE='';|")"
 cat "${1}" | \
-  sed "s|. mysqld options required for replay: ..sql_mode=[ \t]*$|SET SQL_MODE='';|" | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
   sed 's|t1|t|g' | \
   sed 's|int|INT|gi;s|integer|INT|gi' | \
@@ -44,11 +43,14 @@ cat "${1}" | \
   sed 's|extended|EXTENDED|gi' | \
   sed 's|repair|REPAIR|gi' | \
   sed 's|repeat|REPEAT|gi' | \
+  sed 's|engine|ENGINE|gi' | \
+  sed 's|temporary|TEMPORARY|gi' | \
   sed 's|replicate_do|REPLICATE_DO|gi' | \
   sed 's|order by|ORDER BY|gi' | \
   sed 's|drop|DROP|gi' | \
   sed 's|set|SET|gi' | \
   sed 's|bit|BIT|gi' | \
+  sed 's|default|DEFAULT|gi' | \
   sed 's|session|SESSION|gi' | \
   sed 's|global|GLOBAL|gi' | \
   sed 's|primary|PRIMARY|gi' | \
@@ -70,10 +72,12 @@ cat "${1}" | \
   sed 's|values|VALUES|gi' | \
   sed 's|\([^\.]\)st_|\1ST_|gi' | \
   sed 's|geomfromtext|GEOMFROMTEXT|gi' | \
+  sed 's|ST_\([_a-zA-Z]\+\)|\UST_\1|gi' | \
   sed 's|row_format|ROW_FORMAT|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|compressed|COMPRESSED|gi' | \
   sed 's|InnoDB_|innodb_|g' | \
+  sed 's|GLOBAL_|global_|g' | \
   sed 's|into|INTO|gi' | \
   sed 's|threads|THREADS|gi' | \
   sed 's|unique|UNIQUE|gi' | \

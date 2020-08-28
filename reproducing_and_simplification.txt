@@ -3,13 +3,11 @@ pquery-run.sh > ~/percona-qa/pquery-prep-red.sh > ~/percona-qa/pquery-clean-know
 
 However, for issues that fail to reproduce, try these things (in this order):
 -----------------------------------------------------------------------------
+* If you have set FORCE_KILL=1 in reducer, note that this does not reduce issues seen on server shutdown only (low percentage of issues). Set it to FORCE_KILL=0 to attempt to reduce towards an issue seen on/at shutdown only (mysqladmin shutdown will then be used instead of a kill).
+
 * Remember that OOS (out of disk space) may have resulted in the _out and even the _out.prev file(s) not to be saved correctly. If so, you would have to restart from the original input file.
 
-* If the issue reproduced before and now no longer does, check the <filename>_out.prev file line count (wc -l <trial_nr>/<filename>_out.prev) vs
-  the linecount in the current file (wc -l <trial_nr>/<filename>_out). If the line number in the <filename>_out.prev file is bigger, copy that
-  one over the current file and restart reducer without changes. Things like a simple out-of-disk-space may cause the this type of issue
-  Note that out-of-disk-space are not always evident; if runs are going in /dev/shm and reducers are using /dev/shm, they may conflict. Also
-  /tmp in /root gets used for the storing of reducer logs, and reducer.sh temporary files. Then there are the main reducer work directories etc.
+* If the issue reproduced before and now no longer does, check the <filename>_out.prev file line count (wc -l <trial_nr>/<filename>_out.prev) vs the linecount in the current file (wc -l <trial_nr>/<filename>_out). If the line number in the <filename>_out.prev file is bigger, copy that one over the current file and restart reducer without changes. Things like a simple out-of-disk-space may cause the this type of issue Note that out-of-disk-space are not always evident; if runs are going in /dev/shm and reducers are using /dev/shm, they may conflict. Also /tmp in /root gets used for the storing of reducer logs, and reducer.sh temporary files. Then there are the main reducer work directories etc.
 
 * If the issue reproduces in 'Verify stage' in reducer, set FORCE_SPORADIC=1 in settings to reducer faster/more easily (uses 10 threads for stage 1).
   End somewhere during stage 1 when you have 5-10 lines left and reduction does not seem to progress much anymore. Edit manually further if needed.

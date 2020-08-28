@@ -1,4 +1,7 @@
 #!/bin/bash
+
+WIPE_TMP_ENABLED=0  # /tmp cleaning
+
 if [ ! -r ~/sr ]; then echo "~/sr required! Please copy it from ~/mariadb-qa/homedir_scripts. Terminating."; exit 1; fi
 sudo sh -c "$(which echo) 4 > /proc/sys/vm/drop_caches"  # Disable bulk dmesg messages
 COUNT1=0
@@ -15,7 +18,11 @@ while true; do
   #SHM="$(df -h | grep '^tmpfs' | grep 'shm' | sed 's|G.*|G|')"
   #du -shc | grep total | sed "s|total||;s|^|${SHM}  |"
   #cd - >/dev/null
-  echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000     "
+  if [ "${WIPE_TMP_ENABLED}" -eq 1 ]; then
+    echo -n "${COUNT1}/10 ${COUNT2}/60 ${COUNT3}/5000     "
+  else
+    echo -n "${COUNT1}/10 ${COUNT2}/60      "
+  fi
   echo -n "Active reducers: $(~/count_reducers)    "
   echo -n "Active mysqld's: $(ps -ef | grep mysqld | grep "no-defaults" | sed "s|..user=.*||;s|.*no-defaults ||" | sort -u | wc -l)"
   sleep 2
@@ -31,9 +38,11 @@ while true; do
     COUNT2=0
   fi
   if [ ${COUNT3} -ge 5000 ]; then
-    rm -Rf /tmp/[0-9][0-9][0-9][0-9][0-9][0-9] >/dev/null 2>&1 &
-    #rm -Rf /tmp/1[5-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9] >/dev/null 2>&1 &  # This may be ongoing reducer runs... TODO: fix this so it checks for date/time similar like tmpfs_clean.sh does
-    sync
+    if [ "${WIPE_TMP_ENABLED}" -eq 1 ]; then
+      rm -Rf /tmp/[0-9][0-9][0-9][0-9][0-9][0-9] >/dev/null 2>&1 &
+      #rm -Rf /tmp/1[5-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9] >/dev/null 2>&1 &  # This may be ongoing reducer runs... TODO: fix this so it checks for date/time similar like tmpfs_clean.sh does
+      sync
+    fi
     COUNT3=0
   fi
   continue
