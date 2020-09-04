@@ -73,6 +73,7 @@ Acl_restrictions..size                                   ## https://bugs.mysql.c
 
 
 ## =========== PS/MS 8.0
+myrocks..rdb_normalize_tablename                         ## https://jira.percona.com/browse/PS-7290
 compression_dict..create_zip_dict                        ## https://jira.percona.com/browse/PS-7151
 my_print_stacktrace.unsigned                             ## https://jira.percona.com/browse/PS-7150
 JOIN..create_root_iterator_for_join                      ## https://jira.percona.com/browse/PS-6937
