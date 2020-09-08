@@ -10,7 +10,15 @@ SIGSEGV|sf_malloc_usable_size|my_free|delete_dynamic|my_hash_free               
 ###### STACK SMASHING BUGS ######
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item ## OPT MDEV-22755
 
+###### BUGS WHICH REQUIRE ADDITIONAL TESTCASES (DISABLED FILTERS) ######
+## SIGSEGV|malloc_size_and_flag|my_free|PROFILING::finish_current_query_impl|PROFILING::finish_current_query                                                                     ## OPT MDEV-23657
+
 ###### CURRENT BUGS ######
+SIGABRT|ib::fatal::~fatal|buf_page_io_complete|buf_read_page_low|buf_read_page                                                                                                  ## MDEV-23667
+m_cpp_buf <= ptr && ptr <= m_cpp_buf + m_buf_length|SIGABRT|Lex_input_stream::body_utf8_append|Lex_input_stream::body_utf8_append|sp_head::set_stmt_end|LEX::sp_body_finalize_routine  ## MDEV-23666
+length <= 64|SIGABRT|PFS_variable_name_row::make_row|User_variables::materialize|table_uvar_by_thread::materialize|table_uvar_by_thread::rnd_next                               ## MDEV-23665
+(m_ptr == __null) == item->null_value|SIGABRT|VDec::VDec|Item_decimal_typecast::val_decimal|VDec::VDec|Item_decimal_typecast::val_str                                           ## |MDEV-23664
+(m_ptr == __null) == item->null_value|SIGABRT|VDec::VDec|Item_decimal_typecast::val_decimal|VDec::VDec|Item::save_decimal_in_field                                              ## |MDEV-23664
 SIGFPE|row_search_with_covering_prefix|row_search_mvcc|ha_innobase::index_read|handler::index_read_map
                                                                           ## MDEV-23600
 marked_for_read()|SIGABRT|Field_long::val_int|Item_field::val_int|Item_func_plus::int_op|Item_func_hybrid_field_type::val_int_from_int_op                                       ## MDEV-23597
@@ -114,7 +122,6 @@ nr != 0|SIGABRT|handler::update_auto_increment|ha_partition::write_row|handler::
 mode == 16 || mode == 12 || fix_block->page.status != buf_page_t::FREED|SIGABRT|buf_page_get_low|buf_page_get_gen|ibuf_remove_free_page|ibuf_free_excess_pages                  ## DBG MDEV-22710
 store.length() <= (256L*256L*256L-1)|SIGABRT|net_send_ok|Protocol::send_ok|Protocol::end_statement|dispatch_command                                                             ## DBG MDEV-22709
 !mysql_bin_log.is_open() || thd.is_current_stmt_binlog_format_row()|SIGABRT|Delayed_insert::handle_inserts|handle_delayed_insert|pfs_spawn_thread|start_thread                  ## DBG MDEV-22708
-!current|SIGABRT|PROFILING::start_new_query|dispatch_command|execute_init_command|handle_slave_sql                                                                              ## DBG MDEV-22706
 !current|SIGABRT|PROFILING::start_new_query|dispatch_command|execute_init_command|handle_slave_sql                                                                              ## DBG MDEV-22706
 llabs(next_free_value % real_increment) == offset|SIGABRT|sequence_definition::adjust_values|sequence_definition::check_and_adjust|MYSQLparse|parse_sql                         ## DBG MDEV-22705
 fixed == 0|SIGABRT|Item_func::fix_fields|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                             ## DBG MDEV-22662
@@ -293,6 +300,8 @@ len == ref_length|SIGABRT|ha_innobase::position|find_all_keys|filesort|create_so
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Field::val_str|Field::save_in_field_str|Field_str::save_in_field                                        ## DBG |MDEV-23294*
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                               ## DBG |MDEV-23294*
 !col->mbmaxlen || len >= col->mbminlen * (fixed_len / col->mbmaxlen)|SIGABRT|row_merge_buf_add|row_merge_read_clustered_index|row_merge_build_indexes|ha_innobase::inplace_alter_table  ## DBG MDEV-22365*
+SIGSEGV|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                                   ## OPT MDEV-23182*
+SIGSEGV|select_unit::cleanup|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare                                                                          ## OPT MDEV-23182*
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames?  ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  

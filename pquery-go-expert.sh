@@ -10,6 +10,7 @@
 # MULTI_THREADS_INCREASE is set to 3
 # MULTI_THREADS_MAX is set to 9
 # STAGE1_LINES is set to 13
+# INPUTFILE is auto-optimized towards latest sql trace inc _out* handling
 # The effect of FORCE_SKIPV=1 is that reducer will skip the verify stage, start reduction immediately, using 3 threads (MULTI_THREADS=3), and never increases the set amount of
 # threads (result of using FORCE_SKIPV=1). Note that MULTI_THREADS_INCREASE is only relevant for non-FORCE_SKIPV runs, more on why this is changed then below.
 # In short, the big benefit of making these settings is that (assuming you are doing a standard single (client) threaded run) you can easily start 10-20 reducers, as each of
@@ -82,6 +83,8 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER}
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER}
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${REDUCER}
+          # Auto-set the inputfile to the most recent sql trace inc _out* handling
+          sed -i 's|^INPUTFILE="\([^"]\+\)"|INPUTFILE="$(ls -t \1* | head -n1)"|' ${REDUCER}
           # Next, we consider if we will set FORCE_KILL=1 by doing many checks to see if it makes sense
           if grep --binary-files=text -qiE "^MODE=3|^MODE=4" ${REDUCER}; then  # Mode 3 or 4 (and not 0)
             TRIAL="$(echo ${REDUCER} | grep -o '[0-9]\+')"

@@ -30,6 +30,7 @@ cp er ${TARGET}
 cp eb ${TARGET}
 cp f-master ${TARGET}
 cp f-slave ${TARGET}
+cp fix_rqg ${TARGET}
 cp fb ${TARGET}
 cp fc ${TARGET}
 cp fs ${TARGET}
@@ -38,6 +39,7 @@ cp gomdQC ${TARGET}
 cp gomdASAN ${TARGET}
 cp gomdMT ${TARGET}
 cp ka ${TARGET}
+cp ka2 ${TARGET}
 cp kb ${TARGET}
 cp kba ${TARGET}
 cp kbs ${TARGET}
