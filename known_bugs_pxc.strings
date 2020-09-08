@@ -20,6 +20,7 @@ default_table_encryption == 0 .. default_table_encryption == 1                  
 dd_table .= nullptr                                                                      ## https://jira.percona.com/browse/PXC-2413
 #dict_stats_disabled_event .= __null                                                      ## https://jira.percona.com/browse/PXC-2463
 error .= 0                                                                               ## https://jira.percona.com/browse/PXC-2482
+error.len > 0                                                                            ## https://jira.percona.com/browse/PXC-3384
 find_sys_var_ex                                                                          ## https://jira.percona.com/browse/PXC-2499
 galera..WriteSetOut..gather                                                              ## https://jira.percona.com/browse/PXC-2616
 wsrep..wsrep_provider_v26..enter_toi                                                     ## https://jira.percona.com/browse/PXC-2616
@@ -69,6 +70,7 @@ thd->wsrep_trx                                                                  
 transaction.is_streaming                                                                 ## https://jira.percona.com/browse/PXC-2694
 transaction_.active                                                                      ## https://jira.percona.com/browse/PXC-2699
 transaction_.state                                                                       ## https://jira.percona.com/browse/PXC-2695
+trx .= 0                                                                                 ## https://jira.percona.com/browse/PXC-3387
 trx->global_seqno                                                                        ## https://jira.percona.com/browse/PXC-2697
 ts.state                                                                                 ## https://jira.percona.com/browse/PXC-2921
 user_table->get_ref_count                                                                ## https://jira.percona.com/browse/PXC-2690

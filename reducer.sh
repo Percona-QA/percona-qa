@@ -1757,7 +1757,7 @@ init_workdir_and_files(){
       cp -a $WORKD/node3/* $WORKD/node3.init/
     fi
     if [[ "$ENCRYPTION_RUN" == 1 ]];then
-      mkdir ${WORKDIR}/cert
+      mkdir $WORKD/cert
       if check_for_version $MYSQL_VERSION "5.7.0" ; then
   	    cp ${node1}/*.pem $WORKD/cert/
       else
