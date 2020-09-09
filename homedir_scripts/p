@@ -1,5 +1,7 @@
-GODIR=/sda/PS300117-percona-server-5.7.17-11-linux-x86_64-debug
-cd $GODIR
+#!/bin/bash
+BASEDIR=/test/MD...
+if [ ! -r ${BASEDIR} ]; then echo "BASEDIR (${BASEDIR}) does not exist!"; exit 1; fi
+cd $BASEDIR
 vi start
 ./all
 ./stop

@@ -11,11 +11,21 @@ cat "${1}" | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
   sed 's|set @@session\.|SET SESSION |gi' | \
   sed 's|use|USE|gi' | \
+  sed 's|desc|DESC|gi' | \
+  sed 's|asc|ASC|gi' | \
+  sed 's|limit|LIMIT|gi' | \
+  sed 's|group by|GROUP BY|gi' | \
+  sed 's|count|COUNT|gi' | \
+  sed 's| as | AS |gi' | \
+  sed 's| to | TO |gi' | \
+  sed 's|unsigned|UNSIGNED|gi' | \
   sed 's|versioning|VERSIONING|gi' | \
   sed 's|trigger|TRIGGER|gi' | \
   sed 's|each|EACH|gi' | \
   sed 's|row|ROW|gi' | \
+  sed 's|grant|GRANT|gi' | \
   sed 's|concat|CONCAT|gi' | \
+  sed 's|cast|CAST|gi' | \
   sed 's|after|AFTER|gi' | \
   sed 's|before|BEFORE|gi' | \
   sed 's|blob|BLOB|gi' | \

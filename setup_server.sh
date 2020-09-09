@@ -48,7 +48,7 @@ echo "These settings are for a 128GB Memory server (google cloud instance of tha
 if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%s.%e.%t' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%s.%e.%t' ]; then
   sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%s.%e.%t" >> /etc/sysctl.conf'
 fi
-if [ "$(grep -m1 '^suid_dumpable=2' /etc/sysctl.conf)" != 'fs.suid_dumpable=2' ]; then
+if [ "$(grep -m1 '^fs.suid_dumpable=2' /etc/sysctl.conf)" != 'fs.suid_dumpable=2' ]; then
   sudo sh -c 'echo "fs.suid_dumpable=2" >> /etc/sysctl.conf'
 fi
 if [ "$(grep -m1 '^fs.aio-max-nr=99999999' /etc/sysctl.conf)" != 'fs.aio-max-nr=99999999' ]; then
@@ -145,6 +145,9 @@ if [ -r /etc/security/limits.d/90-nproc.conf ]; then
     exit 1
   fi
 fi
+
+# Reload sysctl.conf file instantly
+sudo sysctl -p
 
 sudo apt-get install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev python-mysqldb mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcrack2-dev libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev
 

@@ -324,7 +324,10 @@ echo "timeout -k90 -s9 90s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shu
 echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
 echo "#!/bin/bash" > multirun
-echo "if [ ! -d ~/mariadb-qa/multirun_cli.sh ]; then echo 'Missing ~/mariadb-qa/multirun_cli.sh - did you pull mariadb-qa from GitHub?'; exit 1; fi" >> multirun
+echo "if [ ! -r ./in.sql ]; then echo 'Missing ./in.sql - please create it!'; exit 1; fi" >> multirun
+echo "if [ ! -r ./all_no_cl ]; then echo 'Missing ./all_no_cl - perhaps run ~/start or ~/mariadb-qa/startup.sh again?'; exit 1; fi" >> multirun
+echo "./all_no_cl" >> multirun
+echo "if [ ! -r ~/mariadb-qa/multirun_cli.sh ]; then echo 'Missing ~/mariadb-qa/multirun_cli.sh - did you pull mariadb-qa from GitHub?'; exit 1; fi" >> multirun
 echo "sed -i 's|^RND_DELAY_FUNCTION=[0-9]|RND_DELAY_FUNCTION=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^RND_REPLAY_ORDER=[0-9]|RND_REPLAY_ORDER=1|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^REPORT_END_THREAD=[0-9]|REPORT_END_THREAD=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
@@ -415,6 +418,7 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|^SCAN_FOR_NEW_BUGS=0|SCAN_FOR_NEW_BUGS=1|' ./reducer_new_text_string.sh
   sed -i 's|^KNOWN_BUGS=[^#]\+|KNOWN_BUGS="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_new_text_string.sh
   sed -i 's|^FORCE_SKIPV=0|FORCE_SKIPV=1|' ./reducer_new_text_string.sh
+  sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_new_text_string.sh
   sed -i 's|^STAGE1_LINES=[^#]\+|STAGE1_LINES=10   |' ./reducer_new_text_string.sh
   sed -i 's|^SCAN_FOR_NEW_BUGS=[^#]\+|SCAN_FOR_NEW_BUGS=1   |' ./reducer_new_text_string.sh
   sed -i 's|^NEW_BUGS_COPY_DIR=[^#]\+|NEW_BUGS_COPY_DIR="/data/NEWBUGS"   |' ./reducer_new_text_string.sh
@@ -422,8 +426,7 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|^PQUERY_LOC=[^#]\+|PQUERY_LOC="/home/$(whoami)/mariadb-qa/pquery/pquery2-md"   |' ./reducer_new_text_string.sh
   # -------------------
   cp ./reducer_new_text_string.sh ./reducer_errorlog.sh
-  sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_errorlog.sh
-  sed -i 's|^SCAN_FOR_NEW_BUGS=[^#]\+|SCAN_FOR_NEW_BUGS=0   |' ./reducer_errorlog.sh
+  sed -i 's|^USE_NEW_TEXT_STRING=1|USE_NEW_TEXT_STRING=0|' ./reducer_errorlog.sh
   # -------------------
   cp ./reducer_new_text_string.sh ./reducer_fireworks.sh
   sed -i 's|^FIREWORKS=0|FIREWORKS=1|' ./reducer_fireworks.sh
