@@ -14,8 +14,10 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 ## SIGSEGV|malloc_size_and_flag|my_free|PROFILING::finish_current_query_impl|PROFILING::finish_current_query                                                                     ## OPT MDEV-23657
 
 ###### CURRENT BUGS ######
-share->rows_recorded|SIGABRT|ha_tina::delete_row|handler::ha_delete_row|TABLE::delete_row|mysql_delete
-                                                                          ## DBG MDEV-23699
+log_descriptor.bc.buffer->prev_last_lsn == ((LSN)0)|SIGABRT|translog_flush_buffers|translog_flush|ma_commit|ha_maria::implicit_commit                                           ## DBG |MDEV-23701
+open_tables == __null|SIGABRT|THD::cleanup|THD::free_connection|THD::~THD|THD::~THD                                                                                             ## DBG |MDEV-23701
+length < 249|SIGABRT|Transaction_state_tracker::store|Session_tracker::store|Protocol::net_send_ok|Protocol::send_ok                                                            ## DBG MDEV-23173
+share->rows_recorded|SIGABRT|ha_tina::delete_row|handler::ha_delete_row|TABLE::delete_row|mysql_delete                                                                          ## DBG MDEV-23699
 SIGABRT|ib::fatal::~fatal|buf_page_io_complete|buf_read_page_low|buf_read_page                                                                                                  ## DBG MDEV-23667
 m_cpp_buf <= ptr && ptr <= m_cpp_buf + m_buf_length|SIGABRT|Lex_input_stream::body_utf8_append|Lex_input_stream::body_utf8_append|sp_head::set_stmt_end|LEX::sp_body_finalize_routine  ## DBG MDEV-23666
 length <= 64|SIGABRT|PFS_variable_name_row::make_row|User_variables::materialize|table_uvar_by_thread::materialize|table_uvar_by_thread::rnd_next                               ## DBG MDEV-23665
@@ -56,7 +58,8 @@ t->s->tmp_table || thd->mdl_context.is_lock_owner(MDL_key::TABLE, t->s->db.str, 
 (length % 4) == 0|SIGABRT|my_lengthsp_utf32|my_ci_lengthsp|my_uca_strnxfrm_utf32|charset_info_st::strnxfrm                                                                      ## DBG |MDEV-23210
 (length % 4) == 0|SIGABRT|my_lengthsp_utf32|my_uca_strnxfrm_utf32|Type_handler_string_result::make_sort_key|make_sortkey                                                        ## DBG |MDEV-23210
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_insert|mysql_execute_command                                          ## DBG MDEV-23209
-SIGSEGV|TABLE_LIST::print|print_table_array|print_join|st_select_lex::print                                                                                                     ## DBG MDEV-23208
+SIGSEGV|TABLE_LIST::print|print_table_array|print_join|st_select_lex::print                                                                                                     ## DBG |MDEV-23208
+s|SIGABRT|TABLE::versioned|TABLE_LIST::print|print_table_array|print_join                                                                                                       ## DBG |MDEV-23208
 tl->table == __null|SIGABRT|THD::open_temporary_table|THD::open_temporary_tables|open_only_one_table|mysql_admin_table                                                          ## DBG MDEV-23207
 SIGSEGV|btr_search_sys_t::get_part|dict_index_t::n_ahi_pages|dict_index_remove_from_cache_low|dict_sys_t::remove                                                                ## DBG MDEV-23206
 thd->mdl_context.is_lock_owner(MDL_key::TABLE, db.str, table_name.str, MDL_SHARED)|SIGABRT|mysql_rm_table_no_locks|mysql_rm_table|mysql_execute_command|mysql_parse             ## |DBG MDEV-23205
@@ -246,6 +249,7 @@ table_list->table|SIGABRT|find_field_in_table_ref|find_field_in_tables|Item_fiel
 status_var.local_memory_used == 0 || !debug_assert_on_not_freed_memory|SIGABRT|THD::~THD|THD::~THD|one_thread_per_connection_end|do_handle_one_connection                       ## OPT |MDEV-18496*
 !parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|Table_triggers_list::drop_all_triggers|mysql_rm_table_no_locks|mysql_rm_table                         ## DBG |MDEV-18496
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::repair|handler::ha_repair|mysql_admin_table                                  ## DBG |MDEV-19011
+file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::optimize|handler::ha_optimize|mysql_admin_table                              ## DBG |MDEV-19011
 file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for_repair|ha_myisam::enable_indexes|ha_myisam::end_bulk_insert|handler::ha_end_bulk_insert        ## DBG |MDEV-19011*
 (create_info->tmp_table()) || thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.str, MDL_EXCLUSIVE)|SIGABRT|mysql_create_like_table|Sql_cmd_create_table_like::execute|mysql_execute_command|mysql_parse  ## DBG MDEV-19198
 expr == default_value->expr|SIGABRT|make_empty_rec_store_default|make_empty_rec|build_frm_image|mysql_create_frm_image                                                          ## DBG |MDEV-19336*

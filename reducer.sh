@@ -4582,10 +4582,14 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 167 ]; then sed -e 's/  / /' $WORKF > $WORKT
     elif [ $TRIAL -eq 168 ]; then sed -e 's/  / /' $WORKF > $WORKT
     elif [ $TRIAL -eq 169 ]; then sed -e 's/  / /' $WORKF > $WORKT
-    elif [ $TRIAL -eq 170 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
-    elif [ $TRIAL -eq 171 ]; then grep -E --binary-files=text -v "^$" $WORKF > $WORKT
-    elif [ $TRIAL -eq 172 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 173 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 170 ]; then sed -e 's/;#.*/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 171 ]; then sed -e 's/;  ;/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 172 ]; then sed -e 's/; ;/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 173 ]; then sed -e 's/;;/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 174 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
+    elif [ $TRIAL -eq 175 ]; then grep -E --binary-files=text -v "^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 176 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 177 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
