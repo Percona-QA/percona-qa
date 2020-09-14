@@ -17,6 +17,8 @@
 ## [ERROR] InnoDB: The table {tablename} doesn't have a corresponding tablespace, it was discarded.  ## Normal error (ALTER TABLE ... DISCARD TABLESPACE;)
 
 ## =========== MS 8.0 GA
+ha_innobase..try_semi_consistent_read                       ## https://bugs.mysql.com/bug.php?id=100842
+SELECT_LEX..nest_last_join                                  ## https://bugs.mysql.com/bug.php?id=100754
 .remaining_tables_after .= 0                                ## https://bugs.mysql.com/bug.php?id=100288
 key .= 64U                                                  ## https://bugs.mysql.com/bug.php?id=100300 https://jira.percona.com/browse/PS-7210
 Field..val_str                                              ## https://bugs.mysql.com/bug.php?id=100286
