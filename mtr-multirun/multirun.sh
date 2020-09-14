@@ -366,7 +366,7 @@ function kill_server {
          echo "No server pid for killing found in '$PID_FILE'." >> stop
       else
          echo "Initiate kill of server with pid $SERVER_PID." >> stop
-         killall -9 $SERVER_PID
+         kill -9 $SERVER_PID
       fi
    else
       echo "The PID_FILE '$PID_FILE' never existed at all or does no more exist." >> stop
