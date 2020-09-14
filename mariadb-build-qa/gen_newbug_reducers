@@ -1,0 +1,69 @@
+#!/bin/bash
+set +H
+
+# User variables
+REDUCER_MAIN="~/mariadb-qa/reducer.sh"  # Reducer template to use
+BASEDIR="/test/MD080920-mariadb-10.5.6-linux-x86_64-dbg"  # Base directory to use for testing against
+
+# Checks
+if [ ! -r ${REDUCER_MAIN} ]; then
+  echo "Assert: reducer (${REDUCER_MAIN}) not readable by this script. Terminating."
+  exit 1
+fi
+if [ ! -r /data/NEWBUGS ]; then
+  if [ ! -r ./NEWBUGS ]; then
+    echo 'Assert: Neither /data/NEWBUGS nor ./NEWBUGS exists. Terminating.'
+    exit 1
+  else
+    cd ./NEWBUGS
+  fi
+else
+  cd /data/NEWBUGS
+fi
+
+rm -f ./gen_reducer.list
+ls --color=never *.sql > ./gen_reducer.list
+while read SQL_FILE; do
+  STRING_FILE="$(echo "${SQL_FILE}" | sed 's|\.sql|.string|')"
+  if [ ! -r "${STRING_FILE}" ]; then 
+    echo "Error for: '${SQL_FILE}' found, but no '${STRING_FILE}' present!"
+    continue
+  fi
+  REDUCER_FILE="$(echo "${SQL_FILE}" | sed 's|\.sql|\.reducer|')"
+  if [ -z "${REDUCER_FILE}" ]; then
+    echo "Assert: REDUCER_FILE empty?"
+    exit 1
+  fi
+  if [ -r "${REDUCER_FILE}" ]; then 
+    rm -f "${REDUCER_FILE}"
+  fi
+  cp "${REDUCER_MAIN}" "${REDUCER_FILE}"
+  TEXT="$(cat "${STRING_FILE}" | head -n1)"
+  if [[ "${TEXT}" = *":"* ]]; then
+    if [[ "${TEXT}" = *"|"* ]]; then
+      if [[ "${TEXT}" = *"/"* ]]; then
+        if [[ "${TEXT}" = *"_"* ]]; then
+          if [[ "${TEXT}" = *"-"* ]]; then
+            echo "Assert (#1)! No suitable sed seperator found. TEXT (${TEXT}) contains all of the possibilities, add more!"
+          else TEXT="$(echo "$TEXT"|sed -e "s-&-\\\\\\&-g")";fi  # Escape '&' correctly
+        else TEXT="$(echo "$TEXT"|sed -e "s_&_\\\\\\&_g")";fi  # Escape '&' correctly
+      else TEXT="$(echo "$TEXT"|sed -e "s/&/\\\\\\&/g")";fi  # Escape '&' correctly
+    else TEXT="$(echo "$TEXT"|sed -e "s|&|\\\\\\&|g")";fi  # Escape '&' correctly
+  else TEXT="$(echo "$TEXT"|sed -e "s:&:\\\\\\&:g")";fi  # Escape '&' correctly
+  sed -i "s|^MODE=[0-9]|MODE=3|" "${REDUCER_FILE}"
+  sed -i "s/^TEXT=.*/TEXT='${TEXT}'/" "${REDUCER_FILE}"
+  sed -i "s|^SCAN_FOR_NEW_BUGS=[0-9]|SCAN_FOR_NEW_BUGS=1|" "${REDUCER_FILE}"
+  sed -i "s|^USE_NEW_TEXT_STRING=[0-9]|USE_NEW_TEXT_STRING=1|"  "${REDUCER_FILE}"
+  sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${REDUCER_FILE}
+  sed -i "s|^BASDIR=.*|BASEDIR=\"${BASEDIR}\"|" ${REDUCER_FILE}
+  sed -i "s|^WORKDIR_LOCATION=[0-9]|WORKDIR_LOCATION=1|" ${REDUCER_FILE}
+  sed -i "s|^NEW_BUGS_COPY_DIR=.*|NEW_BUGS_COPY_DIR=\"${PWD}\"|" ${REDUCER_FILE}
+  sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3 |" ${REDUCER_FILE}
+  sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER_FILE}
+  sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER_FILE}
+  sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=5|" ${REDUCER_FILE}
+  sed -i 's|^INPUTFILE=.*|INPUTFILE="$(ls -t '"${SQL_FILE}"'* \| head -n1)"|' ${REDUCER_FILE}
+  chmod +x ${REDUCER_FILE}
+  exit 0
+done < ./gen_reducer.list
+
