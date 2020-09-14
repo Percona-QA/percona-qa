@@ -72,7 +72,7 @@ TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh script 
 SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
 KNOWN_BUGS_LOC="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS_LOC file, it will not be considered a new issue when it is seen by reducer.sh
 NEW_BUGS_COPY_DIR="/data/NEWBUGS"  # Make an additional copy of any new bugs into this directory
-SHOW_SETUP_DEBUGGING=1          # Set to 1 to enable [Setup] messages with extra debug information
+SHOW_SETUP_DEBUGGING=0          # Set to 1 to enable [Setup] messages with extra debug information
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
