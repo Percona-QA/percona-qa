@@ -13,10 +13,3 @@ rm -Rf 10.6
 ./clone.sh 10.4 & 
 ./clone.sh 10.5 &
 ./clone.sh 10.6 &
-fg
-fg
-fg
-fg
-fg
-fg
-echo "Done!"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-screen -d -r | grep "\.s[0-9]\+" | sed 's|\..*||' | sed 's|[^0-9]||g' | sort -un > ~/screen_list
+screen -d -r | grep "\.s[0-9n]\+" | sed 's|\..*||' | sed 's|[^0-9]||g' | sort -un > ~/screen_list
 
 COUNT=$(wc -l ~/screen_list 2>/dev/null | sed 's| .*||')
 

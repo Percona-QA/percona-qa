@@ -26,7 +26,7 @@ else
 fi
 
 rm -f ./gen_reducer.list
-ls --color=never *.sql > ./gen_reducer.list
+ls --color=never *newbug*.sql > ./gen_reducer.list
 while read SQL_FILE; do
   STRING_FILE="$(echo "${SQL_FILE}" | sed 's|\.sql|.string|')"
   if [ ! -r "${STRING_FILE}" ]; then 
@@ -71,3 +71,4 @@ while read SQL_FILE; do
   sed -i "s|^KNOWN_BUGS_LOC=.*|KNOWN_BUGS_LOC=\"${KNOWN_BUGS_LOC}\"|" ${REDUCER_FILE}
   chmod +x ${REDUCER_FILE}
 done < ./gen_reducer.list
+rm -f ./gen_reducer.list
