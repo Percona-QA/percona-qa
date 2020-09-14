@@ -1,9 +1,13 @@
 #!/bin/bash
 set +H
 
-# User variables
-REDUCER_MAIN="~/mariadb-qa/reducer.sh"  # Reducer template to use
+# User variables, dynamic
 BASEDIR="/test/MD080920-mariadb-10.5.6-linux-x86_64-dbg"  # Base directory to use for testing against
+
+# User variables, likely no change needed to these, ever
+REDUCER_MAIN="/home/$(whoami)/mariadb-qa/reducer.sh"  # Reducer template to use
+TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"  # Text string location
+KNOWN_BUGS_LOC="/home/$(whoami)/mariadb-qa/known_bugs.strings"  # Known bugs location
 
 # Checks
 if [ ! -r ${REDUCER_MAIN} ]; then
@@ -55,7 +59,7 @@ while read SQL_FILE; do
   sed -i "s|^SCAN_FOR_NEW_BUGS=[0-9]|SCAN_FOR_NEW_BUGS=1|" "${REDUCER_FILE}"
   sed -i "s|^USE_NEW_TEXT_STRING=[0-9]|USE_NEW_TEXT_STRING=1|"  "${REDUCER_FILE}"
   sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${REDUCER_FILE}
-  sed -i "s|^BASDIR=.*|BASEDIR=\"${BASEDIR}\"|" ${REDUCER_FILE}
+  sed -i "s|^BASEDIR=.*|BASEDIR=\"${BASEDIR}\"|" ${REDUCER_FILE}
   sed -i "s|^WORKDIR_LOCATION=[0-9]|WORKDIR_LOCATION=1|" ${REDUCER_FILE}
   sed -i "s|^NEW_BUGS_COPY_DIR=.*|NEW_BUGS_COPY_DIR=\"${PWD}\"|" ${REDUCER_FILE}
   sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3 |" ${REDUCER_FILE}
@@ -63,7 +67,7 @@ while read SQL_FILE; do
   sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER_FILE}
   sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=5|" ${REDUCER_FILE}
   sed -i 's|^INPUTFILE=.*|INPUTFILE="$(ls -t '"${SQL_FILE}"'* \| head -n1)"|' ${REDUCER_FILE}
+  sed -i "s|^TEXT_STRING_LOC=.*|TEXT_STRING_LOC=\"${TEXT_STRING_LOC}\"|" ${REDUCER_FILE}
+  sed -i "s|^KNOWN_BUGS_LOC=.*|KNOWN_BUGS_LOC=\"${KNOWN_BUGS_LOC}\"|" ${REDUCER_FILE}
   chmod +x ${REDUCER_FILE}
-  exit 0
 done < ./gen_reducer.list
-

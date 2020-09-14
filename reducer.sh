@@ -593,6 +593,7 @@ options_check(){
     echo "Error: no input file given. Please give an SQL file to reduce as the first option to this script, or set inside the script as INPUTFILE=file_to_reduce.sql"
     echo "Terminating now."
     exit 1
+# TODO: The new code below did not work/has issues. To research
 #  else
 #    if [ "${1}" == "" ]; then
 #      if [ ! -r "${INPUTFILE}" ]; then
