@@ -14,9 +14,9 @@ ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely out of disk space trials" | \
 ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely 'Server has gone away' 200x due to 'RELEASE' sql" | \
  tail -n1 | tr ' ' '\n' | grep -v "^[ \t]*$" | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 
-# Delete all Handlerton. error == 0 trials
-${SCRIPT_PWD}/pquery-results.sh | grep "Handlerton. error == 0" | grep -o "reducers.*[^)]" | \
- sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
+# Delete all Handlerton. error == 0 trials  # Temp re-enabled in MariaDB to test (12/9/20)
+# ${SCRIPT_PWD}/pquery-results.sh | grep "Handlerton. error == 0" | grep -o "reducers.*[^)]" | \
+#   sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 
 # Delete all 'Assert: no core file found in' trials (benefit of new_text_string.sh)
 #${SCRIPT_PWD}/pquery-results.sh | grep "Assert. no core file found in" | grep -o "reducers.*[^)]" | \

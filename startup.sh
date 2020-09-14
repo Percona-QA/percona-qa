@@ -326,7 +326,7 @@ echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'
 echo "#!/bin/bash" > multirun
 echo "if [ ! -r ./in.sql ]; then echo 'Missing ./in.sql - please create it!'; exit 1; fi" >> multirun
 echo "if [ ! -r ./all_no_cl ]; then echo 'Missing ./all_no_cl - perhaps run ~/start or ~/mariadb-qa/startup.sh again?'; exit 1; fi" >> multirun
-echo "./all_no_cl" >> multirun
+echo "./all_no_cl \"\$*\"" >> multirun
 echo "if [ ! -r ~/mariadb-qa/multirun_cli.sh ]; then echo 'Missing ~/mariadb-qa/multirun_cli.sh - did you pull mariadb-qa from GitHub?'; exit 1; fi" >> multirun
 echo "sed -i 's|^RND_DELAY_FUNCTION=[0-9]|RND_DELAY_FUNCTION=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^RND_REPLAY_ORDER=[0-9]|RND_REPLAY_ORDER=1|' ~/mariadb-qa/multirun_cli.sh" >> multirun

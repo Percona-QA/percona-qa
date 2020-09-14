@@ -19,7 +19,7 @@ if [ "${TRIAL}" == "" ]; then
   echo "This script deletes a given pquery trial completely. Execute this script from within the pquery workdir"
   echo "Example: to delete trial 10 (./10), execute as: ./delete_single_trial.sh 10"
   exit 1
-elif [ "`echo ${TRIAL} | sed 's|[0-9]*||'`" != "" ]; then
+elif [ "$(echo ${TRIAL} | sed 's|[0-9]*||')" != "" ]; then
   echo "Trial number should be a numeric value and isn't (value passed to this script which is not considered numeric: '${TRIAL}')"
   exit 1
 elif [ -d ./${TRIAL} ]; then

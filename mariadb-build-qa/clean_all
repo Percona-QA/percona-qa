@@ -1,1 +1,3 @@
+#!/bin/bash
 ~/mariadb-qa/pquery-clean-all++.sh
+if [ -r ./clean_newbugs ]; then ./clean_newbugs; fi

@@ -22,6 +22,8 @@ cat "${1}" | \
   sed 's|versioning|VERSIONING|gi' | \
   sed 's|trigger|TRIGGER|gi' | \
   sed 's|each|EACH|gi' | \
+  sed 's|prepare|PREPARE|gi' | \
+  sed 's|show|SHOW|gi' | \
   sed 's|row|ROW|gi' | \
   sed 's|grant|GRANT|gi' | \
   sed 's|concat|CONCAT|gi' | \
@@ -95,6 +97,7 @@ cat "${1}" | \
   sed 's|read_ahead|READ_AHEAD|gi' | \
   sed 's|innodb_limit_optimistic_insert_debug|INNODB_LIMIT_OPTIMISTIC_INSERT_DEBUG|gi' | \
   sed 's|innodb_file_per_TABLE|INNODB_FILE_PER_TABLE|gi' | \
+  sed 's|variables|VARIABLES|gi' | \
   sed "s|^. mysqld options required for replay.*|${OPTIONS}|i" | \
   sed 's| [ \t]| |g'
 

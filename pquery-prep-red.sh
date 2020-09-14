@@ -229,18 +229,21 @@ generate_reducer_script(){
   if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" ]; then  # Too general strings, or no TEXT found, use MODE=4
     MODE=4
     USE_NEW_TEXT_STRING=0
+    SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
     TEXT_CLEANUP="s|ZERO0|ZERO0|"  # A zero-effect change dummy (de-duplicates #VARMOD# code below)
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
     if [[ $VALGRIND_CHECK -eq 1 ]]; then
       USE_NEW_TEXT_STRING=0  # As here new_text_string.sh will not be used, but valgrind_string.sh
+      SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
       MODE=1
     else
       if [ ${QC} -eq 0 ]; then
         MODE=3
       else
         USE_NEW_TEXT_STRING=0  # As here we're doing QC (Query correctness testing), not crash testing
+        SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
         MODE=2
       fi
     fi
@@ -724,14 +727,20 @@ fi
 for MATCHING_TRIAL in `grep -H "^MODE=[0-9]$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
   if [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
     if [ -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
+      echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial with no core dump present"
+      echo "  > Setting MODE=0 and TEXT='', and turning off USE_NEW_TEXT_STRING use"
       sed -i "s|^MODE=[1-9]|MODE=0|" reducer${MATCHING_TRIAL}.sh
       sed -i "s|^   TEXT=.*|TEXT=''|" reducer${MATCHING_TRIAL}.sh
       sed -i "s|^USE_NEW_TEXT_STRING=1|USE_NEW_TEXT_STRING=0|" reducer${MATCHING_TRIAL}.sh
-      # There is no "else" clause required here; this is a normal MODE=4 trial and not a shutdown timeout issue. It will be listed in the MODE=4 results line of pquery-results.sh, and not in the 'mysqld Shutdown Issues' line.
+      sed -i "s|^SCAN_FOR_NEW_BUGS=1|SCAN_FOR_NEW_BUGS=0|" reducer${MATCHING_TRIAL}.sh  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
     fi
   else
     # There was a coredump found in this trial's directory. Thus, this issue should be handled as a non-shutdown problem. Delete the flag. This basically makes the issue a normal MODE=4 trial. Simply deleting the flag ensures that it will be listed in the MODE=4 results line of pquery-results.sh, and not in the 'mysqld Shutdown Issues' line.
+    echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial, however a core dump was present"
+    echo "  > Removing ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE marker so normal reduction can happen"
     rm -f ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+    echo "  > Creating ${MATCHING_TRIAL}/AVOID_FORCE_KILL flag to ensure pquery-go-expert does not set FORCE_KILL=1 for this trial"
+    touch ${MATCHING_TRIAL}/AVOID_FORCE_KILL
   fi
 done
 

@@ -68,10 +68,11 @@ TIMEOUT_COMMAND=""              # A specific command, executed as a prefix to my
 SLOW_DOWN_CHUNK_SCALING=0       # On/off (1/0) If enabled, reducer will slow down it's internal chunk size scaling (also see SLOW_DOWN_CHUNK_SCALING_NR)
 SLOW_DOWN_CHUNK_SCALING_NR=3    # Slow down chunk size scaling (both for chunk reductions and increases) by not modifying the chunk for this number of trials. Default=3
 USE_NEW_TEXT_STRING=0           # On/off (1/0) If enabled, when using MODE=3, this uses new_text_string.sh (from mariadb-qa) instead of searching the entire error log. No effect otherwise. Note: enabling this makes $TEXT non-regex aware.
-TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"  # new_text_string.sh script in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
+TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh script in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
 SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
-KNOWN_BUGS="/home/$(whoami)/mariadb-qa/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS file, it will not be considered a new issue when it is seen by reducer.sh
+KNOWN_BUGS_LOC="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS_LOC file, it will not be considered a new issue when it is seen by reducer.sh
 NEW_BUGS_COPY_DIR="/data/NEWBUGS"  # Make an additional copy of any new bugs into this directory
+SHOW_SETUP_DEBUGGING=1          # Set to 1 to enable [Setup] messages with extra debug information
 
 # === Expert options
 MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
@@ -87,7 +88,7 @@ SAVE_RESULTS=1                  # On/Off (1/0) (Default=1: save a copy of reduce
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref USE_PQUERY and PQUERY_MULTI
 USE_PQUERY=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
-PQUERY_LOC="/home/$(whoami)/mariadb-qa/pquery/pquery2-md"  # The pquery binary in mariadb-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
+PQUERY_LOC="${SCRIPT_PWD}/pquery/pquery2-md"  # The pquery binary in mariadb-qa. To get this binary use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git
 
 # === Other options             # The options are not often changed
 CLI_MODE=0                      # When using the CLI; 0: sent SQL using a pipe, 1: sent SQL using --execute="SOURCE ..." command, 2: sent SQL using redirection (mysql < input.sql)
@@ -592,25 +593,25 @@ options_check(){
     echo "Error: no input file given. Please give an SQL file to reduce as the first option to this script, or set inside the script as INPUTFILE=file_to_reduce.sql"
     echo "Terminating now."
     exit 1
-  else
-    if [ "${1}" == "" ]; then
-      if [ ! -r "${INPUTFILE}" ]; then
-        echo "Error: no input file was specified from the command line, and the INPUTFILE listed inside the script (${INPUTFILE}) cannot be read"
-        echo "Terminating now."
-        exit 1
-      fi
-    else
-      if [ ! -z "${INPUTFILE}" ]; then
-        echo "Error: an input file was specified on the command line (${1}), yet INPUTFILE inside the script is also set. Not sure what file to proceed with. Please remove the INPUTFILE setting from inside script, or do not pass an input file on the command line"
-        echo "Terminating now."
-        exit 1
-      fi
-      if [ ! -r "${1}" ]; then
-        echo "A input file was specified on the command line (${1}), yet this file cannot be read by this script"
-        echo "Terminating now."
-        exit 1
-      fi
-    fi
+#  else
+#    if [ "${1}" == "" ]; then
+#      if [ ! -r "${INPUTFILE}" ]; then
+#        echo "Error: no input file was specified from the command line, and the INPUTFILE listed inside the script (${INPUTFILE}) cannot be read"
+#        echo "Terminating now."
+#        exit 1
+#      fi
+#    else
+#      if [ ! -z "${INPUTFILE}" ]; then
+#        echo "Error: an input file was specified on the command line (${1}), yet INPUTFILE inside the script is also set. Not sure what file to proceed with. Please remove the INPUTFILE setting from inside script, or do not pass an input file on the command line"
+#        echo "Terminating now."
+#        exit 1
+#      fi
+#      if [ ! -r "${1}" ]; then
+#        echo "A input file was specified on the command line (${1}), yet this file cannot be read by this script"
+#        echo "Terminating now."
+#        exit 1
+#      fi
+#    fi
   fi
   # Sudo check
   if [ "$(sudo -A echo 'test' 2>/dev/null)" != "test" ]; then
@@ -848,6 +849,9 @@ options_check(){
     USE_PQUERY=1
     # ========= These are currently limitations of PXC/Group Replication mode. Feel free to extend reducer.sh to handle these ========
     #export -n MYEXTRA=""  # Serious shortcoming. Work to be done. PQUERY MYEXTRA variables will be added docker-compose.yml
+    if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+      echo_out "[Setup] USE_PXC or USE_GRP_RPL is enabled, setting FORCE_SPORADIC=0, SPORADIC=0, FORCE_SKIPV=0, SKIPV=1, MULTI_THREADS=0"
+    fi
     export -n FORCE_SPORADIC=0
     export -n SPORADIC=0
     export -n FORCE_SKIPV=0
@@ -888,6 +892,9 @@ options_check(){
     fi
   fi
   if [ $PQUERY_MULTI -gt 0 ]; then
+    if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+      echo_out "[Setup] PQUERY_MULTI is set, setting FORCE_SKIPV=1"
+    fi
     export -n FORCE_SKIPV=1
     MULTI_THREADS=$PQUERY_MULTI_THREADS
     if [ $PQUERY_MULTI_CLIENT_THREADS -lt 1 ]; then
@@ -901,6 +908,9 @@ options_check(){
     fi
   fi
   if [ $REDUCE_GLIBC_OR_SS_CRASHES -gt 0 ]; then
+    if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+      echo_out "[Setup] REDUCE_GLIBC_OR_SS_CRASHES is set, setting MULTI_THREADS=1, MULTI_THREADS_INCREASE=0, SLOW_DOWN_CHUNK_SCALING=1, SKIPV=1"
+    fi
     export -n MULTI_THREADS=1            # Likely not needed, because MULTI mode should never become active for REDUCE_GLIBC_OR_SS_CRASHES=1 (and there is a matching assert),
     export -n MULTI_THREADS_INCREASE=0   # so it is here as a safety measure only FTM.
     export -n SLOW_DOWN_CHUNK_SCALING=1
@@ -924,22 +934,34 @@ options_check(){
     fi
   fi
   if [ $FORCE_SKIPV -gt 0 ]; then
+    if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+      echo_out "[Setup] FORCE_SKIPV was set to 0, setting FORCE_SPORADIC=1 and SKIPV=1"
+    fi
     export -n FORCE_SPORADIC=1
     export -n SKIPV=1
   fi
   if [ $FORCE_SPORADIC -gt 0 ]; then
     if [ $STAGE1_LINES -eq 90 ]; then  # Do not change any customized/non-default (i.e. !=90) setting as this may be handy for automation. For example, pquery-reach.sh will set STAGE1_LINES to 13 while activating FORCE_SKIPV=1 which means that reducer will reduce in MULTI (multi-threaded subreducer) mode until 13 lines are reached, then it will swap to single threaded. This is great to manage a combination of both sporadic (they will be reduced to at max 13 lines) and static (they will be full reduced) issues.
+      if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+        echo_out "[Setup] FORCE_SPORADIC is set and STAGE1_LINES!=90, settting STAGE1_LINES=3"
+      fi
       export -n STAGE1_LINES=3
+    fi
+    if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+      echo_out "[Setup] FORCE_SPORADIC is set, setting SPORADIC=1 and SLOW_DOWN_CHUNK_SCALING=1"
     fi
     export -n SPORADIC=1
     export -n SLOW_DOWN_CHUNK_SCALING=1
   fi
   if [ $MODE -eq 0 -a $FORCE_KILL=1 ]; then
+    if [ ${SHOW_SETUP_DEBUGGING} -gt 0 ]; then
+      echo_out "[Setup] FORCE_KILL was set to 1, however as this is a MODE=0 run, setting FORCE_KILL=0"
+    fi
     FORCE_KILL=0
   fi
   if [ ${SCAN_FOR_NEW_BUGS} -eq 1 ]; then
-    if [ ! -r ${KNOWN_BUGS} ]; then
-      echo "SCAN_FOR_NEW_BUGS was set to 1, yet file specified in KNOWN_BUGS (${KNOWN_BUGS}) does not exist?"
+    if [ ! -r ${KNOWN_BUGS_LOC} ]; then
+      echo "SCAN_FOR_NEW_BUGS was set to 1, yet the file specified in KNOWN_BUGS_LOC (${KNOWN_BUGS_LOC}) does not exist?"
       echo "Terminating now."
       exit 1
     fi
@@ -958,7 +980,7 @@ options_check(){
     fi
     if [ "${USE_NEW_TEXT_STRING}" != "1" ]; then
       echo "SCAN_FOR_NEW_BUGS was set to 1, yet USE_NEW_TEXT_STRING is not set to 1 (set to '${USE_NEW_TEXT_STRING}'). This setup is not covered by this script yet. Ref inside reducer for more info."
-      # Reason is that the new text string script is used in confunction with the new bugs string list. This could be expanded to include the older bugs string list also, but this would seem to be wasted effort as that list is no longer maintained inside MariaDB (the new unique bug id's are used instead and are much better/of much higher quality). Rather, and this is also provides additional ROI in other areas; update the new text string script to call the old script for any case where a new unique bug ID can not be obtained (quite limited limited amount of cases; usually only when incorrect core dumps (stack smashing, OOS, mysqld failed to create a coredump) are used.
+      # Reason is that the new text string script is used in conjunction with the new bugs string list. This could be expanded to include the older bugs string list also, but this would seem to be wasted effort as that list is no longer maintained inside MariaDB (the new unique bug id's are used instead and are much better/of much higher quality). Rather, and this is also provides additional ROI in other areas; update the new text string script to call the old script for any case where a new unique bug ID can not be obtained (quite limited limited amount of cases; usually only when incorrect core dumps (stack smashing, OOS, mysqld failed to create a coredump) are used.
       echo "Terminating now."
       exit 1
     fi
@@ -2853,7 +2875,7 @@ process_outcome(){
           if [ ${SCAN_FOR_NEW_BUGS} -eq 1 -a ${SKIP_NEWBUG} -ne 1 ]; then
             if [ ${NTSEXITCODE} -eq 0 ]; then
               # If we received a 0 exit code, then a proper unique bug ID was returned by new_text_string.sh (or any other script as set in $TEXT_STRING_LOC) and this script can now scan known bugs and copy info if something new was found
-              FINDBUG="$(grep -Fi --binary-files=text "${MYBUGFOUND}" ${KNOWN_BUGS} | tail -n1)"  # head -n1: fixed bugs are at the end of the list, so preference for "newbug found" is higher this way
+              FINDBUG="$(grep -Fi --binary-files=text "${MYBUGFOUND}" ${KNOWN_BUGS_LOC} | tail -n1)"  # head -n1: fixed bugs are at the end of the list, so preference for "newbug found" is higher this way
               if [[ "${FINDBUG}" == "#"* ]]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
               if [ -z "${FINDBUG}" ]; then  # Reducer found a new bug (nothing found in known bugs)
                 EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
@@ -3611,8 +3633,8 @@ fireworks_setup(){
     echo_out "[Init] > SCAN_FOR_NEW_BUGS=1: enabled new bug scanning (required)"
     SCAN_FOR_NEW_BUGS=1
   fi
-  if [ ! -r "${KNOWN_BUGS}" ]; then
-    echo_out "[Init] > Failed to read KNOWN_BUGS file at '${KNOWN_BUGS}'. Please check. Terminating."
+  if [ ! -r "${KNOWN_BUGS_LOC}" ]; then
+    echo_out "[Init] > Failed to read KNOWN_BUGS_LOC file at '${KNOWN_BUGS_LOC}'. Please check. Terminating."
     exit 1
   fi
   echo_out "[Init] > STAGE1_LINES=-1: Avoid STAGE1 from ever terminating (required)"

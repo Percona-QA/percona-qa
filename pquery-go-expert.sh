@@ -84,19 +84,21 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER}
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${REDUCER}
           # Auto-set the inputfile to the most recent sql trace inc _out* handling
-          sed -i 's|^INPUTFILE="\([^"]\+\)"|INPUTFILE="$(ls -t "\1*" \| head -n1)"|' ${REDUCER}
+          sed -i 's|^INPUTFILE="\([^"]\+\)"|INPUTFILE="$(ls -t \1* \| head -n1)"|' ${REDUCER}
           # Next, we consider if we will set FORCE_KILL=1 by doing many checks to see if it makes sense
           if grep --binary-files=text -qiE "^MODE=3|^MODE=4" ${REDUCER}; then  # Mode 3 or 4 (and not 0)
             TRIAL="$(echo ${REDUCER} | grep -o '[0-9]\+')"
-            if [ ! -r "./${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE" ]; then  # Not a shutdown timeout issue
-              TERRIBLY_OFFSET=$(grep --binary-files=text -ihbm1 'terribly' ${TRIAL}/log/master.err | head -n1 | sed 's|^\([0-9]\+\).*|\1|')
-              SHUTDOWN_OFFSET=$(grep --binary-files=text -hb 'shutdown' ${TRIAL}/log/master.err | grep -v srv_shutdown | head -n1 | sed 's|^\([0-9]\+\).*|\1|')
-              if [ ! -z "${TERRIBLY_OFFSET}" -a ! -z "${SHUTDOWN_OFFSET}" ]; then
-                if [ ${TERRIBLY_OFFSET} -lt ${SHUTDOWN_OFFSET} ]; then  # Ensure crash came before shutdown
+            if [ ! -r "./${TRIAL}/AVOID_FORCE_KILL" ]; then  # Not flagged by pquery-prep-red.sh as a trial for which AVOID_FORCE_KILL should be avoided (i.e. likely a trial for which SHUTDOWN_TIMEOUT_ISSUE was previously found/set, but also with a core dump present - i.e. actual shutdown IS required to reduce towards the core dump issue seen)
+              if [ ! -r "./${TRIAL}/SHUTDOWN_TIMEOUT_ISSUE" ]; then  # Not a shutdown timeout issue
+                TERRIBLY_OFFSET=$(grep --binary-files=text -ihbm1 'terribly' ${TRIAL}/log/master.err | head -n1 | sed 's|^\([0-9]\+\).*|\1|')
+                SHUTDOWN_OFFSET=$(grep --binary-files=text -hb 'shutdown' ${TRIAL}/log/master.err | grep -v srv_shutdown | head -n1 | sed 's|^\([0-9]\+\).*|\1|')
+                if [ ! -z "${TERRIBLY_OFFSET}" -a ! -z "${SHUTDOWN_OFFSET}" ]; then
+                  if [ ${TERRIBLY_OFFSET} -lt ${SHUTDOWN_OFFSET} ]; then  # Ensure crash came before shutdown
+                    sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
+                  fi
+                elif [ -z "${SHUTDOWN_OFFSET}" ]; then  # No shutdown seen; safe to proceed
                   sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
                 fi
-              elif [ -z "${SHUTDOWN_OFFSET}" ]; then  # No shutdown seen; safe to proceed
-                sed -i "s|^FORCE_KILL=[0-9]\+|FORCE_KILL=1|" ${REDUCER}
               fi
             fi
             TRIAL=;TERRIBLY_OFFSET=;SHUTDOWN_OFFSET=
