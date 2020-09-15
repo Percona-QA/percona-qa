@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir -p /data/NEWBUGS
+cd /data
+ls --color=never */*/*newbug*sql | grep -vEi 'VARIOUS|NEW|TARS' | sed 's|newbug_.*|newbug*|' | xargs -I{} echo 'mv {} /data/NEWBUGS/ 2>/dev/null' | xargs -I{} bash -c "{}"
