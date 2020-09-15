@@ -1,1 +1,2 @@
-ls --color=never */*/*newbug*string | xargs -I{} echo "echo -n '==== {} ====:'; cat '{}'" | xargs -I{} sh -c "{}" | grep -v "no core file found" | sed 's|===:|===\n|'
+ls --color=never NEWBUGS/*newbug*string FIREWORKS/*newbug*string 2>/dev/null | xargs -I{} echo "echo -n '==== {} ====:'; cat '{}'" | xargs -I{} sh -c "{}" | grep -v "no core file found" | sed 's|===:|===\n|'
+#ls --color=never */*/*newbug*string | xargs -I{} echo "echo -n '==== {} ====:'; cat '{}'" | xargs -I{} sh -c "{}" | grep -v "no core file found" | sed 's|===:|===\n|'
