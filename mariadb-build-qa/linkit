@@ -1,4 +1,7 @@
 #!/bin/bash
+if [ ! -d /test ]; then echo '/test does not exist, did you create it and execute cp ~/mariadb-qa/mariadb-build-qa/* /test yet?'; exit 1; fi
+if [ ! -d /data ]; then echo '/data does not exist yet? Please create it'; exit 1; fi
+mkdir -p /data/NEWBUGS /data/FIREWORKS
 ln -s /test/clean_all /data/clean_all  2>&1 | grep -v 'File exists'
 ln -s /test/monitor_run /data/monitor_run 2>&1 | grep -v 'File exists'
 ln -s /test/monitor_runs /data/monitor_runs 2>&1 | grep -v 'File exists'

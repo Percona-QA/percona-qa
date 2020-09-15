@@ -15,7 +15,8 @@ SCRIPT_PWD="$(cd `dirname $0` && pwd)"
 cd ${SCRIPT_PWD}
 cp buildall_dbg.sh ${TARGET}
 cp buildall_opt.sh ${TARGET}
-cp buildall_asan.sh ${TARGET}
+cp buildall_asan_opt.sh ${TARGET}
+cp buildall_asan_dbg.sh ${TARGET}
 cp clean_newbugs ${TARGET}
 cp clone.sh ${TARGET}
 cp cloneall.sh ${TARGET}
