@@ -1,6 +1,9 @@
 Almost all issues (85%-95%) reproduce when using;
 pquery-run.sh > ~/percona-qa/pquery-prep-red.sh > ~/percona-qa/pquery-clean-known.sh > ~/percona-qa/pquery-results.sh > individual reducers
 
+For experts this work flow is:
+pquery-run.sh > ~/percona-qa/pquery-go-expert.sh > ~/percona-qa/pquery-results.sh > individual reducers
+
 However, for issues that fail to reproduce, try these things (in this order):
 -----------------------------------------------------------------------------
 * If you have set FORCE_KILL=1 in reducer, note that this does not reduce issues seen on server shutdown only (low percentage of issues). Set it to FORCE_KILL=0 to attempt to reduce towards an issue seen on/at shutdown only (mysqladmin shutdown will then be used instead of a kill).
