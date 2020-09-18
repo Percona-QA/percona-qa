@@ -2,8 +2,8 @@
 # Also see ~/mariadb-qa/memory_leaks_howto.txt for related throubleshooting info, otherwise unrelated to the monitoring script below
 
 # User variables
-KILL_LARGE=1  # Will kill any process consuming more then KILL_PERCENT percent of memory
-KILL_PERCENT=3
+KILL_LARGE=1    # Will kill any process consuming equal to or more then KILL_PERCENT.0 percent of memory
+KILL_PERCENT=4  # Ex: 4: All processes up to 3.99 will continue to live, 4.00 and onwards will be killed
 
 # Script variables
 while true; do
@@ -14,7 +14,7 @@ while true; do
     HEADLINE="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n2 | tail -n1)"
     PERCENT="$(echo ${HEADLINE} | awk '{print $2}' | sed 's|\.[0-9]\+||;s|[ \t]||g')"
     PID="$(echo ${HEADLINE} | awk '{print $1}' | sed 's|[ \t]||g')"
-    if [ ${PERCENT} -gt ${KILL_PERCENT} ]; then
+    if [ ${PERCENT} -ge ${KILL_PERCENT} ]; then
       echo "Process ${PID} is consuming too much memory (${PERCENT}%): terminating..."
       kill -9 ${PID}
       kill -9 ${PID}

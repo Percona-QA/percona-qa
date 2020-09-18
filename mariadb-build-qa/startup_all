@@ -3,7 +3,7 @@
 
 echo "ONLY RUN THIS SCRIPT ON A NON-PRODUCTION SERVER, IT MOVES /etc/mysql to /etc/mysql.old"
 echo "Press CTRL+C to interrupt"
-sleep 2
+sleep 3
 
 if [ ! -r ~/mariadb-qa/startup.sh ]; then
   echo "Assert: incorrect infrastructure setup! Please make ~/mariadb-qa/startup.sh to be available"
@@ -16,6 +16,6 @@ sync
 
 sync
 
-sudo mv /etc/mysql /etc/mysql.old   # Avoids any local my.cnf from being used by any mysqld
+sudo mv /etc/mysql /etc/mysql.old 2>/dev/null  # Avoids any local my.cnf from being used by any mysqld
 
 echo "Complete! The information above (on ./all) refers to the script which were created INSIDE the base directories, i.e. you can do: cd somebasedir; ./all"

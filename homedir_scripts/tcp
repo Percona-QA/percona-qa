@@ -99,6 +99,11 @@ cat "${1}" | \
   sed 's|innodb_file_per_TABLE|INNODB_FILE_PER_TABLE|gi' | \
   sed 's|variables|VARIABLES|gi' | \
   sed "s|^. mysqld options required for replay.*|${OPTIONS}|i" | \
-  sed 's| [ \t]| |g'
+  sed 's|\t| |g' | \
+  sed 's|  | |g' | \
+  sed 's| ,|,|g' | \
+  sed 's|( |(|g' | \
+  sed 's| )|)|g' | \
+  sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g' 
 
 #  sed 's|||gi' | \

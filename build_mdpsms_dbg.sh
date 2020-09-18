@@ -114,6 +114,8 @@ SSL="-DWITH_SSL=system"
 if [ $SSL_MYSQL57_HACK -eq 1 -a $FB -ne 1 ]; then
   SSL="-DWITH_SSL=bundled"
 fi
+# MS 5.6 only, current ssl hack (15/9/20)
+#SSL="-DWITH_SSL=system"
 
 # MariaDB: use bundled SSL
 if [ ${MD} -eq 1 ]; then

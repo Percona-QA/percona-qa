@@ -725,22 +725,22 @@ fi
 # * The check for ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ensures that the issue was a shutdown issue
 # If these 3 all apply, it is safe to change the MODE to =0 and assume that this is a shutdown issue only
 for MATCHING_TRIAL in `grep -H "^MODE=[0-9]$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
-  if [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
-    if [ -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then
+  if [ -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then  # Only deal with shutdown timeout issues!
+    if [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
       echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial with no core dump present"
       echo "  > Setting MODE=0 and TEXT='', and turning off USE_NEW_TEXT_STRING use"
       sed -i "s|^MODE=[1-9]|MODE=0|" reducer${MATCHING_TRIAL}.sh
       sed -i "s|^   TEXT=.*|TEXT=''|" reducer${MATCHING_TRIAL}.sh
       sed -i "s|^USE_NEW_TEXT_STRING=1|USE_NEW_TEXT_STRING=0|" reducer${MATCHING_TRIAL}.sh
       sed -i "s|^SCAN_FOR_NEW_BUGS=1|SCAN_FOR_NEW_BUGS=0|" reducer${MATCHING_TRIAL}.sh  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
+    else
+      # There was a coredump found in this trial's directory. Thus, this issue should be handled as a non-shutdown problem (i.e. MODE=3 or MODE=4), even though the issue happens on shutdown. Thus: delete the SHUTDOWN_TIMEOUT_ISSUE flag. This basically makes the issue a normal MODE=3 or MODE=4 trial. Simply deleting the flag ensures that it will be listed in the normal crash output results of pquery-results.sh, and not as a 'mysqld Shutdown Issues' (which are joined together and thus would cause many such issues to be auto-deleted when pquery-eliminate-dups runs!). Also create the AVOID_FORCE_KILL flag to ensure reducer uses mysqladmin shutdown which will show the issue in shutdown instead of quick-reducing using FORCE_KILL=1 and thereby missing the issue-on-shutdown
+      echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial, however a core dump was present"
+      echo "  > Removing ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE marker so normal reduction & result presentation can happen"
+      rm -f ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+      echo "  > Creating ${MATCHING_TRIAL}/AVOID_FORCE_KILL flag to ensure pquery-go-expert does not set FORCE_KILL=1 for this trial"
+      touch ${MATCHING_TRIAL}/AVOID_FORCE_KILL
     fi
-  else
-    # There was a coredump found in this trial's directory. Thus, this issue should be handled as a non-shutdown problem. Delete the flag. This basically makes the issue a normal MODE=4 trial. Simply deleting the flag ensures that it will be listed in the MODE=4 results line of pquery-results.sh, and not in the 'mysqld Shutdown Issues' line.
-    echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial, however a core dump was present"
-    echo "  > Removing ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE marker so normal reduction can happen"
-    rm -f ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
-    echo "  > Creating ${MATCHING_TRIAL}/AVOID_FORCE_KILL flag to ensure pquery-go-expert does not set FORCE_KILL=1 for this trial"
-    touch ${MATCHING_TRIAL}/AVOID_FORCE_KILL
   fi
 done
 
