@@ -5,6 +5,8 @@ STARTFLAG=0  # 1 When 'directly_executable_statement:' was seen (start from here
 STARTC=0     # 0 When not reading inside a C-code block, set to location of first '{' otherwise
 STARTCOM=0   # 0 When not reading inside a comment block
 while IFS=$'\n' read LINE; do
+  # Symbolizing
+  LINE="$(echo "${LINE}" | sed "s|'{'|SYMB_CURL_L|g;s|'}'|SYMB_CURL_RT|g;s|'!'|SYMB_EXCL|g;s|'^'|SYMB_CAP|g;s|'>'|SYMB_GT|g;s|'<'|SYMB_LT|g;s|'+'|SYMB_PLUS|g;s|'-'|SYMB_MINUS|g;s|'~'|SYMB_TILDE|g;s|'%'|SYMB_PERCENT|g;s|'/'|SYMB_SLASH|g;s|'\*'|SYMB_ASTERISK|g;s|''|SYMB_LITERAL_EMPTY|g;s|'@'|SYMB_LEFT_AT|g;s/'|'/SYMB_PIPE/g;s|'&'|SYMB_AMP|g;s|'('|SYMB_LEFT_PAR|g;s|')'|SYMB_RIGHT_PAR|g;s|'\.'|SYMB_DOT|g;s|','|SYMB_COMMA|g;s|'='|SYMB_EQUALS|g;s|^[ ]\+| |;s/^ | / /;s|  | |g;s| $||g")"
   # Changing /*empty*/ and /*nothing*/ to token, and remove /*...*/ and {...}
   LINE="$(echo "${LINE}" | sed "s|/\*[ ]*empty[ ]*\*/|EMPTY|ig;s|/\*[ ]*nothing[ ]*\*/|EMPTY|ig;s|/\*.*\*/||;s|{.*}||")"  
   CHECK_COMMENT_L="$(echo "${LINE}" | sed 's|^[ \t]\+||' | grep -o '^..')"  # LHS
@@ -40,7 +42,7 @@ while IFS=$'\n' read LINE; do
   if [ "${REDUCED_LINE}" == "" ]; then continue; fi  # Skip empty lines
   if [ "${REDUCED_LINE}" == ";" ]; then continue; fi  # End of key/valuepairs, skip line with ;
   if [ "${REDUCED_LINE}" == "|" ]; then continue; fi  # Skip line with |
-  LINE="$(echo "${LINE}" | sed "s|\t|  |;s|'@'|SYMB_LEFT_AT|g;s|'('|SYMB_LEFT_PAR|g;s|')'|SYMB_RIGHT_PAR|g;s|'\.'|SYMB_DOT|g;s|','|SYMB_COMMA|g;s|'='|SYMB_EQUALS|g;s|^[ ]\+| |;s/^ | / /;s|  | |g;s| $||g")"
+  LINE="$(echo "${LINE}" | sed "s|\t|  |;s|^[ ]\+| |;s/^ | / /;s|  | |g;s| $||g")"
   if [[ "${LINE}" == *":"* ]]; then 
     if [[ "${LINE}" != *":" ]]; then  # Line was not constructed correclty in original grammar
       LINE1="$(echo "${LINE}" | sed 's|:.*|:|')"
