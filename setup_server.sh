@@ -188,4 +188,4 @@ echo "  sudo swapon /swapfile"
 echo "Then add the /swapfile line to the /etc/fstab file as shown above"
 echo ""
 echo "To set timezone per-user, do:"
-echo "echo 'export TZ=\"/usr/share/zoneinfo/Australia/Sydney\" >> ~/.basrc'
+echo "echo 'export TZ=\"/usr/share/zoneinfo/Australia/Sydney\"' >> ~/.basrc"
