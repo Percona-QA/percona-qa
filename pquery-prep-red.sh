@@ -405,7 +405,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*TEXT_STRING_LOC[ \t]*=.*$/s|^[ \t]*TEXT_STRING_LOC[ \t]*=.*$|#TEXT_STRING_LOC=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*USE_NEW_TEXT_STRING[ \t]*=.*$/s|^[ \t]*USE_NEW_TEXT_STRING[ \t]*=.*$|#USE_NEW_TEXT_STRING=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*SCAN_FOR_NEW_BUGS[ \t]*=.*$/s|^[ \t]*SCAN_FOR_NEW_BUGS[ \t]*=.*$|#SCAN_FOR_NEW_BUGS=<set_below_in_machine_variables_section>|" \
-   | sed -e "0,/^[ \t]*KNOWN_BUGS[ \t]*=.*$/s|^[ \t]*KNOWN_BUGS[ \t]*=.*$|#KNOWN_BUGS=<set_below_in_machine_variables_section>|" \
+   | sed -e "0,/^[ \t]*KNOWN_BUGS_LOC[ \t]*=.*$/s|^[ \t]*KNOWN_BUGS_LOC[ \t]*=.*$|#KNOWN_BUGS_LOC=<set_below_in_machine_variables_section>|" \
    | sed  "0,/^[ \t]*SCRIPT_PWD[ \t]*=.*$/s|^[ \t]*SCRIPT_PWD[ \t]*=.*$|SCRIPT_PWD=${SCRIPT_PWD}|" \
    | sed -e "${PQUERYOPT_CLEANUP}" \
    | sed -e "${MYEXTRA_CLEANUP}" \
@@ -431,7 +431,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:BASEDIR=\"${BASE}\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:INPUTFILE=\"${INPUTFILE}\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:SCAN_FOR_NEW_BUGS=${SCAN_FOR_NEW_BUGS}\n#VARMOD#:" \
-   | sed -e "0,/#VARMOD#/s:#VARMOD#:KNOWN_BUGS=\"${SCRIPT_PWD}/known_bugs.strings\"\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:KNOWN_BUGS_LOC=\"${SCRIPT_PWD}/known_bugs.strings\"\n#VARMOD#:" \
    | sed -e "${MYEXTRA_STRING1}" \
    | sed -e "${MYINIT_STRING1}" \
    | sed -e "${WSREP_OPT_STRING}" \

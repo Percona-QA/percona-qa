@@ -14,6 +14,7 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 ## SIGSEGV|malloc_size_and_flag|my_free|PROFILING::finish_current_query_impl|PROFILING::finish_current_query                                                                     ## OPT MDEV-23657
 
 ###### CURRENT BUGS ######
+SIGSEGV|Column_stat::store_stat_fields|Stat_table::update_stat|update_statistics_for_table|mysql_admin_table                                                                    ## DBG MDEV-23753
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|store_key_field::copy_inner|store_key::copy                                                            ## DBG MDEV-23749
 SIGSEGV|replace_user_table|mysql_alter_user|mysql_execute_command|mysql_parse                                                                                                   ## OPT MDEV-23731
 table->data_dir_path || !space|SIGABRT|row_drop_table_for_mysql|ha_innobase::delete_table|ha_innobase::truncate|handler::ha_truncate                                            ## DBG MDEV-23705
