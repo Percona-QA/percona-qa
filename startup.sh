@@ -43,7 +43,7 @@ INIT_OPT="--no-defaults --initialize-insecure"  # Compatible with     5.7,8.0 (m
 INIT_TOOL="${BIN}"                # Compatible with     5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep --binary-files=text -oe '[58]\.[01567]' | head -n1)
 if [ -z "${VERSION_INFO}" ]; then VERSION_INFO="NA"; fi
-VERSION_INFO_2=$(${BIN} --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-5]' | head -n1)
+VERSION_INFO_2=$(${BIN} --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-6]' | head -n1)
 if [ -z "${VERSION_INFO_2}" ]; then VERSION_INFO_2="NA"; fi
 
 if [ "${VERSION_INFO_2}" == "10.4" -o "${VERSION_INFO_2}" == "10.5" -o "${VERSION_INFO_2}" == "10.6" ]; then
@@ -416,7 +416,7 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|^\(MYEXTRA="[^"]\+\)"|\1 ${3}"|' ./reducer_new_text_string.sh
   sed -i 's|^MODE=4|MODE=3|' ./reducer_new_text_string.sh
   sed -i 's|^SCAN_FOR_NEW_BUGS=0|SCAN_FOR_NEW_BUGS=1|' ./reducer_new_text_string.sh
-  sed -i 's|^KNOWN_BUGS=[^#]\+|KNOWN_BUGS="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_new_text_string.sh
+  sed -i 's|^KNOWN_BUGS_LOC=[^#]\+|KNOWN_BUGS_LOC="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_new_text_string.sh
   sed -i 's|^FORCE_SKIPV=0|FORCE_SKIPV=1|' ./reducer_new_text_string.sh
   sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_new_text_string.sh
   sed -i 's|^STAGE1_LINES=[^#]\+|STAGE1_LINES=10   |' ./reducer_new_text_string.sh

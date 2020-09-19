@@ -291,7 +291,6 @@
 # See what processes are accessing a given file
   fuser -a /path_to/your_file
 
-
 # ------ GNU 'screen' usage ------
 # Want to scroll inside a screen session?
   Use CTRL+a+ESC (i.e press CTRL+a, keep CTRL in, then press ESC), then use cursor up (or down) to scroll, ESC or q to escape
@@ -299,6 +298,8 @@
   pstree -g  # Great for finding the screen PID (i.e. for use with screen -d -r {pid}) that is runnnig a particular script/binary
 
 # ------ OS/Admin ------
+# Running out of space on /dev/shm yet the actually used space is much smaller then allotted space? If so, is likely due to [dead] processes holding on to old files. Run this regularly:
+  sudo lsof -s +L1 | awk '{print $7" "$2" "$3" "$10}' | grep 'dev/shm' | grep -E "^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]|^[3-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" | awk '{print $2}' | xargs kill -9 2>/dev/null  # Kill any processes holding onto 'deleted'/old files > 300GB
 # Monitor the current rate of syscalls/sec  ## With thanks, http://www.brendangregg.com/blog/2018-02-09/kpti-kaiser-meltdown-performance.html
   sudo perf stat -e raw_syscalls:sys_enter -a -I 1000
 # If umount produces this error: "umount: /<mountpt>: target is busy.", consider using this (potentially risky!) lazy unmount instead: (<device>=actual disk)

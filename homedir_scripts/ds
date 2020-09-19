@@ -28,6 +28,7 @@ while true; do
   sleep 2
   if [ ${COUNT1} -ge 10 ]; then
     sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM
+    sudo lsof -s +L1 | awk '{print $7" "$2" "$3" "$10}' | grep 'dev/shm' | grep -E "^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]|^[3-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" | awk '{print $2}' | xargs kill -9 2>/dev/null  # Cleanup any processes which have dead files > 300MB open
     sync
     COUNT1=0
   fi

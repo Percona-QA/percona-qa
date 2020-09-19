@@ -2071,7 +2071,7 @@ START_OPT="--core-file"                                  # Compatible with 5.6,5
 INIT_OPT="--no-defaults --initialize-insecure ${MYINIT}" # Compatible with 5.7,8.0 (mysqld init)
 INIT_TOOL="${BIN}"                                       # Compatible with 5.7,8.0 (mysqld init), changed to MID later if version <=5.6
 VERSION_INFO=$(${BIN} --version | grep -oe '[58]\.[01567]' | head -n1)
-VERSION_INFO_2=$(${BIN} --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-5]' | head -n1)
+VERSION_INFO_2=$(${BIN} --version | grep --binary-files=text -i 'MariaDB' | grep -oe '10\.[1-6]' | head -n1)
 if [ -z "${VERSION_INFO_2}" ]; then VERSION_INFO_2="NA"; fi
 
 if [ "${VERSION_INFO_2}" == "10.4" -o "${VERSION_INFO_2}" == "10.5" -o "${VERSION_INFO_2}" == "10.6" ]; then
