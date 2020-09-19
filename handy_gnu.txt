@@ -350,6 +350,9 @@
   timedatectl && timedatectl list-timezones | grep "Australia"  # or similar
   sudo timedatectl set-timezone Australia/Sydney                # or similar
   # If timedatectl is not available (older systems), use dpkg-reconfigure tzdata
+# Configure timezone on a per-user basis 
+  timedatectl list-timezones | grep yourplace  # To see a list to swap the last bit of:
+  echo 'export TZ=\"/usr/share/zoneinfo/your_country/your_place\"' >> ~/.basrc
 
 # ------ Tools ------
 # Use shellcheck (See https://github.com/koalaman/shellcheck and http://www.shellcheck.net/) to check script syntax

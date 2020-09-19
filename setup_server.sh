@@ -149,22 +149,52 @@ fi
 # Reload sysctl.conf file instantly
 sudo sysctl -p
 
-sudo apt-get install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev python-mysqldb mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcrack2-dev libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev
+# Disable news
+sudo sed -i 's|^ENABLED=1|ENABLED=0|' /etc/default/motd-news
+
+# Add additional repo's
+sudo add-apt-repository universe
+sudo add-apt-repository multiverse
+sudo add-apt-repository restricted
+
+# Install apps for 18.04
+#sudo apt-get install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev python-mysqldb mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcrack2-dev libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev cpufrequtils rr
+
+# Install apps for 20.04
+sudo apt-get install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g libreadline-dev debhelper devscripts pkg-config dpkg-dev lsb-release terminator libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcrack2-dev libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev cpufrequtils rr
+# Packages so far not available on 20.04:
+# yum-utils: removed ftm
+# libjemalloc1: not needed?
+# zlib1g-dev: removed as it is auto-selected by libz-dev
+# zlib1g-dbg: not available, but referred by another package, not needed [anymore?]
+# libreadline7-dbg: libreadline-dev is present, which may be sufficient
+# python-mysqldb: replacement?
 
 sudo apt-get install libdata-dumper-simple-perl  # Required by mysql_install_db
+
+# rr Tuning
+sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+sudo sed -i 's|^#RemoveIPC=yes|RemoveIPC=no|' /etc/systemd/logind.conf; sudo systemctl restart systemd-logind.service
+sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/20auto-upgrades
+sudo sed -i 's|vm.swappiness=5|vm.swappiness=1|'  /etc/sysctl.conf
+sudo sh -c 'echo "GOVERNOR=\"performance\"" >> /etc/default/cpufrequtils' && sudo systemctl restart cpufrequtils
+sudo sh -c 'echo "kernel.perf_event_paranoid=1" >> /etc/sysctl.conf' && sudo sysctl -p
 
 echo "An example for /etc/fstab:"
 echo "---------------------------------------------------------------------------------------"
 echo "LABEL=cloudimg-rootfs                     /         ext4  defaults 0 0"
 echo "LABEL=UEFI                                /boot/efi vfat  defaults 0 0"
-echo "UUID=someuuid-uuid-uuid-uuid-uuidsomeuuid /data     ext4  discard,defaults,nofail 0 2"
+echo "UUID=someuuid-uuid-uuid-uuid-uuidsomeuuid /data     ext4  defaults,discard,nofail 0 2"
+echo "/swapfile                                 swap      swap  defaults,sw,nofail 0 0"
 echo "tmpfs                                     /dev/shm  tmpfs defaults,rw,nosuid,nodev,noatime,nofail,size=90G 0 0"
-echo "/swapfile swap swap defaults,nofail 0 0"
 echo "---------------------------------------------------------------------------------------"
+echo "Note the first 'swap' for /swapfile should be 'none' on Ubunto 20.04 (to be verified)"
 echo "Create swapfile like this:"
-echo "  sudo fallocate -l 16G /swapfile"
+echo "  sudo fallocate -l 64G /swapfile"
 echo "  sudo chmod 600 /swapfile"
 echo "  sudo mkswap /swapfile"
 echo "  sudo swapon /swapfile"
 echo "Then add the /swapfile line to the /etc/fstab file as shown above"
-
+echo ""
+echo "To set timezone per-user, do:"
+echo "echo 'export TZ=\"/usr/share/zoneinfo/Australia/Sydney\"' >> ~/.basrc"
