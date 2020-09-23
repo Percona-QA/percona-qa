@@ -183,7 +183,7 @@ sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.ta
 sudo sed -i 's|^#RemoveIPC=yes|RemoveIPC=no|' /etc/systemd/logind.conf; sudo systemctl restart systemd-logind.service
 sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/20auto-upgrades
 sudo sed -i 's|vm.swappiness=5|vm.swappiness=1|'  /etc/sysctl.conf
-sudo sh -c 'echo "GOVERNOR=\"performance\"" >> /etc/default/cpufrequtils' && sudo systemctl restart cpufrequtils
+#sudo sh -c 'echo "GOVERNOR=\"performance\"" >> /etc/default/cpufrequtils' && sudo systemctl restart cpufrequtils  # Not necessary ftm it seems
 sudo sh -c 'echo "kernel.perf_event_paranoid=1" >> /etc/sysctl.conf' && sudo sysctl -p
 
 echo "An example for /etc/fstab:"
