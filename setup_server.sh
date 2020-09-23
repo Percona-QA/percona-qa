@@ -178,13 +178,18 @@ sudo apt-get install -y build-essential man-db wget patch make cmake automake au
 
 sudo apt-get install libdata-dumper-simple-perl  # Required by mysql_install_db
 
-# rr Tuning
-sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
-sudo sed -i 's|^#RemoveIPC=yes|RemoveIPC=no|' /etc/systemd/logind.conf; sudo systemctl restart systemd-logind.service
-sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/20auto-upgrades
-sudo sed -i 's|vm.swappiness=5|vm.swappiness=1|'  /etc/sysctl.conf
-#sudo sh -c 'echo "GOVERNOR=\"performance\"" >> /etc/default/cpufrequtils' && sudo systemctl restart cpufrequtils  # Not necessary ftm it seems
-sudo sh -c 'echo "kernel.perf_event_paranoid=1" >> /etc/sysctl.conf' && sudo sysctl -p
+# rr server Tuning
+if [ "${1}" == "rr" ]; then
+  sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+  sudo sed -i 's|^#RemoveIPC=yes|RemoveIPC=no|' /etc/systemd/logind.conf; sudo systemctl restart systemd-logind.service
+  sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/20auto-upgrades
+  sudo sed -i 's|vm.swappiness=5|vm.swappiness=1|'  /etc/sysctl.conf
+  # Performance mode not necessary ftm it seems on 20.04, may be required on 18.04 for rr to work properly
+  #sudo sh -c 'echo "GOVERNOR=\"performance\"" >> /etc/default/cpufrequtils' && sudo systemctl restart cpufrequtils
+  if [ "$(grep -m1 '^kernel.perf_event_paranoid=1' /etc/sysctl.conf)" != 'kernel.perf_event_paranoid=1' ]; then
+    sudo sh -c 'echo "kernel.perf_event_paranoid=1" >> /etc/sysctl.conf' && sudo sysctl -p
+  fi
+fi
 
 echo "An example for /etc/fstab:"
 echo "---------------------------------------------------------------------------------------"
