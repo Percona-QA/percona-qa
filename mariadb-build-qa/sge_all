@@ -1,1 +1,5 @@
-ls -d [0-9]* | xargs -I{} ~/sge {}
+#!/bin/bash
+
+if [ ! -r ~/sge ]; then echo "Assert: ~/sge not available, please do: cp ~/mariadb-qa/homedir_scripts/ ~; or similar"; exit 1; fi
+
+ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] | xargs -I{} ~/sge {}

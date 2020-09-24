@@ -241,7 +241,7 @@ if [ ${ASAN_MODE} -eq 0 ]; then
       if [ ! -z "${FINDBUG}" ]; then
         if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" != "#" ]; then  # If true, then this is not a previously fixed bugs. If false (i.e. leading char is "#") then this is a previouly fixed bug remarked with a leading '#' in the known bugs file.
           # Do NOT change the text in the next echo line, it is used by mariadb-qa/move_known.sh
-          echo "FOUND: This is an already known, and not fixed yet, bug!"
+          echo "FOUND: This is an already known, and potentially not fixed yet, bug!"
           echo "${FINDBUG}"
         else
           echo "*** FOUND: This is an already known bug, but it was previously fixed! Research further! ***"

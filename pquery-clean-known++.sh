@@ -6,6 +6,10 @@ SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 
 echo "Extra cleaning up of known issues++ (expert mode)..."
 
+# Delete all known bugs which do not correctly produce unique bug ID's due to stack smashing etc
+grep 'Assertion .state_ == s_exec || state_ == s_quitting. failed.' */log/master.err 2>/dev/null | sed 's|^\([0-9]\+\)/.*|\1|' | grep -o '[0-9]\+' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}  # MDEV-22148
+grep 'Assertion .thd->transaction->stmt.is_empty() || thd->in_sub_stmt. failed.' */log/master.err 2>/dev/null | sed 's|^\([0-9]\+\)/.*|\1|' | grep -o '[0-9]\+' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}  # MDEV-22726
+
 # Delete all likely out of disk space trials
 ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely out of disk space trials" | \
  tail -n1 | tr ' ' '\n' | grep -v "^[ \t]*$" | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
@@ -19,9 +23,10 @@ ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely 'Server has gone away' 200x d
 #   sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 
 # Delete all 'Assert: no core file found in' trials (benefit of new_text_string.sh)
-#${SCRIPT_PWD}/pquery-results.sh | grep "Assert. no core file found in" | grep -o "reducers.*[^)]" | \
-# sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
+${SCRIPT_PWD}/pquery-results.sh | grep "Assert. no core file found in" | grep -o "reducers.*[^)]" | \
+ sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 # 9/9/2020 temp disabled to check why so many 'Assert: no core file found in */*core*' trials
+# 22/9/2020 temp re-enabled (temp re-disable again later) due to so many bugs in queues
 
 # Delete all 'TRIALS TO CHECK MANUALLY' trials which do not have an associated core file in their data directories
 rm -f ~/results_list++.tmp

@@ -547,6 +547,7 @@ fi
 echo_out(){
   echo "$(date +'%F %T') $1"
   if [ -r $WORKD/reducer.log ]; then echo "$(date +'%F %T') $1" >> $WORKD/reducer.log; fi
+  if [ ! -r $INPUTFILE ]; then abort; fi  # The inputfile was removed (likely cleanup)
 }
 
 echo_out_overwrite(){
@@ -554,8 +555,13 @@ echo_out_overwrite(){
   echo -ne "$(date +'%F %T') $1\r"
 }
 
-ctrl_c(){
-  echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
+abort(){  # Additionally/also used for when echo_out cannot locate $INPUTFILE anymore
+  if [ -r $INPUTFILE ]; then
+    echo_out "[Abort] CTRL+C Was pressed. Dumping variable stack"
+  else
+    echo_out "[Abort] Original input file (${INPUTFILE}) no longer present or readable."
+    echo_out "[Abort] The source for this reducer was likely deleted. Dumping variable stack"
+  fi
   echo_out "[Abort] WORKD: $WORKD (reducer log @ $WORKD/reducer.log) | EPOCH ID: $EPOCH"
   if [ -r $WORKO ]; then  # If there were no issues found, $WORKO was never written
     echo_out "[Abort] Best testcase thus far: $WORKO"
@@ -577,11 +583,15 @@ ctrl_c(){
   if [ "$EPOCH" != "" ]; then
     PIDS_TO_TERMINATE=$(ps -ef | grep -E --binary-files=text $WHOAMI | grep -E --binary-files=text $EPOCH | grep -E --binary-files=text -v "grep" | awk '{print $2}' | tr '\n' ' ')
   else
-    echo_out "Assert: \$EPOCH is empty! in ctrl_c()!"
+    echo_out "Assert: \$EPOCH is empty! in abort()!"
   fi
   echo_out "[Abort] Terminating these PID's: $PIDS_TO_TERMINATE"
   kill -9 $PIDS_TO_TERMINATE >/dev/null 2>&1
-  echo_out "[Abort] What follows below is a call of finish(), the results are likely correct, but may be mangled due to the interruption"
+  if [ -r $INPUTFILE ]; then
+    echo_out "[Abort] What follows below is a call of finish(), the results are likely correct, but may be mangled due to the interruption"
+  else
+    echo_out "[Abort] What follows below is a call of finish(), the results are likely correct, but may be mangled due to the abort"
+  fi
   finish
   echo_out "[Abort] Done. Terminating reducer"
   exit 2
@@ -1054,7 +1064,7 @@ set_internal_options(){  # Internal options: do not modify!
     if [ "${SPORADIC}" == "" ]; then echo "Assert: \$SPORADIC is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
     if [ "${MYUSER}" == "" ];   then echo "Assert: \$MYUSER is empty inside a subreducer! Check $(cd $(dirname $0) && pwd)/$0"; exit 1; fi
   fi
-  trap ctrl_c SIGINT  # Requires ${EPOCH} to be set already
+  trap abort SIGINT  # Requires ${EPOCH} to be set already
   # Even if RQG is no longer used, the next line (i.e. including 'transforms') should NOT be modified. It provides backwards compatibility with RQG (given the 'transforms' database creation)
   DROPC="DROP DATABASE transforms;CREATE DATABASE transforms;DROP DATABASE test;CREATE DATABASE test;USE test;"
   STARTUPCOUNT=0
@@ -1290,7 +1300,7 @@ multi_reducer(){
             echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))"
             if [ "${FIREWORKS}" != "1" ]; then  # Only show this is in non-fireworks mode. In fireworks more, this outcome is expected. TODO: We can perhaps just 'never' show this, as it is highly likely seen only when an issue that is not being searched for is seen (to be verified through setting pauses in the script etc and checking why this subreducer thread dissappeared)
               # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-              echo_out "[Debug Aid] This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED}while this script was running?). This may also happen due to any of the following reasons: 1) Another server running on the same port (check error logs: grep 'already in use' /dev/shm/*/*/*/log/master.err  2) mysqld startup timeouts etc., 3) somewhere in the original input file (which may now have been reduced further; i.e. you may start to see this issue only at some part during a run when the flow of SQL changed towards this issue) it may have had a DROP USER root or similar, disallowing access to mysqladmin shutdown, causing 'port in use' errors. You can verify this by doing; grep 'Access denied for user' /dev/shm/subreducer/*/log/mysqld.out, or similar. A workaround, for most MODE's (though not MODE=0 / timeout / shutdown based issues), is to use/set FORCE_KILL=1 which avoids using mysqladmin shutdown. Another option may be to 'just let it run'. 4) the server is crashing, _but not_ on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log which often help to find the specific issue. Ref /dev/shm/subreducer/*/reducer.log."  # TODO: for item #3 for example, this script can parse the log and check for this itself and give a better output here (and simply kill the process intead of attempting mysqladmin shutdown, which would better). Another oddity is this; if kill is attempted by default after myaladmin shutdown attempt, then why is there a 'port in use' error at all? That should not happen. Verfied that FORCE_KILL=1 does resolve the port in use issue.
+              echo_out "[Debug Aid] This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED} while this script was running?. This may also happen due to any of the following reasons: 1) Another server running on the same port (check error logs: grep 'already in use' /dev/shm/*/*/*/log/master.err  2) mysqld startup timeouts etc., 3) somewhere in the original input file (which may now have been reduced further; i.e. you may start to see this issue only at some part during a run when the flow of SQL changed towards this issue) it may have had a DROP USER root or similar, disallowing access to mysqladmin shutdown, causing 'port in use' errors. You can verify this by doing; grep 'Access denied for user' /dev/shm/*/subreducer/*/log/master.err, or similar. A workaround, for most MODE's (though not MODE=0 / timeout / shutdown based issues), is to use/set FORCE_KILL=1 which avoids using mysqladmin shutdown. Another option may be to 'just let it run'. 4) the server is crashing, _but not_ on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log which often help to find the specific issue. Ref /dev/shm/subreducer/*/reducer.log."  # TODO: for item #3 for example, this script can parse the log and check for this itself and give a better output here (and simply kill the process intead of attempting mysqladmin shutdown, which would better). Another oddity is this; if kill is attempted by default after myaladmin shutdown attempt, then why is there a 'port in use' error at all? That should not happen. Verfied that FORCE_KILL=1 does resolve the port in use issue.
               echo_out "Pausing 10 seconds, you may want to press CTRL+Z to pause for longer, and allow you to debug this further. You can always restart the process with 'fg' if it makes sense to to so after analysis."  
               sleep 10
               # TODO: Reason 1 does happen. Observed:
@@ -1666,7 +1676,7 @@ init_workdir_and_files(){
   if [ $ENABLE_QUERYTIMEOUT -gt 0 ]; then
     echo_out "[Init] Querytimeout: ${QUERYTIMEOUT}s (For RQG-originating testcase reductions, ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   fi
-  if [ "${FIREWORKS}" != "1" ]; then
+  if [ "${FIREWORKS}" == "1" ]; then
     echo_out "[Init] FIREWORKS Mode active. Newly discovered bugs will be saved to ${NEW_BUGS_COPY_DIR}"
   elif [ "${SCAN_FOR_NEW_BUGS}" == "1" ]; then
     echo_out "[Init] SCAN_FOR_NEW_BUGS active. Newly discovered bugs will be saved to ${NEW_BUGS_COPY_DIR}"
