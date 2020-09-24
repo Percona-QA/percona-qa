@@ -16,8 +16,7 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 ##index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                                ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS ######
-!result|SIGABRT|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator|Item_bool_rowready_func2::fix_length_and_dec
-        ## DBG MDEV-23800
+!result|SIGABRT|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator|Item_bool_rowready_func2::fix_length_and_dec           ## DBG MDEV-23800
 SIGSEGV|Column_stat::store_stat_fields|Stat_table::update_stat|update_statistics_for_table|mysql_admin_table                                                                    ## DBG MDEV-23753
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|store_key_field::copy_inner|store_key::copy                                                            ## DBG MDEV-23749
 SIGSEGV|replace_user_table|mysql_alter_user|mysql_execute_command|mysql_parse                                                                                                   ## OPT MDEV-23731
