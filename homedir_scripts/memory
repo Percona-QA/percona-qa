@@ -23,7 +23,7 @@ while true; do
     fi
   fi
   echo ''
-  echo 'USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT'
-  w | grep '[0-9][0-9]\.[0-9][0-9]s'
-  sleep 3
+  echo -e "USER\tTTY\tJCPU\tPCPU\tCOMMAND"
+  w -h | awk '{print $1"\t"$2"\t"$6"\t"$7"\t"$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15" "$16" "$17" "$18" "$19" "$20}' | grep -E '[0-9][0-9]\.[0-9][0-9]s|[0-9]:[0-9][0-9]m' | grep -v 'sleep' | grep -v 'awk'
+  sleep 4
 done
