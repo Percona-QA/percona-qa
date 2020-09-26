@@ -8,7 +8,7 @@ KILL_PERCENT=4  # Ex: 4: All processes up to 3.99 will continue to live, 4.00 an
 # Script variables
 while true; do
   clear
-  ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n15
+  ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n7
   HEADLINE=;PERCENT=;PID=
   if [ "${KILL_LARGE}" -eq 1 ]; then
     HEADLINE="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n2 | tail -n1)"
@@ -22,5 +22,8 @@ while true; do
       sleep 2  # Allows user to notice/read message
     fi
   fi
+  echo ''
+  echo 'USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT'
+  w | grep '[0-9][0-9]\.[0-9][0-9]s'
   sleep 3
 done

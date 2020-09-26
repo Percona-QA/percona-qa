@@ -11,6 +11,8 @@ cat "${1}" | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
   sed 's|set @@session\.|SET SESSION |gi' | \
   sed 's|use|USE|gi' | \
+  sed 's|backup|BACKUP|gi' | \
+  sed 's|alter|ALTER|gi' | \
   sed 's|desc|DESC|gi' | \
   sed 's|asc|ASC|gi' | \
   sed 's|limit|LIMIT|gi' | \
@@ -98,12 +100,18 @@ cat "${1}" | \
   sed 's|innodb_limit_optimistic_insert_debug|INNODB_LIMIT_OPTIMISTIC_INSERT_DEBUG|gi' | \
   sed 's|innodb_file_per_TABLE|INNODB_FILE_PER_TABLE|gi' | \
   sed 's|variables|VARIABLES|gi' | \
+  sed 's|checkpoint|checkpoint|gi' | \
+  sed 's|Aria_|aria_|gi' | \
+  sed 's|_interval|_interval|gi;s|interval_|interval_|gi' | \
+  sed 's|_table|_table|gi;s|table_|table_|gi' | \
+  sed 's|_default|_default|gi;s|default_|default_|gi' | \
   sed "s|^. mysqld options required for replay.*|${OPTIONS}|i" | \
   sed 's|\t| |g' | \
   sed 's|  | |g' | \
   sed 's| ,|,|g' | \
   sed 's|( |(|g' | \
   sed 's| )|)|g' | \
-  sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g' 
+  sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g' | \
+  sed 's|CAST (|CAST(|gi'
 
 #  sed 's|||gi' | \
