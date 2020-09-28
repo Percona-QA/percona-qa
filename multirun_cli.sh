@@ -82,7 +82,8 @@ for (( ; ; )); do
         if [ -r "${4}admin" ]; then
           CHK_CMD="${4}admin -uroot -S$5 ping >/dev/null 2>&1"
           if ! eval ${CHK_CMD}; then
-            echo "Server no longer reachable! Check for crash etc."
+            echo "Server no longer reachable! Check for crash etc. (Tip: run: ~/tt)"
+            echo "Execution rounds done (gives an indication as to level of reproducibility): $[ ${EXE_DONE} + 1]"
             echo "Terminating!"
             exit 1
           fi
@@ -99,7 +100,7 @@ for (( ; ; )); do
       if [ -z "`ps -p ${PID[$thread]} | awk '{print $1}' | grep -v 'PID'`" ]; then
         if [ ${REPORT_END_THREAD} -eq 1 ]; then
           echo -e "\t\t\t\t\t\t   Thread: $thread | Repetition: $[ $2 - ${RPT_LEFT[$thread]} ]/$2 | [PID: ${PID[$thread]}] Ended!"
-	fi
+        fi
         EXE_DONE=$[ $EXE_DONE + 1 ]
         PID[$thread]=0
       fi

@@ -2,3 +2,8 @@ SET GLOBAL ARIA_CHECKPOINT_LOG_ACTIVITY=1;
 SET GLOBAL ARIA_GROUP_COMMIT=HARD;
 SET GLOBAL ARIA_GROUP_COMMIT_INTERVAL=100000000;
 GRANT SELECT ON *.* TO root@localhost;
+
+SET GLOBAL aria_checkpoint_log_activity=1;
+SET GLOBAL aria_group_commit="HARD";
+SET GLOBAL aria_group_commit_interval=100000000;
+GRANT SELECT ON *.* to root@localhost;

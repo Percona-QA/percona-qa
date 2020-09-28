@@ -18,6 +18,7 @@ OPTIMIZE LOCAL TABLE t;
 REPAIR LOCAL TABLE t USE_FRM;
 
 # mysqld options required for replay: --log-bin
+# Sporadic; repeat at least twice
 USE test;
 SET SQL_MODE='';
 DROP TABLE t;
@@ -27,4 +28,15 @@ UPDATE t SET NAME='U+039B GREEK CAPITAL LETTER LAMDA' WHERE ujis=0xA6AB;
 lock tables t write, t as t0 read, t as t2 read;
 SET @@GLOBAL.OPTIMIZER_SWITCH="table_elimination=ON";
 ALTER TABLE t ENGINE=InnoDB;
-# Sporadic; repeat at least twice
+
+CREATE TABLE t1 (a INT) ENGINE=InnoDB;
+SELECT * FROM t1;
+SET SESSION MAX_SESSION_MEM_USED= @@max_session_mem_used + 1024;
+LOCK TABLES t1 WRITE;
+ALTER TABLE t1 FORCE;
+
+CREATE TABLE t (c INT);
+INSERT INTO t VALUES(1);
+SET max_session_mem_used=8192;
+LOCK TABLE t WRITE;
+CREATE TRIGGER tr BEFORE INSERT ON t FOR EACH ROW INSERT INTO t VALUES(2);

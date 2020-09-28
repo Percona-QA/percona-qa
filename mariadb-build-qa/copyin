@@ -1,0 +1,15 @@
+#!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+
+# Error checks
+if [ "$(pwd)" == "/test" ]; then echo 'Excute this from within a basedir please'; exit 1; fi
+if [ ! -r ./in.sql ]; then echo './in.sql not present!'; exit 1; fi
+
+# Backup, just in case
+if [ -r ../in.sql ]; then mv ../in.sql ../in.sql.prev; fi
+
+# Copy and distribute
+cp ./in.sql ../in.sql
+cd ..
+./copy_in.sql_all
+echo 'Done!'

@@ -1,2 +1,7 @@
 BUG="$(echo "${1}" | grep -o '[0-9]\+')"
 vi ~/mariadb-qa/BUGS/MDEV-${BUG}.sql
+if [ -r ~/mariadb-qa/BUGS/MDEV-${BUG}.sql ]; then
+  cd ~/mariadb-qa/BUGS/
+  git add MDEV-${BUG}.sql
+  cd - >/dev/null 2>&1
+fi

@@ -79,8 +79,8 @@ else
 fi
 
 # Setup scritps
-rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb stack wipe_group_replication
-BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | gdb | stack | myrocks_tokudb_init"
+rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb fixin stack wipe_group_replication
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | gdb | fixin | stack | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
@@ -332,7 +332,9 @@ echo "sed -i 's|^RND_DELAY_FUNCTION=[0-9]|RND_DELAY_FUNCTION=0|' ~/mariadb-qa/mu
 echo "sed -i 's|^RND_REPLAY_ORDER=[0-9]|RND_REPLAY_ORDER=1|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^REPORT_END_THREAD=[0-9]|REPORT_END_THREAD=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^REPORT_THREADS=[0-9]|REPORT_THREADS=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
-echo "~/mariadb-qa/multirun_cli.sh 150 100000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
+echo "#~/mariadb-qa/multirun_cli.sh 150 100000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
+echo "~/mariadb-qa/multirun_cli.sh 1 10000000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
+ln -s ./multirun ./m 2>/dev/null
 echo "./init;./start;./cl;./stop;./kill >/dev/null 2>&1;tail log/master.err" > setup
 if [ ! -z "$LOAD_TOKUDB_INIT_FILE" ]; then
   echo "./start; ${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock < ${LOAD_TOKUDB_INIT_FILE}" > myrocks_tokudb_init
@@ -433,6 +435,13 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|^NEW_BUGS_COPY_DIR=[^#]\+|NEW_BUGS_COPY_DIR="/data/FIREWORKS"   |' ./reducer_fireworks.sh
 fi
 
+echo 'rm -f in.tmp' > fixin
+echo 'if [ -r ./in.sql ]; then mv in.sql in.tmp; fi' >> fixin
+echo 'echo "DROP DATABASE test;" > ./in.sql' >> fixin
+echo 'echo "CREATE DATABASE test;" >> ./in.sql' >> fixin
+echo 'echo "USE test;" >> ./in.sql' >> fixin
+echo 'if [ -r ./in.tmp ]; then cat in.tmp >> in.sql; rm -f in.tmp; fi' >> fixin
+
 echo "${SCRIPT_PWD}/stack.sh" > stack
 echo 'if [ $(ls data/*core* 2>/dev/null | wc -l) -eq 0 ]; then' > gdb
 echo '  echo "No core file found in data/*core* - exiting"' >> gdb
@@ -459,9 +468,9 @@ ln -s ./all ./a 2>/dev/null
 echo 'MYEXTRA_OPT="$*"' > all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
-echo "./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
+echo "./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
 if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe sqlmode binlog all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb stack myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup multirun 2>/dev/null
+chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe sqlmode binlog all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb stack fixin myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup multirun 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init

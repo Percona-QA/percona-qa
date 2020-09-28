@@ -46,7 +46,7 @@ EOF
 fi
 echo "These settings are for a 128GB Memory server (google cloud instance of that size or similar)"
 if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%s.%e.%t' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%s.%e.%t' ]; then
-  sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%s.%e.%t" >> /etc/sysctl.conf'
+  sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%s.%e.%t" >> /etc/sysctl.conf'  # Do NOT a core fixed path!
 fi
 if [ "$(grep -m1 '^fs.suid_dumpable=2' /etc/sysctl.conf)" != 'fs.suid_dumpable=2' ]; then
   sudo sh -c 'echo "fs.suid_dumpable=2" >> /etc/sysctl.conf'

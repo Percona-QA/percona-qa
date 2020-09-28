@@ -1,0 +1,1 @@
+# MTR testcase, ref JIRA bug report, specifically https://jira.mariadb.org/browse/MDEV-23468?focusedCommentId=166641&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-166641

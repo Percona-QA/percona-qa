@@ -24,6 +24,7 @@ cp clone.sh ${TARGET}
 cp cloneall.sh ${TARGET}
 cp cloneall_ms.sh ${TARGET}
 cp copy_in.sql_all ${TARGET}
+cp copyin ${TARGET}
 cp backup_github ${TARGET}
 cp count_all ${TARGET}
 cp findbug ${TARGET}
