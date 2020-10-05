@@ -1,0 +1,26 @@
+CREATE TABLE t1 (a INT);
+INSERT INTO t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8);
+INSERT INTO t1 SELECT * FROM t1;
+ALTER TABLE t1 ADD SYSTEM VERSIONING;
+INSERT INTO t1 VALUES (1),(2),(3),(4);
+SET HISTOGRAM_SIZE= 5;
+ANALYZE TABLE t1 PERSISTENT FOR ALL;
+SELECT * from t1 WHERE row_start IN (SELECT row_end FROM t1);
+
+CREATE TABLE t1 (a INT);
+INSERT INTO t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8);
+INSERT INTO t1 SELECT * FROM t1;
+INSERT INTO t1 VALUES (1),(2),(3),(4);
+SET optimizer_use_condition_selectivity=4;
+SET histogram_size= 5;
+SET histogram_type= DOUBLE_PREC_HB;
+SET use_stat_tables='preferably';
+ANALYZE TABLE t1 PERSISTENT FOR ALL;
+SELECT * from t1 where a=10;
+
+SET use_stat_tables=PREFERABLY;
+SET SESSION histogram_size=1;
+CREATE TABLE t (c1 INT NOT NULL, c2 CHAR (5)) PARTITION BY HASH (c1);
+INSERT INTO t VALUES (1,'a');
+ANALYZE TABLE t;
+SELECT * FROM t WHERE c2 >= '2000-00-01 00:00:00' AND c2 < '2020-10-10 00:00:00';

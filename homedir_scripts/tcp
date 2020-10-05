@@ -8,6 +8,10 @@ cat "${1}" | \
   sed 's|table|TABLE|gi' | \
   sed 's|tables|TABLES|gi' | \
   sed 's|where|WHERE|gi' | \
+  sed 's|start|START|gi' | \
+  sed 's|xa|XA|gi' | \
+  sed 's|dynamic|DYNAMIC|gi' | \
+  sed 's|transactional|TRANSACTIONAL|gi' | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
   sed 's|set @@session\.|SET SESSION |gi' | \
   sed 's|use|USE|gi' | \
@@ -108,6 +112,8 @@ cat "${1}" | \
   sed 's| )|)|g' | \
   sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g' | \
   sed 's|`||gi' | \
+  sed 's|row_format|ROW_FORMAT|gi' | \
+  sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|CAST (|CAST(|gi'
 
 # Templates for copy/paste

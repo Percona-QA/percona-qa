@@ -20,6 +20,7 @@ SIGSEGV|Item_func_nextval::update_table|Item_func_nextval::val_int|Type_handler:
 SIGSEGV|Item_func_nextval::update_table|Item_func_nextval::val_int|Type_handler::Item_send_longlong|Protocol::send_result_set_row                                              ## DBG |MDEV-23823
 !result|SIGABRT|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator|Item_bool_rowready_func2::fix_length_and_dec          ## DBG MDEV-23800
 SIGSEGV|Column_stat::store_stat_fields|Stat_table::update_stat|update_statistics_for_table|mysql_admin_table                                                                   ## DBG MDEV-23753
+SIGSEGV|Field::is_null|Column_statistics_collected::add|collect_statistics_for_table|mysql_admin_table                                                                         ## OPT MDEV-23753
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|store_key_field::copy_inner|store_key::copy                                                           ## DBG MDEV-23749
 SIGSEGV|replace_user_table|mysql_alter_user|mysql_execute_command|mysql_parse                                                                                                  ## OPT MDEV-23731
 table->data_dir_path || !space|SIGABRT|row_drop_table_for_mysql|ha_innobase::delete_table|ha_innobase::truncate|handler::ha_truncate                                           ## DBG MDEV-23705
@@ -166,6 +167,7 @@ thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|hand
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                             ## DBG |MDEV-22500
 (uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock ## DBG MDEV-22499
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_lock, &MDL_ticket::prev_in_lock>, I_P_List_null_counter, I_P_List_fast_push_back<MDL_ticket> >::remove|MDL_lock::Ticket_list::remove_ticket|MDL_lock::remove_ticket|MDL_context::release_lock ## DBG MDEV-22448 NOW 20945
+ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|mysql_execute_command|mysql_parse                                                           ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_lock|MDL_context::release_lock                                                                 ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock ## OPT |MDEV-22448 NOW 20945
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|THD::cleanup|unlink_thd                                                                     ## OPT |MDEV-22448 NOW 20945
@@ -237,6 +239,7 @@ end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_id
 end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident_sp|LEX::create_item_ident|MYSQLparse|parse_sql                                             ## DBG |MDEV-22022
 end <= thd->m_parser_state->m_lip.get_end_of_query()|SIGABRT|LEX::create_item_ident|MYSQLparse|parse_sql|mysql_parse                                                           ## DBG |MDEV-22022
 SIGSEGV|next_breadth_first_tab|JOIN::cleanup|JOIN::destroy|st_select_lex::cleanup                                                                                              ## DBG MDEV-22019
+SIGSEGV|tokudb_rollback_to_savepoint|ha_rollback_to_savepoint|trans_rollback_to_savepoint|mysql_execute_command                                                                ## OPT MDEV-4527
 checksum_start + checksum_length == f->ptr|SIGABRT|handler::calculate_checksum|mysql_checksum_table|mysql_execute_command|mysql_parse                                          ## DBG |MDEV-11783*
 SIGSEGV|sortlength|filesort|create_sort_index|Window_funcs_sort::exec                                                                                                          ## OPT |MDEV-11783*
 SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table                                                                                                        ## DBG |MDEV-15178*
@@ -328,6 +331,8 @@ SIGSEGV|heap_info|ha_heap::info|make_join_statistics|JOIN::optimize_inner       
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Field::val_str|Field::save_in_field_str|Field_str::save_in_field                                       ## DBG |MDEV-23294*
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                              ## DBG |MDEV-23294*
 !col->mbmaxlen || len >= col->mbminlen * (fixed_len / col->mbmaxlen)|SIGABRT|row_merge_buf_add|row_merge_read_clustered_index|row_merge_build_indexes|ha_innobase::inplace_alter_table ## DBG MDEV-22365*
+i < get_width()|SIGABRT|Histogram::get_value|Histogram::find_bucket|Histogram::range_selectivity|get_column_range_cardinality                                                  ## DBG |MDEV-23151*
+i < get_width()|SIGABRT|Histogram::get_value|Histogram::find_bucket|Histogram::point_selectivity|get_column_range_cardinality                                                  ## DBG |MDEV-23151*
 SIGSEGV|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                                  ## OPT MDEV-23182*
 SIGSEGV|select_unit::cleanup|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare                                                                         ## OPT MDEV-23182*
 

@@ -1,2 +1,2 @@
 #!/bin/bash
-~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY" | grep "^     [0-1 ][0-9 ][0-9] " | sort -nr
+~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr
