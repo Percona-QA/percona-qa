@@ -80,7 +80,7 @@ fi
 
 # Setup scritps
 rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb fixin stack wipe_group_replication
-BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | gdb | fixin | stack | myrocks_tokudb_init"
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | loopin | gdb | fixin | stack | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
@@ -323,6 +323,16 @@ tail -n1 start >> start_gypsy
 echo "timeout -k90 -s9 90s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop  # 90 seconds to allow core dump to be written if needed (seems ~60 is the minimum for busy high-end severs)
 echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
+echo "#!/bin/bash" > loopin
+echo 'if [ -z "${1}" ]; then echo "Assert: please specify how many copies to make as the first option to this script"; exit 1; fi' >> loopin
+echo 'if [ -r out.sql ]; then mv out.sql out.PREV; fi' >> loopin
+echo 'if [ ! -r ./fixin ]; then echo "Assert: ./fixin not found? Please execute ~/start or ~/mariadb-qa/startup.sh"; exit 1; fi' >> loopin
+echo './fixin' >> loopin
+echo 'for i in $(seq 1 ${1}); do cat in.sql >> out.sql; done' >> loopin
+echo 'wc -l in.sql' >> loopin
+echo 'wc -l out.sql' >> loopin
+echo 'echo "Generated out.sql which contains ${1} copies of in.sql, including DROP/CREATE/USE DATABASE test!"' >> loopin
+echo 'echo "You may now want to: mv out.sql in.sql and then start ~/b which will then use the multi-looped in.sql"' >> loopin
 echo "#!/bin/bash" > multirun
 echo "if [ ! -r ./in.sql ]; then echo 'Missing ./in.sql - please create it!'; exit 1; fi" >> multirun
 echo "if [ ! -r ./all_no_cl ]; then echo 'Missing ./all_no_cl - perhaps run ~/start or ~/mariadb-qa/startup.sh again?'; exit 1; fi" >> multirun
