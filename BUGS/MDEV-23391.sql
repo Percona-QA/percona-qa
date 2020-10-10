@@ -1,0 +1,14 @@
+SET sql_mode= 'STRICT_TRANS_TABLES'; # Only needed for 10.1, in higher versions it is default
+CREATE TABLE t1 (a INT);
+LOCK TABLE t1 WRITE;
+CREATE OR REPLACE TABLE t1 (a CHAR(1)) AS SELECT 'foo' AS a;
+
+CREATE TABLE t1 (a INT);
+CREATE TABLE t2 (b INT);
+LOCK TABLE t1 WRITE, t2 WRITE;
+CREATE OR REPLACE TABLE t1 (a CHAR(1)) AS SELECT 'foo' AS a;
+
+SET SESSION default_storage_engine=mrg_myisam;
+CREATE TABLE t (a INT);
+LOCK TABLES t WRITE;
+CREATE or REPLACE TABLE t AS SELECT 1 AS a;

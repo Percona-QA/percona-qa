@@ -82,3 +82,21 @@ CREATE TABLE t (c INT) ENGINE=InnoDB;
 LOCK TABLES t AS a READ;
 BEGIN;
 SET STATEMENT max_statement_time=180 FOR BACKUP UNLOCK;
+
+# Repeat 30+ times, sporadic
+DROP DATABASE test;
+CREATE DATABASE test;
+USE test;
+BACKUP LOCK t;
+CREATE TABLE t (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB;
+LOCK TABLES t AS a READ LOCAL, t AS b LOW_PRIORITY WRITE;
+
+# Highly sporadic, or may require pquery, ref bug report for details
+# mysqld options required for replay: --maximum-join_buffer_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-transaction_prealloc_size=1M
+BACKUP LOCK t;
+INSERT INTO mysql.ndb_replication VALUES ("europenorth", "fr_nce", 1, NULL, "NDB$A ()");
+CREATE TABLE t (a TINYTEXT COLUMN_FORMAT COMPRESSED) ROW_FORMAT = REDUNDANT;
+DROP PROCEDURE getNums;
+CREATE TABLE t2 (id INT(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY(id));
+DROP TABLE datetypes;
+LOCK TABLES t2 AS a1 READ LOCAL, t2 AS a6 LOW_PRIORITY WRITE;

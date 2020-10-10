@@ -167,6 +167,8 @@ thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|hand
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                             ## DBG |MDEV-22500
 (uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock ## DBG MDEV-22499
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_lock, &MDL_ticket::prev_in_lock>, I_P_List_null_counter, I_P_List_fast_push_back<MDL_ticket> >::remove|MDL_lock::Ticket_list::remove_ticket|MDL_lock::remove_ticket|MDL_context::release_lock ## DBG MDEV-22448 NOW 20945
+SIGSEGV|backup_unlock|THD::cleanup|unlink_thd|do_handle_one_connection                                                                                                         ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|inline_mysql_prlock_wrlock|MDL_context::clone_ticket|MDL_context::try_acquire_lock_impl|MDL_context::acquire_lock ## DBG MDEV-22448 NOW 20945
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|mysql_execute_command|mysql_parse                                                           ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_lock::remove_ticket|MDL_context::release_lock|MDL_context::release_lock                                                                 ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::release_lock|MDL_context::release_lock|backup_unlock ## OPT |MDEV-22448 NOW 20945
@@ -335,6 +337,10 @@ i < get_width()|SIGABRT|Histogram::get_value|Histogram::find_bucket|Histogram::r
 i < get_width()|SIGABRT|Histogram::get_value|Histogram::find_bucket|Histogram::point_selectivity|get_column_range_cardinality                                                  ## DBG |MDEV-23151*
 SIGSEGV|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare|st_select_lex_unit::prepare                                                                  ## OPT MDEV-23182*
 SIGSEGV|select_unit::cleanup|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare                                                                         ## OPT MDEV-23182*
+SIGSEGV|close_thread_table|drop_open_table|select_create::abort_result_set|handle_select                                                                                       ## OPT |MDEV-23391
+thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->s->db.str, table->s->table_name.str, MDL_SHARED)|SIGABRT|close_thread_table|close_thread_tables|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlock_locked_table ## DBG |MDEV-23391
+thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlock_locked_table|select_create::abort_result_set|handle_select       ## DBG |MDEV-23391*
+thd->mdl_context.is_lock_owner(MDL_key::TABLE, share->db.str, share->table_name.str, MDL_EXCLUSIVE)|SIGABRT|TDC_element::flush|drop_open_table|select_create::abort_result_set|handle_select ## DBG |MDEV-23391*
 
 ###### FIXED BUGS######
 # Assert: No parsable frames? ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  

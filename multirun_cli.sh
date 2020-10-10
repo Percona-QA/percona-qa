@@ -82,7 +82,7 @@ for (( ; ; )); do
         if [ -r "${4}admin" ]; then
           CHK_CMD="${4}admin -uroot -S$5 ping >/dev/null 2>&1"
           if ! eval ${CHK_CMD}; then
-            echo "Server no longer reachable! Check for crash etc. (Tip: run: ~/tt)"
+            echo "Server no longer reachable! Check for crash etc. (Tip: run: ~/tt and/or check ./log/master.err)"
             echo "Execution rounds done (gives an indication as to level of reproducibility): $[ ${EXE_DONE} + 1]"
             echo "Terminating!"
             exit 1
