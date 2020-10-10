@@ -326,8 +326,10 @@ echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'
 echo "#!/bin/bash" > loopin
 echo 'if [ -z "${1}" ]; then echo "Assert: please specify how many copies to make as the first option to this script"; exit 1; fi' >> loopin
 echo 'if [ -r out.sql ]; then mv out.sql out.PREV; fi' >> loopin
-echo 'if [ ! -r ./fixin ]; then echo "Assert: ./fixin not found? Please execute ~/start or ~/mariadb-qa/startup.sh"; exit 1; fi' >> loopin
-echo './fixin' >> loopin
+echo 'if [ "$(grep -o "DROP DATABASE test" ./in.sql)" == "" -o "$(grep -o "CREATE DATABASE test" ./in.sql)" == "" -o "$(grep -o "USE test" ./in.sql)" == "" ]; then' >> loopin
+echo '  if [ ! -r ./fixin ]; then echo "Assert: ./fixin not found? Please execute ~/start or ~/mariadb-qa/startup.sh"; exit 1; fi' >> loopin
+echo '  ./fixin' >> loopin
+echo 'fi' >> loopin
 echo 'for i in $(seq 1 ${1}); do cat in.sql >> out.sql; done' >> loopin
 echo 'wc -l in.sql' >> loopin
 echo 'wc -l out.sql' >> loopin
