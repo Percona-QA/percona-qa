@@ -15,7 +15,7 @@
 # Set script variables
 export xtrabackup_dir="$HOME/pxb_8_0_13_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/Percona-Server-8.0.19-10-Linux.x86_64.ssl101"
+export mysqldir="$HOME/PS090720_8_0_20_11_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
@@ -435,7 +435,7 @@ incremental_backup() {
         if [ "${rocksdb}" = "enabled" ]; then
             chk_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
             if [[ "${chk_myrocks_orig[$i]}" -ne "${chk_myrocks_res[$i]}" ]]; then
-                echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksumin restored data: ${chk_myrocks_res[$i]}."
+                echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksum in restored data: ${chk_myrocks_res[$i]}."
                 checksum_err=1;
             fi
         fi
@@ -451,14 +451,14 @@ incremental_backup() {
     for database in ${database_list}; do
         for ((i=1; i<=${num_tables}; i++)); do
             j=1
-            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT id FROM $database.sbtest$i ORDER BY id ASC" | while read line; do
-            if [[ "$line" != "$j" ]]; then
-                echo "ERR: Gap found in $database.sbtest$i. Expected sequence number for ID is: $j. Actual sequence number for ID is: $line."
-                gap_found=1
-                break
-            fi
-            let j++
-            done
+            while read line; do
+                if [[ "$line" != "$j" ]]; then
+                    echo "ERR: Gap found in $database.sbtest$i. Expected sequence number for ID is: $j. Actual sequence number for ID is: $line."
+                    gap_found=1
+                    return
+                fi
+                let j++
+            done < <(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT id FROM $database.sbtest$i ORDER BY id ASC")
         done
     done
 
@@ -694,8 +694,6 @@ change_compression() {
 
     if [ "${rocksdb}" = "enabled" ]; then
         echo "Change the compression of a myrocks table"
-        #${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "set global rocksdb_update_cf_options='cf1={compression=kZlibCompression;bottommost_compression=kZlibCompression};cf2={compression=kLZ4Compression;bottommost_compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression;bottommost_compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression;bottommost_compression=kNoCompression}';"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "set global rocksdb_update_cf_options='cf1={compression=kZlibCompression};cf2={compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression}';"
         ( for ((i=1; i<=10; i++)); do
             # Check if database is up otherwise exit the loop
             ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
@@ -851,6 +849,22 @@ create_delete_encrypted_table() {
     done ) &
 }
 
+change_encryption() {
+    # This function changes the encryption of a table
+
+    echo "Change the encryption of a table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ENCRYPTION='N';"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ENCRYPTION='Y';"
+    done ) &
+}
+
 compressed_column() {
     # This function compresses a table column
 
@@ -872,7 +886,7 @@ compression_dictionary() {
     # This function compresses a table column by using a compression dictionary
 
     echo "Create a compression dictionary and use it to compress a table column"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE COMPRESSION_DICTIONARY numbers('08566691963-88624912351-16662227201-46648573979-64646226163-77505759394-75470094713-41097360717-15161106334-50535565977');"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE COMPRESSION_DICTIONARY numbers('08566691963-88624912351-16662227201-46648573979-64646226163-77505759394-75470094713-41097360717-15161106334-50535565977');" >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
         echo "Skipping test as the compression dictionary sql was unsuccessful, the mysql server does not support it"
         return
@@ -885,7 +899,7 @@ compression_dictionary() {
             break
         fi
 
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest$i MODIFY c VARCHAR(250) COLUMN_FORMAT COMPRESSED WITH COMPRESSION_DICTIONARY numbers NOT NULL DEFAULT '';" 
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest$i MODIFY c VARCHAR(250) COLUMN_FORMAT COMPRESSED WITH COMPRESSION_DICTIONARY numbers NOT NULL DEFAULT '';" >/dev/null 2>&1 
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest$i MODIFY c CHAR(120) COLUMN_FORMAT DEFAULT NOT NULL DEFAULT '';" >/dev/null 2>&1
     done ) &
 }
@@ -894,13 +908,50 @@ partitioned_tables() {
     # This function creates partitioned tables
 
     echo "Create innodb partitioned tables"
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE sbtest1; DROP TABLE sbtest2; DROP TABLE sbtest3;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE IF EXISTS sbtest1; DROP TABLE IF EXISTS sbtest2; DROP TABLE IF EXISTS sbtest3;" test
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest1 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY HASH(id) PARTITIONS 10;" test
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest2 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN (500), PARTITION p1 VALUES LESS THAN (1000), PARTITION p2 VALUES LESS THAN MAXVALUE);" test
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest3 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY KEY() PARTITIONS 5;" test
 
     echo "Add data for innodb partitioned tables"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
+
+    echo "Create and drop some partitions from sbtest1 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 COALESCE PARTITION 5;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 PARTITION BY HASH(id) PARTITIONS 10;" >/dev/null 2>&1
+    done ) &
+
+    echo "Create and drop a partition from sbtest2 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 DROP PARTITION p2;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ADD PARTITION (PARTITION p2 VALUES LESS THAN MAXVALUE);" >/dev/null 2>&1
+    done ) &
+
+    echo "Rebuild, optimize and analyze partitions from sbtest3 table"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest3 REBUILD PARTITION p0, p1;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest3 OPTIMIZE PARTITION p2;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest3 ANALYZE PARTITION p3,p4;" >/dev/null 2>&1
+    done ) &
 
     if [ "${rocksdb}" = "enabled" ]; then
         echo "Create myrocks partitioned tables"
@@ -1022,9 +1073,23 @@ test_change_compression() {
 
     echo "Test: Backup and Restore during change in compression"
 
-    change_compression
 
-    incremental_backup
+    if [ "${rocksdb}" = "enabled" ]; then
+        # Restart db with rocksdb compression options
+        echo "Restart db with rocksdb compression options"
+        restart_db "--rocksdb_override_cf_options=cf1={compression=kZlibCompression};cf2={compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression}"
+
+        change_compression
+
+        incremental_backup "" "" "" "--rocksdb_override_cf_options=cf1={compression=kZlibCompression};cf2={compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression}" "" ""
+
+        # Initialize database to reset rocksdb compression options
+        initialize_db
+    else
+        change_compression
+
+        incremental_backup
+    fi
 }
 
 test_change_row_format() {
@@ -1158,7 +1223,11 @@ test_partitioned_tables() {
 
     partitioned_tables
 
-    incremental_backup
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 test_run_all_statements() {
@@ -1198,10 +1267,18 @@ test_inc_backup_encryption_8_0() {
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         else
             server_type="PS"
-            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
         fi
 
         echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_file encryption"
+
+        echo "Test: Incremental Backup and Restore with basic keyring_file encryption options"
+
+        initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --default-table-encryption=ON"
+
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --default-table-encryption=ON"
+
+        echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} running with all encryption options enabled"
 
@@ -1227,6 +1304,8 @@ test_inc_backup_encryption_8_0() {
 
         initialize_db "${server_options}"
 
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
+
         incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
 
         echo "###################################################################################"
@@ -1249,9 +1328,17 @@ test_inc_backup_encryption_8_0() {
 
         # Run keyring_vault tests for PS8.0
 
-        server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --innodb-encryption-threads=10"
+        server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
 
         echo "Test Suite: Incremental Backup and Restore for PS8.0 using PXB8.0 with keyring_vault encryption"
+
+        echo "Test: Incremental Backup and Restore with basic keyring_vault encryption options"
+
+        initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --default-table-encryption=ON"
+
+        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --default-table-encryption=ON"
+
+        echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for PS running with all encryption options enabled"
         initialize_db "${server_options} --binlog-encryption"
@@ -1275,6 +1362,8 @@ test_inc_backup_encryption_8_0() {
         echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
 
         initialize_db "${server_options}"
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
 
         incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
 
@@ -1360,6 +1449,11 @@ test_inc_backup_encryption_8_0() {
 
     echo "Test: Backup and Restore during column compression using compression dictionary"
     compression_dictionary
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during encryption change"
+    change_encryption 
     eval $lock_ddl_cmd
 }
 
@@ -1486,20 +1580,22 @@ test_inc_backup_encryption_2_4() {
     #eval $lock_ddl_cmd
     #echo "###################################################################################"
 
-    echo "Test: Backup and Restore during update and truncate of a table"
-    update_truncate_table
-    eval $lock_ddl_cmd
-    echo "###################################################################################"
+    # Commented due to PXB-2237
+    #echo "Test: Backup and Restore during update and truncate of a table"
+    #update_truncate_table
+    #eval $lock_ddl_cmd
+    #echo "###################################################################################"
 
     echo "Test: Backup and Restore during rename index"
     rename_index
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    echo "Test: Backup and Restore during add and drop full text index"
-    add_drop_full_text_index
-    eval $lock_ddl_cmd
-    echo "###################################################################################"
+    # Commented due to PXB-2240
+    #echo "Test: Backup and Restore during add and drop full text index"
+    #add_drop_full_text_index
+    #eval $lock_ddl_cmd
+    #echo "###################################################################################"
 
     echo "Test: Backup and Restore during index type change"
     change_index_type
@@ -1511,10 +1607,11 @@ test_inc_backup_encryption_2_4() {
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    echo "Test: Backup and Restore during creation of partitioned tables"
-    partitioned_tables
-    eval $lock_ddl_cmd
-    echo "###################################################################################"
+    # Commented due to PXB-2239
+    #echo "Test: Backup and Restore during creation of partitioned tables"
+    #partitioned_tables
+    #eval $lock_ddl_cmd
+    #echo "###################################################################################"
 
     echo "Test: Backup and Restore during column compression"
     compressed_column
@@ -1523,6 +1620,11 @@ test_inc_backup_encryption_2_4() {
 
     echo "Test: Backup and Restore during column compression using compression dictionary"
     compression_dictionary
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore during encryption change"
+    change_encryption 
     eval $lock_ddl_cmd
 }
 
@@ -1609,12 +1711,63 @@ test_compress_backup() {
 }
 
 test_cloud_inc_backup() {
-    # This test suite tests incremental backup for cloud
+    # This test suite tests incremental backup for cloud and requires the cloud options in a config file
+
+    echo "Test Suite: Cloud Tests"
+    initialize_db
 
     echo "Test: Incremental Backup and Restore with cloud"
-
-    # This test requires the cloud options in a config file
     incremental_backup "--parallel=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with encryption and streaming"
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with quicklz compression and streaming"
+    incremental_backup "--compress --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
+    # Run encryption tests for MS/PS 5.7
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Test: Incremental Backup and Restore for MS/PS 5.7 with keyring_file encryption"
+
+        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+
+        initialize_db "${server_options}"
+
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for MS/PS 5.7 with keyring_file encryption, quicklz compression, file encryption and streaming"
+
+        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
+        return
+    fi
+
+    echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore for MS/PS 8.0 with keyring_file encryption"
+    rocksdb_status="${rocksdb}"
+    rocksdb="disabled" # Rocksdb tables cannot be created when encryption is enabled
+    server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+
+    initialize_db "${server_options}"
+    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore for MS/PS 8.0 with keyring_file encryption, lz4 compression, file encryption and streaming"
+    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
+    rocksdb="${rocksdb_status}"
 }
 
 test_ssl_backup() {
