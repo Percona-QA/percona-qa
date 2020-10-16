@@ -375,7 +375,7 @@ if [[ $PXC -eq 1 ]];then
   echo "master_verify_checksum=on" >> ${BASEDIR}/my.cnf
   echo "binlog_checksum=CRC32" >> ${BASEDIR}/my.cnf
   if [[ "$ENCRYPTION_RUN" == 1 ]];then
-  	if check_for_version $MYSQL_VERSION "8.0.0" ; then
+    if check_for_version $MYSQL_VERSION "8.0.0" ; then
       echo "binlog-encryption=ON" >> ${BASEDIR}/my.cnf
       echo "innodb_temp_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
       echo "encrypt_tmp_files=ON" >> ${BASEDIR}/my.cnf
@@ -406,10 +406,10 @@ pxc_startup(){
     if [[ "$ENCRYPTION_RUN" == 1 ]];then
       if check_for_version $MYSQL_VERSION "8.0.0" ; then
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
-	  else
+      else
         MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-	  fi
-	else
+      fi
+    else
       MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
     fi
   else
@@ -451,7 +451,7 @@ pxc_startup(){
     sed -i "2i tmpdir=$DATADIR/tmp${i}" ${DATADIR}/n${i}.cnf
     if [[ "$ENCRYPTION_RUN" != 1 ]];then
       sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT\"" ${DATADIR}/n${i}.cnf
-	else
+    else
       sed -i "2i wsrep_provider_options=\"gmcast.listen_addr=tcp://$LADDR1;$WSREP_PROVIDER_OPT;socket.ssl_key=${WORKDIR}/cert/server-key.pem;socket.ssl_cert=${WORKDIR}/cert/server-cert.pem;socket.ssl_ca=${WORKDIR}/cert/ca.pem\"" ${DATADIR}/n${i}.cnf
       echo "ssl-ca = ${WORKDIR}/cert/ca.pem" >> ${DATADIR}/n${i}.cnf
       echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
@@ -474,16 +474,16 @@ pxc_startup(){
     if [ "$IS_STARTUP" == "startup" ]; then
       mkdir ${WORKDIR}/cert
       if check_for_version $MYSQL_VERSION "5.7.0" ; then
-	    cp ${WORKDIR}/node1.template/*.pem ${WORKDIR}/cert/
+        cp ${WORKDIR}/node1.template/*.pem ${WORKDIR}/cert/
       else
-        pushd ${WORKDIR}/cert	
-        openssl genrsa 2048 > ca-key.pem	
-        openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'	
-        openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'	
-        openssl rsa -in server-key.pem -out server-key.pem	
-        openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem	
+        pushd ${WORKDIR}/cert    
+        openssl genrsa 2048 > ca-key.pem    
+        openssl req -new -x509 -nodes -days 3600 -key ca-key.pem -out ca.pem -subj '/CN=www.percona.com/O=Database Performance./C=US'    
+        openssl req -newkey rsa:2048 -days 3600 -nodes -keyout server-key.pem -out server-req.pem -subj '/CN=www.percona.com/O=Database Performance./C=AU'    
+        openssl rsa -in server-key.pem -out server-key.pem    
+        openssl x509 -req -in server-req.pem -days 3600 -CA ca.pem -CAkey ca-key.pem -set_serial 01 -out server-cert.pem    
         popd
-	  fi
+      fi
     fi
   fi
   get_error_socket_file(){
@@ -506,55 +506,55 @@ pxc_startup(){
     VALGRIND_CMD=""
   fi
   for j in `seq 1 3`;do
-	IS_FAILED=0
+    IS_FAILED=0
     sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n${j}.cnf
     get_error_socket_file ${j}
     if [[ ${j} -eq 1 ]]; then
-	  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n${j}.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
+      $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n${j}.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
     else
-	  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n${j}.cnf \
-	    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
+      $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n${j}.cnf \
+      $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
     fi
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping > /dev/null 2>&1; then
         break
-	  else
+      else
         if grep -qi "Address already in use" ${ERR_FILE} ; then
-	      echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
-	      if [ "$IS_STARTUP" == "startup" ]; then
+          echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
+          if [ "$IS_STARTUP" == "startup" ]; then
             IS_FAILED=1
-	  		break
-	  	  else
-	        removetrial
-	        FAILEDSTARTABORT=1
+            break
+          else
+            removetrial
+            FAILEDSTARTABORT=1
             IS_FAILED=1
-	        break
-	  	  fi
-	    fi
-	    if grep -qi "ERROR. Aborting" ${ERR_FILE} ; then
-	      if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
-	        echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
-	        grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-	        if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
-	          echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
-	        else
-	          savetrial
-	          echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
-	          exit 1
-	        fi
-	      else  # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
-	        echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
-	        grep "ERROR" ${ERR_FILE} | tee -a /${WORKDIR}/pquery-run.log
-	        FAILEDSTARTABORT=1
+            break
+          fi
+        fi
+        if grep -qi "ERROR. Aborting" ${ERR_FILE} ; then
+          if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then  # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
+            echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
+            grep "ERROR" $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
+            if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
+              echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
+            else
+              savetrial
+              echoit "Remember to cleanup/delete the rundir:  rm -Rf ${RUNDIR}"
+              exit 1
+            fi
+          else  # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
+            echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
+            grep "ERROR" ${ERR_FILE} | tee -a /${WORKDIR}/pquery-run.log
+            FAILEDSTARTABORT=1
             IS_FAILED=1
-	        break
-	      fi
-	    fi
+            break
+          fi
+        fi
       fi
     done
     if [[ $IS_FAILED -eq 1 ]]; then
-	  break
+      break
     fi
   done
   
@@ -565,7 +565,7 @@ pxc_startup(){
     echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n2.cnf"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "sed -i \"s|\$RUNDIR|\$WORKDIR|g\" ${WORKDIR}/${TRIAL}/n3.cnf"  >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "startup_check(){ " >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-	echo "  SOCKET=\$1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "  SOCKET=\$1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "  for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "    sleep 1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "    if ${BASEDIR}/bin/mysqladmin -uroot -S\${SOCKET} ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
@@ -575,11 +575,11 @@ pxc_startup(){
     echo "}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery 
     echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${RUNDIR}/${TRIAL}/node1/node1.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-	echo "startup_check ${SOCKET1}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "startup_check ${SOCKET1}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n2.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node2/node2.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-	echo "startup_check ${SOCKET2}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "startup_check ${SOCKET2}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n3.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node3/node3.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-	echo "startup_check ${SOCKET3}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "startup_check ${SOCKET3}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery 
     echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
     echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
@@ -932,8 +932,7 @@ pquery_test(){
       fi
     fi
     chmod +x ${RUNDIR}/${TRIAL}/start
-    echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery
-	
+    echo "BASEDIR=$BASEDIR" > ${RUNDIR}/${TRIAL}/start_recovery    
     echo "${CMD//$RUNDIR/$WORKDIR} --init-file=${WORKDIR}/recovery-user.sql > ${WORKDIR}/${TRIAL}/log/master.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_recovery ; chmod +x ${RUNDIR}/${TRIAL}/start_recovery
     # New MYEXTRA/MYSAFE variables pass & VALGRIND run check method as of 2015-07-28 (MYSAFE & MYEXTRA stored in a text file inside the trial dir, VALGRIND file created if used)
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
@@ -1460,9 +1459,9 @@ pquery_test(){
           if grep -qi "error while loading shared libraries.*libssl" ${RUNDIR}/${TRIAL}/pquery.log; then
             echoit "$(grep -i "error while loading shared libraries" ${RUNDIR}/${TRIAL}/pquery.log)"
             echoit "Assert: There was an error loading the shared/dynamic libssl library linked to from within pquery. You may want to try and install a package similar to libssl-dev. If that is already there, try instead to build pquery on this particular machine. Sometimes there are differences seen between Centos and Ubuntu. Perhaps we need to have a pquery build for each of those separately."
-	      else
+          else
             echoit "Assert: There was an error loading the shared/dynamic mysql client library linked to from within pquery. Ref. ${RUNDIR}/${TRIAL}/pquery.log to see the error. The solution is to ensure that LD_LIBRARY_PATH is set correctly (for example: execute '$ export LD_LIBRARY_PATH=<your_mysql_base_directory>/lib' in your shell. This will happen only if you use pquery without statically linked client libraries, and this in turn would happen only if you compiled pquery yourself instead of using the pre-built binaries available in https://github.com/Percona-QA/percona-qa (ref subdirectory/files ./pquery/pquery*) - which are normally used by this script (hence this situation is odd to start with). The pquery binaries in percona-qa all include a statically linked mysql client library matching the mysql flavor (PS,MS,MD,WS) it was built for. Another reason for this error may be that (having used pquery without statically linked client binaries as mentioned earlier) the client libraries are not available at the location set in LD_LIBRARY_PATH (which is currently set to '${LD_LIBRARY_PATH}'."
-	      fi
+          fi
           exit 1
         fi
         if [ "`ps -ef | grep ${PQPID} | grep -v grep`" == "" ]; then  # pquery ended
