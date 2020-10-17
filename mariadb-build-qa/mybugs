@@ -1,2 +1,2 @@
 #!/bin/bash
-./my | sed 's|.* ||' | sed 's|default.*||' | xargs -I{} echo 'echo "{}: $(cat {}/MYBUG)"' | xargs -I{} bash -c "{}"
+./my | sed 's|.* ||' | xargs -I{} echo 'echo -e "{}:\n   $(cat $(echo "{}" | sed "s|default.*||")/MYBUG)"' | xargs -I{} bash -c "{}"
