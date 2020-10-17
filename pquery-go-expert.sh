@@ -9,7 +9,7 @@
 # MULTI_THREADS is set to 3
 # MULTI_THREADS_INCREASE is set to 3
 # MULTI_THREADS_MAX is set to 9
-# STAGE1_LINES is set to 13
+# STAGE1_LINES is set to 5  # This was previously 13, which is better for stable systems, as it will allow reducer to continue towards auto-pge. Auto-pge (i.e. all other stages after stage 1, as can also be set/done by calling ~/pge) is good for non-sporadic issues as it will drop any uncessary lines after stage 1 in stage 2. However, it is not good for sporadic issues as this will leave regularly 5-10 lines in the testcase which are not needed, requiring one to lower the number of STAGE1_LINES and re-running reducer. The tradeoff however is that one needs to be more diligent in checking runs and regularly CTRL+C > ~/pge for trials which have reduced to a large number of lines. To reach some 'ideal' tradeoff between the two, for the moment 5 was chosen. This will still require some trials (i.e. the non-sporadic ones) to be CTRL+C > ~/pge'd, and some trials (the sporadic ones) where STAGE1_LINES needs to be set lower. Ideally, at some point, an auto-restart-reducers script may be best where FORCE_SKIPV is tested and changes are made based on the result. Thinking about it, it may be better to include this functionality in reducer itself. The risk is that the issue does not reproduce even on 50 threads (auto-increased). To counter this, another type of STAGE V may be implemented; one which executes the testcase up to 10000 times. This is slow however, and then perhas the current system is best; rely on the skill of the engineer to see difference between sporadic/non-sporadic.
 # INPUTFILE is auto-optimized towards latest sql trace inc _out* handling
 # The effect of FORCE_SKIPV=1 is that reducer will skip the verify stage, start reduction immediately, using 3 threads (MULTI_THREADS=3), and never increases the set amount of
 # threads (result of using FORCE_SKIPV=1). Note that MULTI_THREADS_INCREASE is only relevant for non-FORCE_SKIPV runs, more on why this is changed then below.
@@ -82,7 +82,7 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
           sed -i "s|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=3 |" ${REDUCER}
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER}
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER}
-          sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=13|" ${REDUCER}
+          sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=5|" ${REDUCER}
           # Auto-set the inputfile to the most recent sql trace inc _out* handling
           sed -i 's|^INPUTFILE="\([^"]\+\)"|INPUTFILE="$(ls -t \1* \| head -n1)"|' ${REDUCER}
           # Next, we consider if we will set FORCE_KILL=1 by doing many checks to see if it makes sense

@@ -1,0 +1,1 @@
+grep "^BASEDIR=" pquery-pquery-run-MD105.conf

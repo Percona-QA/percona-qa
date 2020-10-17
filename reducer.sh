@@ -71,7 +71,7 @@ USE_NEW_TEXT_STRING=0           # On/off (1/0) If enabled, when using MODE=3, th
 TEXT_STRING_LOC="${SCRIPT_PWD}/new_text_string.sh"  # new_text_string.sh script in mariadb-qa. To get this script use:  cd ~; git clone https://github.com/Percona-QA/mariadb-qa.git (used when USE_NEW_TEXT_STRING is set to 1, which is the case for all inside-MariaDB runs, as set by pquery-prep-red.sh)
 SCAN_FOR_NEW_BUGS=0             # Scan for any new bugs seen during testcase reduction
 KNOWN_BUGS_LOC="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then this file is used to filter which bugs are known. i.e. if a certain unremarked text string appears in the KNOWN_BUGS_LOC file, it will not be considered a new issue when it is seen by reducer.sh
-NEW_BUGS_COPY_DIR="/data/NEWBUGS"  # Make an additional copy of any new bugs into this directory
+NEW_BUGS_SAVE_DIR="/data/NEWBUGS"  # Save new bugs into a specific directory (otherwise it will be saved in the workdir)
 SHOW_SETUP_DEBUGGING=0          # Set to 1 to enable [Setup] messages with extra debug information
 
 # === Expert options
@@ -976,23 +976,24 @@ options_check(){
       echo "Terminating now."
       exit 1
     fi
-    if [ -z "${NEW_BUGS_COPY_DIR}" ]; then
-      echo "Assert: SCAN_FOR_NEW_BUGS was set to 1, yet NEW_BUGS_COPY_DIR is empty. Please set it to a target directory for the SQL testcases to be saved"
+    # TODO: the following can be improved. If it is empty, we save to the workdir by default, but yet we assert here if is empty. As long as the feature is beta, this is a good idea to make sure new bugs are always saved correctly. What is not clear yet is if pquery-run.sh will copy the full trial dir on various reductions back. And, if you for example use reducer_new_text_string.sh from a basedir (after ~/start), then any newbugs will be saved in /dev/shm but not elsehwere unless NEW_BUGS_SAVE_DIR was set. It is, but it shows how new bugs could be missed if we don't assert here, just save to the workdir (/dev/shm) and not somehow copy it back. One solution may be to save to the same directory as where the original input file was (i.e. set NEW_BUGS_SAVE_DIR to that and never proceed unless NEW_BUGS_SAVE_DIR is set, i.e. it cannot be empty, but may be autoset as such. To evaluate more once more runtime experience is present, though this may no longer be visible now that NEW_BUGS_COPY_DIR code was changed to NEW_BUGS_SAVE_DIR and a copy is only stored in the save dir and not the workdir by defauly anymore (due to /dev/shm space prevention measures). 
+    if [ -z "${NEW_BUGS_SAVE_DIR}" ]; then
+      echo "Assert: SCAN_FOR_NEW_BUGS was set to 1, yet NEW_BUGS_SAVE_DIR is empty. Please set it to a target directory for the SQL testcases to be saved"
       echo "Terminating now."
       exit 1
     fi
-    if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
-      mkdir -p "${NEW_BUGS_COPY_DIR}"
-      if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
-        echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_COPY_DIR was set to '${NEW_BUGS_COPY_DIR}'. As this directory did not exist yet, this script tried to create it, and failed. Please check."
+    if [ ! -d "${NEW_BUGS_SAVE_DIR}" ]; then
+      mkdir -p "${NEW_BUGS_SAVE_DIR}"
+      if [ ! -d "${NEW_BUGS_SAVE_DIR}" ]; then
+        echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_SAVE_DIR was set to '${NEW_BUGS_SAVE_DIR}'. As this directory did not exist yet, this script tried to create it, and failed. Please check."
         echo "Terminating now."
         exit 1
       fi
     fi
     if [ "${USE_NEW_TEXT_STRING}" != "1" ]; then
-      echo "SCAN_FOR_NEW_BUGS was set to 1, yet USE_NEW_TEXT_STRING is not set to 1 (set to '${USE_NEW_TEXT_STRING}'). This setup is not covered by this script yet. Ref inside reducer for more info."
+      echo "SCAN_FOR_NEW_BUGS was set to 1, yet USE_NEW_TEXT_STRING is not set to 1 (set to '${USE_NEW_TEXT_STRING}'). This setup is not covered by this script yet. Ref inside reducer for more info. Automatically turning SCAN_FOR_NEW_BUGS off."
       # Reason is that the new text string script is used in conjunction with the new bugs string list. This could be expanded to include the older bugs string list also, but this would seem to be wasted effort as that list is no longer maintained inside MariaDB (the new unique bug id's are used instead and are much better/of much higher quality). Rather, and this is also provides additional ROI in other areas; update the new text string script to call the old script for any case where a new unique bug ID can not be obtained (quite limited limited amount of cases; usually only when incorrect core dumps (stack smashing, OOS, mysqld failed to create a coredump) are used.
-      echo "Terminating now."
+      SCAN_FOR_NEW_BUGS=0
       exit 1
     fi
   fi
@@ -1116,7 +1117,7 @@ multi_reducer(){
     SKIPV=0
     SPORADIC=0 # This will quickly be overwritten by the line "SPORADIC=1  # Sporadic unless proven otherwise" below. So, need to check if this is needed here (may be needed for ifthen statements using this variable. Needs research and/or testing.
   else
-    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS simplification subreducer threads to reduce the issue further ($WORKD/subreducer/)"
+    echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Starting $MULTI_THREADS simplification subreducer threads to reduce the issue ($WORKD/subreducer/)"
     SKIPV=1 # For subreducers started for simplification (STAGE1+), verify/initial simplification should be skipped as this was done already by the parent/main reducer (i.e. just above)
   fi
 
@@ -1300,7 +1301,7 @@ multi_reducer(){
             echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] Thread #$t disappeared, restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))"
             if [ "${FIREWORKS}" != "1" ]; then  # Only show this is in non-fireworks mode. In fireworks more, this outcome is expected. TODO: We can perhaps just 'never' show this, as it is highly likely seen only when an issue that is not being searched for is seen (to be verified through setting pauses in the script etc and checking why this subreducer thread dissappeared)
               # The following can be improved much further: this script can actually check for 1) self-existence, 2) workdir existence, 3) any --init-file called SQL files existence. And if 1/2/3 are handled as such, the error message below can be made much nicer. For example "ERROR: This script (./reducer<nr>.sh) was deleted! Terminating." etc. Make sure that any terminates of scripts are done properly, i.e. if possible still report last optimized file etc.
-              echo_out "[Debug Aid] This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED} while this script was running?. This may also happen due to any of the following reasons: 1) Another server running on the same port (check error logs: grep 'already in use' /dev/shm/*/*/*/log/master.err  2) mysqld startup timeouts etc., 3) somewhere in the original input file (which may now have been reduced further; i.e. you may start to see this issue only at some part during a run when the flow of SQL changed towards this issue) it may have had a DROP USER root or similar, disallowing access to mysqladmin shutdown, causing 'port in use' errors. You can verify this by doing; grep 'Access denied for user' /dev/shm/*/subreducer/*/log/master.err, or similar. A workaround, for most MODE's (though not MODE=0 / timeout / shutdown based issues), is to use/set FORCE_KILL=1 which avoids using mysqladmin shutdown. Another option may be to 'just let it run'. 4) the server is crashing, _but not_ on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log which often help to find the specific issue. Ref /dev/shm/subreducer/*/reducer.log."  # TODO: for item #3 for example, this script can parse the log and check for this itself and give a better output here (and simply kill the process intead of attempting mysqladmin shutdown, which would better). Another oddity is this; if kill is attempted by default after myaladmin shutdown attempt, then why is there a 'port in use' error at all? That should not happen. Verfied that FORCE_KILL=1 does resolve the port in use issue.
+              echo_out "[Debug Aid] This can happen on busy servers, - or - if this message is looping constantly; did you accidentally delete and/or recreate this script, it's working directory, or the mysql base directory ${INIT_FILE_USED} while this script was running?. This may also happen due to any of the following reasons: 1) Another server running on the same port (check error logs: grep 'already in use' /dev/shm/*/*/*/log/master.err  2) mysqld startup timeouts etc., 3) somewhere in the original input file (which may now have been reduced further; i.e. you may start to see this issue only at some part during a run when the flow of SQL changed towards this issue) it may have had a DROP USER root or similar, disallowing access to mysqladmin shutdown, causing 'port in use' errors. You can verify this by doing; grep 'Access denied for user' /dev/shm/*/subreducer/*/log/master.err, or similar. A workaround, for most MODE's (though not MODE=0 / timeout / shutdown based issues), is to use/set FORCE_KILL=1 which avoids using mysqladmin shutdown. Another option may be to 'just let it run'. 4) the server is crashing, _but not_ on the specific text being searched for - try MODE=4. You may also want to checkout the last few lines of the subreducer log which often help to find the specific issue. Ref /dev/shm/*/subreducer/*/reducer.log."  # TODO: for item #3 for example, this script can parse the log and check for this itself and give a better output here (and simply kill the process intead of attempting mysqladmin shutdown, which would better). Another oddity is this; if kill is attempted by default after myaladmin shutdown attempt, then why is there a 'port in use' error at all? That should not happen. Verfied that FORCE_KILL=1 does resolve the port in use issue.
               echo_out "Pausing 10 seconds, you may want to press CTRL+Z to pause for longer, and allow you to debug this further. You can always restart the process with 'fg' if it makes sense to to so after analysis."  
               sleep 10
               # TODO: Reason 1 does happen. Observed:
@@ -1573,7 +1574,7 @@ init_workdir_and_files(){
     echo_out "[Init] Input file: $INPUTFILE"
     echo_out "[Init] EPOCH ID: $EPOCH (used for various file and directory names)"
     # Initial INPUTFILE to WORKF copy
-    if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not need a WORKF file (ref cut_fireworks_chunk_and_shuffle and note ${INPUTFILE} is used instead. The reason for setting it up this way is 1) it greatly improves /dev/shm diskspace as WORKF is not created per-thread, thereby saving let's say 450MB for a standard SQL input file, per-thread, 2) There is no need to maintain a working file (WORKF) as the input is never changed/reduced. INPUTFILE is shuffled and chuncked (as per FIREWORKS_LINES setting) and saved as in.tmp, and if a new bug is found, that file is copied to NEW_BUGS_COPY_DIR.
+    if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not need a WORKF file (ref cut_fireworks_chunk_and_shuffle and note ${INPUTFILE} is used instead. The reason for setting it up this way is 1) it greatly improves /dev/shm diskspace as WORKF is not created per-thread, thereby saving let's say 450MB for a standard SQL input file, per-thread, 2) There is no need to maintain a working file (WORKF) as the input is never changed/reduced. INPUTFILE is shuffled and chuncked (as per FIREWORKS_LINES setting) and saved as in.tmp, and if a new bug is found, that file is copied to NEW_BUGS_SAVE_DIR.
       if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
         if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
           echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
@@ -1677,9 +1678,9 @@ init_workdir_and_files(){
     echo_out "[Init] Querytimeout: ${QUERYTIMEOUT}s (For RQG-originating testcase reductions, ensure this is at least 1.5x what was set in RQG using the --querytimeout option)"
   fi
   if [ "${FIREWORKS}" == "1" ]; then
-    echo_out "[Init] FIREWORKS Mode active. Newly discovered bugs will be saved to ${NEW_BUGS_COPY_DIR}"
+    echo_out "[Init] FIREWORKS Mode active. Newly discovered bugs will be saved to ${NEW_BUGS_SAVE_DIR}"
   elif [ "${SCAN_FOR_NEW_BUGS}" == "1" ]; then
-    echo_out "[Init] SCAN_FOR_NEW_BUGS active. Newly discovered bugs will be saved to ${NEW_BUGS_COPY_DIR}"
+    echo_out "[Init] SCAN_FOR_NEW_BUGS active. Newly discovered bugs will be saved to ${NEW_BUGS_SAVE_DIR}"
   fi
   if [ $USE_PQUERY -eq 0 ]; then
     if   [ ${CLI_MODE} -eq 0 ]; then echo_out "[Init] Using the mysql client for SQL replay. CLI_MODE: 0 (cat input.sql | mysql)";
@@ -2893,20 +2894,21 @@ process_outcome(){
                 NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
                 NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
                 echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: $(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)"
-                cp ${WORKT} ${NEWBUGSO}
-                echo_out "[NewBug] Saved the new testcase to: ${NEWBUGSO}"
-                cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
-                echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
-                if [ ! -z "${NEW_BUGS_COPY_DIR}" ]; then  # We also need to copy this new bug to the NEW_BUGS_COPY_DIR
-                  if [ ! -d "${NEW_BUGS_COPY_DIR}" ]; then
-                    echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_COPY_DIR was set to '${NEW_BUGS_COPY_DIR}'. This directory already existed, or was created succesfully at the start of this script run. However, it is not present anymore. Please check cause."
+                if [ ! -z "${NEW_BUGS_SAVE_DIR}" ]; then  # If set, we need to copy this new bug to the NEW_BUGS_SAVE_DIR
+                  if [ ! -d "${NEW_BUGS_SAVE_DIR}" ]; then
+                    echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_SAVE_DIR was set to '${NEW_BUGS_SAVE_DIR}'. This directory already existed, or was created succesfully at the start of this script run. However, it is not present anymore. Please check cause."
                     echo "Terminating now."
                     exit 1
                   fi
-                  cp ${WORKT} ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.sql
-                  echo_out "[NewBug] Also saved the new testcase to: ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.sql"
-                  cp ${WORKD}/MYBUG.FOUND ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.string
-                  echo_out "[NewBug] Also saved the unique bugid to: ${NEW_BUGS_COPY_DIR}/newbug_${EPOCH_RAN}.string"
+                  cp ${WORKT} ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql
+                  echo_out "[NewBug] Saved the new testcase to: ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql"
+                  cp ${WORKD}/MYBUG.FOUND ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string
+                  echo_out "[NewBug] Saved the unique bugid to: ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string"
+                else
+                  cp ${WORKT} ${NEWBUGSO}
+                  echo_out "[NewBug] Saved the new testcase to: ${NEWBUGSO}"
+                  cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
+                  echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
                 fi
                 EPOCH_RAN=
                 NEWBUGSO=
@@ -3706,7 +3708,7 @@ fireworks_setup(){
                            echo_out "[Init] Run mode: MODE=3 with REDUCE_GLIBC_OR_SS_CRASHES=1: console typscript log"
                            echo_out "[Init] Looking for this string: '$TEXT' in console typscript log output (@ /tmp/reducer_typescript${TYPESCRIPT_UNIQUE_FILESUFFIX}.log)";
     elif [ $USE_NEW_TEXT_STRING -gt 0 ]; then
-                           echo_out "[Init] Run mode: MODE=3 with USE_NEW_TEXT_STRING=1: core matching with new_text_string.sh"
+                           echo_out "[Init] Run mode: MODE=3 with USE_NEW_TEXT_STRING=1: coredump matching with new_text_string.sh"
                            echo_out "[Init] Looking for this string: '$TEXT' in ${TEXT_STRING_LOC} output (@ $WORKD/MYBUG.FOUND when MULTI mode is not active)";
     else
                            echo_out "[Init] Run mode: MODE=3: mysqld error log"

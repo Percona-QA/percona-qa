@@ -82,6 +82,7 @@ cp ts+ ${TARGET}
 cp tsm ${TARGET}
 cp tsm+ ${TARGET}
 cp tt ${TARGET}
+cp ver ${TARGET}
 cp vi ${TARGET}
 cp drop_caches ${TARGET}
 cp asan ${TARGET}

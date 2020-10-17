@@ -2,6 +2,8 @@
 # Created by Roel Van de Paar, MariaDB
 
 ASAN_MODE=0
+SHORTER_STOP_TIME=25  # TODO: this can be improved
+
 MYEXTRA_OPT="$*"
 if [ "${1}" == "ASAN" ]; then
    if [ -z "${TEXT}" ]; then   # Passed normally by ~/b and bug_report.sh script
@@ -37,10 +39,11 @@ fi
 
 # Run the test and stop the servers
 if [ ${ASAN_MODE} -eq 1 ]; then
-  ./gendirs.sh ASAN | xargs -I{} echo "cd {}; ./test; rm -f {}/stopped.flag; ./stop; sync; cd .." | xargs -P50 -I{} sh -c "{}"
+  ./gendirs.sh ASAN | xargs -I{} echo "cd {}; ./test; timeout -k${SHORTER_STOP_TIME} -s9 ${SHORTER_STOP_TIME}s ./stop; cd .." | xargs -P50 -I{} sh -c "{}"
 else
-  ./gendirs.sh | xargs -I{} echo "cd {}; ./test; rm -f {}/stopped.flag; ./stop; sync; cd .." | xargs -P50 -I{} sh -c "{}"
+  ./gendirs.sh | xargs -I{} echo "cd {}; ./test; timeout -k${SHORTER_STOP_TIME} -s9 ${SHORTER_STOP_TIME}s ./stop; cd .." | xargs -P50 -I{} sh -c "{}"
 fi
+sleep 13  # Give servers some time to properly shutdown. TODO: this can be improved
 
 # Ensure servers are gone
 sync

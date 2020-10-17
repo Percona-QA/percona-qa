@@ -19,6 +19,7 @@ ln -s /test/report_dbg /data/report_dbg 2>&1 | grep -v 'File exists'
 ln -s /test/clean /data/clean 2>&1 | grep -v 'File exists'
 ln -s /test/my /data/my 2>&1 | grep -v 'File exists'
 ln -s /test/my2 /data/my2 2>&1 | grep -v 'File exists'
+ln -s /test/mybugs /data/mybugs 2>&1 | grep -v 'File exists'
 ln -s /test/copy_newbugs /data/copy_newbugs 2>&1 | grep -v 'File exists'
 ln -s /test/semaphore /data/semaphore 2>&1 | grep -v 'File exists'
 ln -s /test/copy_all_tests /data/copy_all_tests 2>&1 | grep -v 'File exists'
@@ -27,6 +28,10 @@ ln -s /test/gen_newbug_reducers /data/gen_newbug_reducers 2>&1 | grep -v 'File e
 ln -s /home/$(whoami)/newbug /test/newbug 2>&1 | grep -v 'File exists'
 ln -s /test/copyin /home/$(whoami)/copyin 2>&1 | grep -v 'File exists'
 ln -s /test/newbug_clean /home/$(whoami)/nc 2>&1 | grep -v 'File exists'
+ln -s /test/uniq_newbugs /data/uniq_newbugs 2>&1 | grep -v 'File exists'
+ln -s /test/uniq_newbugs /data/NEWBUGS/uniq_newbugs 2>&1 | grep -v 'File exists'
+ln -s /test/uniq_newbugs /data/FIREWORKS/uniq_newbugs 2>&1 | grep -v 'File exists'
+ln -s /test/uniq_newbugs /test/TESTCASES/uniq_newbugs 2>&1 | grep -v 'File exists'
 
 echo 'Done!'
 exit 0

@@ -1,2 +1,7 @@
 #!/bin/bash
-~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr
+
+if [ -z "${1}" ]; then
+  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr
+else
+  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | awk '{print $2}' | xargs -I{} grep --binary-files=text -L 'mysqld options required' {} | xargs -I{} wc -l {}
+fi

@@ -15,6 +15,9 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search                                    ## OPT |MDEV-23937
+SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search                                                       ## OPT |MDEV-23937
+SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search|choose_plan                                                                            ## OPT |MDEV-23937
 SIGSEGV|end_io_cache|maria_repair|ha_maria::repair|ha_maria::repair                                                                                                            ## OPT MDEV-23824
 SIGSEGV|Item_func_nextval::update_table|Item_func_nextval::val_int|Type_handler::Item_send_longlong|Type_handler_longlong::Item_send                                           ## OPT |MDEV-23823
 SIGSEGV|Item_func_nextval::update_table|Item_func_nextval::val_int|Type_handler::Item_send_longlong|Protocol::send_result_set_row                                              ## DBG |MDEV-23823
@@ -167,6 +170,17 @@ thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|hand
 thd->killed != 0|SIGABRT|ha_maria::enable_indexes|ha_maria::end_bulk_insert|handler::ha_end_bulk_insert|select_insert::prepare_eof                                             ## DBG |MDEV-22500
 (uint) (table_check_constraints - share->check_constraints) == (uint) (share->table_check_constraints - share->field_check_constraints)|SIGABRT|TABLE_SHARE::init_from_binary_frm_image|ha_create_table|create_table_impl|mysql_create_table_no_lock ## DBG MDEV-22499
 SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_lock, &MDL_ticket::prev_in_lock>, I_P_List_null_counter, I_P_List_fast_push_back<MDL_ticket> >::remove|MDL_lock::Ticket_list::remove_ticket|MDL_lock::remove_ticket|MDL_context::release_lock ## DBG MDEV-22448 NOW 20945
+SIGSEGV|I_P_List<MDL_ticket, I_P_List_adapter<MDL_ticket, &MDL_ticket::next_in_context, &MDL_ticket::prev_in_context>, I_P_List_null_counter, I_P_List_no_push_back<MDL_ticket> >::remove|MDL_context::set_explicit_duration_for_all_locks|THD::enter_locked_tables_mode|Locked_tables_list::init_locked_tables ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|mysql_unlock_tables|mysql_unlock_tables|close_thread_tables|Locked_tables_list::unlock_locked_tables                                                                   ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|MDL_ticket::has_stronger_or_equal_type|MDL_context::find_ticket|MDL_context::try_acquire_lock_impl|MDL_context::acquire_lock                                           ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|free_tmp_table|close_thread_tables|mysql_execute_command|mysql_parse                                                                                                   ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|MDL_lock::incompatible_granted_types_bitmap|MDL_ticket::has_stronger_or_equal_type|MDL_context::find_ticket|MDL_context::try_acquire_lock_impl                         ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|ilist<MDL_ticket, void>::erase|ilist<MDL_ticket, void>::remove|MDL_lock::Ticket_list::remove_ticket|MDL_lock::remove_ticket                                            ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|MDL_key::is_equal|MDL_context::find_ticket|MDL_context::try_acquire_lock_impl|MDL_context::acquire_lock                                                                ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|MDL_key::is_equal|MDL_context::find_ticket|MDL_context::is_lock_owner|is_locked_view                                                                                   ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|thr_multi_unlock|mysql_unlock_tables|mysql_unlock_tables|close_thread_tables                                                                                           ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|free () from|MDL_context::release_locks_stored_before|MDL_context::release_transactional_locks|THD::cleanup                                                            ## OPT |MDEV-22448 NOW 20945
+SIGSEGV|free () from|MDL_context::release_locks_stored_before|MDL_context::release_transactional_locks|mysql_execute_command                                                   ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|backup_unlock|THD::cleanup|unlink_thd|do_handle_one_connection                                                                                                         ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|inline_mysql_prlock_wrlock|MDL_context::clone_ticket|MDL_context::try_acquire_lock_impl|MDL_context::acquire_lock ## DBG MDEV-22448 NOW 20945
 ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlock|mysql_execute_command|mysql_parse                                                           ## OPT |MDEV-22448 NOW 20945
@@ -280,6 +294,7 @@ je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_
 log_descriptor.bc.buffer->prev_last_lsn == ((LSN)0)|SIGABRT|translog_flush_buffers|translog_flush|ma_commit|ha_maria::external_lock                                            ## DBG MDEV-17225
 ! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|push_warning                                         ## DBG MDEV-17729*
 thd->transaction.stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|prepare_for_repair|mysql_admin_table            ## DBG |MDEV-17749*
+thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|Locked_tables_list::reopen_tables|close_cached_tables  ## DBG |MDEV-17749*
 thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|Locked_tables_list::reopen_tables|mysql_inplace_alter_table  ## DBG |MDEV-17749*
 thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|Locked_tables_list::reopen_tables|mysql_create_or_drop_trigger  ## DBG |MDEV-17749*
 thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlink_all_closed_tables|prepare_for_repair|mysql_admin_table           ## DBG |MDEV-17749*
@@ -290,7 +305,8 @@ SIGSEGV|Query_arena::set_query_arena|THD::set_n_backup_active_arena|Field::set_d
 !((col->prtype ^ prtype) & ~(16384U|32768U))|SIGABRT|innobase_rename_or_enlarge_column_try|innobase_rename_or_enlarge_columns_try|commit_try_norebuild|ha_innobase::commit_inplace_alter_table ## DBG MDEV-18780*
 SIGSEGV|fk_prepare_copy_alter_table|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command                                                                       ## DBG MDEV-19194*
 ((((*af)->unireg_check) & 127U) == Field::NEXT_NUMBER) == (((f->unireg_check) & 127U) == Field::NEXT_NUMBER)|SIGABRT|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command ## DBG MDEV-19272*
-SIGSEGV|st_select_lex::mark_as_dependent|mark_as_dependent|Item_field::fix_outer_field|Item_field::fix_fields                                                                  ## OPT MDEV-20325*
+SIGSEGV|st_select_lex::mark_as_dependent|mark_as_dependent|Item_field::fix_outer_field|Item_field::fix_fields                                                                  ## OPT |MDEV-20325*
+!derived->is_excluded()|SIGABRT|TABLE_LIST::set_check_materialized|TABLE_LIST::set_materialized_derived|TABLE_LIST::init_derived|mysql_derived_init                            ## OPT |MDEV-20325*
 SIGSEGV|row_upd_del_mark_clust_rec|row_upd_clust_step|row_upd|row_upd_step                                                                                                     ## OPT |MDEV-20563*
 SIGSEGV|wsrep_row_upd_index_is_foreign|row_upd_clust_step|row_upd|row_upd_step                                                                                                 ## OPT |MDEV-20563*
 update->n_fields < ulint(table->n_cols + table->n_v_cols)|SIGABRT|upd_node_t::make_versioned_helper|upd_node_t::make_versioned_update|row_update_for_mysql|ha_innobase::delete_row ## OPT |MDEV-20563*

@@ -1,0 +1,2 @@
+#!/bin/bash
+./my | sed 's|.* ||' | sed 's|default.*||' | xargs -I{} echo 'echo "{}: $(cat {}/MYBUG)"' | xargs -I{} bash -c "{}"

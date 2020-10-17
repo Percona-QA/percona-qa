@@ -15,6 +15,8 @@ cat "${1}" | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
   sed 's|set @@session\.|SET SESSION |gi' | \
   sed 's|use|USE|gi' | \
+  sed 's|natural|NATURAL|gi' | \
+  sed 's|join|JOIN|gi' | \
   sed 's|backup|BACKUP|gi' | \
   sed 's|alter|ALTER|gi' | \
   sed 's|desc|DESC|gi' | \
@@ -98,6 +100,8 @@ cat "${1}" | \
   sed 's|InnoDB_|innodb_|g' | \
   sed 's|GLOBAL_|global_|g' | \
   sed 's|into|INTO|gi' | \
+  sed 's|left|LEFT|gi' | \
+  sed 's|right|RIGHT|gi' | \
   sed 's|threads|THREADS|gi' | \
   sed 's|unique|UNIQUE|gi' | \
   sed 's|point|POINT|gi' | \
@@ -112,6 +116,10 @@ cat "${1}" | \
   sed 's| )|)|g' | \
   sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g' | \
   sed 's|`||gi' | \
+  sed 's|mysql\.\([^ ]\+\)|mysql.\L\1|gi' | \
+  sed 's|auto_increment|AUTO_INCREMENT|gi' | \
+  sed 's|column_format|COLUMN_FORMAT|gi' | \
+  sed 's|low_priority|LOW_PRIORITY|gi' | \
   sed 's|row_format|ROW_FORMAT|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|CAST (|CAST(|gi'

@@ -6,6 +6,8 @@
 #ps -ef | grep -v $$ | grep bug_report | grep -v grep | grep -v mass_bug_report | awk '{print $2}' | xargs kill -9 2>/dev/null
 
 ASAN_MODE=0
+SHORTER_STOP_TIME=13  # TODO: this can be improved
+
 MYEXTRA_OPT="$*"
 if [ "${1}" == "ASAN" ]; then
   if [ -z "${TEXT}" ]; then   # Passed normally by ~/b preloader/wrapper sript
@@ -86,7 +88,7 @@ fi
 if [ ${ASAN_MODE} -eq 0 ]; then
   ./all_no_cl ${MYEXTRA_OPT_CLEANED}
   ./test
-  ./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
+  timeout -k${SHORTER_STOP_TIME} -s9 ${SHORTER_STOP_TIME}s ./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
 
   CORE_COUNT=$(ls data/*core* 2>/dev/null | wc -l)
   if [ ${CORE_COUNT} -eq 0 ]; then

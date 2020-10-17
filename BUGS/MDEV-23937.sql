@@ -1,0 +1,22 @@
+# Repeat 90-3000 times
+DROP DATABASE test;
+CREATE DATABASE test;
+USE test;
+CREATE TABLE t3 (b VARCHAR (1));
+CREATE TABLE t2 (c2 INT);
+SET SESSION join_cache_level=3;
+INSERT INTO t2 VALUES (14619+0.75);
+CREATE TEMPORARY TABLE t1 AS SELECT * FROM mysql.user;
+DELETE IGNORE a2,a3 FROM t2 AS a1 JOIN t AS a2 INNER JOIN t2 AS a3;
+SELECT * FROM (SELECT * FROM t1 NATURAL JOIN t2) AS a NATURAL LEFT JOIN (SELECT * FROM t1 NATURAL JOIN t3) AS b;
+
+# Repeat 30-500 times
+DROP DATABASE test;
+CREATE DATABASE test;
+USE test;
+SET default_tmp_storage_engine=InnoDB;
+SET join_cache_level=3;
+SET default_storage_engine=Aria, default_storage_engine="HEAP", GLOBAL default_storage_engine="MERGE";
+CREATE TEMPORARY TABLE t AS SELECT * FROM mysql.user;
+CREATE TABLE t2 (c INT);
+SELECT * FROM (SELECT * FROM t NATURAL JOIN t2) AS a NATURAL JOIN (SELECT * FROM t NATURAL JOIN t2) AS b;

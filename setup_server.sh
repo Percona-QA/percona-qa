@@ -45,8 +45,13 @@ bind k kill
 EOF
 fi
 echo "These settings are for a 128GB Memory server (google cloud instance of that size or similar)"
-if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%s.%e.%t' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%s.%e.%t' ]; then
-  sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%s.%e.%t" >> /etc/sysctl.conf'  # Do NOT a core fixed path!
+# Do not add a fixed path to the kernel.core_pattern setting, it does not work correctly
+# RV [12 Oct 2020] also found that specifying a long core pattern like 'kernel.core_pattern=core.%p.%u.%s.%e.%t', works less well - cores are generated few times then when just using 'kernel.core_pattern=core', at least no Ubuntu 20.04 LTS. More root cause analysis needed, issue is very illusive. Reverted to just using '=core' for the moment, which is sufficient for framework.
+#if [ "$(grep -m1 '^kernel.core_pattern=core.%p.%u.%s.%e.%t' /etc/sysctl.conf)" != 'kernel.core_pattern=core.%p.%u.%s.%e.%t' ]; then
+#  sudo sh -c 'echo "kernel.core_pattern=core.%p.%u.%s.%e.%t" >> /etc/sysctl.conf'  # Do NOT a core fixed path!
+#fi
+if [ "$(grep -m1 '^kernel.core_pattern=core' /etc/sysctl.conf)" != 'kernel.core_pattern=core' ]; then
+  sudo sh -c 'echo "kernel.core_pattern=core" >> /etc/sysctl.conf'  # Do NOT a core fixed path!
 fi
 if [ "$(grep -m1 '^fs.suid_dumpable=2' /etc/sysctl.conf)" != 'fs.suid_dumpable=2' ]; then
   sudo sh -c 'echo "fs.suid_dumpable=2" >> /etc/sysctl.conf'

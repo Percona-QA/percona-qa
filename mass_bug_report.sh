@@ -3,6 +3,8 @@
 
 MYEXTRA_OPT="$*"  # Note that this is in addition to any '# mysqld options required for replay: --option1 --option2' etc. options listed inside the .sql testcases (as produced by reducer.sh), which are automatically included in the MYEXTRA options.
 TESTCASES_DIR=/test/TESTCASES
+#MAX_DURATION=900  # 15 Minutes, normal runtime (if not OOM) is <= 1 min with ~20 instances
+MAX_DURATION=300 # 5 min per case, for empty server and 2 instances only
 RUN_BASEDIR=${PWD}
 
 if [ ! -r bin/mysqld ]; then
@@ -74,7 +76,6 @@ for i in $(seq 1 ${NR_OF_TESTCASES}); do
   fi
   cd ${RUN_BASEDIR}
   cp ${TESTCASE} ./in.sql
-  MAX_DURATION=900  # 15 Minutes, normal runtime (if not OOM) is <= 1 min with ~20 instances
   timeout -k${MAX_DURATION} -s9 ${MAX_DURATION}s ${SCRIPT_PWD}/bug_report.sh ${MYEXTRA_OPT} > ${TESTCASE}.report
   cd ${RUN_BASEDIR}/..
   ./kill_all  # If bug_report was halted, this will stop all running instaces

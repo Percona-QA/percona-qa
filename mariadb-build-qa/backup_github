@@ -50,6 +50,7 @@ cp dbg4 ${TARGET}
 cp opt4 ${TARGET}
 cp my ${TARGET}
 cp my2 ${TARGET}
+cp mybugs ${TARGET}
 cp test_all ${TARGET}
 cp find_cores ${TARGET}
 cp untar ${TARGET}
@@ -83,6 +84,7 @@ cp newbug_clean ${TARGET}
 cp allstrings_merged ${TARGET}
 cp allstrings ${TARGET}
 cp semaphore ${TARGET}
+cp uniq_newbugs ${TARGET}
 
 cd ${TARGET}
 git add *
