@@ -7,22 +7,27 @@ MTRT=$[ ${RANDOM} % 100 + 700]
 BUILD=$(pwd | sed 's|^.*/||')
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 ADDR="127.0.0.1"
+USE_JE=0  # Use jemalloc (requires builds which were made with jemalloc enabled. Current build scripts explicitly disable jemalloc with -DWITH_JEMALLOC=no hardcoded, as TokuDB is deprecated in MariaDB 10.5)
 
-JE1="if [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.2 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
-JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so"
-JE3=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
-JE4=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
-JE5=" elif [ -r /usr/local/lib/libjemalloc.so ]; then export LD_PRELOAD=/usr/local/lib/libjemalloc.so"
-JE6=" elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1"
-JE7=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi"
+if [ "${USE_JE}" -eq 1 ]; then
+  JE1="if [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.2 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
+  JE2=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so"
+  JE3=" elif [ -r /usr/lib64/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib64/libjemalloc.so.1"
+  JE4=" elif [ -r /usr/lib/x86_64-linux-gnu/libjemalloc.so.1 ]; then export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
+  JE5=" elif [ -r /usr/local/lib/libjemalloc.so ]; then export LD_PRELOAD=/usr/local/lib/libjemalloc.so"
+  JE6=" elif [ -r ${PWD}/lib/mysql/libjemalloc.so.1 ]; then export LD_PRELOAD=${PWD}/lib/mysql/libjemalloc.so.1"
+  JE7=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi"
+fi
 
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ $(dpkg -l|grep -c libaio1) -eq 0 ]; then
     sudo apt-get install libaio1
   fi
-  if [ $(dpkg -l|grep -c libjemalloc1) -eq 0 ]; then
-    sudo apt-get install libjemalloc1
+  if [ "${USE_JE}" -eq 1 ]; then  # TODO: this only checks for libjemalloc1, whereas newer Ubuntu releases seem to be using libjemalloc2, but it is not sure if TokuDB still works with libjemalloc2.
+    if [ $(dpkg -l|grep -c libjemalloc1) -eq 0 ]; then
+      sudo apt-get install libjemalloc1
+    fi
   fi
   if [ ! -r /lib/x86_64-linux-gnu/libssl.so.6 ]; then
     sudo ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.6 2>/dev/null
@@ -202,10 +207,12 @@ if [[ $GRP_RPL -eq 1 ]];then
 fi
 
 mkdir -p data data/mysql log
-if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
-  TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
-else
-  TOKUDB=
+if [ "${USE_JE}" -eq 1 ]; then
+  if [ -r ${PWD}/lib/mysql/plugin/ha_tokudb.so ]; then
+    TOKUDB="--plugin-load-add=tokudb=ha_tokudb.so --tokudb-check-jemalloc=0"
+  else
+    TOKUDB=
+  fi
 fi
 if [ -r ${PWD}/lib/mysql/plugin/ha_rocksdb.so ]; then
   ROCKSDB="--plugin-load-add=rocksdb=ha_rocksdb.so"
@@ -227,15 +234,18 @@ fi
 echo 'MYEXTRA_OPT="$*"' > start
 echo 'MYEXTRA=" --no-defaults "' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
-echo '#MYEXTRA=" --no-defaults --log-bin --server-id=0 --plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=RocksDB=ha_rocksdb.so"    # --init-file=${SCRIPT_PWD}/plugins_57.sql --performance-schema --thread_handling=pool-of-threads"' >> start
+#echo '#MYEXTRA=" --no-defaults --log-bin --server-id=0 --plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=RocksDB=ha_rocksdb.so"    # --init-file=${SCRIPT_PWD}/plugins_57.sql --performance-schema --thread_handling=pool-of-threads"' >> start
+echo '#MYEXTRA=" --no-defaults --log-bin --server-id=0 --plugin-load-add=RocksDB=ha_rocksdb.so"    # --init-file=${SCRIPT_PWD}/plugins_57.sql --performance-schema --thread_handling=pool-of-threads"' >> start
 echo '#MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --log_slave_updates=ON --log_bin=binlog --binlog_format=ROW --master_info_repository=TABLE --relay_log_info_repository=TABLE"' >> start
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB  # For fb-mysql only"' >> start
 echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start
 echo 'export UBSAN_OPTIONS=print_stacktrace=1' >> start
-echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start; echo $JE6 >> start; echo $JE7 >> start;
+if [ "${USE_JE}" -eq 1 ]; then
+  echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start; echo $JE6 >> start; echo $JE7 >> start;
+fi
 cp start start_valgrind  # Idem for Valgrind
-cp start start_gypsy     # Just copying jemalloc commands from last line above over to gypsy start also
+cp start start_gypsy     # Idem for gypsy
 echo "$BIN  \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err --server-id=100 \${MYEXTRA_OPT}  2>&1 &" >> start
 echo "for X in \$(seq 0 70); do if ${PWD}/bin/mysqladmin ping -uroot -S${PWD}/socket.sock > /dev/null 2>&1; then break; fi; sleep 0.25; done" >> start
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
@@ -390,7 +400,9 @@ echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < $
 echo 'MYEXTRA_OPT="$*"' > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
 echo "rm -Rf ${PWD}/data.PREV; mv ${PWD}/data ${PWD}/data.PREV 2>/dev/null" >> wipe
-echo $JE1 >> wipe; echo $JE2 >> wipe; echo $JE3 >> wipe; echo $JE4 >> wipe; echo $JE5 >> wipe; echo $JE6 >> wipe; echo $JE7 >> wipe;
+if [ "${USE_JE}" -eq 1 ]; then
+  echo $JE1 >> wipe; echo $JE2 >> wipe; echo $JE3 >> wipe; echo $JE4 >> wipe; echo $JE5 >> wipe; echo $JE6 >> wipe; echo $JE7 >> wipe;
+fi
 echo "$INIT_TOOL ${INIT_OPT} \${MYEXTRA_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
 echo "rm -f log/master.err.PREV" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe

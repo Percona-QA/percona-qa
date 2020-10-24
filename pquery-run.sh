@@ -16,6 +16,8 @@ CONFIGURATION_FILE=pquery-run.conf # Do not use any path specifiers, the .conf f
 # * It would be possible to output all new bugs to a flat text file, so that when the new bug detection is operating, it will check not only known_bugs.strings but also this new flat text file, and if a bug is seen already, it could just delete the trial. This will only leave one trial in place for testcase reduction, but over time and over different runs this should be quite fine - especially as showstopper like bugs will be all over the runs and hence will reproduce every new run with ease. For the moment, pquery-eliminate-dups.sh reduces the max number to 3, so that is quite fine also.
 
 # ========================================= MAIN CODE ============================================================================
+# MariaDB specific variables
+DISABLE_TOKUDB_AND_JEMALLOC=1
 # Internal variables: DO NOT CHANGE!
 RANDOM=$(date +%s%N | cut -b10-19)
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')
@@ -174,23 +176,25 @@ fi
 #Store MySQL version string
 MYSQL_VERSION=$(${BASEDIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 # JEMALLOC for PS/TokuDB
-PSORNOT1=$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)
-PSORNOT2=$(${BIN} --version | grep -oi '5.7.[0-9]\+-[0-9]' | cut -f2 -d'-' | head -n1)
-if [ "${PSORNOT2}" == "" ]; then PSORNOT2=0; fi
-if [ "${SKIP_JEMALLOC_FOR_PS}" != "1" ]; then
-  if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
-    if [ -r $(find /usr/*lib*/ -name libjemalloc.so.1 | head -n1) ]; then
-      export LD_PRELOAD=$(find /usr/*lib*/ -name libjemalloc.so.1 | head -n1)
-    else
-      echoit "Assert! Binary (${BIN} reported itself as Percona Server, yet jemalloc was not found, please install it!"
-      echoit "For Centos7 you can do this by:  sudo yum -y install epel-release; sudo yum -y install jemalloc;"
-      echoit "For Ubuntu you can do this by: sudo apt-get install libjemalloc-dev;"
-      exit 1
+if [ "${DISABLE_TOKUDB_AND_JEMALLOC}" -eq 0 ]; then
+  PSORNOT1=$(${BIN} --version | grep -oi 'Percona' | sed 's|p|P|' | head -n1)
+  PSORNOT2=$(${BIN} --version | grep -oi '5.7.[0-9]\+-[0-9]' | cut -f2 -d'-' | head -n1)
+  if [ "${PSORNOT2}" == "" ]; then PSORNOT2=0; fi
+  if [ "${SKIP_JEMALLOC_FOR_PS}" != "1" ]; then
+    if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
+      if [ -r $(find /usr/*lib*/ -name libjemalloc.so.1 | head -n1) ]; then
+        export LD_PRELOAD=$(find /usr/*lib*/ -name libjemalloc.so.1 | head -n1)
+      else
+        echoit "Assert! Binary (${BIN} reported itself as Percona Server, yet jemalloc was not found, please install it!"
+        echoit "For Centos7 you can do this by:  sudo yum -y install epel-release; sudo yum -y install jemalloc;"
+        echoit "For Ubuntu you can do this by: sudo apt-get install libjemalloc-dev;"
+        exit 1
+      fi
     fi
-  fi
-else
-  if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
-    echoit "*** IMPORTANT WARNING ***: SKIP_JEMALLOC_FOR_PS was set to 1, and thus JEMALLOC will not be LD_PRELOAD'ed. However, the mysqld binary (${BIN}) reports itself as Percona Server. If you are going to test TokuDB, JEMALLOC should be LD_PRELOAD'ed. If not testing TokuDB, then this warning can be safely ignored."
+  else
+    if [ "${PSORNOT1}" == "Percona" ] || [ ${PSORNOT2} -ge 1 ]; then
+      echoit "*** IMPORTANT WARNING ***: SKIP_JEMALLOC_FOR_PS was set to 1, and thus JEMALLOC will not be LD_PRELOAD'ed. However, the mysqld binary (${BIN}) reports itself as Percona Server. If you are going to test TokuDB, JEMALLOC should be LD_PRELOAD'ed. If not testing TokuDB, then this warning can be safely ignored."
+    fi
   fi
 fi
 

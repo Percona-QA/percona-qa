@@ -42,6 +42,7 @@ MYEXTRA="--no-defaults --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"  # mysql
 MYINIT=""                       # Extra options to pass to mysqld AND at data dir init time. See pquery-run-*.conf for more info
 BASEDIR="${PWD}"                # Path to the MySQL BASE directory to be used
 DISABLE_TOKUDB_AUTOLOAD=0       # On/Off (1/0) Prevents mysqld startup issues when using standard MySQL server (i.e. no TokuDB available) with a testcase containing TokuDB SQL
+DISABLE_TOKUDB_AND_JEMALLOC=1   # For MariaDB, TokuDB is deprecated, so we always disable both in full
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)  # script location to access storage engine plugin sql file.
 
 # === Sporadic testcases        # Used when testcases prove to be sporadic *and* fail to reduce using basic methods
@@ -392,38 +393,40 @@ if [[ "${MYEXTRA}" == *"ha_rocksdb.so"* ]]; then
     exit 1
   fi
 fi
-if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
-  if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
-    TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_tokudb.so" | head -n1)"  # Grep all text including and after '--plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_tokudb.so' for that option
-    MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDB}||g")"
-    if [[ "${MYEXTRA}" == *"--tokudb"[-_]"check"[-_]"jemalloc"* ]]; then
-      TOKUDBJC="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb[-_]check[-_]jemalloc[^ ]*" | head -n1)"  # Grep all text including and after '--tokudb[-_]check[-_]jemalloc' upto the first space
-      MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDBJC}||g")"
-      TOKUDB="$(echo "${TOKUDB} ${TOKUDBCJ}")"
-    fi
-    # The below issues should never happen in the Percona pquery framework; ref info above in ha_rocksdb.so section
-    if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
-      echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
-      echo "Please simplify it, or improve the code in reducer.sh which handles this (search for this text)."
+if [ "${DISABLE_TOKUDB_AND_JEMALLOC}" -eq 0 ]; then
+  if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
+    if [ -r ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so ]; then
+      TOKUDB="$(echo "${MYEXTRA}" | grep -o "\-\-plugin[-_][^ ]\+ha_tokudb.so" | head -n1)"  # Grep all text including and after '--plugin[-_]' (upto any space as a new option starts there) upto and including the last 'ha_tokudb.so' for that option
+      MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDB}||g")"
+      if [[ "${MYEXTRA}" == *"--tokudb"[-_]"check"[-_]"jemalloc"* ]]; then
+        TOKUDBJC="$(echo "${MYEXTRA}" | grep -o "\-\-tokudb[-_]check[-_]jemalloc[^ ]*" | head -n1)"  # Grep all text including and after '--tokudb[-_]check[-_]jemalloc' upto the first space
+        MYEXTRA="$(echo "${MYEXTRA}" | sed "s|${TOKUDBJC}||g")"
+        TOKUDB="$(echo "${TOKUDB} ${TOKUDBCJ}")"
+      fi
+      # The below issues should never happen in the Percona pquery framework; ref info above in ha_rocksdb.so section with the same start as this line
+      if [[ "${MYEXTRA}" == *"ha_tokudb.so"* ]]; then
+        echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
+        echo "Please simplify it, or improve the code in reducer.sh which handles this (search for this text)."
+        echo "Terminating now."
+        exit 1
+      elif [[ "${TOKUDB}" == *"ha_rocksdb.so"* ]]; then
+        echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
+        echo "It looks like the ha_rocksdb.so plugin load call was nested inside the --plugin-load[-add]=...ha_tokudb.so plugin load call."
+        echo "Please simplify it by using a separate --plugin-load-add for each engine, or improve the code in reducer.sh which handles this (search for this text) to extract the RocksDB load code into the ROCKSDB variable at this point in the code (complex)."
+        echo "Terminating now."
+        exit 1
+      fi
+    else
+      echo "Error: MYEXTRA contains ha_tokudb.so, yet ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so des not exist."
       echo "Terminating now."
       exit 1
-    elif [[ "${TOKUDB}" == *"ha_rocksdb.so"* ]]; then
-      echo "Error: The MYEXTRA string is formulated in a seemingly complex manner; it should contain (per engine) only one '--plugin-load[-add]=...ha_....so' (and note that --plugin-load can only be used once; perhaps best to use --plugin-load-add for each engine)."
-      echo "It looks like the ha_rocksdb.so plugin load call was nested inside the --plugin-load[-add]=...ha_tokudb.so plugin load call."
-      echo "Please simplify it by using a separate --plugin-load-add for each engine, or improve the code in reducer.sh which handles this (search for this text) to extract the RocksDB load code into the ROCKSDB variable at this point in the code (complex)."
-      echo "Terminating now."
-      exit 1
     fi
-  else
-    echo "Error: MYEXTRA contains ha_tokudb.so, yet ${BASEDIR}/lib/mysql/plugin/ha_tokudb.so des not exist."
+  fi
+  if [[ "${MYEXTRA}" == *"--tokudb"[-_]"check"[-_]"jemalloc"* ]]; then
+    echo "Error: MYEXTRA contains --tokudb-check-jemalloc, yet ha_tokudb.so is not present in the MYEXTRA string."
     echo "Terminating now."
     exit 1
   fi
-fi
-if [[ "${MYEXTRA}" == *"--tokudb"[-_]"check"[-_]"jemalloc"* ]]; then
-  echo "Error: MYEXTRA contains --tokudb-check-jemalloc, yet ha_tokudb.so is not present in the MYEXTRA string."
-  echo "Terminating now."
-  exit 1
 fi
 # === Check binary log encryption options, split it into a BL_ENCRYPTION variable, and cleanup MYEXTRA to remove the related options
 BL_ENCRYPTION=
@@ -704,29 +707,31 @@ options_check(){
         exit 1
       else
         TS_INPUTDIR="$1/log"
-        TOKUDB_RUN_DETECTED=0
-        if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb" 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
-        if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
-          if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
-        fi
-        if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
-          if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.2 | head -n1` ]; then
-            export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.2 | head -n1`
-          elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.2 | head -n1` ]; then
-            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.2 | head -n1`
-          elif [ -r `sudo find /usr/*lib*/ -name libjemalloc.so | head -n1` ]; then
-            export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so | head -n1`
-          elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so | head -n1` ]; then
-            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so | head -n1`
-          elif [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
-            export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
-          elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
-            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
-          else
-            echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
-            echo 'This can be done with a command similar to: $ sudo apt install jemalloc libjemalloc-dev libjemalloc2  # or yum instead of apt-get when using RedHat. Name varies so you may only need for example libjemalloc2'
-            echo "Terminating now."
-            exit 1
+        if [ "${DISABLE_TOKUDB_AND_JEMALLOC}" -eq 0 ]; then
+          TOKUDB_RUN_DETECTED=0
+          if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb" 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
+          if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
+            if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
+          fi
+          if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
+            if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.2 | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.2 | head -n1`
+            elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.2 | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.2 | head -n1`
+            elif [ -r `sudo find /usr/*lib*/ -name libjemalloc.so | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so | head -n1`
+            elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so | head -n1`
+            elif [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
+            elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+              export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
+            else
+              echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
+              echo 'This can be done with a command similar to: $ sudo apt install jemalloc libjemalloc-dev libjemalloc2  # or yum instead of apt-get when using RedHat. Name varies so you may only need for example libjemalloc2'
+              echo "Terminating now."
+              exit 1
+            fi
           fi
         fi
       fi
@@ -755,28 +760,30 @@ options_check(){
     else
       export -n INPUTFILE=$1  # export -n is not necessary for this script, but it is here to prevent pquery-prep-red.sh from seeing this as a adjustable var
     fi
-    TOKUDB_RUN_DETECTED=0
-    if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb" 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
-    if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
-      if grep -E --binary-files=text -qi "tokudb" ${INPUTFILE} 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
-    fi
-    if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
-      #if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
-      #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
-      #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
-      #fi
-      #if [ -r /usr/lib64/libjemalloc.so.1 ]; then
-      #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
-      if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
-        export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
-      else
-        if [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
-          export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
+    if [ "${DISABLE_TOKUDB_AND_JEMALLOC}" -eq 0 ]; then
+      TOKUDB_RUN_DETECTED=0
+      if echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb" 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
+      if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then
+        if grep -E --binary-files=text -qi "tokudb" ${INPUTFILE} 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
+      fi
+      if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
+        #if [ ${DISABLE_TOKUDB_AUTOLOAD} -eq 0 ]; then  # Just here for extra safety
+        #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "plugin-load=tokudb=ha_tokudb.so"; then MYEXTRA="${MYEXTRA} --plugin-load=tokudb=ha_tokudb.so"; fi
+        #  if ! echo "${SPECIAL_MYEXTRA_OPTIONS} ${MYEXTRA}" | grep -E --binary-files=text -qi "tokudb-check-jemalloc"; then MYEXTRA="${MYEXTRA} --tokudb-check-jemalloc=0"; fi
+        #fi
+        #if [ -r /usr/lib64/libjemalloc.so.1 ]; then
+        #  export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+        if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+          export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
         else
-          echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
-          echo 'This can be done with a command similar to: $ yum install jemalloc'
-          echo "Terminating now."
-          exit 1
+          if [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
+          else
+            echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
+            echo 'This can be done with a command similar to: $ yum install jemalloc'
+            echo "Terminating now."
+            exit 1
+          fi
         fi
       fi
     fi
