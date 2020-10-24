@@ -106,6 +106,9 @@ cat "${1}" | \
   sed 's|unique|UNIQUE|gi' | \
   sed 's|point|POINT|gi' | \
   sed 's|variables|VARIABLES|gi' | \
+  sed 's|generated|GENERATED|gi' | \
+  sed 's|always|ALWAYS|gi' | \
+  sed 's|virtual|VIRTUAL|gi' | \
   sed 's|checkpoint|checkpoint|gi' | \
   sed 's|_\([a-zA-Z]\+\)|_\L\1|gi;s|\([a-zA-Z]\+\)_|\L\1_|gi' | \
   sed "s|^. mysqld options required for replay.*|${OPTIONS}|i" | \

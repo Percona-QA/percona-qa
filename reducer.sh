@@ -710,17 +710,23 @@ options_check(){
           if grep -E --binary-files=text -qi "tokudb" $TS_INPUTDIR/C[0-9]*T[0-9]*.sql 2>/dev/null; then TOKUDB_RUN_DETECTED=1; fi
         fi
         if [ ${TOKUDB_RUN_DETECTED} -eq 1 ]; then
-          if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+          if [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.2 | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.2 | head -n1`
+          elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.2 | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.2 | head -n1`
+          elif [ -r `sudo find /usr/*lib*/ -name libjemalloc.so | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so | head -n1`
+          elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so | head -n1`
+          elif [ -r `sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
             export LD_PRELOAD=`sudo find /usr/*lib*/ -name libjemalloc.so.1 | head -n1`
+          elif [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
+            export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
           else
-            if [ -r `sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1` ]; then
-              export LD_PRELOAD=`sudo find /usr/local/*lib*/ -name libjemalloc.so.1 | head -n1`
-            else
-              echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
-              echo 'This can be done with a command similar to: $ yum install jemalloc'
-              echo "Terminating now."
-              exit 1
-            fi
+            echo 'This run contains TokuDB SE SQL, yet jemalloc - which is required for TokuDB - was not found, please install it first'
+            echo 'This can be done with a command similar to: $ sudo apt install jemalloc libjemalloc-dev libjemalloc2  # or yum instead of apt-get when using RedHat. Name varies so you may only need for example libjemalloc2'
+            echo "Terminating now."
+            exit 1
           fi
         fi
       fi

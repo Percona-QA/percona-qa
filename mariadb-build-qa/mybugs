@@ -1,2 +1,7 @@
 #!/bin/bash
-./my | sed 's|.* ||' | xargs -I{} echo 'echo -e "{}:\n   $(cat $(echo "{}" | sed "s|default.*||")/MYBUG)"' | xargs -I{} bash -c "{}"
+rm -f /tmp/mybugs
+if [ -r /tmp/mybugs ]; then echo 'Assert: /tmp/mybugs exists after deletion, privilege issue?'; exit 1; fi
+./my | sed 's|.* ||' | xargs -I{} echo 'echo -e "{}:\n   $(cat $(echo "{}" | sed "s|default.*||")/MYBUG)"'  > /tmp/mybugs
+chmod +x /tmp/mybugs && /tmp/mybugs
+rm -f /tmp/mybugs
+if [ -r /tmp/mybugs ]; then echo 'Assert: /tmp/mybugs exists after deletion, privilege issue?'; exit 1; fi

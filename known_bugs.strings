@@ -15,6 +15,8 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|free () from|_dl_close_worker|_dl_close_worker|_dl_close                                                                                                               ## DBG MDEV-11727
+!parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|Table_triggers_list::change_table_name|do_rename|rename_tables                                       ## DBG MDEV-23977
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search                                    ## OPT |MDEV-23937
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search                                                       ## OPT |MDEV-23937
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search|choose_plan                                                                            ## OPT |MDEV-23937
@@ -348,6 +350,7 @@ SIGSEGV|heap_info|ha_heap::info|make_join_statistics|JOIN::optimize_inner       
 !table || table->in_use == _current_thd()|SIGABRT|Field_long::val_int|Field_int::val_decimal|Item_field::val_decimal|VDec::set                                                 ## DBG |MDEV-23294*
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Field::val_str|Field::save_in_field_str|Field_str::save_in_field                                       ## DBG |MDEV-23294*
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Item_field::val_str|Item::val_str|Item_func_hash::val_int                                              ## DBG |MDEV-23294*
+!table || table->in_use == _current_thd()|SIGABRT|Field_long::val_int|Item_field::val_int|Item_func_plus::int_op|Item_func_hybrid_field_type::val_int_from_int_op              ## DBG |MDEV-23294*
 !col->mbmaxlen || len >= col->mbminlen * (fixed_len / col->mbmaxlen)|SIGABRT|row_merge_buf_add|row_merge_read_clustered_index|row_merge_build_indexes|ha_innobase::inplace_alter_table ## DBG MDEV-22365*
 i < get_width()|SIGABRT|Histogram::get_value|Histogram::find_bucket|Histogram::range_selectivity|get_column_range_cardinality                                                  ## DBG |MDEV-23151*
 i < get_width()|SIGABRT|Histogram::get_value|Histogram::find_bucket|Histogram::point_selectivity|get_column_range_cardinality                                                  ## DBG |MDEV-23151*
