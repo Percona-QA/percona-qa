@@ -17,6 +17,7 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 ###### CURRENT BUGS######
 SIGSEGV|free () from|_dl_close_worker|_dl_close_worker|_dl_close                                                                                                               ## DBG MDEV-11727
 !parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|Table_triggers_list::change_table_name|do_rename|rename_tables                                       ## DBG MDEV-23977
+SIGSEGV|__GI___pthread_mutex_lock|calloc () from|asn1_array2tree () from|call_init                                                                                             ## DBG |MDEV-23985
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search                                    ## OPT |MDEV-23937
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search                                                       ## OPT |MDEV-23937
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search|choose_plan                                                                            ## OPT |MDEV-23937
