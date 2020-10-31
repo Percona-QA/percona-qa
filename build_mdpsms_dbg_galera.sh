@@ -29,6 +29,11 @@ IGNORE_WARNINGS=1       # 0 or 1 # Ignore warnings by using -DMYSQL_MAINTAINER_M
 
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
+if [ -r MYSQL_VERSION ]; then
+  if [ ! -r VERSION ]; then
+    cp MYSQL_VERSION VERSION
+  fi
+fi
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
   exit 1

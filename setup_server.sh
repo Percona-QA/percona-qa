@@ -169,10 +169,15 @@ sudo add-apt-repository restricted
 # Also removed libcrack2-dev, not sure what tool this lib was required for and not sure what purpose is? Re-add if missing lib problems found later, with updated comment here.
 
 # Install apps for 18.04
-#sudo apt-get install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev python-mysqldb mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev cpufrequtils rr
+#sudo apt install -y build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim yum-utils lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc1 libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g zlib1g-dbg zlib1g-dev libreadline-dev libreadline7-dbg debhelper devscripts pkg-config dpkg-dev lsb-release libpam0g-dev libcurl4-openssl-dev libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev python-mysqldb mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev cpufrequtils rr
 
 # Install apps for 20.04
-sudo apt-get install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g libreadline-dev debhelper devscripts pkg-config dpkg-dev lsb-release libpam0g-dev libcurl4-openssl-dev libssh-doc libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev cpufrequtils rr net-tools libasan5 gcc-9 libasan6 gcc-10  # Potentially only libasan6/gcc-10 is required.
+sudo apt install build-essential man-db wget patch make cmake automake autoconf bzr git htop lsof gdb gcc libtool bison valgrind strace screen hdparm openssl tree vim lshw iotop bats lzma lzma-dev git linux-headers-generic g++ libncurses5-dev libaio1 libaio-dev libjemalloc-dev libdbd-mysql libssl-dev subversion libgtest-dev zlib1g libreadline-dev debhelper devscripts pkg-config dpkg-dev lsb-release libpam0g-dev libcurl4-openssl-dev libssh-doc libssh-dev fail2ban libz-dev libgcrypt20 libgcrypt20-dev libssl-dev libboost-all-dev mdm clang libasan5 clang-format libbz2-dev gnutls-dev sysbench bbe libbsd-dev libedit-dev liblz4-dev chrpath dh-apparmor dh-exec dh-systemd libcurl4-openssl-dev libjudy-dev libkrb5-dev libpcre2-dev libsnappy-dev libsystemd-dev libxml2-dev libzstd-dev unixodbc-dev uuid-dev cpufrequtils rr net-tools libasan5 gcc-9 libasan6 gcc-10  # Potentially only libasan6/gcc-10 is required.
+# Fixup needed on 20.04 after updates (24/10/2020)  TODO: work in progress
+sudo apt purge libasan4 libasan5 libasan6 gcc-7 gcc-8 gcc-9 gcc-10 gcc c-compiler
+sudo apt autoremove
+sudo apt install libasan6 gcc-9 g++-9 gcc g++ build-essential  # logout login  - drop gcc
+
 # Packages so far not available on 20.04:
 # yum-utils: removed ftm
 # libjemalloc1: not needed?
@@ -181,7 +186,7 @@ sudo apt-get install build-essential man-db wget patch make cmake automake autoc
 # libreadline7-dbg: libreadline-dev is present, which may be sufficient
 # python-mysqldb: replacement?
 
-sudo apt-get install libdata-dumper-simple-perl  # Required by mysql_install_db
+sudo apt install libdata-dumper-simple-perl  # Required by mysql_install_db
 
 # rr server Tuning
 if [ "${1}" == "rr" ]; then

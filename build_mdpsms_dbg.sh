@@ -29,6 +29,11 @@ IGNORE_WARNINGS=1       # 0 or 1 # Ignore warnings by using -DMYSQL_MAINTAINER_M
 
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
+if [ -r MYSQL_VERSION ]; then
+  if [ ! -r VERSION ]; then
+    cp MYSQL_VERSION VERSION
+  fi
+fi
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
   exit 1
@@ -65,7 +70,8 @@ fi
 
 SSL_MYSQL57_HACK=0
 if [ -f /usr/bin/apt-get ]; then
-  if [[ "$CURRENT_VERSION" < "050723" ]]; then
+  #if [[ "$CURRENT_VERSION" < "050723" ]]; then  # This seems to have changed 5.6
+  if [[ "$CURRENT_VERSION" < "050640" ]]; then  # 050640 is a temporary guess/hack; find right rev
     SSL_MYSQL57_HACK=1
   fi
 fi

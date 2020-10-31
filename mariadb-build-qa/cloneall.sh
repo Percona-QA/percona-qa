@@ -7,6 +7,7 @@ rm -Rf 10.3
 rm -Rf 10.4
 rm -Rf 10.5
 rm -Rf 10.6
+echo ''
 ./clone.sh 10.1 &
 ./clone.sh 10.2 &
 ./clone.sh 10.3 &

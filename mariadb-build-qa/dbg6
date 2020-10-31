@@ -2,8 +2,8 @@
 
 if [ "${_}" == "${0}" ]; then
   echo "Source me instead! Like this:"
-  echo ". ./opt"
+  echo ". ./dbg"
   exit 1
 fi
 
-cd MD201020-mariadb-10.4.16-linux-x86_64-opt
+cd MD211020-mariadb-10.6.0-linux-x86_64-dbg

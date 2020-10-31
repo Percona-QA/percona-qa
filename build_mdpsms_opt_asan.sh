@@ -26,6 +26,11 @@ AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
+if [ -r MYSQL_VERSION ]; then
+  if [ ! -r VERSION ]; then
+    cp MYSQL_VERSION VERSION
+  fi
+fi
 if [ ! -r VERSION ]; then
   echo "Assert: 'VERSION' file not found!"
   exit 1

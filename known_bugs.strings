@@ -15,6 +15,12 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|__memcmp_avx2_movbe|insert_at|queue_insert|Bounded_queue<unsigned char, unsigned char>::push                                                                           ## OPT |MDEV-24033
+SIGSEGV|__memcmp_avx2_movbe|native_compare|insert_at|queue_insert                                                                                                              ## OPT |MDEV-24033
+SIGSEGV|strnmov|name_hash_search|table_hash_search|check_grant_all_columns                                                                                                     ## OPT |MDEV-24019
+open_tables == __null|SIGABRT|THD::cleanup|THD::free_connection|THD::~THD|THD::~THD                    i                                                                       ## DBG |MDEV-24019
+SIGSEGV|Item_func_nextval::update_table|Item_func_setval::val_int|Type_handler::Item_send_longlong|Type_handler_longlong::Item_send                                            ## DBG |MDEV-24018
+SIGSEGV|Item_func_nextval::update_table|Item_func_setval::val_int|Type_handler::Item_send_longlong|Protocol::send_result_set_row                                               ## OPT |MDEV-24018
 SIGSEGV|free () from|_dl_close_worker|_dl_close_worker|_dl_close                                                                                                               ## DBG MDEV-11727
 !parse_error || lex.sphead == 0|SIGABRT|Table_triggers_list::check_n_load|Table_triggers_list::change_table_name|do_rename|rename_tables                                       ## DBG MDEV-23977
 SIGSEGV|__GI___pthread_mutex_lock|calloc () from|asn1_array2tree () from|call_init                                                                                             ## DBG |MDEV-23985
@@ -194,7 +200,8 @@ ticket->m_duration == MDL_EXPLICIT|SIGABRT|MDL_context::release_lock|backup_unlo
 SIGSEGV|MDL_lock::hog_lock_types_bitmap|MDL_lock::reschedule_waiters|MDL_lock::remove_ticket|MDL_context::release_lock                                                         ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|free () from|MDL_context::release_locks_stored_before|MDL_context::rollback_to_savepoint|THD::restore_backup_open_tables_state                                         ## OPT |MDEV-22448 NOW 20945
 SIGSEGV|Item::val_uint|handle_select|execute_sqlcom_select|mysql_execute_command                                                                                               ## OPT MDEV-22447
-SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::init_table_handle_for_HANDLER|mysql_ha_read                                                       ## OPT MDEV-22445
+SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|ha_innobase::init_table_handle_for_HANDLER|mysql_ha_read                                                       ## OPT |MDEV-22445
+SIGABRT|ut_dbg_assertion_failed|trx_start_if_not_started_xa_low|trx_start_if_not_started_xa_low|ha_innobase::init_table_handle_for_HANDLER                                     ## OPT |MDEV-22445
 SIGSEGV|__strlen_avx2|Json_writer::add_str|Json_value_helper::add_str|Json_writer_object::add                                                                                  ## OPT |MDEV-22444
 SIGSEGV|__strlen_avx2|String_list::append_str|Explain_index_use::set|st_join_table::save_explain_data                                                                          ## OPT |MDEV-22444
 SIGSEGV|Field_iterator_table::create_item|Field_iterator_table_ref::create_item|insert_fields|setup_wild                                                                       ## DBG |MDEV-22444
@@ -202,7 +209,7 @@ SIGABRT|__cxa_throw () from|wsrep::server_state::provider|wsrep::server_state::c
 cache_mngr->trx_cache.empty()|SIGABRT|binlog_close_connection|ha_close_connection|THD::free_connection|unlink_thd                                                              ## DBG MDEV-22420
 templ->mbmaxlen > templ->mbminlen || templ->mysql_col_len == len || (field_no == templ->icp_rec_field_no && field->prefix_len > 0)|SIGABRT|row_sel_field_store_in_mysql_format_func|row_sel_store_mysql_field|row_sel_store_mysql_rec|row_search_mvcc ## DBG MDEV-22395
 m_next_rec_ptr >= m_rawmem|SIGABRT|Filesort_buffer::spaceleft|Filesort_buffer::isfull|SORT_INFO::isfull|find_all_keys                                                          ## DBG |MDEV-22390
-SIGSEGV|my_b_write|write_keys|find_all_keys|filesort                      ## OPT |MDEV-22390
+SIGSEGV|my_b_write|write_keys|find_all_keys|filesort                                                                                                                           ## OPT |MDEV-22390
 0|SIGABRT|stored_field_cmp_to_item|convert_const_to_int|Item_func::convert_const_compared_to_int_field|Item_func::setup_args_and_comparator                                    ## DBG MDEV-22385
 SIGSEGV|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command|mysql_parse                                                                                       ## DBG MDEV-22381
 thd->transaction.stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG MYSQL-99377
