@@ -1,4 +1,8 @@
 #!/bin/bash
+# Created by Roel Van de Paar, MariaDB
+# This script prettifies SQL code specifically for testcases. 
+# It may work less well for SQL containing actual data, as SQL idioms like 'when' are changed to 'WHEN' without regards for wheter such word appears inside a text string or as a SQL idiom
+
 OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1 | sed "s|. mysqld options required for replay:[ \t]\+..sql_mode=[ \t]*$|SET SQL_MODE='';|")"
 cat "${1}" | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
@@ -7,9 +11,30 @@ cat "${1}" | \
   sed 's|create|CREATE|gi' | \
   sed 's|table|TABLE|gi' | \
   sed 's|tables|TABLES|gi' | \
+  sed 's|view|VIEW|gi' | \
+  sed 's|begin|BEGIN|gi' | \
+  sed 's|end|END|gi' | \
+  sed 's|then|THEN|gi' | \
+  sed 's|add|ADD|gi' | \
+  sed 's|algorithm|ALGORITHM|gi' | \
+  sed 's|inplace|INPLACE|gi' | \
+  sed 's|database|DATABASE|gi' | \
   sed 's|where|WHERE|gi' | \
   sed 's|start|START|gi' | \
+  sed 's|first|FIRST|gi' | \
+  sed 's|last|LAST|gi' | \
   sed 's|xa|XA|gi' | \
+  sed 's|elt|ELT|gi' | \
+  sed 's|trim|TRIM|gi' | \
+  sed 's|case|CASE|gi' | \
+  sed 's|when|WHEN|gi' | \
+  sed 's|else|ELSE|gi' | \
+  sed 's|substring_index|SUBSTRING_INDEX|gi' | \
+  sed 's|handler|HANDLER|gi' | \
+  sed 's|dual|DUAL|gi' | \
+  sed 's|all|ALL|gi' | \
+  sed 's|with|WITH|gi' | \
+  sed 's|recursive|RECURSIVE|gi' | \
   sed 's|dynamic|DYNAMIC|gi' | \
   sed 's|transactional|TRANSACTIONAL|gi' | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
@@ -69,8 +94,9 @@ cat "${1}" | \
   sed 's|replicate_do|REPLICATE_DO|gi' | \
   sed 's|order by|ORDER BY|gi' | \
   sed 's|drop|DROP|gi' | \
-  sed 's|set|SET|gi' | \
   sed 's|bit|BIT|gi' | \
+  sed 's|set|SET|gi' | \
+  sed 's|setval|SETVAL|gi' | \
   sed 's|default|DEFAULT|gi' | \
   sed 's|session|SESSION|gi' | \
   sed 's|global|GLOBAL|gi' | \
@@ -99,6 +125,9 @@ cat "${1}" | \
   sed 's|compressed|COMPRESSED|gi' | \
   sed 's|InnoDB_|innodb_|g' | \
   sed 's|GLOBAL_|global_|g' | \
+  sed 's|least|LEAST|gi' | \
+  sed 's|rpad|RPAD|gi' | \
+  sed 's|lpad|LPAD|gi' | \
   sed 's|into|INTO|gi' | \
   sed 's|left|LEFT|gi' | \
   sed 's|right|RIGHT|gi' | \
@@ -117,15 +146,28 @@ cat "${1}" | \
   sed 's| ,|,|g' | \
   sed 's|( |(|g' | \
   sed 's| )|)|g' | \
-  sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g' | \
+  sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g;s|TRIM (|TRIM(|g;' | \
   sed 's|`||gi' | \
+  sed 's|ifnull|IFNULL|gi' | \
   sed 's|mysql\.\([^ ]\+\)|mysql.\L\1|gi' | \
   sed 's|auto_increment|AUTO_INCREMENT|gi' | \
   sed 's|column_format|COLUMN_FORMAT|gi' | \
   sed 's|low_priority|LOW_PRIORITY|gi' | \
   sed 's|row_format|ROW_FORMAT|gi' | \
+  sed 's|export_set|EXPORT_SET|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
-  sed 's|CAST (|CAST(|gi'
+  sed 's|date_sub[ ]*(|DATE_SUB(|gi' | \
+  sed 's|concat_ws[ ]*(|CONCAT_WS(|gi' | \
+  sed 's|greatest[ ]*(|GREATEST(|gi' | \
+  sed 's|coalesce[ ]*(|COALESCE(|gi' | \
+  sed 's|if[ ]*(|IF(|gi' | \
+  sed 's|current_user[ ]*(|CURRENT_USER(|gi' | \
+  sed 's|make_set[ ]*(|MAKE_SET(|gi' | \
+  sed 's|substring_index[ ]*(|SUBSTRING_INDEX(|gi' | \
+  sed 's|cast[ ]*(|CAST(|gi' | \
+  sed 's|sum[ ]*(|SUM(|gi' | \
+  sed 's|min[ ]*(|MIN(|gi' | \
+  sed 's|max[ ]*(|MAX(|gi'
 
 # Templates for copy/paste
 #  sed 's|||gi' | \

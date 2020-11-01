@@ -1,1 +1,1 @@
-./scan_nojson | xargs -I{} wc -l {}
+./scan_nojson | xargs -I{} wc -l "{}"

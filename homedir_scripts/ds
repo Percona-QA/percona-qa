@@ -1,4 +1,5 @@
 #!/bin/bash
+# Created by Roel Van de Paar, MariaDB
 
 WIPE_TMP_ENABLED=0  # /tmp cleaning
 
@@ -27,8 +28,25 @@ while true; do
   echo -n "Active mysqld's: $(ps -ef | grep mysqld | grep "no-defaults" | sed "s|..user=.*||;s|.*no-defaults ||" | sort -u | wc -l)"
   sleep 2
   if [ ${COUNT1} -ge 10 ]; then
-    sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &  # Cleanup cache, may help avoid OOM
-    sudo lsof -s +L1 | awk '{print $7" "$2" "$3" "$10}' | grep 'dev/shm' | grep -E "^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]|^[3-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" | awk '{print $2}' | xargs kill -9 2>/dev/null  # Cleanup any processes which have dead files > 300MB open
+    # Cleanup cache, may help avoid OOM
+    sudo sh -c "$(which echo) 3 > /proc/sys/vm/drop_caches" &
+    # Cleanup any processes which have dead files > 300MB open
+    sudo lsof -s +L1 | awk '{print $7" "$2" "$3" "$10}' | grep 'dev/shm' | grep -E "^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]|^[3-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]" | awk '{print $2}' | xargs kill -9 2>/dev/null
+    # Check if we have reducer directories > 10GB on /dev/shm and drop them, saving the reducer file
+    # Only one directory "per COUNT1 round" is done at the time
+    ANY_SINGLE_LARGE_REDUCER_DIR="$(ls | grep '^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]' | xargs du -shc 2>/dev/null | grep -v total | grep '^[.0-9]\+G' | grep '^[1-9][0-9]' | head -n1 | awk '{print $2}')"
+    if [ ! -z "${ANY_SINGLE_LARGE_REDUCER_DIR}" ]; then
+      if [ -d ${ANY_SINGLE_LARGE_REDUCER_DIR} ]; then
+        if [ -r ${ANY_SINGLE_LARGE_REDUCER_DIR}/reducer.log ]; then
+          # Copy log
+          cp ${ANY_SINGLE_LARGE_REDUCER_DIR}/reducer.log ~/terminated_${ANY_SINGLE_LARGE_REDUCER_DIR}_reducer.log
+          # Terminate instance
+          grep 'Init.*Reducer' ${ANY_SINGLE_LARGE_REDUCER_DIR}/reducer.log | sed 's|.*reducer|reducer|' | xargs -I{} echo "ps -ef | grep {}" | xargs -I{} bash -c "{}" | grep -v grep | awk '{print $2}' | xargs -I{} kill -9 {}
+          # Check for continued dir presence and cleanup
+          if [ -d ${ANY_SINGLE_LARGE_REDUCER_DIR} ]; then rm -Rf ${ANY_SINGLE_LARGE_REDUCER_DIR}; fi
+        fi
+      fi
+    fi
     sync
     COUNT1=0
   fi
