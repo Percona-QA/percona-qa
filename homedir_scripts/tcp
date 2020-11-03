@@ -16,6 +16,9 @@ cat "${1}" | \
   sed 's|end|END|gi' | \
   sed 's|then|THEN|gi' | \
   sed 's|add|ADD|gi' | \
+  sed 's|sequence|SEQUENCE|gi' | \
+  sed 's|help|HELP|gi' | \
+  sed 's|like|LIKE|gi' | \
   sed 's|algorithm|ALGORITHM|gi' | \
   sed 's|inplace|INPLACE|gi' | \
   sed 's|database|DATABASE|gi' | \
@@ -40,6 +43,7 @@ cat "${1}" | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
   sed 's|set @@session\.|SET SESSION |gi' | \
   sed 's|use|USE|gi' | \
+  sed 's|user|USER|gi' | \
   sed 's|natural|NATURAL|gi' | \
   sed 's|join|JOIN|gi' | \
   sed 's|backup|BACKUP|gi' | \
@@ -66,8 +70,6 @@ cat "${1}" | \
   sed 's|before|BEFORE|gi' | \
   sed 's|blob|BLOB|gi' | \
   sed 's|varchar|VARCHAR|gi' | \
-  sed 's|char |CHAR |gi' | \
-  sed 's|char(|CHAR(|gi' | \
   sed 's|character|CHARACTER|gi' | \
   sed 's|text|TEXT|gi' | \
   sed 's|replace|REPLACE|gi' | \
@@ -160,6 +162,7 @@ cat "${1}" | \
   sed 's|concat_ws[ ]*(|CONCAT_WS(|gi' | \
   sed 's|greatest[ ]*(|GREATEST(|gi' | \
   sed 's|coalesce[ ]*(|COALESCE(|gi' | \
+  sed 's|char[ ]*(|CHAR(|gi' | \
   sed 's|if[ ]*(|IF(|gi' | \
   sed 's|current_user[ ]*(|CURRENT_USER(|gi' | \
   sed 's|make_set[ ]*(|MAKE_SET(|gi' | \

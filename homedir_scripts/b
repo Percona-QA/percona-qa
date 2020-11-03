@@ -13,8 +13,10 @@ if [ "${1}" == "ASAN" ]; then
   ~/mariadb-qa/bug_report.sh ASAN "${MYEXTRA_OPT}" | tee report.log
 else
   MYEXTRA_OPT="$*"
-  sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Ensure we're looking for core files, not specific bugs for which bug_report.sh may have been updated
+  #sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Ensure we're looking for core files, not specific bugs for which bug_report.sh may have been updated
+  sed -i 's|^TEXT="[^"]\+"|TEXT="got signal"|' ~/mariadb-qa/bug_report.sh  # New test as of 3/11/20: ensure we're looking for 'got signal', as cores do not always seem to be generated in MD (long standing issue, source unclear).
   rm -Rf ../MD*/data.PREV ../MS*/data.PREV  # Avoid data.PREV cores from being picked up
   ~/mariadb-qa/bug_report.sh "${MYEXTRA_OPT}" | tee report.log
+  sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Cleanup
   ~/tt | grep -A1 "URL" | tee -a report.log
 fi
