@@ -19,6 +19,8 @@ cp buildall_dbg_asan.sh ${TARGET}
 cp buildall_opt_asan.sh ${TARGET}
 cp buildall_dbg_ms.sh ${TARGET}
 cp buildall_opt_ms.sh ${TARGET}
+cp buildall_asan_slow.sh ${TARGET}
+cp terminate_ds_memory.sh ${TARGET}
 cp clean_newbugs ${TARGET}
 cp clone.sh ${TARGET}
 cp cloneall.sh ${TARGET}
