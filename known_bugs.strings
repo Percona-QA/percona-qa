@@ -15,9 +15,10 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|base_list_iterator::next|List_iterator<Item>::operator++|TABLE_LIST::change_refs_to_fields|find_dup_table                                                              ## OPT MDEV-24183
 m_status == DA_ERROR || m_status == DA_OK || m_status == DA_OK_BULK|SIGABRT|Diagnostics_area::message|get_schema_tables_record|fill_schema_table_by_open|get_all_tables        ## DBG |MDEV-24179
-open_tables == 0 && temporary_tables == 0 && derived_tables == 0 && lock == 0 && locked_tables_mode == LTM_NONE && m_reprepare_observer == __null|SIGABRT|THD::restore_backup_open_tables_state|close_system_tables|close_log_table|TR_table::~TR_table                              ## DBG |MDEV-24154
-open_tables == 0 && temporary_tables == 0 && derived_tables == 0 && lock == 0 && locked_tables_mode == LTM_NONE && m_reprepare_observer == __null|SIGABRT|THD::restore_backup_open_tables_state|close_log_table|TR_table::~TR_table|ha_commit_trans                                  ## DBG |MDEV-24154
+open_tables == 0 && temporary_tables == 0 && derived_tables == 0 && lock == 0 && locked_tables_mode == LTM_NONE && m_reprepare_observer == __null|SIGABRT|THD::restore_backup_open_tables_state|close_system_tables|close_log_table|TR_table::~TR_table                               ## DBG |MDEV-24154
+open_tables == 0 && temporary_tables == 0 && derived_tables == 0 && lock == 0 && locked_tables_mode == LTM_NONE && m_reprepare_observer == __null|SIGABRT|THD::restore_backup_open_tables_state|close_log_table|TR_table::~TR_table|ha_commit_trans                                   ## DBG |MDEV-24154
 ib_table.n_v_cols|SIGABRT|instant_alter_column_possible|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute                           ## DBG MDEV-24072
 SIGSEGV|__memcmp_avx2_movbe|insert_at|queue_insert|Bounded_queue<unsigned char, unsigned char>::push                                                                           ## OPT |MDEV-24033
 SIGSEGV|__memcmp_avx2_movbe|native_compare|insert_at|queue_insert                                                                                                              ## OPT |MDEV-24033

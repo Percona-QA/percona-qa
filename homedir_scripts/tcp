@@ -169,6 +169,7 @@ cat "${1}" | tr -d '`' | \
   sed 's|system_time|SYSTEM_TIME|gi' | \
   sed 's|export_set|EXPORT_SET|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
+  sed 's|sql_big_result|SQL_BIG_RESULT|gi' | \
   sed 's|\.TABLES|\.tables|gi' | \
   sed 's|date_sub[ ]*(|DATE_SUB(|gi' | \
   sed 's|concat_ws[ ]*(|CONCAT_WS(|gi' | \
