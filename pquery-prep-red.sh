@@ -1,5 +1,6 @@
 #!/bin/bash
 # Created by Roel Van de Paar, Percona LLC
+# Updated by Roel Van de Paar, MariaDB
 # The name of this script (pquery-prep-red.sh) was kept short so as to not clog directory listings - it's full name would be ./pquery-prepare-reducer.sh
 
 # To aid with correct bug to testcase generation for pquery trials, this script creates a local run script for reducer and sets #VARMOD#.
@@ -215,11 +216,6 @@ generate_reducer_script(){
     exit 1
   fi
   USE_NEW_TEXT_STRING=1  # Set to 1 (on) until proven otherwise, i.e. when MODE!=3
-  if [ ${ASAN_BUG} -eq 1 ]; then
-    MODE=3
-    USE_NEW_TEXT_STRING=0
-    SCAN_FOR_NEW_BUGS=0
-  fi
   if [ -r ${BASE}/lib/mysql/plugin/ha_tokudb.so ]; then
     DISABLE_TOKUDB_AUTOLOAD=0
   else
@@ -232,7 +228,7 @@ generate_reducer_script(){
     PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --log-query-number\"\n#VARMOD#|"
     PQUERYOPT_CLEANUP="0,/^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$/s|^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$|#PQUERY_EXTRA_OPTIONS=<set_below_in_machine_variables_section>|"
   fi
-  if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" -o "$TEXT" == "Assert: no core file found in */*core*" ]; then  # Too general strings, or no TEXT found, use MODE=4 (any crash)
+  if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" -o "$TEXT" == "Assert: no core file found in */*core*" -a ${ASAN_BUG} -ne 1 ]; then  # Too general strings, or no TEXT found, use MODE=4 (any crash)
     MODE=4
     USE_NEW_TEXT_STRING=0  # As MODE=4 (any crash) is used, new_text_string.sh is not relevant
     SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
@@ -241,7 +237,7 @@ generate_reducer_script(){
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
     if [ ${ASAN_BUG} -eq 1 ]; then
-      USE_NEW_TEXT_STRING=0  # As the string is already set based on the ASAN 'ERROR:' seen in errorlog
+      USE_NEW_TEXT_STRING=0  # As the string is already set based on the ASAN '=ERROR:' seen in errorlog
       SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
       MODE=3
     elif [ ${VALGRIND_CHECK} -eq 1 ]; then
@@ -532,13 +528,13 @@ if [ ${QC} -eq 0 ]; then
         fi
         TEXT="$(cat ./${TRIAL}/node${SUBDIR}/MYBUG | head -n1)"  # TODO: this change needs further testing for cluster/GR. Also, it is likely someting was missed for this in the updated pquery-run.sh: the need to generate a MYBUG file for each node!
         if [[ "${TEXT}" == *"Assert: no core file found in"* ]]; then
-          if [ $(grep -m1 --binary-files=text "ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+          if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
             echo "* ASAN bug found!"
-            TEXT="$(grep --binary-files=text -m1 -o "ERROR:.*" ./${TRIAL}/log/master.err)"
+            TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
             ASAN_BUG=1
           fi
         fi
-        echo "* TEXT variable set to: \"${TEXT}\""
+        echo "* TEXT variable set to: '${TEXT}'"
         if [ "${MULTI}" == "1" ]; then
            if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
              auto_interleave_failing_sql
@@ -657,7 +653,14 @@ if [ ${QC} -eq 0 ]; then
             cd - >/dev/null || exit 1
           fi
           TEXT="$(cat ./${TRIAL}/MYBUG)"
-          echo "* TEXT variable set to: \"${TEXT}\""
+          if [[ "${TEXT}" == *"Assert: no core file found in"* ]]; then
+            if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+              echo "* ASAN bug found!"
+              TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
+              ASAN_BUG=1
+            fi
+          fi
+          echo "* TEXT variable set to: '${TEXT}'"
           if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
             auto_interleave_failing_sql
           fi
