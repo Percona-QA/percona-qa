@@ -93,6 +93,8 @@ cat "${1}" | tr -d '`' | \
   sed 's|select|SELECT|gi' | \
   sed 's|update|UPDATE|gi' | \
   sed 's|insert|INSERT|gi' | \
+  sed 's|rename|RENAME|gi' | \
+  sed 's|identified|IDENTIFIED|gi' | \
   sed 's|delete|DELETE|gi' | \
   sed 's|truncate|TRUNACE|gi' | \
   sed 's|explain|EXPLAIN|gi' | \

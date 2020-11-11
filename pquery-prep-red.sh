@@ -20,6 +20,11 @@ WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
 ASAN_OR_UBSAN_BUG=0
 
+fix_asan_and_ubsan_text(){
+  # Make ASAN and UBSAN strings more generic (avoids memory address mismatches etc.)
+  TEXT="$(echo "${TEXT}" | sed 's|on address .*|on address|;s|of address.*|of address|;s|for 64-bit type.*|for 64-bit type|;s|integer overflow:.*|integer overflow:|;s|left shift of.*|left shift of|;s|shift exponent.*|shift exponent|;s|load of value.*|load of value|;s|allocation size.*|allocation size|;s|offset.*|offset|;s|of type.*|of type|;s|for type.*|for type|;s|negation of .*|negation of|;')"
+}
+
 # Disable history substitution and avoid  -bash: !: event not found  like errors
 set +H
 
@@ -531,10 +536,12 @@ if [ ${QC} -eq 0 ]; then
           if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
             echo "* ASAN bug found!"
             TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
+            fix_asan_and_ubsan_text
             ASAN_OR_UBSAN_BUG=1
           elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
             echo "* UBSAN bug found!"
             TEXT="$(grep --binary-files=text -m1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
+            fix_asan_and_ubsan_text
             ASAN_OR_UBSAN_BUG=1
           fi
         fi
@@ -661,10 +668,12 @@ if [ ${QC} -eq 0 ]; then
             if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
               echo "* ASAN bug found!"
               TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
+              fix_asan_and_ubsan_text
               ASAN_OR_UBSAN_BUG=1
             elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
               echo "* UBSAN bug found!"
               TEXT="$(grep --binary-files=text -m1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
+              fix_asan_and_ubsan_text
               ASAN_OR_UBSAN_BUG=1
             fi
           fi

@@ -1,1 +1,1 @@
-vi ~/mariadb-qa/known_bugs.strings_ASAN
+vi ~/mariadb-qa/known_bugs.strings_ASAN_UBSAN

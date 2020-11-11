@@ -1,3 +1,4 @@
+sql/sql_acl.cc:9985:29: runtime error: member access within null pointer of type 'struct TABLE'                                                                                        ## OPT SAN_MDEV-24193
 sql/item.cc:2788:70: runtime error: member call on address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr        ## OPT |SAN_MDEV-22737
 sql/sql_class.cc:3763:19: runtime error: member access within address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr ## OPT |SAN_MDEV-22737
 sql/sql_class.cc:3764:19: runtime error: member access within address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr ## OPT |SAN_MDEV-22737

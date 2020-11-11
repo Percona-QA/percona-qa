@@ -359,7 +359,7 @@ echo "  echo 'CREATE DATABASE test;'"  >> multirun
 echo "  echo 'USE test;'" >> multirun
 echo "  echo '--------------------'" >> multirun
 echo "  echo 'To the top of in.sql to improve issue reproducibility when executing via multirun'" >> multirun
-echo "  echo ''" >> multirun
+echo "  echo 'NOTE: This can be done easily by pressing CTRL+C now and running ./fixin which fix this'" >> multirun
 echo "  read -p 'Press enter to continue, or press CTRL+C to action this now...'" >> multirun
 echo "fi" >> multirun
 echo "./all_no_cl \"\$*\"" >> multirun
@@ -368,6 +368,9 @@ echo "sed -i 's|^RND_DELAY_FUNCTION=[0-9]|RND_DELAY_FUNCTION=0|' ~/mariadb-qa/mu
 echo "sed -i 's|^RND_REPLAY_ORDER=[0-9]|RND_REPLAY_ORDER=1|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^REPORT_END_THREAD=[0-9]|REPORT_END_THREAD=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
 echo "sed -i 's|^REPORT_THREADS=[0-9]|REPORT_THREADS=0|' ~/mariadb-qa/multirun_cli.sh" >> multirun
+echo "echo '===== Replay mode/order:'" >> multirun
+echo "echo \"Order: \$(if grep -qi 'RND_REPLAY_ORDER=1' ~/mariadb-qa/multirun_cli.sh; then echo -n 'RANDOM ORDER!'; else echo 'SEQUENTIAL SQL (NON-RANDOM)'; fi)\"" >> multirun
+echo "echo ''" >> multirun
 echo "#~/mariadb-qa/multirun_cli.sh 150 100000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
 echo "~/mariadb-qa/multirun_cli.sh 1 10000000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
 ln -s ./multirun ./m 2>/dev/null

@@ -1,0 +1,3 @@
+#!/bin/bash
+set +H
+grep --binary-files=text -Fi "$*" ~/mariadb-qa/known_bugs.strings_ASAN_UBSAN
