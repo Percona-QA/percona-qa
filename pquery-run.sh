@@ -1920,7 +1920,7 @@ pquery_test() {
         echoit "'MySQL server has gone away' detected >=200 times for this trial, and the pquery timeout was not reached; saving this trial for further analysis"
         savetrial
         TRIAL_SAVED=1
-      elif [ $(grep "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+      elif [ $(grep -m1 --binary-files=text "ERROR:" ${RUNDIR}/${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
         echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
         savetrial
         TRIAL_SAVED=1
