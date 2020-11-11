@@ -18,7 +18,7 @@ SCAN_FOR_NEW_BUGS=1    # If set to 1, all generated reducders will scan for new 
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
-ASAN_BUG=0
+ASAN_OR_UBSAN_BUG=0
 
 # Disable history substitution and avoid  -bash: !: event not found  like errors
 set +H
@@ -228,7 +228,7 @@ generate_reducer_script(){
     PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --log-query-number\"\n#VARMOD#|"
     PQUERYOPT_CLEANUP="0,/^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$/s|^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$|#PQUERY_EXTRA_OPTIONS=<set_below_in_machine_variables_section>|"
   fi
-  if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" -o "$TEXT" == "Assert: no core file found in */*core*" -a ${ASAN_BUG} -ne 1 ]; then  # Too general strings, or no TEXT found, use MODE=4 (any crash)
+  if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" -o "$TEXT" == "Assert: no core file found in */*core*" -a ${ASAN_OR_UBSAN_BUG} -ne 1 ]; then  # Too general strings, or no TEXT found, use MODE=4 (any crash)
     MODE=4
     USE_NEW_TEXT_STRING=0  # As MODE=4 (any crash) is used, new_text_string.sh is not relevant
     SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
@@ -236,8 +236,8 @@ generate_reducer_script(){
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
-    if [ ${ASAN_BUG} -eq 1 ]; then
-      USE_NEW_TEXT_STRING=0  # As the string is already set based on the ASAN '=ERROR:' seen in errorlog
+    if [ ${ASAN_OR_UBSAN_BUG} -eq 1 ]; then
+      USE_NEW_TEXT_STRING=0  # As the string is already set based on the ASAN '=ERROR:' or UBSAN 'runtime error:' seen in errorlog
       SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
       MODE=3
     elif [ ${VALGRIND_CHECK} -eq 1 ]; then
@@ -460,7 +460,7 @@ generate_reducer_script(){
 }
 
 # Main pquery results processing
-ASAN_BUG=0
+ASAN_OR_UBSAN_BUG=0
 if [ ${QC} -eq 0 ]; then
   if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     for TRIAL in $(ls ./*/node*/*core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
@@ -531,7 +531,11 @@ if [ ${QC} -eq 0 ]; then
           if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
             echo "* ASAN bug found!"
             TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
-            ASAN_BUG=1
+            ASAN_OR_UBSAN_BUG=1
+          elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+            echo "* UBSAN bug found!"
+            TEXT="$(grep --binary-files=text -m1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
+            ASAN_OR_UBSAN_BUG=1
           fi
         fi
         echo "* TEXT variable set to: '${TEXT}'"
@@ -657,7 +661,11 @@ if [ ${QC} -eq 0 ]; then
             if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
               echo "* ASAN bug found!"
               TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
-              ASAN_BUG=1
+              ASAN_OR_UBSAN_BUG=1
+            elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+              echo "* UBSAN bug found!"
+              TEXT="$(grep --binary-files=text -m1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
+              ASAN_OR_UBSAN_BUG=1
             fi
           fi
           echo "* TEXT variable set to: '${TEXT}'"
@@ -747,7 +755,13 @@ fi
 # If these 3 all apply, it is safe to change the MODE to =0 and assume that this is a shutdown issue only
 for MATCHING_TRIAL in `grep -H "^MODE=[0-9]$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un` ; do
   if [ -r ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE ]; then  # Only deal with shutdown timeout issues!
-    if [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
+    if [ $(grep -m1 --binary-files=text "=ERROR:" ${MATCHING_TRIAL}/log/master.err 2> /dev/null | wc -l) -gt 0 -o $(grep -m1 --binary-files=text "runtime error:" ${MATCHING_TRIAL}/log/master.err 2> /dev/null | wc -l) -gt 0 ]; then  # ASAN or UBSAN error, do not set MODE=0
+      echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial, however an ASAN or UBSAN issue was present"
+      echo "  > Removing ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE marker so normal reduction & result presentation can happen"
+      rm -f ${MATCHING_TRIAL}/SHUTDOWN_TIMEOUT_ISSUE
+      echo "  > Creating ${MATCHING_TRIAL}/AVOID_FORCE_KILL flag to ensure pquery-go-expert does not set FORCE_KILL=1 for this trial"
+      touch ${MATCHING_TRIAL}/AVOID_FORCE_KILL
+    elif [ $(ls -1 ./${MATCHING_TRIAL}/data/*core* 2>&1 | grep -v "No such file" | wc -l) -eq 0 ]; then
       echo "* Trial found to be a SHUTDOWN_TIMEOUT_ISSUE trial with no core dump present"
       echo "  > Setting MODE=0 and TEXT='', and turning off USE_NEW_TEXT_STRING use"
       sed -i "s|^MODE=[1-9]|MODE=0|" reducer${MATCHING_TRIAL}.sh

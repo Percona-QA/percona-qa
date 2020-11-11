@@ -50,7 +50,7 @@ if grep -qi --binary-files=text "^USE_NEW_TEXT_STRING=1" reducer*.sh; then
   NTS='-Fi' # New text string (i.e. no regex) mode
 fi
 TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep --binary-files=text -o "==.*TRIAL.*==" | tail -n1 | sed 's|[^0-9]*||;s|[ \t=]||g')
-echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials executed, $(ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l) remaining reducer scripts)"
+echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials done, $(ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l) remaining reducers)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
 if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
   for STRING in $(grep --binary-files=text "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u); do
@@ -68,9 +68,17 @@ if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
       done
       COUNT=$(grep --binary-files=text '   TEXT=' reducer* 2>/dev/null | sed 's|reducer\([0-9]\+\).sh:|reducer\1.sh:  |;s|  TEXT|TEXT|' | grep --binary-files=text "${STRING}" | wc -l)
     fi
-    STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-150s",$1}')"
-    COUNT_OUT="$(echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}')"
-    echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
+    if [ ${COUNT} -gt 0 ]; then
+      if [[ "${STRING}" == "=ERROR"* ]]; then  # ASAN bugs
+        STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-164sASAN  ",$1}')"
+      elif [[ "${STRING}" == "runtime error:"* ]]; then  # UBSAN bugs
+        STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-164sUBSAN ",$1}')"
+      else
+        STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-170s",$1}')"
+      fi
+      COUNT_OUT="$(echo $COUNT | awk '{printf "(Seen %3s times: reducers ",$1}')"
+      echo -e "${STRING_OUT}${COUNT_OUT}$(echo ${MATCHING_TRIALS[@]}|sed 's| |,|g'))"
+    fi
     if [ ${SCANBUGS} -eq 1 ]; then
       # Look for exact match (except for allowing both .c and .cc to be used)
       SCANSTRING="$(echo "${STRING}" | sed 's|\.c[c]*|.c[c]*|')"
@@ -203,13 +211,6 @@ if [ $(grep --binary-files=text -l "SIGKILL myself" */log/master.err 2>/dev/null
   echo "'SIGKILL myself' trials found: $(grep --binary-files=text -l "SIGKILL myself" */log/master.err 2>/dev/null | sed 's|/.*||' | sort -un | tr '\n' ',' | sed 's|,$||')"
   echo "(> 'SIGKILL myself' trials are not handled properly yet by pquery-prep-red.sh (feel free to expand it), and cannot be filtered easily (idem). Frequency also unkwnon. pquery-run.sh has only recently (26-08-2016) been expanded to not delete these. Easiest way to handle these ftm is to set them to MODE=4 and TEXT='SIGKILL myself' in their reducer<trialnr>.sh files. Then, simply reduce as normal.)"
 fi
-
-# ASAN errors; update 11/11/20: now building this directly into results output
-#if [ $(grep --binary-files=text -m1 -l "=ERROR:" */log/master.err 2>/dev/null | wc -l) -gt 0 ]; then
-#  echo "--------------"
-#  echo "ASAN Trials ('=ERROR:') found. Issues seen (ASAN trials cannot be filtered easily ftm):"
-#  grep --binary-files=text "=ERROR:" */log/master.err 2>/dev/null | sed 's|/log/master.err||'
-#fi
 
 # MODE 2 TRIALS (Query correctness trials)
 COUNT=$(grep --binary-files=text -l "^MODE=2$" qcreducer* 2>/dev/null | wc -l)

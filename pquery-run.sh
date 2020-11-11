@@ -1924,6 +1924,10 @@ pquery_test() {
         echoit "ASAN issue detected in the mysqld error log for this trial; saving this trial"
         savetrial
         TRIAL_SAVED=1
+      elif [ $(grep -m1 --binary-files=text "runtime error:" ${RUNDIR}/${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+        echoit "UBSAN issue detected in the mysqld error log for this trial; saving this trial"
+        savetrial
+        TRIAL_SAVED=1
       elif [ ${SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY} -eq 0 ]; then
         echoit "Saving full trial outcome (as SAVE_TRIALS_WITH_CORE_OR_VALGRIND_ONLY=0 and so trials are saved irrespective of whether an issue was detected or not)"
         savetrial
