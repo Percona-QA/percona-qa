@@ -15,6 +15,8 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|QUICK_GROUP_MIN_MAX_SELECT::is_agg_distinct|st_join_table::is_using_agg_loose_index_scan|JOIN::create_postjoin_aggr_table|JOIN::make_aggr_tables_info                  ## DBG |MDEV-24210
+SIGSEGV|st_join_table::is_using_agg_loose_index_scan|JOIN::create_postjoin_aggr_table|JOIN::make_aggr_tables_info|JOIN::optimize_stage2                                        ## OPT |MDEV-24210
 SIGSEGV|replace_db_table|mysql_grant|Sql_cmd_grant_table::execute_table_mask|Sql_cmd_grant_table::execute                                                                      ## DBG |MDEV-24206
 SIGSEGV|replace_db_table|mysql_grant|Sql_cmd_grant_table::execute_table_mask|mysql_execute_command                                                                             ## OPT |MDEV-24206
 SIGSEGV|base_list_iterator::next|List_iterator<Item>::operator++|TABLE_LIST::change_refs_to_fields|find_dup_table                                                              ## OPT MDEV-24183
