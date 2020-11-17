@@ -188,6 +188,8 @@ sudo apt install libasan6 gcc-9 g++-9 gcc g++ build-essential  # logout login  -
 
 sudo apt install libdata-dumper-simple-perl  # Required by mysql_install_db
 
+sudo apt install --reinstall linux-tools-common linux-tools-generic linux-tools-`uname -r`  # Required to install perf. To use perf, do:  sudo perf top -p <pid_of_mysqld>  # And allow some time to sample
+
 # rr server Tuning
 if [ "${1}" == "rr" ]; then
   sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target

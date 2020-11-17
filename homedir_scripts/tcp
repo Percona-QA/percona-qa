@@ -183,6 +183,7 @@ cat "${1}" | tr -d '`' | \
   sed 's|make_set[ ]*(|MAKE_SET(|gi' | \
   sed 's|substring_index[ ]*(|SUBSTRING_INDEX(|gi' | \
   sed 's|cast[ ]*(|CAST(|gi' | \
+  sed 's|space[ ]*(|SPACE(|gi' | \
   sed 's|sum[ ]*(|SUM(|gi' | \
   sed 's|min[ ]*(|MIN(|gi' | \
   sed 's|max[ ]*(|MAX(|gi'
