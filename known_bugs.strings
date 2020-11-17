@@ -1,4 +1,4 @@
-###### CURRENT BUGS WITH HIGH TEST-AFFECTING IMPACT (REVIEW REGULARLY)######
+###### CURRENT BUGS WITH HIGH TEST-AFFECTING IMPACT (REVIEW REGULARLY) ######
 SIGABRT|__libc_message|malloc_printerr|munmap_chunk|__GI___libc_free                                                                                                           ## OPT |MDEV-18496
 SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free                                                                                                              ## OPT |MDEV-18496
 ! is_set()|SIGABRT|Diagnostics_area::set_eof_status|my_eof|mysqld_help_internal|mysqld_help                                                                                    ## DBG MDEV-22422
@@ -7,14 +7,14 @@ SIGABRT|__libc_message|malloc_printerr|_int_free|__GI___libc_free               
 0|SIGABRT|Protocol::end_statement|dispatch_command|do_command|threadpool_process_request                                                                                       ## DBG MDEV-22663
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_create_table_like::execute|mysql_execute_command                   ## DBG MDEV-23786
 
-###### STACK SMASHING BUGS######
+###### STACK SMASHING BUGS ######
 STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item## OPT MDEV-22755
 
-###### BUGS WHICH REQUIRE ADDITIONAL TESTCASES (DISABLED FILTERS)######
+###### BUGS WHICH REQUIRE ADDITIONAL TESTCASES (DISABLED FILTERS) ######
 # SIGSEGV|malloc_size_and_flag|my_free|PROFILING::finish_current_query_impl|PROFILING::finish_current_query                                                                    ## OPT MDEV-23657
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
-###### CURRENT BUGS######
+###### CURRENT BUGS ######
 SIGSEGV|base_list_iterator::next|List_iterator<Item>::operator++|TABLE_LIST::change_refs_to_fields|find_dup_table                                                              ## OPT MDEV-24183
 m_status == DA_ERROR || m_status == DA_OK || m_status == DA_OK_BULK|SIGABRT|Diagnostics_area::message|get_schema_tables_record|fill_schema_table_by_open|get_all_tables        ## DBG |MDEV-24179
 open_tables == 0 && temporary_tables == 0 && derived_tables == 0 && lock == 0 && locked_tables_mode == LTM_NONE && m_reprepare_observer == __null|SIGABRT|THD::restore_backup_open_tables_state|close_system_tables|close_log_table|TR_table::~TR_table                               ## DBG |MDEV-24154
@@ -383,7 +383,7 @@ thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->s->db.str, table->s->table
 thd->transaction->stmt.is_empty()|SIGABRT|Locked_tables_list::unlock_locked_tables|Locked_tables_list::unlock_locked_table|select_create::abort_result_set|handle_select       ## DBG |MDEV-23391*
 thd->mdl_context.is_lock_owner(MDL_key::TABLE, share->db.str, share->table_name.str, MDL_EXCLUSIVE)|SIGABRT|TDC_element::flush|drop_open_table|select_create::abort_result_set|handle_select ## DBG |MDEV-23391*
 
-###### FIXED BUGS######
+###### FIXED BUGS ######
 # Assert: No parsable frames? ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  
 # SIGSEGV|sf_malloc_usable_size|my_free|delete_dynamic|my_hash_free                                                                                                   ## Fixed ## DBG MDEV-23534
 # SIGSEGV|my_free|delete_dynamic|Rpl_filter::set_wild_ignore_table|Sys_var_rpl_filter::set_filter_value                                                               ## Fixed ## OPT MDEV-22317

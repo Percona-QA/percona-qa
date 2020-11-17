@@ -152,8 +152,8 @@ SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for
 SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
 LAST_THREE="$(echo "${PWD}" | sed 's|.*\(...\)$|\1|')"
 BUILD_TYPE=
-if [ "${LAST_THREE}" == "opt" ]; then BUILD_TYPE=" (Optimized)"; fi
-if [ "${LAST_THREE}" == "dbg" ]; then BUILD_TYPE=" (Debug)"; fi
+if [ "${LAST_THREE}" == "opt" ]; then BUILD_TYPE="(Optimized)"; fi
+if [ "${LAST_THREE}" == "dbg" ]; then BUILD_TYPE="(Debug)"; fi
 
 echo '-------------------- BUG REPORT --------------------'
 echo '{noformat}'
@@ -183,20 +183,72 @@ if [ ${ASAN_MODE} -eq 0 ]; then
     echo "THIS TESTCASE DID NOT CRASH ${SERVER_VERSION} (the version of the basedir in which you started this script), SO NO BACKTRACE IS SHOWN HERE. YOU CAN RE-EXECUTE THIS SCRIPT FROM ONE OF THE 'Bug confirmed present in' DIRECTORIES BELOW TO OBTAIN ONE, OR EXECUTE ./all_no_cl; ./test; ./gdb FROM WITHIN THAT DIRECTORY TO GET A BACKTRACE MANUALLY!"
   fi
 else
-  echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV}}"
-  grep "${TEXT}" ./log/master.err
+  echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV} ${BUILD_TYPE}}"
+  grep --binary-files=text "${TEXT}" ./log/master.err
+  # Check if a SAN stack is present and add it to output seperately
+  if [ "$(grep -A1 "${TEXT}" ./log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
+    LINE_BEFORE_SAN_STACK=$(grep -n "${TEXT}" ./log/master.err | grep -o '^[0-9]\+')
+    if [ ! -z "${LINE_BEFORE_SAN_STACK}" ]; then
+      echo ''
+      echo '{noformat}'
+      echo ''
+      echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV} ${BUILD_TYPE}}"
+      LINE_TO_READ=$[ ${LINE_BEFORE_SAN_STACK} + 1 ]
+      while true; do  # Read stack line by line and print
+        LINE_TO_READ=$[ ${LINE_TO_READ} + 1 ]
+        LINE="$(head -n${LINE_TO_READ} ./log/master.err | tail -n1)"
+        if [ -z "$(echo ${LINE} | sed 's|[ \t]||g')" ]; then break; fi
+        echo "${LINE}"
+        LINE=
+      done 
+      LINE_TO_READ=
+    fi
+    LINE_BEFORE_SAN_STACK=
+  fi
+  # Check if a SAN stack is present in the alternative (dbg vs opt) and add it to output as well
+  ALT_BASEDIR=
+  ALT_BUILD_TYPE=
+  if [[ "${PWD}" == *"opt" ]]; then
+    ALT_BASEDIR="$(pwd | sed 's|opt$|dbg|')"i
+    ALT_BUILD_TYPE="(Debug)"
+  elif [[ "${PWD}" == *"dbg" ]]; then
+    ALT_BASEDIR="$(pwd | sed 's|dbg$|opt|')"
+    ALT_BUILD_TYPE="(Optimized)"
+  fi
+  if [ ! -z "${ALT_BASEDIR}" -a "${ALT_BASEDIR}" != "${PWD}" ]; then
+    if [ "$(grep -A1 "${TEXT}" ${ALT_BASEDIR}/log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
+      LINE_BEFORE_SAN_STACK=$(grep -n "${TEXT}" ${ALT_BASEDIR}/log/master.err | grep -o '^[0-9]\+')
+      if [ ! -z "${LINE_BEFORE_SAN_STACK}" ]; then
+        echo '{noformat}'
+        ALT_SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" ${ALT_BASEDIR}/bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||;s|version_source_revision||')"
+        ALT_SERVER_VERSION="$(${ALT_BASEDIR}/bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
+        echo ''
+        echo "{noformat:title=${ALT_SERVER_VERSION} ${ALT_SOURCE_CODE_REV} ${ALT_BUILD_TYPE}}"
+        ALT_SOURCE_CODE_REV=
+        ALT_SERVER_VERSION=
+        LINE_TO_READ=$[ ${LINE_BEFORE_SAN_STACK} + 1 ]
+        while true; do  # Read stack line by line and print
+          LINE_TO_READ=$[ ${LINE_TO_READ} + 1 ]
+          LINE="$(head -n${LINE_TO_READ} ${ALT_BASEDIR}/log/master.err | tail -n1)"
+          if [ -z "$(echo ${LINE} | sed 's|[ \t]||g')" ]; then break; fi
+          echo "${LINE}"
+          LINE=
+        done 
+        LINE_TO_READ=
+      fi
+      LINE_BEFORE_SAN_STACK=
+    fi
+  fi
 fi
 if [ ${ASAN_MODE} -eq 1 ]; then
-  echo -e '{noformat}\nSetup:\n'
+  echo -e '{noformat}\n\nSetup:\n'
   echo '{noformat}'
-  echo 'Compiled with GCC >=7.5.0 and:'
+  echo 'Compiled with GCC >=7.5.0 (I use GCC 9.3.0) and:'
   echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
   echo 'Set before execution:'
   echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
-  echo '{noformat}'
-else
-  echo -e '{noformat}\n'
 fi
+echo -e '{noformat}\n'
 if [ -z "${TEXT}" ]; then
   if [ -r ../test.results ]; then
     cat ../test.results

@@ -5,13 +5,20 @@ if [ -r report.log ]; then echo "Assert: report.log still present though this sc
 
 export TEXT=
 MYEXTRA_OPT=
+if [[ "${PWD}" == *"ASAN"* ]]; then
+  if [ -z "${1}" -o -z "${2}" ]; then
+    echo "Assert: ASAN build is being used, yet no options were passed."
+    echo "To check for an ASAN/UBSAN bug, do:  ~/b ASAN 'bug_to_look_for'"
+    echo "Where bug_to_look for is the ASAN/UBSAN string to look for in the error log. Note that a generic 'runtime error:' can be used for UBSAN and a generic '=ERROR:' for ASAN, though it is likely better to set a more specific string"
+    exit 1
+  fi
+fi
 if [ "${1}" == "ASAN" ]; then
   if grep -qi "ASAN" ../REGEX_EXCLUDE; then 
     echo "Assert: remove ASAN from ../REGEX_EXCLUDE"
     exit 1
   fi
-  export TEXT="$(echo "${2}" | sed 's|[0-9]|0|g;s|[0:]\+|.*|')"
-  # The following used statement has limitations, but the one on the next line did not work, likely due to sed limitations.
+  export TEXT="${2}"
   # MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||;s|${TEXT}||')"
   MYEXTRA_OPT="$3 $4 $5 $6 $7 $8 $9"
   ~/mariadb-qa/bug_report.sh ASAN "${MYEXTRA_OPT}" | tee report.log
