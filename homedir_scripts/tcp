@@ -11,13 +11,17 @@ set +H
 # Adding sed's to change this does not work as we do not know if the name is used elsehwere.
 cat "${1}" | tr -d '`' | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
-  sed 's|t1|t|g' | \
   sed 's|index|INDEX|g' | \
   sed 's|int|INT|gi;s|integer|INT|gi' | \
   sed 's|create|CREATE|gi' | \
   sed 's|table|TABLE|gi' | \
   sed 's|tables|TABLES|gi' | \
   sed 's|view|VIEW|gi' | \
+  sed 's|comment|COMMENT|gi' | \
+  sed 's|schedule|SCHEDULE|gi' | \
+  sed 's|every|EVERY|gi' | \
+  sed 's|minute|MINUTE|gi' | \
+  sed 's|hour|HOUR|gi' | \
   sed 's|begin|BEGIN|gi' | \
   sed 's|end|END|gi' | \
   sed 's|then|THEN|gi' | \
@@ -63,6 +67,8 @@ cat "${1}" | tr -d '`' | \
   sed 's|count|COUNT|gi' | \
   sed 's| as | AS |gi' | \
   sed 's| to | TO |gi' | \
+  sed 's| do | DO |gi' | \
+  sed 's| on | ON |gi' | \
   sed 's|unsigned|UNSIGNED|gi' | \
   sed 's|versioning|VERSIONING|gi' | \
   sed 's|trigger|TRIGGER|gi' | \
@@ -161,7 +167,11 @@ cat "${1}" | tr -d '`' | \
   sed 's|( |(|g' | \
   sed 's| )|)|g' | \
   sed 's|(| (|g;s|  | |g;s| \([A-Z][A-Z][A-Z]\) (| \1(|g;s|DECIMAL (|DECIMAL(|g;s|TRIM (|TRIM(|g;' | \
+  sed 's|starts|STARTS|gi' | \
+  sed 's|interval|INTERVAL|gi' | \
   sed 's|ifnull|IFNULL|gi' | \
+  sed 's|rand|RAND|gi' | \
+  sed 's|fts_doc_id|FTS_DOC_ID|gi' | \
   sed 's|mysql\.\([^ ]\+\)|mysql.\L\1|gi' | \
   sed 's|auto_increment|AUTO_INCREMENT|gi' | \
   sed 's|column_format|COLUMN_FORMAT|gi' | \
@@ -169,8 +179,10 @@ cat "${1}" | tr -d '`' | \
   sed 's|row_format|ROW_FORMAT|gi' | \
   sed 's|row_start|ROW_START|gi' | \
   sed 's|row_end|ROW_END|gi' | \
+  sed 's|date_add|DATE_ADD|gi' | \
   sed 's|system_time|SYSTEM_TIME|gi' | \
   sed 's|export_set|EXPORT_SET|gi' | \
+  sed 's|unix_timestamp|UNIX_TIMESTAMP|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|sql_big_result|SQL_BIG_RESULT|gi' | \
   sed 's|\.TABLES|\.tables|gi' | \

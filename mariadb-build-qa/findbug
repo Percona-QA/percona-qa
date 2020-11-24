@@ -4,20 +4,20 @@
 REGEX_EXCLUDE="$(cat REGEX_EXCLUDE 2>/dev/null)"  # Handy to exclude a particular build
 if [ -z "${REGEX_EXCLUDE}" ]; then REGEX_EXCLUDE="DUMMYSTRINGNEVERSEEN"; fi
 
-ASAN_MODE=0
+SAN_MODE=0
 if [ -z "${1}" ]; then
-  echo "This script expects a bug search string as input, OR the word 'ASAN' for *SAN runs with the environment variable TEXT pre-set."
+  echo "This script expects a bug search string as input, OR the word 'SAN' for *SAN runs with the environment variable TEXT pre-set."
   exit 1
-elif [ "${1}" == "ASAN" ]; then
+elif [ "${1}" == "SAN" ]; then
   if [ -z "${TEXT}" ]; then   # Passed normally by ~/b, bug_report.sh, test_all and findbug+ scripts
     echo "Assert: TEXT is empty, use export TEXT= to set it!"
     exit 1
   fi
-  ASAN_MODE=1
+  SAN_MODE=1
 fi
 
-if [ ${ASAN_MODE} -eq 1 ]; then
-  grep "${TEXT}" */log/master.err | grep -vE "${REGEX_EXCLUDE}" | grep "ASAN"
+if [ ${SAN_MODE} -eq 1 ]; then
+  grep "${TEXT}" */log/master.err | grep -vE "${REGEX_EXCLUDE}" | grep "SAN"
 else
-  grep "${1}" */log/master.err | grep -vE "${REGEX_EXCLUDE}" | grep -vE "ASAN|GAL"
+  grep "${1}" */log/master.err | grep -vE "${REGEX_EXCLUDE}" | grep -vE "SAN|GAL"
 fi
