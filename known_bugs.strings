@@ -15,6 +15,9 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|__memset_avx2_erms|memset|log_t::create|srv_start                                                                                                                      ## OPT MDEV-24269
+SIGSEGV|mach_write_to_4|log_block_set_hdr_no|log_block_init|log_t::create                                                                                                      ## OPT MDEV-24269
+ptr != NULL|SIGABRT|ut_dbg_assertion_failed|ut_allocate_trace_dontdump|ut_malloc_dontdump|log_t::create                                                                        ## OPT MDEV-24269
 SIGSEGV|SQL_SELECT::cleanup|SQL_SELECT::~SQL_SELECT|JOIN::make_range_rowid_filters|JOIN::make_range_rowid_filters                                                              ## OPT |MDEV-24256
 SIGSEGV|SQL_SELECT::cleanup|SQL_SELECT::~SQL_SELECT|JOIN::make_range_rowid_filters|JOIN::optimize_stage2                                                                       ## OPT |MDEV-24256
 SIGABRT|ib::fatal::~fatal|srv_error_monitor_task|tpool::thread_pool_generic::timer_generic::run|tpool::thread_pool_generic::timer_generic::execute                             ## OPT MDEV-24225
