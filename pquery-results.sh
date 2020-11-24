@@ -73,6 +73,8 @@ if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
         STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-164sASAN  ",$1}')"
       elif [[ "${STRING}" == "runtime error:"* ]]; then  # UBSAN bugs
         STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-164sUBSAN ",$1}')"
+      elif [[ "${STRING}" == "ThreadSanitizer:"* ]]; then  # TSAN bugs
+        STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-164sTSAN  ",$1}')"
       else
         STRING_OUT="$(echo $STRING | awk -F "\n" '{printf "%-170s",$1}')"
       fi
