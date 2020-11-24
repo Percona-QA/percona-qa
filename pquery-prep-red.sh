@@ -18,10 +18,10 @@ SCAN_FOR_NEW_BUGS=1    # If set to 1, all generated reducders will scan for new 
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 WORKD_PWD=$PWD
 REDUCER="${SCRIPT_PWD}/reducer.sh"
-ASAN_OR_UBSAN_BUG=0
+ASAN_OR_UBSAN_OR_TSAN_BUG=0
 
-fix_asan_and_ubsan_text(){
-  # Make ASAN and UBSAN strings more generic (avoids memory address mismatches etc.)
+fix_asan_and_ubsan_and_tsan_text(){
+  # Make ASAN and UBSAN AND TSAN strings more generic (avoids memory address mismatches etc.)
   TEXT="$(echo "${TEXT}" | sed 's|on address .*|on address|;s|of address.*|of address|;s|for 64-bit type.*|for 64-bit type|;s|integer overflow:.*|integer overflow:|;s|left shift of.*|left shift of|;s|shift exponent.*|shift exponent|;s|load of value.*|load of value|;s|allocation size.*|allocation size|;s|offset.*|offset|;s|of type.*|of type|;s|for type.*|for type|;s|negation of .*|negation of|;')"
 }
 
@@ -233,7 +233,7 @@ generate_reducer_script(){
     PQUERY_EXTRA_OPTIONS="0,/#VARMOD#/s|#VARMOD#|PQUERY_EXTRA_OPTIONS=\"--log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --log-client-output --log-query-number\"\n#VARMOD#|"
     PQUERYOPT_CLEANUP="0,/^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$/s|^[ \t]*PQUERY_EXTRA_OPTIONS[ \t]*=.*$|#PQUERY_EXTRA_OPTIONS=<set_below_in_machine_variables_section>|"
   fi
-  if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" -o "$TEXT" == "Assert: no core file found in */*core*" -a ${ASAN_OR_UBSAN_BUG} -ne 1 ]; then  # Too general strings, or no TEXT found, use MODE=4 (any crash)
+  if [ "$TEXT" == "" -o "$TEXT" == "my_print_stacktrace" -o "$TEXT" == "0" -o "$TEXT" == "NULL" -o "$TEXT" == "Assert: no core file found in */*core*" -a ${ASAN_OR_UBSAN_OR_TSAN_BUG} -ne 1 ]; then  # Too general strings, or no TEXT found, use MODE=4 (any crash)
     MODE=4
     USE_NEW_TEXT_STRING=0  # As MODE=4 (any crash) is used, new_text_string.sh is not relevant
     SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
@@ -241,7 +241,7 @@ generate_reducer_script(){
     TEXT_STRING1="s|ZERO0|ZERO0|"
     TEXT_STRING2="s|ZERO0|ZERO0|"
   else  # Bug-specific TEXT string found, use MODE=3 to let reducer.sh reduce for that specific string
-    if [ ${ASAN_OR_UBSAN_BUG} -eq 1 ]; then
+    if [ ${ASAN_OR_UBSAN_OR_TSAN_BUG} -eq 1 ]; then
       USE_NEW_TEXT_STRING=0  # As the string is already set based on the ASAN '=ERROR:' or UBSAN 'runtime error:' seen in errorlog
       SCAN_FOR_NEW_BUGS=0  # Reducer cannot scan for new bugs yet if USE_NEW_TEXT_STRING=0 TODO
       MODE=3
@@ -465,7 +465,7 @@ generate_reducer_script(){
 }
 
 # Main pquery results processing
-ASAN_OR_UBSAN_BUG=0
+ASAN_OR_UBSAN_OR_TSAN_BUG=0
 if [ ${QC} -eq 0 ]; then
   if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     for TRIAL in $(ls ./*/node*/*core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
@@ -536,13 +536,13 @@ if [ ${QC} -eq 0 ]; then
           if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
             echo "* ASAN bug found!"
             TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
-            fix_asan_and_ubsan_text
-            ASAN_OR_UBSAN_BUG=1
+            fix_asan_and_ubsan_and_tsan_text
+            ASAN_OR_UBSAN_OR_TSAN_BUG=1
           elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
             echo "* UBSAN bug found!"
             TEXT="$(grep --binary-files=text -m1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
-            fix_asan_and_ubsan_text
-            ASAN_OR_UBSAN_BUG=1
+            fix_asan_and_ubsan_and_tsan_text
+            ASAN_OR_UBSAN_OR_TSAN_BUG=1
           fi
         fi
         echo "* TEXT variable set to: '${TEXT}'"
@@ -667,14 +667,19 @@ if [ ${QC} -eq 0 ]; then
           if [[ "${TEXT}" == *"Assert: no core file found in"* ]]; then
             if [ $(grep -m1 --binary-files=text "=ERROR:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
               echo "* ASAN bug found!"
-              TEXT="$(grep --binary-files=text -m1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
-              fix_asan_and_ubsan_text
-              ASAN_OR_UBSAN_BUG=1
+              TEXT="$(grep --binary-files=text -im1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
+              fix_asan_and_ubsan_and_tsan_text
+              ASAN_OR_UBSAN_OR_TSAN_BUG=1
             elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
               echo "* UBSAN bug found!"
-              TEXT="$(grep --binary-files=text -m1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
-              fix_asan_and_ubsan_text
-              ASAN_OR_UBSAN_BUG=1
+              TEXT="$(grep --binary-files=text -im1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
+              fix_asan_and_ubsan_and_tsan_text
+              ASAN_OR_UBSAN_OR_TSAN_BUG=1
+            elif [ $(grep -m1 --binary-files=text "ThreadSanitizer:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+              echo "* TSAN bug found!"
+              TEXT="$(grep --binary-files=text -im1 -o "ThreadSanitizer:.*" ./${TRIAL}/log/master.err)"
+              fix_asan_and_ubsan_and_tsan_text
+              ASAN_OR_UBSAN_OR_TSAN_BUG=1
             fi
           fi
           echo "* TEXT variable set to: '${TEXT}'"

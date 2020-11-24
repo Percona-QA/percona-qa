@@ -5,19 +5,19 @@
 # Does not work correctly
 #ps -ef | grep -v $$ | grep bug_report | grep -v grep | grep -v mass_bug_report | awk '{print $2}' | xargs kill -9 2>/dev/null
 
-ASAN_MODE=0
+SAN_MODE=0
 SHORTER_STOP_TIME=13  # TODO: this can be improved
 
 MYEXTRA_OPT="$*"
-if [ "${1}" == "ASAN" ]; then
+if [ "${1}" == "SAN" ]; then
   if [ -z "${TEXT}" ]; then   # Passed normally by ~/b preloader/wrapper sript
     echo "Assert: TEXT is empty, use export TEXT= to set it!"
     exit 1
   else
-    echo "NOTE: ASAN Mode: Looking for '${TEXT}' in the error log to validate issue occurence."
+    echo "NOTE: SAN Mode: Looking for '${TEXT}' in the error log to validate issue occurence."
   fi
-  MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|ASAN||')"
-  ASAN_MODE=1
+  MYEXTRA_OPT="$(echo "${MYEXTRA_OPT}" | sed 's|SAN||')"
+  SAN_MODE=1
 else
   if [ -z "${TEXT}" ]; then
     echo "NOTE: TEXT is empty; looking for corefiles, and not specific strings in the error log!"
@@ -85,7 +85,7 @@ if [ "$(echo "${MYEXTRA_OPT_CLEANED}" | sed 's|[ \t]||g')" != "" ]; then
   sleep 0.2  # For visual confirmation
 fi
 
-if [ ${ASAN_MODE} -eq 0 ]; then
+if [ ${SAN_MODE} -eq 0 ]; then
   ./all_no_cl ${MYEXTRA_OPT_CLEANED}
   ./test
   timeout -k${SHORTER_STOP_TIME} -s9 ${SHORTER_STOP_TIME}s ./stop; sleep 0.2; ./kill 2>/dev/null; sleep 0.2
@@ -116,34 +116,34 @@ cp in.sql ..
 if [ ! -r ../in.sql ]; then echo "Assert: ../in.sql not available after copy attempt!"; exit 1; fi
 cd ..
 echo "Testing all..."
-if [ ${ASAN_MODE} -eq 0 ]; then
+if [ ${SAN_MODE} -eq 0 ]; then
   ./test_all ${MYEXTRA_OPT_CLEANED}
 else
   export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
-  ./test_all ASAN ${MYEXTRA_OPT_CLEANED}
+  ./test_all SAN ${MYEXTRA_OPT_CLEANED}
 fi
 echo "Ensuring all servers are gone..."
 sync
-if [ ${ASAN_MODE} -eq 0 ]; then
+if [ ${SAN_MODE} -eq 0 ]; then
   ./kill_all  # NOTE: Can not be executed as ../kill_all as it requires ./gendirs.sh
 else
-  ./kill_all ASAN
+  ./kill_all SAN
 fi
 if [ -z "${TEXT}" ]; then
   echo "TEXT not set, scanning for corefiles..."
-  if [ ${ASAN_MODE} -eq 0 ]; then
+  if [ ${SAN_MODE} -eq 0 ]; then
     CORE_OR_TEXT_COUNT_ALL=$(./gendirs.sh | xargs -I{} echo "ls {}/data/*core* 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   else
-    echo "Assert: ASAN mode is enabled, but TEXT variable is not set!"
+    echo "Assert: SAN mode is enabled, but TEXT variable is not set!"
     exit 1
   fi
 else
-  if [ ${ASAN_MODE} -eq 0 ]; then
+  if [ ${SAN_MODE} -eq 0 ]; then
     echo "TEXT set to '${TEXT}', searching error logs for the same"
     CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   else
-    echo "TEXT set to '${TEXT}', searching error logs for the same (ASAN mode enabled)"
-    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh ASAN | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+    echo "TEXT set to '${TEXT}', searching error logs for the same (SAN mode enabled)"
+    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh SAN | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   fi
 fi
 cd - >/dev/null || exit 1
@@ -161,7 +161,7 @@ cat in.sql | grep -v --binary-files=text '^$'
 echo -e '{noformat}\n'
 echo -e 'Leads to:\n'
 # Assumes (which is valid for the pquery framework) that 1st assertion is also the last in the log
-if [ ${ASAN_MODE} -eq 0 ]; then
+if [ ${SAN_MODE} -eq 0 ]; then
   ERROR_LOG=$(ls log/master.err 2>/dev/null | head -n1)
   if [ ! -z "${ERROR_LOG}" ]; then
     ASSERT="$(grep --binary-files=text -m1 'Assertion.*failed.$' ${ERROR_LOG} | head -n1)"
@@ -240,13 +240,13 @@ else
     fi
   fi
 fi
-if [ ${ASAN_MODE} -eq 1 ]; then
+if [ ${SAN_MODE} -eq 1 ]; then
   echo -e '{noformat}\n\nSetup:\n'
   echo '{noformat}'
   echo 'Compiled with GCC >=7.5.0 (I use GCC 9.3.0) and:'
-  echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
+  echo '    -DWITH_SAN=ON -DWITH_SAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
   echo 'Set before execution:'
-  echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
+  echo '    export SAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
 fi
 echo -e '{noformat}\n'
 if [ -z "${TEXT}" ]; then
@@ -259,27 +259,27 @@ if [ -z "${TEXT}" ]; then
     cd ..; ./findbug+ 'signal'; cd - >/dev/null
   fi
 else
-  if [ ${ASAN_MODE} -eq 1 ]; then
+  if [ ${SAN_MODE} -eq 1 ]; then
     if [ -r ../test.results ]; then
       cat ../test.results
     else
       echo "--------------------------------------------------------------------------------------------------------------"
-      echo "ERROR: expected ../test.results to exist, but it did not. Running:  ./findbug+ ASAN  with TEXT eportet, though this may fail."
+      echo "ERROR: expected ../test.results to exist, but it did not. Running:  ./findbug+ SAN  with TEXT eportet, though this may fail."
       echo "--------------------------------------------------------------------------------------------------------------"
       export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
-      cd ..; ./findbug+ ASAN; cd - >/dev/null
+      cd ..; ./findbug+ SAN; cd - >/dev/null
     fi
   else
     cd ..; ./findbug+ "${TEXT}"; cd - >/dev/null
   fi
 fi
 echo '-------------------- /BUG REPORT --------------------'
-if [ ${ASAN_MODE} -eq 0 ]; then
+if [ ${SAN_MODE} -eq 0 ]; then
   echo "TOTAL CORES SEEN ACCROSS ALL VERSIONS: ${CORE_OR_TEXT_COUNT_ALL}"
 else
-  echo "TOTAL ASAN OCCURENCES SEEN ACCROSS ALL VERSIONS: ${CORE_OR_TEXT_COUNT_ALL}"
+  echo "TOTAL SAN OCCURENCES SEEN ACCROSS ALL VERSIONS: ${CORE_OR_TEXT_COUNT_ALL}"
 fi
-if [ ${ASAN_MODE} -eq 0 ]; then
+if [ ${SAN_MODE} -eq 0 ]; then
   if [ ${CORE_OR_TEXT_COUNT_ALL} -gt 0 ]; then
     echo 'Remember to action:'
     echo '1) If no engine is specified, add ENGINE=InnoDB'
