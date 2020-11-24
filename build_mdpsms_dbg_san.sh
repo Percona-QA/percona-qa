@@ -227,10 +227,10 @@ fi
 CURPATH=$(echo $PWD | sed 's|.*/||')
 
 cd ..
-rm -Rf ${CURPATH}_dbg_asan
-rm -f /tmp/psms_dbg_asan_build_${RANDOMD}
-cp -R ${CURPATH} ${CURPATH}_dbg_asan
-cd ${CURPATH}_dbg_asan
+rm -Rf ${CURPATH}_dbg_san
+rm -f /tmp/psms_dbg_san_build_${RANDOMD}
+cp -R ${CURPATH} ${CURPATH}_dbg_san
+cd ${CURPATH}_dbg_san
 
 ### TEMPORARY HACK TO AVOID COMPILING TB (WHICH IS NOT READY YET)
 rm -Rf ./plugin/tokudb-backup-plugin
@@ -255,45 +255,45 @@ if [ $FB -eq 0 ]; then
   CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DWITH_JEMALLOC=no -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DFORCE_INSOURCE_BUILD=1 ${SAN} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/psms_dbg_asan_build_${RANDOMD}
+  $CMD | tee /tmp/psms_dbg_san_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
   CMD="cmake . $CLANG $AFL $SSL -DCMAKE_BUILD_TYPE=Debug -DBUILD_CONFIG=mysql_release -DWITH_JEMALLOC=no -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/psms_dbg_asan_build_${RANDOMD}
+  $CMD | tee /tmp/psms_dbg_san_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 # Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
-make -j${MAKE_THREADS} | tee -a /tmp/psms_dbg_asan_build_${RANDOMD}
+make -j${MAKE_THREADS} | tee -a /tmp/psms_dbg_san_build_${RANDOMD}
 if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 
 if [ ! -r ./scripts/make_binary_distribution ]; then  # Note: ./scripts/binary_distribution is created on-the-fly during the make compile
   echo "Assert: ./scripts/make_binary_distribution was not found. Terminating."
   exit 1
 else
-  ./scripts/make_binary_distribution | tee -a /tmp/psms_dbg_asan_build_${RANDOMD}
+  ./scripts/make_binary_distribution | tee -a /tmp/psms_dbg_san_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for ./scripts/make_binary_distribution!"; exit 1; fi
 fi
 
-TAR_dbg_asan=`ls -1 *.tar.gz | grep -v "boost" | head -n1`
-if [[ "${TAR_dbg_asan}" == *".tar.gz"* ]]; then
-  DIR_dbg_asan=$(echo "${TAR_dbg_asan}" | sed 's|.tar.gz||')
-  TAR_dbg_asan_new=$(echo "${PREFIX}-${TAR_dbg_asan}" | sed 's|.tar.gz|-dbg.tar.gz|')
-  DIR_dbg_asan_new=$(echo "${TAR_dbg_asan_new}" | sed 's|.tar.gz||')
-  if [ "${DIR_dbg_asan}" != "" ]; then rm -Rf ../${DIR_dbg_asan}; fi
-  if [ "${DIR_dbg_asan_new}" != "" ]; then rm -Rf ../${DIR_dbg_asan_new}; fi
-  if [ "${TAR_dbg_asan_new}" != "" ]; then rm -Rf ../${TAR_dbg_asan_new}; fi
-  mv ${TAR_dbg_asan} ../${TAR_dbg_asan_new}
+TAR_dbg_san=`ls -1 *.tar.gz | grep -v "boost" | head -n1`
+if [[ "${TAR_dbg_san}" == *".tar.gz"* ]]; then
+  DIR_dbg_san=$(echo "${TAR_dbg_san}" | sed 's|.tar.gz||')
+  TAR_dbg_san_new=$(echo "${PREFIX}-${TAR_dbg_san}" | sed 's|.tar.gz|-dbg.tar.gz|')
+  DIR_dbg_san_new=$(echo "${TAR_dbg_san_new}" | sed 's|.tar.gz||')
+  if [ "${DIR_dbg_san}" != "" ]; then rm -Rf ../${DIR_dbg_san}; fi
+  if [ "${DIR_dbg_san_new}" != "" ]; then rm -Rf ../${DIR_dbg_san_new}; fi
+  if [ "${TAR_dbg_san_new}" != "" ]; then rm -Rf ../${TAR_dbg_san_new}; fi
+  mv ${TAR_dbg_san} ../${TAR_dbg_san_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for moving of tarball!"; exit 1; fi
   cd ..
-  tar -xf ${TAR_dbg_asan_new}
+  tar -xf ${TAR_dbg_san_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for tar!"; exit 1; fi
-  mv ${DIR_dbg_asan} ${DIR_dbg_asan_new}
+  mv ${DIR_dbg_san} ${DIR_dbg_san_new}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for moving of tarball (2)!"; exit 1; fi
-  echo $CMD > ${DIR_dbg_asan_new}/BUILD_CMD_CMAKE
-  #rm -Rf ${CURPATH}_dbg_asan  # Best not to delete it; this way gdb dbgging is better quality as source will be available!
+  echo $CMD > ${DIR_dbg_san_new}/BUILD_CMD_CMAKE
+  #rm -Rf ${CURPATH}_dbg_san  # Best not to delete it; this way gdb dbgging is better quality as source will be available!
   exit 0
 else
   echo "There was some unknown build issue... Have a nice day!"
