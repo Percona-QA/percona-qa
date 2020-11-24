@@ -822,6 +822,10 @@ options_check(){
     exit 1
   fi
   if [ $MODE -eq 3 -a $USE_NEW_TEXT_STRING -eq 1 ]; then
+    if [ $(echo "${TEXT}" | sed 's/[^|]//g' | tr -d '\n' | wc -m) -lt 3 ]; then  # Actual normal is 4. 3 Used for small safety buffer yet avoiding most '||' (OR) error-log-search based TEXT's. Still, the new text string could in principle have less then 4 also if not enough stacks were available in the core dump, or if we ever decide to use the old unique strings as a fallback for the case where new strings are not available (unlikely).
+      echo "Likely misconfiguration: MODE=3 and USE_NEW_TEXT_STRING=1, yet the TEXT string ('${TEXT}') does not contain at least 3 '|' symbols, which are normally used in new text string unique bug ID's! It is highly likely reducer will not locate any bugs this way. Are you perhaps attempting to look for a specific TEXT string in the standard server error log? If so, please set USE_NEW_TEXT_STRING=0 and SCAN_FOR_NEW_BUGS=0 ! Another possibility is that you incorrectly set the TEXT varialble to something that is not a/the unique bug ID. Please check your setup. Pausing 13 seconds for consideration. Press CTRL+c if you want to stop at this point. If not, reducer will look for '${TEXT}' in the new text string script unique bug ID output. Again, this is unlikely to work, unless in the specific use case of looking for a partial match of a limited TEXT string against the new text string script unique bug ID output."
+      sleep 13
+    fi
     if [ ! -r "$TEXT_STRING_LOC" ] ; then
       echo "Assert: MODE=3 and USE_NEW_TEXT_STRING=1, so reducer.sh looked for $TEXT_STRING_LOC (as set in \$TEXT_STRING_LOC), but this program was either not found (most likely), or it is not readable (check file privileges)"
       echo "Terminating now."

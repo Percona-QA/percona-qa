@@ -15,6 +15,8 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+SIGSEGV|SQL_SELECT::cleanup|SQL_SELECT::~SQL_SELECT|JOIN::make_range_rowid_filters|JOIN::make_range_rowid_filters                                                              ## OPT |MDEV-24256
+SIGSEGV|SQL_SELECT::cleanup|SQL_SELECT::~SQL_SELECT|JOIN::make_range_rowid_filters|JOIN::optimize_stage2                                                                       ## OPT |MDEV-24256
 SIGABRT|ib::fatal::~fatal|srv_error_monitor_task|tpool::thread_pool_generic::timer_generic::run|tpool::thread_pool_generic::timer_generic::execute                             ## OPT MDEV-24225
 SIGSEGV|QUICK_GROUP_MIN_MAX_SELECT::is_agg_distinct|st_join_table::is_using_agg_loose_index_scan|JOIN::create_postjoin_aggr_table|JOIN::make_aggr_tables_info                  ## DBG |MDEV-24210
 SIGSEGV|st_join_table::is_using_agg_loose_index_scan|JOIN::create_postjoin_aggr_table|JOIN::make_aggr_tables_info|JOIN::optimize_stage2                                        ## OPT |MDEV-24210

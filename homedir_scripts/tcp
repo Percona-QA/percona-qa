@@ -12,6 +12,7 @@ set +H
 cat "${1}" | tr -d '`' | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
   sed 's|t1|t|g' | \
+  sed 's|index|INDEX|g' | \
   sed 's|int|INT|gi;s|integer|INT|gi' | \
   sed 's|create|CREATE|gi' | \
   sed 's|table|TABLE|gi' | \

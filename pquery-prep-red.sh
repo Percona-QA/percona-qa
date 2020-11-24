@@ -434,8 +434,6 @@ generate_reducer_script(){
    | sed -e "${SI_CLEANUP1}" \
    | sed -e "${SI_STRING1}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:MODE=${MODE}\n#VARMOD#:" \
-   | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
-   | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT_STRING_LOC=\"${SCRIPT_PWD}/new_text_string.sh\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:USE_NEW_TEXT_STRING=${USE_NEW_TEXT_STRING}\n#VARMOD#:" \
    | sed -e "${TEXT_STRING1}" \
    | sed -e "${TEXT_STRING2}" \
@@ -443,6 +441,8 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:INPUTFILE=\"${INPUTFILE}\"\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:SCAN_FOR_NEW_BUGS=${SCAN_FOR_NEW_BUGS}\n#VARMOD#:" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:KNOWN_BUGS_LOC=\"${SCRIPT_PWD}/known_bugs.strings\"\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:TEXT_STRING_LOC=\"${SCRIPT_PWD}/new_text_string.sh\"\n#VARMOD#:" \
+   | sed -e "0,/#VARMOD#/s:#VARMOD#:DISABLE_TOKUDB_AUTOLOAD=${DISABLE_TOKUDB_AUTOLOAD}\n#VARMOD#:" \
    | sed -e "${MYEXTRA_STRING1}" \
    | sed -e "${MYINIT_STRING1}" \
    | sed -e "${WSREP_OPT_STRING}" \

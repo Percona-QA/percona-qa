@@ -3,21 +3,23 @@
 # Updated by Roel Van de Paar, MariaDB
 
 RND_DELAY_FUNCTION=0     # If set to 1, insert random delays after starting a new repetition in a thread. This may help to decrease locking issues.
-RND_REPLAY_ORDER=1       # If set to 1, the tool will shuffle the input SQL in various ways
+RND_REPLAY_ORDER=0       # If set to 1, the tool will shuffle the input SQL in various ways
 REPORT_END_THREAD=0      # If set to 1, report the outcome of ended threads (slows things down considerably)
 REPORT_THREADS=0         # If set to 1, report the outcome of ongoing threads (slows things down considerably)
 
-if [ "" == "$5" ]; then
-  echo "This script expects exactly 5 options. Execute as follows:"
-  echo "$ multirun_cli.sh threads repetitions input.sql cli_binary socket"
+if [ "" == "$7" ]; then
+  echo "This script expects exactly 7 options. Execute as follows:"
+  echo "$ multirun_pquery.sh threads repetitions input.sql pquery_binary socket basedir pquery_threads"
   echo "Where:"
-  echo "  threads: is the number of simultaneously started cli threads"
+  echo "  threads: is the number of simultaneously started pquery client threads"
   echo "  repetitions: the number of repetitions *per* individual thread"
   echo "  input.sql: is the input SQL file executed by the clients"
-  echo "  cli_binary: is the location of the mysql binary"
+  echo "  pquery_binary: is the location of the pquery binary"
   echo "  socket: is the location of the socket file for connection to mysqld"
+  echo "  basedir: the base directory of the MD/MS/PS build being used"
+  echo "  pquery_threads: how many client threads pquery should instantiate (per pquery client)"
   echo "Example:"
-  echo "$ multirun_cli.sh 10 5 bug.sql /test/MD211020-mariadb-10.6.0-linux-x86_64-dbg/bin/mysql /test/MD211020-mariadb-10.6.0-linux-x86_64-dbg/socket.sock"
+  echo "$ multirun_pquery.sh 1 5 bug.sql /home/roel/mariadb-qa/pquery/pquery2-md /test/MD201120-mariadb-10.6.0-linux-x86_64-opt/socket.sock /test/MD201120-mariadb-10.6.0-linux-x86_64-opt/ 10"
   echo "Cautionary Notes:"
   echo "  - Script does not check *yet* if options passed are all valid/present, make sure you get it right"
   echo "  - If root user uses a password, a script hack is suggested *ftm*"
@@ -27,11 +29,13 @@ if [ "" == "$5" ]; then
   exit 1
 fi
 
+if [ ! -d $6/lib ]; then echo "Assert: $6/lib does not exist?"; exit 1; fi
+
 RANDOM=$(date +%s%N | cut -b10-19)
-EXE_TODO=$[$1 * $2]
+EXE_TODO=$[$1 * $7 * $2]
 EXE_DONE=0
 echo "===== Total planned executions:"
-echo "$1 CLI Thread(s) * $2 Repetitions = $EXE_TODO Executions"
+echo "$1 pquery Thread(s) * $7 Threads per pquery * $2 Repetitions = $EXE_TODO Executions"
 
 echo -e "\n===== Reseting all threads statuses"
 for (( thread=1; thread<=$1; thread++ )); do
@@ -50,7 +54,7 @@ if [ -r "${4}admin" ]; then
   fi
 fi
 
-echo -e "\n===== Starting CLI processes"
+echo -e "\n===== Starting pquery processes"
 if [ ${REPORT_THREADS} -eq 0 ]; then
   echo 'Running...'
 fi
@@ -65,11 +69,12 @@ for (( ; ; )); do
         if [ ${REPORT_THREADS} -eq 1 ]; then
           echo -n "Thread: $thread | Repetition: ${REPETITION}/$2 | "
         fi
+        export LD_LIBRARY_PATH=$6/lib
+        # Note that there are two levels of threading: the number of pquery clients started (as set by $1), and the number of pquery threads initiated/used by each of those pquery clients (as set by $7).
         if [ $RND_REPLAY_ORDER -eq 1 ]; then
-          shuf --random-source=/dev/urandom $3 > /tmp/tmp_mr.$thread.sql
-          CLI_CMD="$4 -uroot -S$5 --force --binary-mode test < /tmp/tmp_mr.$thread.sql > multirun.$thread 2>&1"
+          CLI_CMD="$4 --database=test --infile=$3 --threads=$7 --user=root --socket=$5 >/dev/null 2>&1"
         else
-          CLI_CMD="$4 -uroot -S$5 --force --binary-mode test < $3 > multirun.$thread 2>&1"
+          CLI_CMD="$4 --database=test --infile=$3 --threads=$7 --no-shuffle --user=root --socket=$5 >/dev/null 2>&1"
         fi
         # In background; a must to ensure threads run concurrently
         # For testing: CLI_CMD="sleep $[ $RANDOM % 10 ]"
