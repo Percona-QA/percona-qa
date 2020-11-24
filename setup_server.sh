@@ -177,6 +177,7 @@ sudo apt install build-essential man-db perl wget patch make cmake automake auto
 sudo apt purge libasan4 libasan5 libasan6 gcc-7 gcc-8 gcc-9 gcc-10 gcc c-compiler
 sudo apt autoremove
 sudo apt install libasan6 gcc-9 g++-9 gcc g++ build-essential  # logout login  - drop gcc
+sudo apt install libasio-dev check scons libboost-program-options-dev libboost-dev libssl-dev  # For Galera
 
 # Packages so far not available on 20.04:
 # yum-utils: removed ftm

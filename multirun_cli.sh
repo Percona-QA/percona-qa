@@ -44,10 +44,12 @@ echo -e "\n===== Verifying server is up & running"
 if [ -r "${4}admin" ]; then
   CHK_CMD="${4}admin -uroot -S$5 ping >/dev/null 2>&1"
   if ! eval ${CHK_CMD}; then
-    echo "Server not reachable! Check settings."
-    echo "Terminating!"
+    echo "Server not reachable! Check settings. Terminating!"
     exit 1
   fi
+else
+  echo "${4}admin not found? Terminating!"
+  exit 1
 fi
 
 echo -e "\n===== Starting CLI processes"

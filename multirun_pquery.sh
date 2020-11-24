@@ -45,13 +45,12 @@ done
 echo "Done!"
 
 echo -e "\n===== Verifying server is up & running"
-if [ -r "${4}admin" ]; then
-  CHK_CMD="${4}admin -uroot -S$5 ping >/dev/null 2>&1"
-  if ! eval ${CHK_CMD}; then
-    echo "Server not reachable! Check settings."
-    echo "Terminating!"
-    exit 1
-  fi
+CHK_CMD="$4 --database=test --infile=/tmp/sel1.sql --threads=1 --no-shuffle --user=root --socket=$5"
+CHK_OUT="eval ${CHK_CMD} 2>&1 | grep 'Exit status' | tail -n1 | sed 's|.*:[ \t]*||"
+if [ "${CHK_OUT}" != "0" ]; then
+  echo "Server not reachable! Check settings."
+  echo "Terminating!"
+  exit 1
 fi
 
 echo -e "\n===== Starting pquery processes"
@@ -59,6 +58,7 @@ if [ ${REPORT_THREADS} -eq 0 ]; then
   echo 'Running...'
 fi
 for (( ; ; )); do
+  if [ ! -r /tmp/sel1.sql ]; then echo 'SELECT 1;' > /tmp/sel1.sql; fi
   # Loop through threads
   for (( thread=1; thread<=$1; thread++ )); do
     # Check if thread is busy
@@ -85,14 +85,13 @@ for (( ; ; )); do
         fi
         RPT_LEFT[$thread]=$[ ${RPT_LEFT[$thread]} - 1 ]
         # Check to see if server is still alive - provided mysqladmin can be found in same location as mysql binary
-        if [ -r "${4}admin" ]; then
-          CHK_CMD="${4}admin -uroot -S$5 ping >/dev/null 2>&1"
-          if ! eval ${CHK_CMD}; then
-            echo "Server no longer reachable! Check for crash etc. (Tip: run: ~/tt and/or check ./log/master.err)"
-            echo "Execution rounds done (gives an indication as to level of reproducibility): $[ ${EXE_DONE} + 1]"
-            echo "Terminating!"
-            exit 1
-          fi
+        CHK_CMD="$4 --database=test --infile=/tmp/sel1.sql --threads=1 --no-shuffle --user=root --socket=$5"
+        CHK_OUT="eval ${CHK_CMD} 2>&1 | grep 'Exit status' | tail -n1 | sed 's|.*:[ \t]*||"
+        if [ "${CHK_OUT}" == "256" ]; then
+          echo "Server no longer reachable! Check for crash etc. (Tip: run: ~/tt and/or check ./log/master.err)"
+          echo "Execution rounds done (gives an indication as to level of reproducibility): $[ ${EXE_DONE} + 1]"
+          echo "Terminating!"
+          exit 1
         fi
         # Introduce random delay if set to do so
         if [ $RND_DELAY_FUNCTION -eq 1 -a $thread -ne $1 ]; then

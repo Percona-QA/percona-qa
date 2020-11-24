@@ -39,6 +39,7 @@ SIGSEGV|__GI___pthread_mutex_lock|calloc () from|asn1_array2tree () from|call_in
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search                                    ## OPT |MDEV-23937
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search                                                       ## OPT |MDEV-23937
 SIGSEGV|best_extension_by_limited_search|best_extension_by_limited_search|greedy_search|choose_plan                                                                            ## OPT |MDEV-23937
+SIGSEGV|restore_prev_nj_state|best_extension_by_limited_search|greedy_search|choose_plan                                                                                       ## OPT |MDEV-23937
 SIGSEGV|end_io_cache|maria_repair|ha_maria::repair|ha_maria::repair                                                                                                            ## OPT MDEV-23824
 SIGSEGV|Item_func_nextval::update_table|Item_func_nextval::val_int|Type_handler::Item_send_longlong|Type_handler_longlong::Item_send                                           ## OPT |MDEV-23823
 SIGSEGV|Item_func_nextval::update_table|Item_func_nextval::val_int|Type_handler::Item_send_longlong|Protocol::send_result_set_row                                              ## DBG |MDEV-23823
@@ -317,6 +318,20 @@ file->s->base.reclength < file->s->vreclength|SIGABRT|ha_myisam::setup_vcols_for
 (create_info->tmp_table()) || thd->mdl_context.is_lock_owner(MDL_key::TABLE, table->db.str, table->table_name.str, MDL_EXCLUSIVE)|SIGABRT|mysql_create_like_table|Sql_cmd_create_table_like::execute|mysql_execute_command|mysql_parse ## DBG MDEV-19198
 expr == default_value->expr|SIGABRT|make_empty_rec_store_default|make_empty_rec|build_frm_image|mysql_create_frm_image                                                         ## DBG |MDEV-19336*
 entry->pos_in_table_list->table == entry|SIGABRT|free_tmp_table|close_thread_tables|mysql_execute_command|mysql_parse                                                          ## DBG |MDEV-19336*
+SIGABRT|ut_dbg_assertion_failed|fts_query_filter_doc_ids|fts_query_read_node|fts_query_index_fetch_nodes                                                                       ## DBG |MDEV-19522*
+SIGABRT|ut_dbg_assertion_failed|fts_encode_int|fts_cache_node_add_positions|fts_cache_add_doc                                                                                  ## DBG |MDEV-19522*
+SIGABRT|ut_dbg_assertion_failed|fts_encode_int|fts_cache_node_add_positions|row_fts_insert_tuple                                                                               ## DBG |MDEV-19522*
+SIGABRT|ut_dbg_assertion_failed|fts_optimize_node|fts_optimize_word|fts_optimize_compact        
+                                                                       ## DBG |MDEV-19522*
+doc_id == src_node->last_doc_id|SIGABRT|fts_optimize_node|fts_optimize_word|fts_optimize_compact|fts_optimize_words                                                            ## DBG |MDEV-19522*
+doc_id == src_node->last_doc_id|SIGABRT|ut_dbg_assertion_failed|fts_optimize_node|fts_optimize_word|fts_optimize_compact                                                       ## DBG |MDEV-19522*
+val <= 4294967295u|SIGABRT|fts_encode_int|fts_cache_node_add_positions|fts_cache_add_doc|fts_add_doc_by_id                                                                     ## DBG |MDEV-19522*
+val <= 4294967295u|SIGABRT|fts_encode_int|fts_cache_node_add_positions|row_fts_insert_tuple|row_fts_merge_insert                                                               ## DBG |MDEV-19522*
+val <= 4294967295u|SIGABRT|ut_dbg_assertion_failed|fts_encode_int|fts_cache_node_add_positions|fts_cache_add_doc                                                               ## DBG |MDEV-19522*
+val <= 4294967295u|SIGABRT|ut_dbg_assertion_failed|fts_encode_int|fts_cache_node_add_positions|row_fts_insert_tuple                                                            ## DBG |MDEV-19522*
+val <= 4294967295u|SIGSEGV|fts_encode_int|fts_cache_node_add_positions|row_fts_insert_tuple|row_fts_merge_insert                                                               ## DBG |MDEV-19522*
+pos == node->first_doc_id|SIGABRT|fts_query_filter_doc_ids|fts_query_read_node|fts_query_index_fetch_nodes|fetch_step                                                          ## DBG |MDEV-19522*
+pos == node->first_doc_id|SIGABRT|ut_dbg_assertion_failed|fts_query_filter_doc_ids|fts_query_read_node|fts_query_index_fetch_nodes                                             ## DBG |MDEV-19522*
 inited==NONE|SIGABRT|handler::ha_index_read_idx_map|write_record|Delayed_insert::handle_inserts|handle_delayed_insert                                                          ## DBG MDEV-19596*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item_func_as_wkt::val_str_ascii|Item_func::val_str_from_val_str_ascii            ## DBG |MDEV-19723*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send                ## DBG |MDEV-19723*
