@@ -11,7 +11,8 @@ while true; do
   ps --sort -rss -eo pid,pmem,rss,vsz,comm | grep -v gcc | head -n7
   HEADLINE=;PERCENT=;PID=
   if [ "${KILL_LARGE}" -eq 1 ]; then
-    HEADLINE="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | head -n2 | tail -n1)"
+    # Do not terminate generator.sh nor cc1plus or any other *cc* program
+    HEADLINE="$(ps --sort -rss -eo pid,pmem,rss,vsz,comm | grep -vE 'generator.sh|cc' | head -n2 | tail -n1)"
     PERCENT="$(echo ${HEADLINE} | awk '{print $2}' | sed 's|\.[0-9]\+||;s|[ \t]||g')"
     PID="$(echo ${HEADLINE} | awk '{print $1}' | sed 's|[ \t]||g')"
     if [ ${PERCENT} -ge ${KILL_PERCENT} ]; then

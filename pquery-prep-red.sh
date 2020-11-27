@@ -22,7 +22,7 @@ ASAN_OR_UBSAN_OR_TSAN_BUG=0
 
 fix_asan_and_ubsan_and_tsan_text(){
   # Make ASAN and UBSAN AND TSAN strings more generic (avoids memory address mismatches etc.)
-  TEXT="$(echo "${TEXT}" | sed 's|on address .*|on address|;s|of address.*|of address|;s|for 64-bit type.*|for 64-bit type|;s|integer overflow:.*|integer overflow:|;s|left shift of.*|left shift of|;s|shift exponent.*|shift exponent|;s|load of value.*|load of value|;s|allocation size.*|allocation size|;s|offset.*|offset|;s|of type.*|of type|;s|for type.*|for type|;s|negation of .*|negation of|;')"
+  TEXT="$(echo "${TEXT}" | sed 's|on address .*|on address|;s|of address.*|of address|;s|for 64-bit type.*|for 64-bit type|;s|integer overflow:.*|integer overflow:|;s|left shift of.*|left shift of|;s|shift exponent.*|shift exponent|;s|load of value.*|load of value|;s|allocation size.*|allocation size|;s|offset.*|offset|;s|of type.*|of type|;s|for type.*|for type|;s|negation of .*|negation of|;s|[ ]*(pid=[0-9]\+)||')"
 }
 
 # Disable history substitution and avoid  -bash: !: event not found  like errors
@@ -670,14 +670,14 @@ if [ ${QC} -eq 0 ]; then
               TEXT="$(grep --binary-files=text -im1 -o "=ERROR:.*" ./${TRIAL}/log/master.err)"
               fix_asan_and_ubsan_and_tsan_text
               ASAN_OR_UBSAN_OR_TSAN_BUG=1
-            elif [ $(grep -m1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
-              echo "* UBSAN bug found!"
-              TEXT="$(grep --binary-files=text -im1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
-              fix_asan_and_ubsan_and_tsan_text
-              ASAN_OR_UBSAN_OR_TSAN_BUG=1
-            elif [ $(grep -m1 --binary-files=text "ThreadSanitizer:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+            elif [ $(grep -im1 --binary-files=text "ThreadSanitizer:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
               echo "* TSAN bug found!"
               TEXT="$(grep --binary-files=text -im1 -o "ThreadSanitizer:.*" ./${TRIAL}/log/master.err)"
+              fix_asan_and_ubsan_and_tsan_text
+              ASAN_OR_UBSAN_OR_TSAN_BUG=1
+            elif [ $(grep -im1 --binary-files=text "runtime error:" ./${TRIAL}/log/master.err 2> /dev/null | wc -l) -ge 1 ]; then
+              echo "* UBSAN bug found!"
+              TEXT="$(grep --binary-files=text -im1 -o "runtime error:.*" ./${TRIAL}/log/master.err)"
               fix_asan_and_ubsan_and_tsan_text
               ASAN_OR_UBSAN_OR_TSAN_BUG=1
             fi
