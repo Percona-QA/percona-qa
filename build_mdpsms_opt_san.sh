@@ -10,7 +10,7 @@ USE_CUSTOM_COMPILER=0   # 0 or 1 # Use a customer compiler
 CUSTOM_COMPILER_LOCATION="/home/roel/GCC-5.5.0/bin"
 USE_CLANG=0             # 0 or 1 # Use the clang compiler instead of gcc
 USE_SAN=1               # 0 or 1 # Use [ASAN or MSAN], UBSAN, TSAN
-USE_TSAN=1              # 0 or 1 # 1 Enables TSAN and disables ASAN. 0 Enabled ASAN without TSAN
+USE_TSAN=0              # 0 or 1 # 1 Enables TSAN, disables ASAN+UBSAN. 0 Enables ASAN+UBSAN,disables TSAN
 ASAN_OR_MSAN=0          # 0 or 1 # 0: ASAN, 1: MSAN
 #CLANG_LOCATION="/home/roel/third_party/llvm-build/Release+Asserts/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
 CLANG_LOCATION="/usr/bin/clang"  # Should end in /clang (and assumes presence of /clang++)
@@ -82,20 +82,27 @@ PREFIX=
 FB=0
 MS=0
 MD=0
+if [ ${USE_SAN} -eq 1 ]; then
+  if [ ${USE_TSAN} -eq 1 ]; then
+    PREFIX="TSAN_"
+  else
+    PREFIX="UBASAN_"
+  fi
+fi
 if [ ${MYSQL_VERSION_MAJOR} -eq 10 ]; then
   MD=1
-  PREFIX="SAN_MD${DATE}"
+  PREFIX="${PREFIX}MD${DATE}"
   ZLIB="-DWITH_ZLIB=bundled"  # 10.1 will fail with requirement for WITH_ZLIB=bundled. Building 10.1-10.5 with bundled ftm.
 elif [ ! -d rocksdb ]; then  # MS, PS
   VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
   if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" -o "${VERSION_EXTRA}" == "-rc" ]; then  # MS has no extra version number, or shows '-dmr' or '-rc' (both exactly and only) in this place
     MS=1
-    PREFIX="SAN_MS${DATE}"
+    PREFIX="${PREFIX}MS${DATE}"
   else
-    PREFIX="SAN_PS${DATE}"
+    PREFIX="${PREFIX}PS${DATE}"
   fi
 else
-  PREFIX="SAN_FB${DATE}"
+  PREFIX="${PREFIX}FB${DATE}"
   FB=1
 fi
 
@@ -167,12 +174,13 @@ if [ $USE_SAN -eq 1 ]; then
   # Ref https://dev.mysql.com/doc/refman/5.7/en/source-configuration-options.html#option_cmake_with_msan
   # Also, -DWITH_RAPID=OFF is a workaround for https://bugs.mysql.com/bug.php?id=90211 - it disables GR and mysqlx (rapid plugins)
   if [ ${USE_TSAN} -eq 1 ]; then
-    SAN="-DWITH_UBSAN=ON -DWITH_TSAN=ON -DWSREP_LIB_WITH_TSAN=ON -DMUTEXTYPE=sys" 
+    # SAN="-DWITH_TSAN=ON -DWSREP_LIB_WITH_TSAN=ON -DMUTEXTYPE=sys"
+    SAN="-DWITH_TSAN=ON -DWSREP_LIB_WITH_TSAN=ON -DMUTEXTYPE=sys -DWITH_INNODB=0"  # InnoDB disabled till rw-lock instrumentation is added
   else
     if [ ${ASAN_OR_MSAN} -eq 0 ]; then
       SAN="-DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWSREP_LIB_WITH_ASAN=ON"
     else
-      SAN="--DWITH_MSAN=ON -DWITH_UBSAN=ON"
+      SAN="--DWITH_MSAN=ON -DWITH_UBSAN=ON"  # MD Does not have full MSAN support for InnoDB yet, and need to verify if -DWITH_UBSAN=ON works in combination with MSAN.
     fi
   fi
 fi
