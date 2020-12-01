@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo 'Deleting trials with: 'no core file found in' and 'SHUTDOWN TIMEOUT'...'
+
+cd /data
+~/mariadb-qa/pquery-allsubdir-del-string.sh 'no core file found in' &
+~/mariadb-qa/pquery-allsubdir-del-string.sh 'SHUTDOWN TIMEOUT' &
+./clean_all

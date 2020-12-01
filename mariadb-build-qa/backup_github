@@ -46,6 +46,7 @@ cp clean_all ${TARGET}
 cp multi_sr_all ${TARGET}
 cp multi_sr_leftover ${TARGET}
 cp gen_newbug_reducers ${TARGET}
+cp make_space ${TARGET}
 cp dbg4 ${TARGET}
 cp opt4 ${TARGET}
 cp dbg ${TARGET}

@@ -36,7 +36,7 @@ fi
 
 # Current location checks
 if [ $(ls ./*/*.sql 2>/dev/null | wc -l) -eq 0 ]; then
-  echo "Assert: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory (or they were all cleaned up already)"
+  echo "Assert: no pquery trials (with logging - i.e. ./*/*.sql) were found in this directory (or they were all cleaned up already) (${PWD})"
   echo "Please make sure to execute this script from within the pquery working directory!"
   exit 1
 elif [ $(ls ./reducer* ./qcreducer* 2>/dev/null | wc -l) -eq 0 ]; then
