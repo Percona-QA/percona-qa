@@ -139,17 +139,17 @@ if [ -z "${TEXT}" ]; then
   fi
 else
   if [ ${SAN_MODE} -eq 0 ]; then
-    echo "TEXT set to '${TEXT}', searching error logs for the same"
-    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+    echo "TEXT set to '${TEXT}', searching error logs for the same (case insensitive, regex aware)"
+    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh | xargs -I{} echo "grep -iE --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   else
-    echo "TEXT set to '${TEXT}', searching error logs for the same (SAN mode enabled)"
-    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh SAN | xargs -I{} echo "grep --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
+    echo "TEXT set to '${TEXT}', searching error logs for the same (case insensitive, regex aware) (SAN mode enabled)"
+    CORE_OR_TEXT_COUNT_ALL=$(set +H; ./gendirs.sh SAN | xargs -I{} echo "grep -iE --binary-files=text '${TEXT}' {}/log/master.err 2>/dev/null" | xargs -I{} bash -c "{}" | wc -l)
   fi
 fi
 cd - >/dev/null || exit 1
 
 SOURCE_CODE_REV="$(grep -om1 --binary-files=text "Source control revision id for MariaDB source code[^ ]\+" bin/mysqld 2>/dev/null | tr -d '\0' | sed 's|.*source code||;s|Version||;s|version_source_revision||')"
-SERVER_VERSION="$(bin/mysqld --version | grep -om1 '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
+SERVER_VERSION="$(bin/mysqld --version | grep -om1 --binary-files=text '[0-9\.]\+-MariaDB' | sed 's|-MariaDB||')"
 LAST_THREE="$(echo "${PWD}" | sed 's|.*\(...\)$|\1|')"
 BUILD_TYPE=
 if [ "${LAST_THREE}" == "opt" ]; then BUILD_TYPE="(Optimized)"; fi
@@ -187,7 +187,7 @@ else
   grep --binary-files=text "${TEXT}" ./log/master.err
   # Check if a SAN stack is present and add it to output seperately
   if [ "$(grep -A1 "${TEXT}" ./log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
-    LINE_BEFORE_SAN_STACK=$(grep -n "${TEXT}" ./log/master.err | grep -o '^[0-9]\+')
+    LINE_BEFORE_SAN_STACK=$(grep -n --binary-files=text "${TEXT}" ./log/master.err | grep -o --binary-files=text '^[0-9]\+')
     if [ ! -z "${LINE_BEFORE_SAN_STACK}" ]; then
       echo ''
       echo '{noformat}'
@@ -209,14 +209,14 @@ else
   ALT_BASEDIR=
   ALT_BUILD_TYPE=
   if [[ "${PWD}" == *"opt" ]]; then
-    ALT_BASEDIR="$(pwd | sed 's|opt$|dbg|')"i
+    ALT_BASEDIR="$(pwd | sed 's|opt$|dbg|')"
     ALT_BUILD_TYPE="(Debug)"
   elif [[ "${PWD}" == *"dbg" ]]; then
     ALT_BASEDIR="$(pwd | sed 's|dbg$|opt|')"
     ALT_BUILD_TYPE="(Optimized)"
   fi
   if [ ! -z "${ALT_BASEDIR}" -a "${ALT_BASEDIR}" != "${PWD}" ]; then
-    if [ "$(grep -A1 "${TEXT}" ${ALT_BASEDIR}/log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
+    if [ "$(grep -A1 --binary-files=text "${TEXT}" ${ALT_BASEDIR}/log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
       LINE_BEFORE_SAN_STACK=$(grep -n "${TEXT}" ${ALT_BASEDIR}/log/master.err | grep -o '^[0-9]\+')
       if [ ! -z "${LINE_BEFORE_SAN_STACK}" ]; then
         echo '{noformat}'
@@ -244,9 +244,21 @@ if [ ${SAN_MODE} -eq 1 ]; then
   echo -e '{noformat}\n\nSetup:\n'
   echo '{noformat}'
   echo 'Compiled with GCC >=7.5.0 (I use GCC 9.3.0) and:'
-  echo '    -DWITH_SAN=ON -DWITH_SAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF'
+  if grep -qm1 --binary-files=text 'ThreadSanitizer:' ${BASEDIR}/log/master.err; then  # TSAN
+    echo '    -DWITH_TSAN=ON -DWSREP_LIB_WITH_TSAN=ON -DMUTEXTYPE=sys'
+  fi
+  if grep -qm1 --binary-files=text '=ERROR:' ${BASEDIR}/log/master.err; then  # UBSAN/ASAN
+    echo '    -DWITH_ASAN=ON -DWITH_ASAN_SCOPE=ON -DWITH_UBSAN=ON -DWITH_RAPID=OFF -DWSREP_LIB_WITH_ASAN=ON'
+  fi
   echo 'Set before execution:'
-  echo '    export SAN_OPTIONS=quarantine_size_mb=512:atexit=true:detect_invalid_pointer_pairs=1:dump_instruction_bytes=true:abort_on_error=1'
+  if grep -qm1 --binary-files=text 'ThreadSanitizer:' ${BASEDIR}/log/master.err; then  # TSAN
+    # Once code becomes more stable add: halt_on_error=1
+    echo '    export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=3'
+  fi
+  if grep -qm1 --binary-files=text '=ERROR:' ${BASEDIR}/log/master.err; then  # UBSAN/ASAN
+    echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=1:detect_invalid_pointer_pairs=3:dump_instruction_bytes=1:check_initialization_order=1:detect_stack_use_after_return=1:abort_on_error=1'
+    echo '    export UBSAN_OPTIONS=print_stacktrace=1'
+  fi
 fi
 echo -e '{noformat}\n'
 if [ -z "${TEXT}" ]; then

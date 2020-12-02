@@ -2,7 +2,7 @@
 rm -f current_opt
 if [ -r ./current_opt ]; then echo "Assert: current_opt exists after removal attempt!"; exit 1; fi
 echo '#!/bin/bash' > current_opt
-./allruns | grep "10.5.*opt" | grep -vE "MT|MONTY|ASAN" | sed 's|:.*||' | tr '\n' '|' | sed 's|^|grep -E "|;s/|$/" current_opt | grep -vE "grep|exit|bin.*bash"\n/' >> current_opt
+./allruns | grep "10.5.*opt" | grep -vE "MT|MONTY|SAN" | sed 's|:.*||' | tr '\n' '|' | sed 's|^|grep -E "|;s/|$/" current_opt | grep -vE "grep|exit|bin.*bash"\n/' >> current_opt
 echo "exit 0" >> current_opt
 ~/ooo >> current_opt
 chmod +x current_opt

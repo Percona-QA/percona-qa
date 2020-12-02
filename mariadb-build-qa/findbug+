@@ -21,17 +21,17 @@ rm -f /tmp/pri.t /tmp/sec.t
 
 # Generate full list
 if [ ${SAN_MODE} -eq 1 ]; then
-  ls --color=never | grep -vE "${REGEX_EXCLUDE}" | grep "SAN" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+  ls --color=never | grep -vEi --binary-files=text "${REGEX_EXCLUDE}" | grep --binary-files=text "SAN" | sed 's|-linux-x86_64||' | grep -oE --binary-files=text 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 else
-  ls --color=never | grep -vE "${REGEX_EXCLUDE}" | grep -vE "SAN|GAL" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
+  ls --color=never | grep -vEi --binary-files=text "${REGEX_EXCLUDE}" | grep -vE --binary-files=text "SAN|GAL" | sed 's|-linux-x86_64||' | grep -oE --binary-files=text 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/pri.t
 fi
 
 # Generate bug list
 if [ ${SAN_MODE} -eq 1 ]; then
   export TEXT="${TEXT}"  # Likely not strictly necessary; defensive coding
-  ./findbug SAN | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
+  ./findbug SAN | sed 's|-linux-x86_64||' | grep -oE --binary-files=text 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
 else
-  ./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
+  ./findbug "${1}" | sed 's|-linux-x86_64||' | grep -oE --binary-files=text 'mariadb-[\.0-9]+-[od][pb][tg]|mysql-[\.0-9]+-[od][pb][tg]' | sort -u > /tmp/sec.t
 fi
 
 # Output bug-present-in list
@@ -44,4 +44,4 @@ cat /tmp/sec.t | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMy
 
 # Compile/output bug-not-present-in list
 echo -e "\nBug confirmed not present in:"
-diff /tmp/pri.t /tmp/sec.t | grep '<' | sed 's|^< ||' | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-dbg| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''
+diff /tmp/pri.t /tmp/sec.t | grep --binary-files=text '<' | sed 's|^< ||' | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-dbg| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''

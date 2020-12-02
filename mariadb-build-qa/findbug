@@ -17,7 +17,7 @@ elif [ "${1}" == "SAN" ]; then
 fi
 
 if [ ${SAN_MODE} -eq 1 ]; then
-  grep "${TEXT}" */log/master.err | grep -vE "${REGEX_EXCLUDE}" | grep "SAN"
+  grep -Ei --binary-files=text "${TEXT}" */log/master.err | grep -vEi --binary-files=text "${REGEX_EXCLUDE}" | grep --binary-files=text -E "SAN"
 else
-  grep "${1}" */log/master.err | grep -vE "${REGEX_EXCLUDE}" | grep -vE "SAN|GAL"
+  grep -Ei --binary-files=text "${1}" */log/master.err | grep -vEi --binary-files=text "${REGEX_EXCLUDE}" | grep -vE --binary-files=text "SAN|GAL"
 fi

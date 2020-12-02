@@ -69,3 +69,5 @@ if [ ${BUILD_TSAN} -eq 1 ]; then
   sed -i 's|^USE_TSAN=[0-1]|USE_TSAN=1|' ~/mariadb-qa//build_mdpsms_dbg_san.sh
   buildall
 fi
+
+cleanup_dirs

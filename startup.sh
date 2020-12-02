@@ -19,6 +19,12 @@ if [ "${USE_JE}" -eq 1 ]; then
   JE7=" else echo 'Error: jemalloc not found, please install it first'; exit 1; fi"
 fi
 
+add_san_options(){
+  echo 'export ASAN_OPTIONS=quarantine_size_mb=512:atexit=1:detect_invalid_pointer_pairs=3:dump_instruction_bytes=1:check_initialization_order=1:detect_stack_use_after_return=1:abort_on_error=1' >> "${1}"
+  echo 'export UBSAN_OPTIONS=print_stacktrace=1' >> "${1}"
+  echo 'export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=3' >> "${1}"
+}
+
 # Ubuntu mysqld runtime provisioning
 if [ "$(uname -v | grep 'Ubuntu')" != "" ]; then
   if [ $(dpkg -l|grep -c libaio1) -eq 0 ]; then
@@ -87,7 +93,7 @@ else
 fi
 
 # Setup scritps
-rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb fixin stack wipe_group_replication multirun multirun_pquery
+rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl cl_noprompt cl_noprompt_nobinary test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb fixin stack wipe_group_replication multirun multirun_pquery
 BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | multirun_pquery | loopin | gdb | fixin | stack | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
@@ -240,7 +246,7 @@ echo '#MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --lo
 echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
 echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB  # For fb-mysql only"' >> start
 echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start
-echo 'export UBSAN_OPTIONS=print_stacktrace=1' >> start
+add_san_options start
 if [ "${USE_JE}" -eq 1 ]; then
   echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start; echo $JE6 >> start; echo $JE7 >> start;
 fi
@@ -403,13 +409,17 @@ BINMODE=
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" ]; then
   BINMODE="--binary-mode "  # Leave trailing space
 fi
-echo 'export UBSAN_OPTIONS=print_stacktrace=1' > cl
+touch cl
+add_san_options cl
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force --prompt=\"\$(${PWD}/bin/mysqld --version | grep -o 'Ver [\\.0-9]\\+' | sed 's|[^\\.0-9]*||')>\" ${BINMODE}test" >> cl
-echo 'export UBSAN_OPTIONS=print_stacktrace=1' > cl_noprompt
+touch cl_noprompt
+add_san_options cl_noprompt
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test" >> cl_noprompt
-echo 'export UBSAN_OPTIONS=print_stacktrace=1' > cl_noprompt_nobinary
+touch cl_noprompt_nobinary
+add_san_options cl_noprompt_nobinary
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force test" >> cl_noprompt_nobinary
-echo 'export UBSAN_OPTIONS=print_stacktrace=1' > test
+touch test
+add_san_options test
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" >> test
 echo 'MYEXTRA_OPT="$*"' > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
