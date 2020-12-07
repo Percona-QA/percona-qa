@@ -184,10 +184,10 @@ if [ ${SAN_MODE} -eq 0 ]; then
   fi
 else
   echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV} ${BUILD_TYPE}}"
-  grep --binary-files=text "${TEXT}" ./log/master.err
+  grep -Ei --binary-files=text "${TEXT}" ./log/master.err
   # Check if a SAN stack is present and add it to output seperately
-  if [ "$(grep -A1 "${TEXT}" ./log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
-    LINE_BEFORE_SAN_STACK=$(grep -n --binary-files=text "${TEXT}" ./log/master.err | grep -o --binary-files=text '^[0-9]\+')
+  if [ "$(grep -Ei --binary-files=text -A1 "${TEXT}" ./log/master.err | tail -n1 | grep -o '^[ ]*#0' | sed 's|[^#0]||g')" == "#0" ]; then
+    LINE_BEFORE_SAN_STACK=$(grep -nEi --binary-files=text "${TEXT}" ./log/master.err | grep -o --binary-files=text '^[0-9]\+')
     if [ ! -z "${LINE_BEFORE_SAN_STACK}" ]; then
       echo ''
       echo '{noformat}'
@@ -252,8 +252,9 @@ if [ ${SAN_MODE} -eq 1 ]; then
   fi
   echo 'Set before execution:'
   if grep -qm1 --binary-files=text 'ThreadSanitizer:' ./log/master.err; then  # TSAN
+    # A note on exitcode=0: whereas we do not use this in our runs, it is required to let MTR bootstrap succeed.
     # TODO: Once code becomes more stable add: halt_on_error=1
-    echo '    export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=3'
+    echo '    export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=1:exitcode=0'
   fi
   if grep -qm1 --binary-files=text '=ERROR:' ./log/master.err; then  # ASAN
     echo '    export ASAN_OPTIONS=quarantine_size_mb=512:atexit=1:detect_invalid_pointer_pairs=3:dump_instruction_bytes=1:check_initialization_order=1:detect_stack_use_after_return=1:abort_on_error=1'

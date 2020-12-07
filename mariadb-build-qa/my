@@ -1,7 +1,14 @@
 #!/bin/bash
 
+FILTER_SAN=1
+
+ACTUAL_FILTER="DummyUsedBelow"  # Do not modify
+if [ "${FILTER_SAN}" -eq 1 ]; then
+  ACTUAL_FILTER="$(grep -m1 "BASEDIR.*SAN" */pquery-pquery-run-MD105.conf | sed 's|/.*||' | tr '\n' '|' | sed 's/|$/\n/')"
+fi
+
 if [ -z "${1}" ]; then
-  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr
+  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | grep -v "[ \t]${ACTUAL_FILTER}/"
 else
-  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | awk '{print $2}' | xargs -I{} grep --binary-files=text -L 'mysqld options required' {} | xargs -I{} wc -l {}
+  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | awk '{print $2}' | xargs -I{} grep --binary-files=text -L 'mysqld options required' {} | xargs -I{} wc -l {} | grep -v "[ \t]${ACTUAL_FILTER}/"
 fi

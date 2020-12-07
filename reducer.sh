@@ -326,9 +326,10 @@ RANDOM=$(date +%s%N | cut -b10-19)
 # https://github.com/google/sanitizers/wiki/SanitizerCommonFlags
 # https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
 # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+# https://github.com/google/sanitizers/wiki/AddressSanitizerLeakSanitizer (LSAN is enabled by default except on OS X)
 export ASAN_OPTIONS=quarantine_size_mb=512:atexit=1:detect_invalid_pointer_pairs=3:dump_instruction_bytes=1:check_initialization_order=1:detect_stack_use_after_return=1:abort_on_error=1
 export UBSAN_OPTIONS=print_stacktrace=1
-export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=3
+export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=1
 
 # ===== [SPECIAL MYEXTRA SECTION START] Preparation for STAGES 8 and 9: special MYEXTRA startup option sets handling
 # Important: If you add a section below for additional startup option sets, be sure to add the final outcome to SPECIAL_MYEXTRA_OPTIONS at the end of this section (marked by "[SPECIAL MYEXTRA SECTION END]")
@@ -2064,7 +2065,7 @@ start_pxc_main(){
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${WORKD}/my.cnf
   else
     echo "pxc_encrypt_cluster_traffic=OFF" >> ${WORKD}/my.cnf
-    echo "log-error-verbosity=3" >> ${WORKD}/my.cnf
+    echo "log-error-verbosity=1" >> ${WORKD}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKD}/my.cnf
   echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKD}/my.cnf

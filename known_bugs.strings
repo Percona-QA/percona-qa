@@ -15,6 +15,9 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+len < sizeof(tmp_buff)|SIGABRT|ut_dbg_assertion_failed|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record                               ## OPT |MDEV-24356
+len < sizeof(tmp_buff)|SIGABRT|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record|fill_schema_table_by_open                             ## OPT |MDEV-24356
+len < sizeof(tmp_buff)|SIGABRT|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record|get_schema_key_column_usage_record                    ## OPT |MDEV-24356
 SIGSEGV|__memset_avx2_erms|memset|log_t::create|srv_start                                                                                                                      ## OPT MDEV-24269
 SIGSEGV|mach_write_to_4|log_block_set_hdr_no|log_block_init|log_t::create                                                                                                      ## OPT MDEV-24269
 ptr != NULL|SIGABRT|ut_dbg_assertion_failed|ut_allocate_trace_dontdump|ut_malloc_dontdump|log_t::create                                                                        ## OPT MDEV-24269
@@ -391,6 +394,7 @@ index->table->instant|SIGABRT|btr_pcur_store_position|row_search_mvcc|ha_innobas
 len == ref_length|SIGABRT|ha_innobase::position|find_all_keys|filesort|create_sort_index                                                                                       ## DBG MDEV-22873*
 0|SIGABRT|Item::val_native|Item::val_native_from_item|Item_ref::val_native|Type_handler_timestamp_common::Item_val_native_with_conversion                                      ## DBG MDEV-22885*
 SIGSEGV|maria_status|ha_maria::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                      ## DBG |MDEV-23202*
+SIGSEGV|heap_info|ha_heap::info|ha_heap::info|make_join_statistics                                                                                                             ## OPT |MDEV-23202
 SIGSEGV|maria_status|ha_maria::info|make_join_statistics|JOIN::optimize_inner                                                                                                  ## OPT |MDEV-23202*
 SIGSEGV|heap_info|ha_heap::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                          ## DBG |MDEV-23202
 SIGSEGV|heap_info|ha_heap::info|make_join_statistics|JOIN::optimize_inner                                                                                                      ## OPT |MDEV-23202

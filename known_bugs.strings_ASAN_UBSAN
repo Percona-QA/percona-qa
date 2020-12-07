@@ -1,4 +1,12 @@
 ###### CURRENT BUGS (UPDATED/DONE) ######
+Data race in LOGGER::init_error_log at sql/log.cc:1443 and in LOGGER::error_log_print at sql/log.cc:1181                                                                               ## OPT MDEV-24317
+Data race in buf_page_get_low at buf/buf0buf.cc:2946 and in buf_page_read_complete at buf/buf0buf.cc:4240                                                                              ## OPT MDEV-24328
+Data race in srv_mon_default_on at srv/srv0mon.cc:2099                                                                                                                                 ## OPT MDEV-24329
+Data race in buf_LRU_get_free_block at buf/buf0lru.cc:408                                                                                                                              ## OPT MDEV-24330
+Data race in os_file_pread at os/os0file.cc:3308, :3310, :3311, :3313                                                                                                                  ## OPT MDEV-24332
+Data race in os_file_pread at os/os0file.cc:3308 on os_n_file_reads                                                                                                                    ## OPT MDEV-24332
+
+sql/sql_type_int.h:91:42: runtime error: shift exponent 255 is too large for 64-bit type 'long long unsigned int'                                                                      ## OPT MDEV-24198
 sql/sql_type_int.h:91:42: runtime error: shift exponent 255 is too large for 64-bit type 'long long unsigned int'                                                                      ## OPT MDEV-24198
 sql/opt_split.cc:1150:28: runtime error: shift exponent 61 is too large for 32-bit type 'int'                                                                                          ## OPT MDEV-22740
 storage/innobase/log/log0recv.cc:118:71: runtime error: member call on null pointer of type 'struct log_phys_t'                                                                        ## MDEV-24196 (no tc)
@@ -8,7 +16,6 @@ strings/decimal.c:1088:8: runtime error: signed integer overflow: -10101010101 *
 strings/decimal.c:1106:8: runtime error: signed integer overflow: -10000000000 * 1000000000 cannot be represented in type 'long long int'                                              ## OPT |MDEV-22742
 
 ###### CURRENT BUGS ######
-Data race in LOGGER::init_error_log at sql/log.cc:1443 and in LOGGER::error_log_print at sql/log.cc:1181                                                                               ## OPT MDEV-24317
 sql/item.cc:2788:70: runtime error: member call on address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr        ## OPT |MDEV-22737
 sql/sql_class.cc:3763:19: runtime error: member access within address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr ## OPT |MDEV-22737
 sql/sql_class.cc:3764:19: runtime error: member access within address 0x62b000086e58 which does not point to an object of type 'Query_arena' 0x62b000086e58: note: object has invalid vptr ## OPT |MDEV-22737

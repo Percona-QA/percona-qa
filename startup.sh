@@ -22,7 +22,7 @@ fi
 add_san_options(){
   echo 'export ASAN_OPTIONS=quarantine_size_mb=512:atexit=1:detect_invalid_pointer_pairs=3:dump_instruction_bytes=1:check_initialization_order=1:detect_stack_use_after_return=1:abort_on_error=1' >> "${1}"
   echo 'export UBSAN_OPTIONS=print_stacktrace=1' >> "${1}"
-  echo 'export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=3' >> "${1}"
+  echo 'export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=1' >> "${1}"
 }
 
 # Ubuntu mysqld runtime provisioning

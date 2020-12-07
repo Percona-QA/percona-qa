@@ -25,7 +25,7 @@ WORKDIRACTIVE=0; SAVED=0; TRIAL=0; MYSQLD_START_TIMEOUT=60; TIMEOUT_REACHED=0;
 # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
 export ASAN_OPTIONS=quarantine_size_mb=512:atexit=1:detect_invalid_pointer_pairs=3:dump_instruction_bytes=1:check_initialization_order=1:detect_stack_use_after_return=1:abort_on_error=1
 export UBSAN_OPTIONS=print_stacktrace=1
-export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=3
+export TSAN_OPTIONS=suppress_equal_stacks=1:suppress_equal_addresses=1:history_size=7:verbosity=1
 
 # Read configuration
 if [ "$1" != "" ]; then CONFIGURATION_FILE=$1; fi
@@ -348,7 +348,7 @@ if [[ $PXC -eq 1 ]];then
     echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
     echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
   else
-    echo "log-error-verbosity=3" >> ${BASEDIR}/my.cnf
+    echo "log-error-verbosity=1" >> ${BASEDIR}/my.cnf
   fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
   echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
