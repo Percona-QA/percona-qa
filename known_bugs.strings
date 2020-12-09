@@ -15,6 +15,8 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
+thd->mdl_context.is_lock_owner(MDL_key::TABLE, db, table_name, MDL_EXCLUSIVE)|SIGABRT|tdc_remove_table|mysql_rm_table_no_locks|mysql_rm_table|mysql_execute_command            ## DBG |MDEV-24382
+SIGSEGV|heap_info|ha_heap::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                          ## DBG |MDEV-24383
 len < sizeof(tmp_buff)|SIGABRT|ut_dbg_assertion_failed|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record                               ## OPT |MDEV-24356
 len < sizeof(tmp_buff)|SIGABRT|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record|fill_schema_table_by_open                             ## OPT |MDEV-24356
 len < sizeof(tmp_buff)|SIGABRT|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record|get_schema_key_column_usage_record                    ## OPT |MDEV-24356
@@ -340,6 +342,10 @@ pos == node->first_doc_id|SIGABRT|fts_query_filter_doc_ids|fts_query_read_node|f
 pos == node->first_doc_id|SIGABRT|ut_dbg_assertion_failed|fts_query_filter_doc_ids|fts_query_read_node|fts_query_index_fetch_nodes                                             ## DBG |MDEV-19522*
 inited==NONE|SIGABRT|handler::ha_index_read_idx_map|write_record|Delayed_insert::handle_inserts|handle_delayed_insert                                                          ## DBG MDEV-19596*
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item_func_as_wkt::val_str_ascii|Item_func::val_str_from_val_str_ascii            ## DBG |MDEV-19723*
+!mysql_bin_log.is_open() || thd.is_current_stmt_binlog_format_row()|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item_func_as_wkt::val_str_ascii|Item_func::val_str_from_val_str_ascii # DBG |MDEV-19723
+!mysql_bin_log.is_open() || thd.is_current_stmt_binlog_format_row()|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send # DBG |MDEV-19723
+!(mysql_bin_log.is_open() && !thd.is_current_stmt_binlog_format_row())|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Item::send|Protocol::send_result_set_row # DBG |MDEV-19723
+!(mysql_bin_log.is_open() && !thd.is_current_stmt_binlog_format_row())|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send # DBG |MDEV-19723
 je->state == JST_KEY|SIGABRT|Geometry::create_from_json|Item_func_geometry_from_json::val_str|Type_handler::Item_send_str|Type_handler_string_result::Item_send                ## DBG |MDEV-19723*
 log_descriptor.bc.buffer->prev_last_lsn == ((LSN)0)|SIGABRT|translog_flush_buffers|translog_flush|ma_commit|ha_maria::external_lock                                            ## DBG MDEV-17225
 ! is_set() || m_can_overwrite_status|SIGABRT|Diagnostics_area::set_error_status|THD::raise_condition|THD::raise_condition|push_warning                                         ## DBG MDEV-17729*
@@ -355,8 +361,7 @@ SIGSEGV|Query_arena::set_query_arena|THD::set_n_backup_active_arena|Field::set_d
 !((col->prtype ^ prtype) & ~(16384U|32768U))|SIGABRT|innobase_rename_or_enlarge_column_try|innobase_rename_or_enlarge_columns_try|commit_try_norebuild|ha_innobase::commit_inplace_alter_table ## DBG MDEV-18780*
 SIGSEGV|fk_prepare_copy_alter_table|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command                                                                       ## DBG MDEV-19194*
 ((((*af)->unireg_check) & 127U) == Field::NEXT_NUMBER) == (((f->unireg_check) & 127U) == Field::NEXT_NUMBER)|SIGABRT|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute|mysql_execute_command ## DBG MDEV-19272*
-thd->mdl_context.is_lock_owner(MDL_key::TABLE, db, table_name, MDL_EXCLUSIVE)|SIGABRT|tdc_remove_table|mysql_rm_table_no_locks|mysql_rm_table|mysql_execute_command            ## DBG |MDEV-19273
-iSIGSEGV|MDL_ticket::has_stronger_or_equal_type|MDL_context::upgrade_shared_lock|wait_while_table_is_used|mysql_rm_table_no_locks                                              ## DBG |MDEV-19273
+SIGSEGV|MDL_ticket::has_stronger_or_equal_type|MDL_context::upgrade_shared_lock|wait_while_table_is_used|mysql_rm_table_no_locks                                              ## DBG |MDEV-19273
 SIGSEGV|st_select_lex::mark_as_dependent|mark_as_dependent|Item_field::fix_outer_field|Item_field::fix_fields                                                                  ## OPT |MDEV-20325*
 !derived->is_excluded()|SIGABRT|TABLE_LIST::set_check_materialized|TABLE_LIST::set_materialized_derived|TABLE_LIST::init_derived|mysql_derived_init                            ## OPT |MDEV-20325*
 SIGSEGV|row_upd_del_mark_clust_rec|row_upd_clust_step|row_upd|row_upd_step                                                                                                     ## OPT |MDEV-20563*
@@ -396,7 +401,6 @@ len == ref_length|SIGABRT|ha_innobase::position|find_all_keys|filesort|create_so
 SIGSEGV|maria_status|ha_maria::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                      ## DBG |MDEV-23202*
 SIGSEGV|heap_info|ha_heap::info|ha_heap::info|make_join_statistics                                                                                                             ## OPT |MDEV-23202
 SIGSEGV|maria_status|ha_maria::info|make_join_statistics|JOIN::optimize_inner                                                                                                  ## OPT |MDEV-23202*
-SIGSEGV|heap_info|ha_heap::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                          ## DBG |MDEV-23202
 SIGSEGV|heap_info|ha_heap::info|make_join_statistics|JOIN::optimize_inner                                                                                                      ## OPT |MDEV-23202
 !table || table->in_use == _current_thd()|SIGABRT|Field_long::val_int|Field_int::val_decimal|Item_field::val_decimal|VDec::set                                                 ## DBG |MDEV-23294*
 !table || table->in_use == _current_thd()|SIGABRT|Field_string::val_str|Field::val_str|Field::save_in_field_str|Field_str::save_in_field                                       ## DBG |MDEV-23294*

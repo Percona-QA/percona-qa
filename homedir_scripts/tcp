@@ -136,9 +136,6 @@ cat "${1}" | tr -d '`' | \
   sed 's|csv|CSV|gi' | \
   sed 's|archive|ARCHIVE|gi' | \
   sed 's|values|VALUES|gi' | \
-  sed 's|\([^\.]\)st_|\1ST_|gi' | \
-  sed 's|geomfromtext|GEOMFROMTEXT|gi' | \
-  sed 's|ST_\([_a-zA-Z]\+\)|\UST_\1|gi' | \
   sed 's|row_format|ROW_FORMAT|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|compressed|COMPRESSED|gi' | \
@@ -159,7 +156,11 @@ cat "${1}" | tr -d '`' | \
   sed 's|invisible|INVISIBLE|gi' | \
   sed 's|virtual|VIRTUAL|gi' | \
   sed 's|checkpoint|checkpoint|gi' | \
+  sed 's|coordinates|coordinates|gi' | \
   sed 's|_\([a-zA-Z]\+\)|_\L\1|gi;s|\([a-zA-Z]\+\)_|\L\1_|gi' | \
+  sed 's|\([^\.]\)st_|\1ST_|gi' | \
+  sed 's|geomfromtext|GEOMFROMTEXT|gi' | \
+  sed 's|ST_\([_a-zA-Z]\+\)|\UST_\1|gi' | \
   sed "s|^. mysqld options required for replay.*|${OPTIONS}|i" | \
   sed 's|\t| |g' | \
   sed 's|  | |g' | \
@@ -171,6 +172,7 @@ cat "${1}" | tr -d '`' | \
   sed 's|interval|INTERVAL|gi' | \
   sed 's|ifnull|IFNULL|gi' | \
   sed 's|rand|RAND|gi' | \
+  sed 's|rowid|ROWID|gi' | \
   sed 's|fts_doc_id|FTS_DOC_ID|gi' | \
   sed 's|mysql\.\([^ ]\+\)|mysql.\L\1|gi' | \
   sed 's|auto_increment|AUTO_INCREMENT|gi' | \

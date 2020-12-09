@@ -43,5 +43,5 @@ cat /tmp/sec.t | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMy
 #./findbug "$1" | sed 's|:.*||' | xargs -I{} echo "echo {}; ~/mariadb-qa/text_string.sh {}" | xargs -I{} bash -c "{}"
 
 # Compile/output bug-not-present-in list
-echo -e "\nBug confirmed not present in:"
+echo -e "\nBug (or feature/syntax) confirmed not present in:"
 diff /tmp/pri.t /tmp/sec.t | grep --binary-files=text '<' | sed 's|^< ||' | sed 's|-| |;s|mysql|DUMMY2|' | tr '\n' ',' | sed 's|DUMMY2|\nMySQL:|;s|DUMMY2||g;s|,|, |g;s|^mariadb|DUMMY|;s|mariadb ||g;s|DUMMY|MariaDB:|;s|-dbg| (dbg)|g;s|-opt| (opt)|g;' | sed 's|, $||;s|  | |g'; echo ''

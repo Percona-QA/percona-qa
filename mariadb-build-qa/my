@@ -8,7 +8,7 @@ if [ "${FILTER_SAN}" -eq 1 ]; then
 fi
 
 if [ -z "${1}" ]; then
-  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | grep -v "[ \t]${ACTUAL_FILTER}/"
+  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | grep -vE "[ \t]${ACTUAL_FILTER}/"
 else
-  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | awk '{print $2}' | xargs -I{} grep --binary-files=text -L 'mysqld options required' {} | xargs -I{} wc -l {} | grep -v "[ \t]${ACTUAL_FILTER}/"
+  ~/ooo | grep -vE "LOG_WITH_COREDUMP|VARIOUS_BUILDS|MONTY|ANALYZE_LATER_FAILS_REPROD" | grep "^[ ]\+[0-1 ][0-9 ][0-9] " | sort -nr | awk '{print $2}' | xargs -I{} grep --binary-files=text -L 'mysqld options required' {} | xargs -I{} wc -l {} | grep -vE --binary-files=text "[ \t]${ACTUAL_FILTER}/"
 fi
