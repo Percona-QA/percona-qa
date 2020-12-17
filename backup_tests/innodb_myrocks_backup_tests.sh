@@ -13,9 +13,9 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_13_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_22_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS090720_8_0_20_11_debug"
+export mysqldir="$HOME/PS081220_8_0_22_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
@@ -46,10 +46,10 @@ initialize_db() {
         $qascripts/startup.sh
     fi
 
-    ./all_no_cl --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
+    ./all_no_cl --log-bin=binlog ${MYSQLD_OPTIONS} >${logdir}/database_startup_log 2>${logdir}/database_startup_log
     ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
-        echo "ERR: Database could not be started in location ${mysqldir}. Please check the directory"
+        echo "ERR: Database could not be started in location ${mysqldir}. Please check the directory. Log available at: ${logdir}/database_startup_log"
         popd >/dev/null 2>&1
         exit 1
     fi
@@ -66,6 +66,13 @@ initialize_db() {
     if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
         # Create tables without encryption
         sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --rand-type=${random_type} prepare
+
+    if [ "${rocksdb}" = "enabled" ]; then
+        echo "Creating rocksdb data in database"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test_rocksdb;"
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --rand-type=${random_type} prepare
+    fi
+
     else
         # Create encrypted tables: changed the oltp_common.lua script to include mysql-table-options="Encryption='Y'"
         echo "Creating encrypted tables in innodb"
@@ -79,12 +86,6 @@ initialize_db() {
             echo "Adding data in tables..."
             sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=30 --rand-type=${random_type} run >/dev/null 2>&1 
         fi
-    fi
-
-    if [ "${rocksdb}" = "enabled" ]; then
-        echo "Creating rocksdb data in database"
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE DATABASE IF NOT EXISTS test_rocksdb;"
-        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test_rocksdb --mysql-user=root --threads=100 --db-driver=mysql --mysql-storage-engine=ROCKSDB --mysql-socket=${mysqldir}/socket.sock --rand-type=${random_type} prepare
     fi
 }
 
@@ -192,8 +193,13 @@ incremental_backup() {
             ;;
     esac
     if [ "$?" -ne 0 ]; then
-        echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
-        exit 1
+        grep -e "PXB will not be able to make a consistent backup" -e "PXB will not be able to take a consistent backup" "${logdir}"/full_backup_"${log_date}"_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
+            exit 1
+        else
+            return # Backup could not be completed due to DDL
+        fi
     else
         echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
     fi
@@ -238,8 +244,13 @@ incremental_backup() {
             ;;
     esac
     if [ "$?" -ne 0 ]; then
-        echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc_backup_${log_date}_log"
-        exit 1
+        grep -e "PXB will not be able to make a consistent backup" -e "PXB will not be able to take a consistent backup" "${logdir}"/inc_backup_"${log_date}"_log
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc_backup_${log_date}_log"
+            exit 1
+        else
+            return # Backup could not be completed due to DDL
+        fi
     else
         echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
     fi
@@ -306,7 +317,7 @@ incremental_backup() {
     done
 
     # Get record count and checksum of each table in test_rocksdb database
-    if [ "${rocksdb}" = "enabled" ]; then
+    if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
         for ((i=1; i<=${num_tables}; i++)); do
             rc_myrocks_orig[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test_rocksdb.sbtest$i;")
             chk_myrocks_orig[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
@@ -363,7 +374,7 @@ incremental_backup() {
     echo "Checking restored data"
     echo "Check the table status"
     check_err=0
-    if [ "${rocksdb}" = "enabled" ]; then
+    if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
         database_list="test test_rocksdb"
     else
         database_list="test"
@@ -411,7 +422,7 @@ incremental_backup() {
             rc_err=1
         fi
 
-        if [ "${rocksdb}" = "enabled" ]; then
+        if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
             rc_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test_rocksdb.sbtest$i;")
             if [[ "${rc_myrocks_orig[$i]}" -ne "${rc_myrocks_res[$i]}" ]]; then
                 echo "ERR: The record count of test_rocksdb.sbtest$i changed after restore. Record count in original data: ${rc_myrocks_orig[$i]}. Record count in restored data: ${rc_myrocks_res[$i]}."
@@ -432,7 +443,7 @@ incremental_backup() {
             checksum_err=1;
         fi
 
-        if [ "${rocksdb}" = "enabled" ]; then
+        if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
             chk_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
             if [[ "${chk_myrocks_orig[$i]}" -ne "${chk_myrocks_res[$i]}" ]]; then
                 echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksum in restored data: ${chk_myrocks_res[$i]}."
@@ -965,6 +976,23 @@ partitioned_tables() {
     fi
 }
 
+grant_tables() {
+    # This function creates a user, grants privileges and then drops it
+
+    echo "Create a user, grant privileges and then drop it"
+    ( while true; do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE USER 'bkpuser'@'localhost' IDENTIFIED BY 's3cret';" >/dev/null 2>&1 
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON *.* TO 'bkpuser'@'localhost'; FLUSH PRIVILEGES;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP USER 'bkpuser'@'localhost';" >/dev/null 2>&1 
+    done ) &
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -1200,7 +1228,6 @@ test_compressed_column() {
     # This test suite takes an incremental backup during column compression
 
     echo "Test: Backup and Restore during column compression"
-
     compressed_column
 
     incremental_backup
@@ -1450,11 +1477,12 @@ test_inc_backup_encryption_8_0() {
     echo "Test: Backup and Restore during column compression using compression dictionary"
     compression_dictionary
     eval $lock_ddl_cmd
-    echo "###################################################################################"
+    #echo "###################################################################################"
 
-    echo "Test: Backup and Restore during encryption change"
-    change_encryption 
-    eval $lock_ddl_cmd
+    # Commented due to PXB-2277
+    #echo "Test: Backup and Restore during encryption change"
+    #change_encryption
+    #eval $lock_ddl_cmd
 }
 
 test_inc_backup_encryption_2_4() {
@@ -1559,10 +1587,10 @@ test_inc_backup_encryption_2_4() {
     # Running test suites with lock ddl backup command
 
     # Commented due to PXB-2092
-    #echo "Test: Backup and Restore during add and drop index"
-    #add_drop_index
-    #eval $lock_ddl_cmd
-    #echo "###################################################################################"
+    echo "Test: Backup and Restore during add and drop index"
+    add_drop_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
     echo "Test: Backup and Restore during add and drop tablespace"
     add_drop_tablespace
@@ -1575,16 +1603,16 @@ test_inc_backup_encryption_2_4() {
     echo "###################################################################################"
 
     # Commented due to PXB-2097
-    #echo "Test: Backup and Restore during change in row format"
-    #change_row_format
-    #eval $lock_ddl_cmd
-    #echo "###################################################################################"
+    echo "Test: Backup and Restore during change in row format"
+    change_row_format
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
     # Commented due to PXB-2237
-    #echo "Test: Backup and Restore during update and truncate of a table"
-    #update_truncate_table
-    #eval $lock_ddl_cmd
-    #echo "###################################################################################"
+    echo "Test: Backup and Restore during update and truncate of a table"
+    update_truncate_table
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
     echo "Test: Backup and Restore during rename index"
     rename_index
@@ -1592,10 +1620,10 @@ test_inc_backup_encryption_2_4() {
     echo "###################################################################################"
 
     # Commented due to PXB-2240
-    #echo "Test: Backup and Restore during add and drop full text index"
-    #add_drop_full_text_index
-    #eval $lock_ddl_cmd
-    #echo "###################################################################################"
+    echo "Test: Backup and Restore during add and drop full text index"
+    add_drop_full_text_index
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
     echo "Test: Backup and Restore during index type change"
     change_index_type
@@ -1608,10 +1636,10 @@ test_inc_backup_encryption_2_4() {
     echo "###################################################################################"
 
     # Commented due to PXB-2239
-    #echo "Test: Backup and Restore during creation of partitioned tables"
-    #partitioned_tables
-    #eval $lock_ddl_cmd
-    #echo "###################################################################################"
+    echo "Test: Backup and Restore during creation of partitioned tables"
+    partitioned_tables
+    eval $lock_ddl_cmd
+    echo "###################################################################################"
 
     echo "Test: Backup and Restore during column compression"
     compressed_column
@@ -1624,7 +1652,7 @@ test_inc_backup_encryption_2_4() {
     echo "###################################################################################"
 
     echo "Test: Backup and Restore during encryption change"
-    change_encryption 
+    change_encryption
     eval $lock_ddl_cmd
 }
 
@@ -1723,7 +1751,7 @@ test_cloud_inc_backup() {
     echo "Test: Incremental Backup and Restore with encryption and streaming"
     incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
     echo "###################################################################################"
-
+                
     echo "Test: Incremental Backup and Restore with quicklz compression and streaming"
     incremental_backup "--compress --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
     echo "###################################################################################"
@@ -1807,10 +1835,97 @@ test_ssl_backup() {
     backup_user="root"
 }
 
+test_inc_backup_archive_log() {
+    # This test suite takes an incremental backup with redo archive log and innodb params
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Skipping redo archive log tests for PS/MS5.7 as these scenarios are not supported"
+        return
+    fi
+
+    if [ ! -d ${mysqldir}/archive ]; then
+        mkdir -m 444 ${mysqldir}/archive
+    fi
+
+    echo "Test: Incremental Backup and Restore with --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
+
+    initialize_db "--innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+
+    incremental_backup "" "" "" "--innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
+
+    initialize_db "--innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+
+    incremental_backup "" "--innodb-log-file-size=4MB" "" "--innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with --innodb-log-file-size=2GB --innodb-log-files-in-group=5 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
+
+    initialize_db "--innodb-log-file-size=2GB --innodb-log-files-in-group=5 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+
+    incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=5" "--innodb-log-file-size=2G --innodb-log-files-in-group=5" "--innodb-log-file-size=2G --innodb-log-files-in-group=5" "--innodb-log-file-size=2G --innodb-log-files-in-group=5 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs and encryption options"
+
+    server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-extend-and-initialize=OFF"
+
+    initialize_db "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+
+    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --innodb-log-file-size=4MB" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+}
+
+test_grant_tables() {
+    # This test suite takes an incremental backup when a user is created and dropped
+
+    echo "Test: Backup and Restore during creation and dropping of a user"
+
+    initialize_db "--binlog-format=mixed"
+    
+    grant_tables
+
+    incremental_backup "" "" "" "--binlog-format=mixed" "" ""
+}
+
+test_inc_backup_innodb_params() {
+    # This test suite takes a full backup, incremental backup with different innodb parameter values
+
+    echo "Test: Backup and Restore with --innodb-log-file-size=4194304 --innodb-log-files-in-group=10"
+
+    initialize_db "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10"
+
+    incremental_backup "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with --innodb-log-file-size=2G --innodb-log-files-in-group=10"
+
+    initialize_db "--innodb-log-file-size=2G --innodb-log-files-in-group=10"
+
+    incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with --innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+
+    initialize_db "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+
+    incremental_backup "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with --innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+
+    initialize_db "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+
+    incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "" ""
+}
 
 echo "Running Tests"
 # Various test suites
-for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_run_all_statements; do
+#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_grant_tables test_run_all_statements; do
 
 # Cloud backup test suite
 #for testsuite in test_cloud_inc_backup; do
@@ -1833,6 +1948,8 @@ for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_r
 # Encryption test suites for PXB8.0 and MS8.0
 #for testsuite in "test_inc_backup_encryption_8_0 keyring_file"; do
 
+#Innodb parameters and redo archive log test suites
+for testsuite in test_inc_backup_innodb_params test_inc_backup_archive_log; do
     $testsuite
     echo "###################################################################################"
 done
