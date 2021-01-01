@@ -30,7 +30,7 @@ else
   ~/mariadb-qa/bug_report.sh "${MYEXTRA_OPT}" | tee report.log
   sed -i 's|^TEXT="[^"]\+"|TEXT=""|' ~/mariadb-qa/bug_report.sh  # Cleanup
   ~/tt | grep -A1 "URL" | tee -a report.log
-  echo 
+  echo '*** All strings merged (for ~/kb) ***'
   if [ -r ../allstrings_merged ]; then
     cd .. && ./allstrings_merged && cd - >/dev/null 2>&1
   fi

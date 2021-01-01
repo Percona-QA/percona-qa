@@ -15,7 +15,8 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS######
-#tmp != ((long long) 0x8000000000000000LL)|SIGABRT|TIME_from_longlong_datetime_packed|Field_datetimef::get_TIME|Field_datetimef::get_date|Field_temporal::save_in_field         ## DBG MDEV-24510
+l_offset >= 0 && table->s->rec_buff_length - l_offset > 0|SIGABRT|Field::ptr_in_record|Column_definition::Column_definition|Create_field::Create_field|mysql_prepare_alter_table  ## DBG MDEV-24511
+#tmp != ((long long) 0x8000000000000000LL)|SIGABRT|TIME_from_longlong_datetime_packed|Field_datetimef::get_TIME|Field_datetimef::get_date|Field_temporal::save_in_field         ## DBG MDEV-24510 - valid entry but need more testcases, temp remark
 thd->mdl_context.is_lock_owner(MDL_key::TABLE, db, table_name, MDL_EXCLUSIVE)|SIGABRT|tdc_remove_table|mysql_rm_table_no_locks|mysql_rm_table|mysql_execute_command            ## DBG |MDEV-24382
 SIGSEGV|heap_info|ha_heap::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                          ## DBG |MDEV-24383
 len < sizeof(tmp_buff)|SIGABRT|ut_dbg_assertion_failed|get_foreign_key_info|ha_innobase::get_foreign_key_list|get_schema_key_column_usage_record                               ## OPT |MDEV-24356
