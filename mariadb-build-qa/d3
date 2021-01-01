@@ -6,4 +6,4 @@ if [ "${_}" == "${0}" ]; then
   exit 1
 fi
 
-cd MD211020-mariadb-10.4.16-linux-x86_64-dbg
+cd $(ls -d MD[0-9][0-9][0-9][0-9][0-9][0-9]-mariadb-10.3.*-linux-x86_64-dbg)

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ "${_}" == "${0}" ]; then
+  echo "Source me instead! Like this:"
+  echo ". ./dbg"
+  exit 1
+fi
+
+cd $(ls -d MD[0-9][0-9][0-9][0-9][0-9][0-9]-mariadb-10.2.*-linux-x86_64-opt)
