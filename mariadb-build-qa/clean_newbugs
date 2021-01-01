@@ -2,7 +2,18 @@
 set +H
 if [ ! -r ~/mariadb-qa/known_bugs.strings ]; then echo '~/mariadb-qa/known_bugs.strings not found!'; exit 1; fi
 if [ ! -d /data/NEWBUGS -a ! -d /data/FIREWORKS ]; then echo '/data/NEWBUGS and /data/FIREWORKS not found!'; exit 1; fi
-grep --binary-files=text -vE '^[ \t]*$|^#' ~/mariadb-qa/known_bugs.strings 2>/dev/null | sed 's|[ \t]\+##.*$||' | xargs -I{} grep --binary-files=text -Fi "{}" /data/NEWBUGS/*.string 2>/dev/null | sed 's|.string:.*$|.*|' | xargs -I{} echo "rm {}" | xargs -I{} bash -c "{}"
-echo 'Done! (Newbugs)'
+for DIR in $(seq 1 999); do
+  if [ ${DIR} -le 9 ]; then
+    DIR2="00${DIR}"
+  elif [ ${DIR} -le 99 ]; then
+    DIR2="0${DIR}"
+  else
+    DIR2="${DIR}"
+  fi
+  if [ ! -z "$(ls /data/NEWBUGS/newbug_${DIR2}*.string 2>/dev/null)" ]; then
+    grep --binary-files=text -vE '^[ \t]*$|^#' ~/mariadb-qa/known_bugs.strings 2>/dev/null | sed 's|[ \t]\+##.*$||' | xargs -I{} grep --binary-files=text -Fi "{}" /data/NEWBUGS/newbug_${DIR2}*.string 2>/dev/null | sed 's|.string:.*$|.*|' | xargs -I{} echo "rm {}" | xargs -I{} bash -c "{}"
+    echo "Done! (Newbugs ${DIR2})"
+  fi
+done
 grep --binary-files=text -vE '^[ \t]*$|^#' ~/mariadb-qa/known_bugs.strings 2>/dev/null | sed 's|[ \t]\+##.*$||' | xargs -I{} grep --binary-files=text -Fi "{}" /data/FIREWORKS/*.string 2>/dev/null | sed 's|.string:.*$|.*|' | xargs -I{} echo "rm {}" | xargs -I{} bash -c "{}"
-echo 'Done! (Newbugs)'
+echo 'Done! (Fireworks)'

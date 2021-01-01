@@ -54,6 +54,7 @@ cp opt ${TARGET}
 cp dbg6 ${TARGET}
 cp opt6 ${TARGET}
 cp my ${TARGET}
+cp my_san ${TARGET}
 cp my2 ${TARGET}
 cp mybugs ${TARGET}
 cp test_all ${TARGET}

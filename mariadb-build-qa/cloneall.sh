@@ -1,15 +1,17 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-echo ''; sleep 0.1
-rm -Rf 10.1
+echo ""
+sleep 0.1
+#rm -Rf 10.1
 rm -Rf 10.2
 rm -Rf 10.3
 rm -Rf 10.4
 rm -Rf 10.5
 rm -Rf 10.6
-echo ''; sleep 0.1
-./clone.sh 10.1 &
+echo ""
+sleep 0.1
+#./clone.sh 10.1 &
 ./clone.sh 10.2 &
 ./clone.sh 10.3 &
 ./clone.sh 10.4 & 

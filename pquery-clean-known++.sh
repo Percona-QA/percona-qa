@@ -32,6 +32,9 @@ fi
 # 22/9/2020 temp re-enabled (temp re-disable again later) due to so many bugs in queues
 # 11/11/2020 re-disabled
 
+# Delete all trials which have a mysqld that terminated normally
+tail -n2 */log/master.err | grep -B1 'Shutdown complete' | grep -o '==> [0-9]\+' | sed 's|.* ||' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
+
 # Delete all 'TRIALS TO CHECK MANUALLY' trials which do not have an associated core file in their data directories
 rm -f ~/results_list++.tmp
 ${SCRIPT_PWD}/pquery-results.sh | grep "TRIALS.*MANUALLY" | grep -o "reducers.*[^)]" | sed 's|reducers ||;s|,|\n|g' > ~/results_list++.tmp
