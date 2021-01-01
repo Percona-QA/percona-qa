@@ -47,7 +47,7 @@ echo "----- Bug String  -----"
 echo "${TEXT}"
 
 echo "----- String Scan -----"
-FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
+FRAMEX="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*|.*$/\1/')"
 OUT="$(grep -Fi --binary-files=text "${TEXT}" ~/mariadb-qa/known_bugs.strings)"
 OUT2="$(grep -Fi --binary-files=text "${FRAMEX}" ~/mariadb-qa/known_bugs.strings)"
 if [ -z "${OUT}" ]; then
@@ -62,9 +62,11 @@ else
   echo "${OUT}"
 fi
 
-echo "----- Search URL (3 significant frames) -----"  # First frame (FRAMEX): ref code above
-FRAMEY="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*$/\1/')"
-FRAMEZ="$(echo "${TEXT}" | sed 's/.*|\(.*\)$/\1/')"
+echo "----- Search URL (3 most significant frames) -----"  # Out of the 4 frames available
+# First frame (FRAMEX): ref code above
+FRAMEY="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*|.*$/\1/')"
+FRAMEZ="$(echo "${TEXT}" | sed 's/.*|\(.*\)|.*$/\1/')"
+#FRAME4="$(echo "${TEXT}" | sed 's/.*|\(.*\)$/\1/')"  // Last frame not used
 echo "https://jira.mariadb.org/issues/?jql=text%20~%20%22%5C%22${FRAMEX}%5C%22%22%20and%20text%20~%20%22%5C%22${FRAMEY}%5C%22%22%20and%20text%20~%20%22%5C%22${FRAMEZ}%5C%22%22%20ORDER%20BY%20status%20ASC"
 
 ASSERT="$(echo -n "${TEXT}" | sed 's/||/DUMMYREP/g' | sed 's/|.*//' | sed 's/DUMMYREP/||/g;')"

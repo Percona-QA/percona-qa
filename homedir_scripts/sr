@@ -1,11 +1,15 @@
 #!/bin/bash
+if [ -z "${1}" ]; then
+  echo "Assert: please pass reducer/trial nr to start"
+  exit 1
+fi
 if [ "${1}" != "" -a -r reducer${1}.sh ]; then
   #screen -admS s${1} bash -c "ulimit -u 4000;./reducer${1}.sh;bash"
   screen -admS s${1} bash -c "./reducer${1}.sh;bash"
 elif [ "${1}" != "" -a -r ${1} ]; then
   screen -admS s${1} bash -c "./${1};bash"
 else
-  echo "No such reducer script: ./reducer${1}.sh, nor ${1}"
+  echo "Assert: No such reducer script: ./reducer${1}.sh, nor ${1}"
   exit 1
 fi
 if [ "${2}" != "" ]; then screen -d -r s${1}; fi
