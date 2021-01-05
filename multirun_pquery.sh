@@ -45,12 +45,18 @@ done
 echo "Done!"
 
 echo -e "\n===== Verifying server is up & running"
+rm -f /tmp/sel1.sql
+echo 'SELECT 1;' > /tmp/sel1.sql
 CHK_CMD="$4 --database=test --infile=/tmp/sel1.sql --threads=1 --no-shuffle --user=root --socket=$5"
-CHK_OUT="eval ${CHK_CMD} 2>&1 | grep 'Exit status' | tail -n1 | sed 's|.*:[ \t]*||"
-if [ "${CHK_OUT}" != "0" ]; then
-  echo "Server not reachable! Check settings."
+CHK_OUT="$(eval ${CHK_CMD} 2>&1 | grep 'Exit status' | tail -n1)"
+ERR_CODE="$(echo "${CHK_OUT}" | sed 's|.*:[ \t]*||')"
+rm -f /tmp/sel1.sql
+if [ "${ERR_CODE}" != "0" ]; then
+  echo "Server not reachable! Check settings. Error: ${CHK_OUT}"
   echo "Terminating!"
   exit 1
+else 
+  echo "Done!" 
 fi
 
 echo -e "\n===== Starting pquery processes"

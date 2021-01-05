@@ -66,7 +66,7 @@ cp find_cores ${TARGET}
 cp untar ${TARGET}
 cp prep_ram ${TARGET}
 cp copy_all_tests ${TARGET}
-cp copy_newbugs ${TARGET}
+cp move_newbugs ${TARGET}
 cp check ${TARGET}
 cp count_reducers ${TARGET}
 cp qcdiffs ${TARGET}
