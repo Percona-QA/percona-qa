@@ -117,7 +117,8 @@ take_partial_backup() {
         "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "ALTER TABLE test.$table DISCARD TABLESPACE;"
 
         echo "Copy ${table} files from backup"
-        cp -r "${backup_dir}"/full/test/${table}.* "${mysqldir}"/data/test/.
+        #cp -r "${backup_dir}"/full/test/${table}.* "${mysqldir}"/data/test/.
+        cp -r "${backup_dir}"/full/test/${table}* "${mysqldir}"/data/test/.
         if [ "$?" -ne 0 ]; then
             echo "ERR: The ${table} files could not be copied to ${mysqldir}/data/test/ dir. The backup in ${backup_dir}/full/test does not contain the ${table} files."
             exit 1
@@ -181,7 +182,7 @@ check_tables() {
 }
 
 test_partial_table_backup() {
-    # Test suite for partial table tests
+    # Test suite for partial table backup tests
 
     check_dependencies
 
@@ -215,10 +216,23 @@ test_partial_table_backup() {
     echo "test.sbtest3">"${logdir}"/tables.txt
     echo "test.sbtest5">>"${logdir}"/tables.txt
     take_partial_backup "--tables-file=${logdir}/tables.txt" "" "" "sbtest3 sbtest5"
+    echo "###################################################################################"
+
+    echo "Test: Partial backup and restore of partitioned tables"
+    echo "Create innodb partitioned tables"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE IF EXISTS sbtest1; DROP TABLE IF EXISTS sbtest2; DROP TABLE IF EXISTS sbtest3;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest1 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY HASH(id) PARTITIONS 10;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest2 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN (500), PARTITION p1 VALUES LESS THAN (1000), PARTITION p2 VALUES LESS THAN MAXVALUE);" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest3 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY KEY() PARTITIONS 5;" test
+
+    echo "Add data for innodb partitioned tables"
+    sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
+
+    take_partial_backup "--tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "" "" "sbtest1 sbtest2 sbtest3"
 }
 
 test_partial_table_backup_encrypt() {
-    # Test suite for partial table tests with encryption
+    # Test suite for partial table backup tests with encryption
 
     echo "Test suite for partial table backup tests with encryption"
     check_dependencies
@@ -261,6 +275,19 @@ test_partial_table_backup_encrypt() {
     echo "test.sbtest3">"${logdir}"/tables.txt
     echo "test.sbtest5">>"${logdir}"/tables.txt
     take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables-file=${logdir}/tables.txt" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest3 sbtest5"
+    echo "###################################################################################"
+
+    echo "Test: Partial backup and restore of partitioned tables"
+    echo "Create innodb partitioned tables"
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE IF EXISTS sbtest1; DROP TABLE IF EXISTS sbtest2; DROP TABLE IF EXISTS sbtest3;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest1 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY HASH(id) PARTITIONS 10;" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest2 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN (500), PARTITION p1 VALUES LESS THAN (1000), PARTITION p2 VALUES LESS THAN MAXVALUE);" test
+    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE sbtest3 (id int NOT NULL AUTO_INCREMENT, k int NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k) ) PARTITION BY KEY() PARTITIONS 5;" test
+
+    echo "Add data for innodb partitioned tables"
+    sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
+
+    take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 }
 
 echo "################################## Running Tests ##################################"
