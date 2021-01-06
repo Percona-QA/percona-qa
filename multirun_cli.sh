@@ -46,6 +46,8 @@ if [ -r "${4}admin" ]; then
   if ! eval ${CHK_CMD}; then
     echo "Server not reachable! Check settings. Terminating!"
     exit 1
+  else
+    echo "Done!"
   fi
 else
   echo "${4}admin not found? Terminating!"
