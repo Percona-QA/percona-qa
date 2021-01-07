@@ -1476,6 +1476,8 @@ pquery_test() {
         echo "echo '  set pagination off'" >> ${RUNDIR}/${TRIAL}/gdb
         echo "echo '  set print pretty on'" >> ${RUNDIR}/${TRIAL}/gdb
         echo "echo '  set print frame-arguments all'" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "echo '  thread apply all backtrace full'" >> ${RUNDIR}/${TRIAL}/gdb
+        echo "echo 'OR simple one-thread backtrace instead of all threads (i.e. instead of last line):'" >> ${RUNDIR}/${TRIAL}/gdb
         echo "echo '  bt'" >> ${RUNDIR}/${TRIAL}/gdb
         echo "sleep 5" >> ${RUNDIR}/${TRIAL}/gdb
         echo "gdb ../mysqld/mysqld ./data/*core*" >> ${RUNDIR}/${TRIAL}/gdb

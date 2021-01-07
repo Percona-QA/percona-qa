@@ -211,7 +211,11 @@ else
         FLAGS='-DCMAKE_CXX_FLAGS=-static-libasan'
         echo "Using GCC for ASAN build."
       fi
-    fi
+    else  # Normal builds, not SAN
+      if [ $USE_CLANG -ne 1 ]; then  # With thanks to Marko, 7/1/20, ref chat
+        FLAGS="-DCMAKE_C_FLAGS='-Og -march=native -mtune=native' -DCMAKE_CXX_FLAGS='-Og -march=native -mtune=native'"
+      fi 
+    fi 
   fi
 fi
 # Also note that -k can be use for make to ignore any errors; if the build fails somewhere in the tests/unit tests then it matters
@@ -248,14 +252,14 @@ if [ $FB -eq 0 ]; then
   CMD="cmake . $CLANG $AFL $SSL -DBUILD_CONFIG=mysql_release -DWITH_JEMALLOC=no -DWITH_TOKUDB=0 -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DWITH_ROCKSDB=${WITH_ROCKSDB} -DWITH_PAM=ON -DFORCE_INSOURCE_BUILD=1 ${SAN} ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/psms_opt_build_${RANDOMD}
+  eval "$CMD" | tee /tmp/psms_opt_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 else
   # FB build
   CMD="cmake . $CLANG $AFL $SSL -DBUILD_CONFIG=mysql_release -DWITH_JEMALLOC=no -DFEATURE_SET=community -DDEBUG_EXTNAME=OFF -DWITH_EMBEDDED_SERVER=${WITH_EMBEDDED_SERVER} -DENABLE_DOWNLOADS=1 ${BOOST} -DENABLED_LOCAL_INFILE=${WITH_LOCAL_INFILE} -DENABLE_DTRACE=0 -DWITH_PERFSCHEMA_STORAGE_ENGINE=1 ${ZLIB} -DMYSQL_MAINTAINER_MODE=OFF ${FLAGS}"
   echo "Build command used:"
   echo $CMD
-  $CMD | tee /tmp/psms_opt_build_${RANDOMD}
+  eval "$CMD" | tee /tmp/psms_opt_build_${RANDOMD}
   if [ $? -ne 0 ]; then echo "Assert: non-0 exit status detected for make!"; exit 1; fi
 fi
 # Previously we had: ASAN_OPTIONS="detect_leaks=0" make... here due to upstream http://bugs.mysql.com/bug.php?id=80014 but this was fixed
