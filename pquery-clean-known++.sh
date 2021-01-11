@@ -23,10 +23,10 @@ ${SCRIPT_PWD}/pquery-results.sh | grep -A1 "Likely 'Server has gone away' 200x d
 #   sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 
 # Delete all 'Assert: no core file found in' trials (benefit of new_text_string.sh)
-# Check first if this is not an ASAN run. If any ASAN '=ERROR:' or UBSAN 'runtime error:' is seen at all, no trials will be deleted for the 'Assert. no core file found in' string produced by new_text_string, as there are likely error logs/trials with ASAN errors where no core file was present as ASAN terminated the mysqld instance/trial
-if [ $(grep -m1 --binary-files=text "=ERROR:" */log/master.err 2> /dev/null | wc -l) -eq 0 -a $(grep -m1 --binary-files=text "runtime error:" */log/master.err 2> /dev/null | wc -l) -eq 0 ]; then
-  sleep 0  # Dummy instruction to enable if to remain active irrespective of disabled next line
-  # ${SCRIPT_PWD}/pquery-results.sh | grep "Assert. no core file found in" | grep -o "reducers.*[^)]" | sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
+# Check first if this is not an *SAN run. If any ASAN '=ERROR:' or UBSAN 'runtime error:' or TSAN 'ThreadSanitizer:' is seen at all, no trials will be deleted for the 'Assert. no core file found in' string produced by new_text_string, as there are likely error logs/trials with *SAN errors where no core file was present as *SAN terminated the mysqld instance/trial
+if [ $(grep -m1 --binary-files=text "=ERROR:" */log/master.err 2> /dev/null | wc -l) -eq 0 -a $(grep -m1 --binary-files=text "runtime error:" */log/master.err 2> /dev/null | wc -l) -eq 0 -a $(grep -m1 --binary-files=text "ThreadSanitizer:" */log/master.err 2> /dev/null | wc -l) -eq 0 ]; then
+  #sleep 0  # Dummy instruction to enable if-statment to remain active irrespective of disabled/remarked next line
+  ${SCRIPT_PWD}/pquery-results.sh | grep "Assert. no core file found in" | grep -o "reducers.*[^)]" | sed 's|reducers ||;s|,|\n|g' | xargs -I{} ${SCRIPT_PWD}/pquery-del-trial.sh {}
 fi
 # 9/9/2020 temp disabled to check why so many 'Assert: no core file found in */*core*' trials
 # 22/9/2020 temp re-enabled (temp re-disable again later) due to so many bugs in queues

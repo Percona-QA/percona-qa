@@ -1,10 +1,10 @@
 #!/bin/bash
 
-BASEDIR=/test/MD010121-mariadb-10.6.0-linux-x86_64-dbg  # opt or dbg is fine, does not matter
+BASEDIR=/test/MDEV-23536_MD080121-mariadb-10.6.0-linux-x86_64-dbg  # opt or dbg is fine, does not matter
 #BASEDIR=/test/MD041220-mariadb-10.6.0-linux-x86_64-opt
 #BASEDIR=/test/EMD021120-mariadb-10.5.6-4-linux-x86_64-dbg
 RUNSOPT=3
-RUNSDBG=10
+RUNSDBG=3
 
 echo "This script should show further output in 10-20 seconds. If it does not, see:"
 echo "screen -d -r pr1  # for the cause"
@@ -13,11 +13,11 @@ echo ""
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
 for RUN in $(seq 1 ${TOTALRUNS}); do
   rm -f /tmp/gomd_helper
-  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ~/mariadb-qa/pquery-run-MD.conf
+  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ~/buffer_pool_test/pquery-run-MD-buf.conf
   if [ ${RUN} -le ${RUNSOPT} ]; then  # Opt runs
-    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|' ~/mariadb-qa/pquery-run-MD.conf
+    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|'  ~/buffer_pool_test/pquery-run-MD-buf.conf
   else  # Dbg runs
-    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg|' ~/mariadb-qa/pquery-run-MD.conf
+    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg|' ~/buffer_pool_test/pquery-run-MD-buf.conf
   fi
   screen -admS pr${RUN} bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD.conf; bash"
   while true; do

@@ -4,7 +4,9 @@ FILTER_SAN=1
 
 ACTUAL_FILTER="DummyUsedBelow"  # Do not modify
 if [ "${FILTER_SAN}" -eq 1 ]; then
-  ACTUAL_FILTER="$(grep -m1 "BASEDIR.*SAN" */pquery-pquery-run-MD105.conf | sed 's|/.*||' | tr '\n' '|' | sed 's/|$/\n/')"
+  if [ -z "$(grep -m1 "BASEDIR.*SAN" */pquery-pquery-run-MD*.conf 2>/dev/null)" ]; then 
+    ACTUAL_FILTER="$(grep -m1 "BASEDIR.*SAN" */pquery-pquery-run-MD*.conf 2>/dev/null | sed 's|/.*||' | tr '\n' '|' | sed 's/|$/\n/')"
+  fi
 fi
 
 if [ -z "${1}" ]; then

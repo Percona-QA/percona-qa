@@ -90,6 +90,7 @@ cp use_old ${TARGET}
 cp report_opt ${TARGET}
 cp report_dbg ${TARGET}
 cp clean ${TARGET}
+cp results ${TARGET}
 cp newbug_clean ${TARGET}
 cp allstrings ${TARGET}
 cp allstrings_merged ${TARGET}
