@@ -5,7 +5,7 @@ BASEDIR=/test/MDEV-23536_MD080121-mariadb-10.6.0-linux-x86_64-dbg  # opt or dbg 
 #BASEDIR=/test/EMD021120-mariadb-10.5.6-4-linux-x86_64-dbg
 RUNSOPT=2
 RUNSDBG=2
-CONF="/home/roel/buffer_pool_test/pquery-run-MD-buf.conf"  # No spaces allowed in path + filename
+CONF=pquery-run-MD-buf.conf  # File name only, no spaces, no directories
 
 echo "This script should show further output in 10-20 seconds. If it does not, see:"
 echo "screen -d -r pr1  # for the cause"
@@ -14,6 +14,7 @@ echo ""
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
 for RUN in $(seq 1 ${TOTALRUNS}); do
   rm -f /tmp/gomd_helper
+  cd ~/mariadb-qa
   sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ${CONF}
   if [ ${RUN} -le ${RUNSOPT} ]; then  # Opt runs
     sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|' ${CONF}
