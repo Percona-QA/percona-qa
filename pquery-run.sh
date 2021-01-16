@@ -962,15 +962,22 @@ pquery_test() {
     else
       echoit "Starting mysqld. Error log is stored at ${RUNDIR}/${TRIAL}/log/master.err"
     fi
-    if [ "${VALGRIND_RUN}" == "0" ]; then
-      CMD="${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
-        --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
-        --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
-    else
-      CMD="${VALGRIND_CMD} ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
-        --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
-        --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
-    fi
+    if [ "${RR_TRACING}" == "0" ]; then
+      if [ "${VALGRIND_RUN}" == "0" ]; then  ## Standard run
+        CMD="${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
+         --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
+         --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
+      else  ## Valgrind run
+        CMD="${VALGRIND_CMD} ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
+         --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
+         --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
+      fi
+    else  ## rr tracing run
+      mkdir ${RUNDIR}/${TRIAL}/rr
+      CMD="_RR_TRACE_DIR=${RUNDIR}/${TRIAL}/rr rr record --chaos ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
+       --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
+       --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
+    fi 
     diskspace
     $CMD > ${RUNDIR}/${TRIAL}/log/master.err 2>&1 &
     MPID="$!"
@@ -2152,8 +2159,8 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   if [ ${SYSBENCH_DATALOAD} -eq 1 ]; then
     echoit "Starting mysqld for sysbench data load. Error log is stored at ${WORKDIR}/data.template/master.err"
     CMD="${BIN} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template --tmpdir=${WORKDIR}/data.template \
-      --core-file --port=$PORT --pid_file=${WORKDIR}/data.template/pid.pid --socket=${WORKDIR}/data.template/socket.sock \
-      --log-output=none --log-error=${WORKDIR}/data.template/master.err"
+     --core-file --port=$PORT --pid_file=${WORKDIR}/data.template/pid.pid --socket=${WORKDIR}/data.template/socket.sock \
+     --log-output=none --log-error=${WORKDIR}/data.template/master.err"
     diskspace
     $CMD > ${WORKDIR}/data.template/master.err 2>&1 &
     MPID="$!"

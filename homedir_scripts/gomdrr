@@ -13,11 +13,11 @@ echo ""
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
 for RUN in $(seq 1 ${TOTALRUNS}); do
   rm -f /tmp/gomd_helper
-  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ~/buffer_pool_test/pquery-run-MD-buf.conf
+  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ~/buffer_pool_test/pquery-run-MD-rr.conf
   if [ ${RUN} -le ${RUNSOPT} ]; then  # Opt runs
-    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|'  ~/buffer_pool_test/pquery-run-MD-buf.conf
+    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|'  ~/buffer_pool_test/pquery-run-MD-rr.conf
   else  # Dbg runs
-    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg|' ~/buffer_pool_test/pquery-run-MD-buf.conf
+    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg|' ~/buffer_pool_test/pquery-run-MD-rr.conf
   fi
   screen -admS pr${RUN} bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD.conf; bash"
   while true; do

@@ -86,7 +86,6 @@ cat "${1}" | tr -d '`' | \
   sed 's|varchar|VARCHAR|gi' | \
   sed 's|character|CHARACTER|gi' | \
   sed 's|text|TEXT|gi' | \
-  sed 's|fulltext|FULLTEXT|gi' | \
   sed 's|replace|REPLACE|gi' | \
   sed 's|delayed|DELAYED|gi' | \
   sed 's|lock|LOCK|gi' | \
@@ -198,13 +197,11 @@ cat "${1}" | tr -d '`' | \
   sed 's|current_user[ ]*(|CURRENT_USER(|gi' | \
   sed 's|make_set[ ]*(|MAKE_SET(|gi' | \
   sed 's|substring_index[ ]*(|SUBSTRING_INDEX(|gi' | \
-  sed 's|engine[ ]*=[ ]*|ENGINE=|gi' | \
   sed 's|cast[ ]*(|CAST(|gi' | \
   sed 's|space[ ]*(|SPACE(|gi' | \
   sed 's|sum[ ]*(|SUM(|gi' | \
   sed 's|min[ ]*(|MIN(|gi' | \
-  sed 's|max[ ]*(|MAX(|gi' | \
-  sed 's|count[ ]*(|COUNT(|gi'
+  sed 's|max[ ]*(|MAX(|gi'
 
 # Templates for copy/paste
 #  sed 's|||gi' | \
