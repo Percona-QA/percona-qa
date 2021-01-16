@@ -96,6 +96,10 @@ if [ ! -r ${OPTIONS_INFILE} ]; then
   echo "${OPTIONS_INFILE} specified in the configuration file used (${SCRIPT_PWD}/${CONFIGURATION_FILE}) cannot be found/read"
   exit 1
 fi
+if [ "${RR_TRACING}" == "1" ]; then
+  if [ ! -r /usr/bin/rr ]; then echo "Assert: /usr/bin/rr not found!"  # TODO: set to be automatic using whereis
+  exit 1
+fi
 
 # Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
 #ulimit -u 7000
@@ -974,7 +978,8 @@ pquery_test() {
       fi
     else  ## rr tracing run
       mkdir ${RUNDIR}/${TRIAL}/rr
-      CMD="_RR_TRACE_DIR=${RUNDIR}/${TRIAL}/rr rr record --chaos ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
+      export _RR_TRACE_DIR="${RUNDIR}/${TRIAL}/rr"
+      CMD="/usr/bin/rr record --chaos ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
        --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
        --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
     fi 
