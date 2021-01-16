@@ -97,8 +97,10 @@ if [ ! -r ${OPTIONS_INFILE} ]; then
   exit 1
 fi
 if [ "${RR_TRACING}" == "1" ]; then
-  if [ ! -r /usr/bin/rr ]; then echo "Assert: /usr/bin/rr not found!"  # TODO: set to be automatic using whereis
-  exit 1
+  if [ ! -r /usr/bin/rr ]; then
+    echo "Assert: /usr/bin/rr not found!"  # TODO: set to be automatic using whereis
+    exit 1
+  fi
 fi
 
 # Try and raise ulimit for user processes (see setup_server.sh for how to set correct soft/hard nproc settings in limits.conf)
