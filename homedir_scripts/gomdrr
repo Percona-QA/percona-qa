@@ -1,0 +1,50 @@
+#!/bin/bash
+
+BASEDIR=/test/MDEV-23536_MD080121-mariadb-10.6.0-linux-x86_64-dbg  # opt or dbg is fine, does not matter
+#BASEDIR=/test/MD041220-mariadb-10.6.0-linux-x86_64-opt
+#BASEDIR=/test/EMD021120-mariadb-10.5.6-4-linux-x86_64-dbg
+RUNSOPT=3
+RUNSDBG=3
+
+echo "This script should show further output in 10-20 seconds. If it does not, see:"
+echo "screen -d -r pr1  # for the cause"
+echo ""
+
+TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
+for RUN in $(seq 1 ${TOTALRUNS}); do
+  rm -f /tmp/gomd_helper
+  sed -i "s|^BASEDIR=\([^#]\+\)|BASEDIR=${BASEDIR}   |" ~/buffer_pool_test/pquery-run-MD-rr.conf
+  if [ ${RUN} -le ${RUNSOPT} ]; then  # Opt runs
+    sed -i 's|^BASEDIR=\([^#]\+\)-dbg|BASEDIR=\1-opt|'  ~/buffer_pool_test/pquery-run-MD-rr.conf
+  else  # Dbg runs
+    sed -i 's|^BASEDIR=\([^#]\+\)-opt|BASEDIR=\1-dbg|' ~/buffer_pool_test/pquery-run-MD-rr.conf
+  fi
+  screen -admS pr${RUN} bash -c "cd ~/mariadb-qa; ./pquery-run.sh pquery-run-MD.conf; bash"
+  while true; do
+    sleep 1
+    if [ -r /tmp/gomd_helper ]; then
+      sleep 0.3
+      DIR="$(cat /tmp/gomd_helper)"
+      if [ -d "${DIR}" ]; then
+        rm -f /tmp/gomd_helper
+        cd ${DIR}/..
+        DIREND="$(echo "${DIR}" | sed 's|.*/||')"
+        if [ ! -d ./${DIREND} ]; then
+          echo "Assert: ./${DIREND} should exist, based on directory passed by gomd_helper (${DIR})"
+          exit 1; break
+        else
+          if [ ! -r ~/sge ]; then 
+            echo "Assert: ~/sge not available! Cannot start pquery-go-expert!" 
+            exit 1; break
+          else
+            ~/sge ${DIREND}
+            TYPE="DBG"
+            if [ ${RUN} -le ${RUNSOPT} ]; then TYPE="OPT"; fi
+            echo "MD ${TYPE} Run ${RUN} started (Dir: ${DIR} Screen: pr${RUN}), and pquery-go-expert started for the same!"
+            break
+          fi
+        fi 
+      fi
+    fi
+  done
+done
