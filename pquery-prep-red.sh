@@ -510,7 +510,9 @@ if [ ${QC} -eq 0 ]; then
         fi
         if [ "${MULTI}" == "1" ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
-          cp ${INPUTFILE} ${INPUTFILE}.backup
+          if [ ! -r ${INPUTFILE}.backup ]; then
+            cp ${INPUTFILE} ${INPUTFILE}.backup
+          fi
         else
           if [ $(ls -1 ./${TRIAL}/*thread-0.sql 2>/dev/null|wc -l) -gt 1 ]; then
             INPUTFILE=$(ls ./${TRIAL}/node${SUBDIR}*thread-0.sql)
@@ -599,7 +601,9 @@ if [ ${QC} -eq 0 ]; then
         fi
         if [ "${MULTI}" == "1" ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
-          cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
+          if [ ! -r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup ]; then 
+            cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
+          fi
         else
           INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
         fi
