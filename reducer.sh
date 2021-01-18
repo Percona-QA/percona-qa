@@ -75,17 +75,17 @@ KNOWN_BUGS_LOC="${SCRIPT_PWD}/known_bugs.strings"  # If SCAN_FOR_NEW_BUGS=1 then
 NEW_BUGS_SAVE_DIR="/data/NEWBUGS"  # Save new bugs into a specific directory (otherwise it will be saved in the workdir)
 SHOW_SETUP_DEBUGGING=0          # Set to 1 to enable [Setup] messages with extra debug information
 
-# === Expert options
-MULTI_THREADS=10                # Do not change (default=10), unless you fully understand the change (x mysqld servers + 1 mysql or pquery client each)
-MULTI_THREADS_INCREASE=5        # Do not change (default=5),  unless you fully understand the change (increase of above, both for std and PQUERY_MULTI)
-MULTI_THREADS_MAX=50            # Do not change (default=50), unless you fully understand the change (maximum number of MULTI threads, both for std and PQUERY_MULTI)
-PQUERY_EXTRA_OPTIONS=""         # Do not change (default=""), unless you fully understand the change (adds extra options to pquery replay, used for QC trials)
-PQUERY_MULTI_THREADS=3          # Do not change (default=3),  unless you fully understand the change (x mysqld servers + 1 pquery client with x threads)
-PQUERY_MULTI_CLIENT_THREADS=30  # Do not change (default=30), unless you fully understand the change (x [client] threads mentioned above)
-PQUERY_MULTI_QUERIES=400000     # Do not change (default=400000), unless you fully understand the change (queries to be executed per client per trial)
-PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Do not change (default=0), unless you fully understand the change (reverses --no-shuffle into shuffle and vice versa)
+# === Expert options (Do not change, unless you fully understand the change)
+MULTI_THREADS=10                # Default=10 | Number of subreducers. This setting has no effect if PQUERY_MULTI=1, use PQUERY_MULTI_THREADS instead when using PQUERY_MULTI=1 (ref below). Each subreducer can idependently find the issue and will report back to the main reducer.
+MULTI_THREADS_INCREASE=5        # Default=5  | Increase of MULTI_THREADS per bug-failed-to-be-detected round, both for standard and PQUERY_MULTI=1 runs
+MULTI_THREADS_MAX=50            # Default=50 | Max number of MULTI_THREADS threads, both for standard and PQUERY_MULTI=1 runs
+PQUERY_EXTRA_OPTIONS=""         # Default="" | Adds extra options to pquery replay, used for QC trials
+PQUERY_MULTI_THREADS=3          # Default=3  | The numberof subreducers when PQUERY_MULTI=1 (MULTI_THREADS will be set to this number at startup)
+PQUERY_MULTI_CLIENT_THREADS=30  # Default=30 | The number of pquery client threads per subreducer/mysqld
+PQUERY_MULTI_QUERIES=99999999   # Default=99999999 | The number of queries to be executed per client per trial
+PQUERY_REVERSE_NOSHUFFLE_OPT=0  # Default=0  | Reverses --no-shuffle into shuffle and vice versa
                                 # On/Off (1/0) (Default=0: --no-shuffle is used for standard pquery replay, shuffle is used for PQUERY_MULTI. =1 reverses this)
-SAVE_RESULTS=1                  # On/Off (1/0) (Default=1: save a copy of reducer and related files to /tmp on completion, provided a volatile storage memory, like tmpfs, was used as workdir. A 0 setting will ensure no such copy is made)
+SAVE_RESULTS=0                  # On/Off (1/0) (Default=1: save a copy of reducer and related files to /tmp on completion, provided a volatile storage memory, like tmpfs, was used as workdir. A 0 setting will ensure no such copy is made). Recommendation is to enable this only when there are issues with reducer itself or with a particular testcase to debug
 
 # === pquery options            # Note: only relevant if pquery is used for testcase replay, ref USE_PQUERY and PQUERY_MULTI
 USE_PQUERY=0                    # On/Off (1/0) Enable to use pquery instead of the mysql CLI. pquery binary (as set in PQUERY_LOC) must be available
