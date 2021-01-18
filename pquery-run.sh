@@ -979,8 +979,8 @@ pquery_test() {
          --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
       fi
     else  ## rr tracing run
-      mkdir ${RUNDIR}/${TRIAL}/rr
       export _RR_TRACE_DIR="${RUNDIR}/${TRIAL}/rr"
+      mkdir -p "${_RR_TRACE_DIR}"
       CMD="/usr/bin/rr record --chaos ${BIN} ${MYSAFE} ${MYEXTRA} --basedir=${BASEDIR} --datadir=${RUNDIR}/${TRIAL}/data --tmpdir=${RUNDIR}/${TRIAL}/tmp \
        --core-file --port=$PORT --pid_file=${RUNDIR}/${TRIAL}/pid.pid --socket=${SOCKET} \
        --log-output=none --log-error=${RUNDIR}/${TRIAL}/log/master.err"
