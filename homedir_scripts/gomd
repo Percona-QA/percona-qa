@@ -1,14 +1,13 @@
 #!/bin/bash
 
-#BASEDIR=/test/MDEV-23536_MD080121-mariadb-10.6.0-linux-x86_64-dbg  # opt or dbg is fine, does not matter
+BASEDIR=/test/MDEV-23536_MD080121-mariadb-10.6.0-linux-x86_64-dbg  # opt or dbg is fine, does not matter
 #BASEDIR=/test/MD041220-mariadb-10.6.0-linux-x86_64-opt
 #BASEDIR=/test/EMD021120-mariadb-10.5.6-4-linux-x86_64-dbg
-BASEDIR=/test/MD160121-mariadb-10.6.0-linux-x86_64-dbg
-RUNSOPT=5
-RUNSDBG=5
+RUNSOPT=2
+RUNSDBG=2
 #CONF=pquery-run-MD.conf  # File name only, no spaces, no directories
-#CONF=pquery-run-MD-buf.conf
-CONF=pquery-run-MD-rr.conf
+CONF=pquery-run-MD-buf.conf
+#CONF=pquery-run-MD-rr.conf
 #CONF=pquery-run-MD105-MT.conf
 #CONF=pquery-run-MD105-ASAN.conf
 
@@ -17,7 +16,6 @@ echo "screen -d -r pr1  # for the cause"
 echo ""
 
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
-MON=
 for RUN in $(seq 1 ${TOTALRUNS}); do
   rm -f /tmp/gomd_helper
   cd ~/mariadb-qa
@@ -51,16 +49,10 @@ for RUN in $(seq 1 ${TOTALRUNS}); do
             TYPE="DBG"
             if [ ${RUN} -le ${RUNSOPT} ]; then TYPE="OPT"; fi
             echo "MD ${TYPE} Run ${RUN} started (Dir: ${DIR} Screen: pr${RUN}), and pquery-go-expert started for the same!"
-            MON[RUN]="$(echo "${DIR}" | sed 's|.*/||' | grep -o [0-9])"
             break
           fi
         fi 
       fi
     fi
   done
-done
-echo ""
-echo "For updating the results script:"
-for RUN in $(seq 1 ${TOTALRUNS}); do
-  echo "MON[${RUN}]=${MON[${RUN}]}"
 done

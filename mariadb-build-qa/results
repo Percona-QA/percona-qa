@@ -1,18 +1,16 @@
 #!/bin/bash
 DIR=/data
-MON[1]=681689
-MON[2]=350214
-MON[3]=721222
-MON[4]=219561
-MON[5]=952927
-MON[6]=365155
+MON[1]=541977
+MON[2]=466162
+MON[3]=170143
+MON[4]=551247
 while true; do
   clear
   for ((i=1;i<=20;i++)); do
     if [ ! -z "${MON[i]}" ]; then
       if [ -d "${DIR}/${MON[${i}]}" ]; then
         cd "${DIR}/${MON[${i}]}"
-        ~/pr | grep -vEi '^================$|SHUTDOWN|no reducer scripts were found in this directory' | sed '/Coredumps found in trials/,+1d'
+        ~/pr | grep -vEi  '^================$|SHUTDOWN'
       else
         echo "Index ${i} seems to be invalid: directopry ${DIR}/${MON[${i}]} does not exist!"
         exit 1
