@@ -12,7 +12,7 @@ while true; do
     if [ ! -z "${MON[i]}" ]; then
       if [ -d "${DIR}/${MON[${i}]}" ]; then
         cd "${DIR}/${MON[${i}]}"
-        ~/pr | grep -vEi  '^================$|SHUTDOWN'
+        ~/pr | grep -vEi '^================$|SHUTDOWN|no reducer scripts were found in this directory' | sed '/Coredumps found in trials/,+1d'
       else
         echo "Index ${i} seems to be invalid: directopry ${DIR}/${MON[${i}]} does not exist!"
         exit 1

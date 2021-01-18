@@ -17,6 +17,7 @@ echo "screen -d -r pr1  # for the cause"
 echo ""
 
 TOTALRUNS=$[ ${RUNSOPT} + ${RUNSDBG} ]
+MON=
 for RUN in $(seq 1 ${TOTALRUNS}); do
   rm -f /tmp/gomd_helper
   cd ~/mariadb-qa
@@ -50,10 +51,16 @@ for RUN in $(seq 1 ${TOTALRUNS}); do
             TYPE="DBG"
             if [ ${RUN} -le ${RUNSOPT} ]; then TYPE="OPT"; fi
             echo "MD ${TYPE} Run ${RUN} started (Dir: ${DIR} Screen: pr${RUN}), and pquery-go-expert started for the same!"
+            MON[RUN]="$(echo "${DIR}" | sed 's|.*/||' | grep -o [0-9])"
             break
           fi
         fi 
       fi
     fi
   done
+done
+echo ""
+echo "For updating the results script:"
+for RUN in $(seq 1 ${TOTALRUNS}); do
+  echo "MON[${RUN}]=${MON[${RUN}]}"
 done
