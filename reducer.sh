@@ -2918,28 +2918,35 @@ process_outcome(){
               if [[ "${FINDBUG}" == "#"* ]]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
               if [ -z "${FINDBUG}" ]; then  # Reducer found a new bug (nothing found in known bugs)
                 EPOCH_RAN="$(date +%H%M%S%N)${RANDOM}"
-                NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
-                NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
                 echo_out "[NewBug] Reducer located a new bug whilst reducing this issue: $(cat ${WORKD}/MYBUG.FOUND 2>/dev/null | head -n1)"
+          #RV#if [ ${SCAN_FOR_NEW_BUGS} -eq 1 -a ${SKIP_NEWBUG} -ne 1 ]; then
                 if [ ! -z "${NEW_BUGS_SAVE_DIR}" ]; then  # If set, we need to copy this new bug to the NEW_BUGS_SAVE_DIR
-                  if [ ! -d "${NEW_BUGS_SAVE_DIR}" ]; then
-                    echo "SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_SAVE_DIR was set to '${NEW_BUGS_SAVE_DIR}'. This directory already existed, or was created succesfully at the start of this script run. However, it is not present anymore. Please check cause."
+                  if [ ! -d "${NEW_BUGS_SAVE_DIR}" ]; then  # Leave this check, it re-checks if the [previously created, at the start of the script] NEW_BUGS_SAVE_DIR still exists
+                    echo "Assert: SCAN_FOR_NEW_BUGS was set to 1, and NEW_BUGS_SAVE_DIR was set to '${NEW_BUGS_SAVE_DIR}'. This directory already existed, or was created succesfully at the start of this script run. However, it is not present anymore. Please check cause as this should not happen."
                     echo "Terminating now."
                     exit 1
                   fi
-                  cp ${WORKT} ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql
-                  echo_out "[NewBug] Saved the new testcase to: ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql"
-                  cp ${WORKD}/MYBUG.FOUND ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string
-                  echo_out "[NewBug] Saved the unique bugid to: ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string"
+                  NEWBUGSO="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql"
+                  NEWBUGTO="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string"
+                  NEWBUGRE="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.reducer.sh"
                 else
-                  cp ${WORKT} ${NEWBUGSO}
-                  echo_out "[NewBug] Saved the new testcase to: ${NEWBUGSO}"
-                  cp ${WORKD}/MYBUG.FOUND ${NEWBUGTO}
-                  echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
+                  NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
+                  NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
+                  NEWBUGRE="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.reducer.sh/")"
                 fi
-                EPOCH_RAN=
+                cp "${WORKT}" "${NEWBUGSO}"
+                echo_out "[NewBug] Saved the new testcase to: ${NEWBUGSO}"
+                cp "${WORKD}/MYBUG.FOUND" "${NEWBUGTO}"
+                echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
+                cp "$(readlink -f ${BASH_SOURCE[0]})" "${NEWBUGRE}"
+                sed -i "s|^INPUTFILE=\"[^\"]\+\"|INPUTFILE=\"${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql\"|" "${NEWBUGTO}"
+                sed -i "s|^TEXT=\"[^\"]\+\"|TEXT=\"$(cat ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string | head -n1 | tr -d '\n')\"|" "${NEWBUGTO}"
+                chmod +x "${NEWBUGTO}"
+                echo_out "[NewBug] Saved the new bug reducer to: ${NEWBUGTO}"
                 NEWBUGSO=
                 NEWBUGTO=
+                NEWBUGRE=
+                EPOCH_RAN=
               fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the secondary if which excludes fixed bugs remarked with a leading '#' in the known bugs list file)
               FINDBUG=
             fi  # No else needed; if the exit code was 1, then either no issue was reproduced this trial, or there was some other issue (handled already above)
