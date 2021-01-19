@@ -497,8 +497,8 @@ generate_reducer_script(){
    | sed -e "${PQUERY_EXTRA_OPTIONS}" \
    > ${REDUCER_FILENAME}
   chmod +x ${REDUCER_FILENAME}
-  # If this is a multi-threaded run, create an additional quick reducer with only the executed SQL (may/may not work)
-  # The quick_ reducer script is basically just a copy of the normal already generated reducer with a changed inputfile
+  # If this is a multi-threaded run, create additional quick reducers with only the executed SQL (may/may not work)
+  # The quick_ reducer script is a copy of the normal already generated reducer with a changed inputfile, others below
   if [ "${MULTI}" == "1" -a ${QC} -eq 0 ]; then
     QUICK_REDUCER_FILENAME="$(echo "${REDUCER_FILENAME}" | sed 's|^|quick_|')"
     if [ ! -z "${QUICK_REDUCER_FILENAME}" ]; then
@@ -510,7 +510,7 @@ generate_reducer_script(){
         # TODO: test if adding "DROP DATABASE test;", "CREATE DATABASE test;" (next line) and "USE test;" (idem) here
         # would or would not increase reproducibility. 1st impression is NO unless the needed SQL to produce is simple
         # The reasoning is that the DROP will be hit regularly by many threads, immediately breaking down an
-        # exixsting potential buildup towards the issue.
+        # exixsting potential buildup towards the issue. Partly negated by quick_onethd_rnd_ reducer creation below.
         # ------------------------------------------------------------------------------------------------------------
         # Build quick_{trial}.sql file by taking all executed SQL from all threads, ...
         cat ${WORKD_PWD}/${TRIAL}/*thread-[0-9]*.sql > ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql 2>/dev/null
@@ -531,23 +531,23 @@ generate_reducer_script(){
         sed -i "s|^MULTI_THREADS=3|MULTI_THREADS=10|" "${QUICK_REDUCER_FILENAME}"  # Speed things up 
         sed -i "s|^PQUERY_MULTI_CLIENT_THREADS=30|PQUERY_MULTI_CLIENT_THREADS=20|" "${QUICK_REDUCER_FILENAME}"  # Don't overdo, scale better
         chmod +x ${QUICK_REDUCER_FILENAME}
-        # Make yet another quick_1thd_reducer{trial}.sh which will attempt an even quicker (and potentially less
+        # Make yet another quick_onethd_reducer{trial}.sh which will attempt an even quicker (and potentially less
         # likely to reproduce) reduction using the quick_ input file and run it in a single thread run.
-        # The quick_ and quick_1thd_ reducers are meant to reduce the usual "few days" true multi-threaded 
+        # The quick_ and quick_onethd_ reducers are meant to reduce the usual "few days" true multi-threaded 
         # testcase reduction down to a few hours for at least a subset of the issues which are more easy to reproduce
-        QUICK_1THD_REDUCER_FILENAME="$(echo "${QUICK_REDUCER_FILENAME}" | sed 's|quick_|quick_1thd_|')"
-        cp ${QUICK_REDUCER_FILENAME} ${QUICK_1THD_REDUCER_FILENAME}
+        QUICK_ONETHD_REDUCER_FILENAME="$(echo "${QUICK_REDUCER_FILENAME}" | sed 's|quick_|quick_onethd_|')"
+        cp ${QUICK_REDUCER_FILENAME} ${QUICK_ONETHD_REDUCER_FILENAME}
         QUICK_REDUCER_FILENAME=
-        sed -i "s|^PQUERY_MULTI=1|PQUERY_MULTI=0|" ${QUICK_1THD_REDUCER_FILENAME}  # Turn of multi-threaded
+        sed -i "s|^PQUERY_MULTI=1|PQUERY_MULTI=0|" ${QUICK_ONETHD_REDUCER_FILENAME}  # Turn of multi-threaded
         # Note that issue reproducibility for original-multithreaded issues may suffer in many cases when attempting
-        # a single thread replay using quick_1thd_ reducers. For example, a later DROP TABLE may have mixed in from
-        # another thread, thereby rendering the testcase invalid. To counter this, yet another quick_1thd_rnd_
+        # a single thread replay using quick_onethd_ reducers. For example, a later DROP TABLE may have mixed in from
+        # another thread, thereby rendering the testcase invalid. To counter this, yet another quick_onethd_rnd_
         # reducer is created which will replay the testcase in random order alike to a true multi-threaded reduction
-        QUICK_1THD_RND_REDUCER_FILENAME="$(echo "${QUICK_1THD_REDUCER_FILENAME}" | sed 's|1thd_|1thd_rnd_|')"
-        cp ${QUICK_1THD_REDUCER_FILENAME} ${QUICK_1THD_RND_REDUCER_FILENAME}
-        QUICK_1THD_REDUCER_FILENAME=
-        sed -i "s|^PQUERY_REVERSE_NOSHUFFLE_OPT=0|PQUERY_REVERSE_NOSHUFFLE_OPT=1|" ${QUICK_1THD_REDUCER_FILENAME}  # Turn on random shuffle replay
-        QUICK_1THD_RND_REDUCER_FILENAME=
+        QUICK_ONETHD_RND_REDUCER_FILENAME="$(echo "${QUICK_ONETHD_REDUCER_FILENAME}" | sed 's|onethd_|onethd_rnd_|')"
+        cp ${QUICK_ONETHD_REDUCER_FILENAME} ${QUICK_ONETHD_RND_REDUCER_FILENAME}
+        QUICK_ONETHD_REDUCER_FILENAME=
+        sed -i "s|^PQUERY_REVERSE_NOSHUFFLE_OPT=0|PQUERY_REVERSE_NOSHUFFLE_OPT=1|" ${QUICK_ONETHD_REDUCER_FILENAME}  # Turn on random shuffle replay
+        QUICK_ONETHD_RND_REDUCER_FILENAME=
         # The 3 additional created reducers (quick random, quick 1 thread sequential, quick 1 thread random) cover
         # as good as any concievable situation outside of a true multi-threaded reduction (which is the most costly
         # in terms of machine time). Having all 4 enables one to approach all multi-threaded issues straightforwardly

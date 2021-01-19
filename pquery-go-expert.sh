@@ -75,7 +75,7 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
   while [ true ]; do
     touch ${MUTEX}                                  # Create mutex (indicating that background_sed_loop is live)
     sleep 2                                         # Ensure that we have a clean mutex/lock which will not be terminated by the main code anymore (ref: do sleep 1)
-    for REDUCER in $(ls --color=never reducer*.sh quick_reducer*.sh 2>/dev/null); do
+    for REDUCER in $(ls --color=never reducer*.sh quick_*reducer*.sh 2>/dev/null); do
       if egrep -q '^finish .INPUTFILE' ${REDUCER}; then  # Ensure that pquery-prep-red.sh has fully finished writing this file (grep is for a string present on the last line only)
         if ! grep --binary-files=text -q '^.DONEDONE' ${REDUCER}; then       # Ensure that we're only updating files that were not updated previously (and possibly subsequently edited manually)
           sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${REDUCER}
@@ -135,7 +135,7 @@ while(true); do                                     # Main loop
     ${SCRIPT_PWD}/pquery-clean-known++.sh           # Expert clean known issues (quite strong cleanup)
     ${SCRIPT_PWD}/pquery-eliminate-dups.sh          # Eliminate dups, leaving at least x trials for issues where the number of trials >=x. Will also leave alone all other (<x) trials. x can be set in script
   fi
-  if [ $(ls reducer*.sh quick_reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
+  if [ $(ls reducer*.sh quick_*reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
     echo ""
     ${SCRIPT_PWD}/pquery-results.sh                 # Report
   fi

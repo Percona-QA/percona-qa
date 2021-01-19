@@ -218,8 +218,8 @@ TS_VARIABILITY_SLEEP=1
 # - FORCE_KILL=0 or 1: If set to 1, then reducer.sh will forcefully terminate mysqld instead of using mysqladmin. This can be used when for example authentication issues prevent mysqladmin from shutting down the server cleanly. Normally it is recommended to leave this =0 as certain issues only present themselves at the time of mysqld shutdown. However, in specific use cases it may be handy. Not often used. Auto-disabled for MODE=0.
 
 # ======== Gotcha's
-# - When any form of random replay is used (for example when using PQUERY_REVERSE_NOSHUFFLE_OPT=1, PQUERY_MULTI=0 or when using PQUERY_MULTI=1 (which auto-enables PQUERY_REVERSE_NOSHUFFLE_OPT=1), or when using FIREWORKS=1), then there is a risk that DROP_C is not executed, i.e. reducer will try and run queries against no database. To avoid this in the future, on 24-08-20 RV updated all pquery and CLI call commands to auto-connect to the TEST database. While this has other implications (reduction will be able to remove the USE test; line eventually for example), this looks to be the best way forward to have maximum issue reproducibility.
-# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, USE_PQUERY=1, then reducer will replay the SQL file, using pquery (USE_PQUERY=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order (PQUERY_REVERSE_NOSHUFFLE_OPT=1) untill (FORCE_SKIPV=1 and FORCE_SPORADIC=1) it hits a bug. But notice that when the partially reduced file is written as _out, it is normally not valid to re-start reducer using this _out file (for further reduction) using PQUERY_REVERSE_NOSHUFFLE_OPT=0. The reason is that the sql replay order was random, but _out is generated based on the original testcase (sequential). Thus, the _out, when replayed sequentially, may not re-hit the same issue. Especially when things are really sporadic this can mean having to wait long and be confused about the results. Thus, if you start off with a random replay, finish with a random replay, and let the final bug testcase (auto-generated as {epoch}.*) be random replay too!
+# - When any form of random replay is used (for example when using PQUERY_REVERSE_NOSHUFFLE_OPT=1 with PQUERY_MULTI=0 or when using PQUERY_MULTI=1 with PQUERY_REVERSE_NOSHUFFLE_OPT=0, or when using FIREWORKS=1), then there is a risk that DROP_C is not executed, i.e. reducer will try and run queries against no database. To avoid this in the future, on 24-08-20 RV updated all pquery and CLI call commands to auto-connect to the TEST database. While this has other implications (reduction will be able to remove the USE test; line eventually for example), this looks to be the best way forward to have maximum issue reproducibility.
+# - When reducing an SQL file using for example FORCE_SKIPV=1, FORCE_SPORADIC=1, PQUERY_MULTI=0, PQUERY_REVERSE_NOSHUFFLE_OPT=1, USE_PQUERY=1, then reducer will replay the SQL file, using pquery (USE_PQUERY=1), using a single client (i.e. pquery) thread against mysqld (PQUERY_MULTI=0), in a sql shuffled order (PQUERY_REVERSE_NOSHUFFLE_OPT=1) untill (FORCE_SKIPV=1 and FORCE_SPORADIC=1) it hits a bug. But notice that when the partially reduced file is written as _out, it is normally not valid to re-start reducer using this _out file (for further reduction) using PQUERY_REVERSE_NOSHUFFLE_OPT=0. The reason is that the sql replay order was random, but _out is generated based on the original testcase (sequential). Thus, the _out, when replayed sequentially, may not re-hit the same issue. Especially when things are really sporadic this can mean having to wait long and be confused about the results. Thus, if you start off with a random replay, finish with a random replay, and let the final bug testcase (auto-generated as {epoch}.*) be random replay too! See also the multirun scripts as generated inside basedirs (by startup.sh).
 
 # ======== General develoment information
 # - Subreducer(s): these are multi-threaded runs of reducer.sh started from within reducer.sh. They have a specific role, similar to the main reducer.
@@ -1716,6 +1716,19 @@ init_workdir_and_files(){
     else echo "Error: CLI_MODE!=0,1,2: CLI_MODE=${CLI_MODE}"; exit 1; fi
   else
     echo_out "[Init] Using the pquery client for SQL replay"
+    if [ ${PQUERY_MULTI} -eq 0 ]; then
+      if [ ${PQUERY_REVERSE_NOSHUFFLE_OPT} -eq 0 ]; then
+        echo_out "[Init] Using sequential (non-shuffled) single-thread replay"
+      else
+        echo_out "[Init] Using shuffled (random/non-sequential) single-thread replay"
+      fi
+    else
+      if [ ${PQUERY_REVERSE_NOSHUFFLE_OPT} -eq 1 ]; then
+        echo_out "[Init] Using sequential (non-shuffled) multi-threaded replay"
+      else
+        echo_out "[Init] Using shuffled (random/non-sequential) multi-threaded replay"
+      fi
+    fi
   fi
   if [ -n "$MYEXTRA" -o -n "$SPECIAL_MYEXTRA_OPTIONS" ]; then echo_out "[Init] Passing the following additional options to mysqld: $SPECIAL_MYEXTRA_OPTIONS $MYEXTRA"; fi
   if [ "$MYINIT" != "" ]; then echo_out "[Init] Passing the following additional options to mysqld initialization: $MYINIT"; fi
