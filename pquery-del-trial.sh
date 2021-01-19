@@ -41,13 +41,21 @@ fi
 
 # Delete other files
 if [[ $PXC -eq 1 ]];then
-  rm -f  ./reducer${TRIAL}-${PXC_NODE}.sh > /dev/null 2>&1
+  rm -f ./reducer${TRIAL}-${PXC_NODE}.sh > /dev/null 2>&1
+  rm -f ./quick_reducer${TRIAL}-${PXC_NODE}.sh > /dev/null 2>&1
+  rm -f ./quick_1thd_reducer${TRIAL}-${PXC_NODE}.sh > /dev/null 2>&1
   echo "- pquery trial #${TRIAL_DIR} and all related files wiped"
 else
-  rm -f  ./reducer${TRIAL}.sh > /dev/null 2>&1
-  rm -f  ./reducer_val${TRIAL}.sh > /dev/null 2>&1
-  rm -f  ./reducer${TRIAL}-*.sh > /dev/null 2>&1
-  rm -f  ./${TRIAL}_bundle > /dev/null 2>&1
-  rm -f  ./${TRIAL}_bundle.tar.gz > /dev/null 2>&1
+  rm -f ./reducer${TRIAL}.sh > /dev/null 2>&1
+  rm -f ./quick_reducer${TRIAL}.sh > /dev/null 2>&1
+  rm -f ./quick_1thd_reducer${TRIAL}.sh > /dev/null 2>&1
+  rm -f ./reducer_val${TRIAL}.sh > /dev/null 2>&1
+  rm -f ./quick_reducer_val${TRIAL}.sh > /dev/null 2>&1
+  rm -f ./quick_1thd_reducer_val${TRIAL}.sh > /dev/null 2>&1
+  rm -f ./reducer${TRIAL}-*.sh > /dev/null 2>&1
+  rm -f ./quick_reducer${TRIAL}-*.sh > /dev/null 2>&1
+  rm -f ./quick_1thd_reducer${TRIAL}-*.sh > /dev/null 2>&1
+  rm -f ./${TRIAL}_bundle > /dev/null 2>&1
+  rm -f ./${TRIAL}_bundle.tar.gz > /dev/null 2>&1
   echo "- pquery trial #${TRIAL} and all related files wiped"
 fi
