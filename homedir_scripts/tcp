@@ -27,8 +27,14 @@ cat "${1}" | tr -d '`' | \
   sed 's|then|THEN|gi' | \
   sed 's|add|ADD|gi' | \
   sed 's|sequence|SEQUENCE|gi' | \
+  sed 's|if exists|IF EXISTS|gi' | \
   sed 's|help|HELP|gi' | \
   sed 's|like|LIKE|gi' | \
+  sed 's|partition|PARTITION|gi' | \
+  sed 's|subpartition|SUBPARTITION|gi' | \
+  sed 's|subpartitions|SUBPARTITIONS|gi' | \
+  sed 's|by list|BY LIST|gi' | \
+  sed 's|by hash|BY HASH|gi' | \
   sed 's|algorithm|ALGORITHM|gi' | \
   sed 's|inplace|INPLACE|gi' | \
   sed 's|database|DATABASE|gi' | \
@@ -103,7 +109,7 @@ cat "${1}" | tr -d '`' | \
   sed 's|rename|RENAME|gi' | \
   sed 's|identified|IDENTIFIED|gi' | \
   sed 's|delete|DELETE|gi' | \
-  sed 's|truncate|TRUNACE|gi' | \
+  sed 's|truncate|TRUNCATE|gi' | \
   sed 's|explain|EXPLAIN|gi' | \
   sed 's|extended|EXTENDED|gi' | \
   sed 's|repair|REPAIR|gi' | \
@@ -173,6 +179,8 @@ cat "${1}" | tr -d '`' | \
   sed 's|ifnull|IFNULL|gi' | \
   sed 's|rand|RAND|gi' | \
   sed 's|rowid|ROWID|gi' | \
+  sed 's|tablespace|TABLESPACE|gi' | \
+  sed 's|discard|DISCARD|gi' | \
   sed 's|fts_doc_id|FTS_DOC_ID|gi' | \
   sed 's|mysql\.\([^ ]\+\)|mysql.\L\1|gi' | \
   sed 's|auto_increment|AUTO_INCREMENT|gi' | \

@@ -11,8 +11,8 @@ else
     echo "Error: the directory /data/$1 does not exist!"
     exit 1
   else
-    #screen -admS pge$1 bash -c "ulimit -u 4000;cd /data/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
-    screen -admS pge$1 bash -c "cd /data/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
-    #screen -d -r pge$1
+    #screen -admS ge$1 bash -c "ulimit -u 4000;cd /data/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
+    screen -admS ge$1 bash -c "cd /data/$1;${SCRIPT_PWD}/pquery-go-expert.sh;bash"
+    #screen -d -r ge$1
   fi
 fi
