@@ -69,6 +69,7 @@ cp s ${TARGET}
 cp sc ${TARGET}
 cp sge ${TARGET}
 cp sr ${TARGET}
+cp stack ${TARGET}
 cp start ${TARGET}
 cp stop_all_ge ${TARGET}
 cp stop_all_pr ${TARGET}

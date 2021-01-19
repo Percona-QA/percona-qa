@@ -2,6 +2,7 @@
 # Created by Roel Van de Paar, Percona LLC
 # Updated by Ramesh Sivaraman, Percona LLC
 # Updated by Mohit Joshi, Percona LLC
+# Updated by Roel Van de Paar, MariaDB
 
 # ========================================= User configurable variables ==========================================================
 # Note: if an option is passed to this script, it will use that option as the configuration file instead, for example ./pquery-run.sh pquery-run-MD105.conf
@@ -167,6 +168,22 @@ diskspace() {
     sleep 600
     echoit "Slept 10 minutes, resuming pquery-run.sh run..."
   done
+}
+
+add_handy_scripts(){
+  # Add handy stack script
+  echo "${SCRIPT_PWD}/stack.sh" > ./stack && chmod +x ${RUNDIR}/${TRIAL}/stack
+  # Add handy gdb script
+  echo "echo 'Handy copy and paste script:'" > ${RUNDIR}/${TRIAL}/gdb
+  echo "echo '  set pagination off'" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "echo '  set print pretty on'" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "echo '  set print frame-arguments all'" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "echo '  thread apply all backtrace full'" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "echo 'OR simple one-thread backtrace instead of all threads (i.e. instead of last line):'" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "echo '  bt'" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "sleep 5" >> ${RUNDIR}/${TRIAL}/gdb
+  echo "gdb ../mysqld/mysqld ./data/*core*" >> ${RUNDIR}/${TRIAL}/gdb
+  chmod +x ${RUNDIR}/${TRIAL}/gdb
 }
 
 # Find mysqld binary
@@ -1487,19 +1504,7 @@ pquery_test() {
           grep -o "CHANGED: [0-9]\+" ${RUNDIR}/${TRIAL}/pquery_thread-0.${QC_SEC_ENGINE}.sql > ${RUNDIR}/${TRIAL}/${QC_SEC_ENGINE}.result
         fi
       else # Not a query correctness testing run
-        # Add handy stack script
-        echo "${SCRIPT_PWD}/stack.sh" > ${RUNDIR}/${TRIAL}/stack
-        # Add handy gdb script
-        echo "echo 'Handy copy and paste script:'" > ${RUNDIR}/${TRIAL}/gdb
-        echo "echo '  set pagination off'" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "echo '  set print pretty on'" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "echo '  set print frame-arguments all'" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "echo '  thread apply all backtrace full'" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "echo 'OR simple one-thread backtrace instead of all threads (i.e. instead of last line):'" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "echo '  bt'" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "sleep 5" >> ${RUNDIR}/${TRIAL}/gdb
-        echo "gdb ../mysqld/mysqld ./data/*core*" >> ${RUNDIR}/${TRIAL}/gdb
-        chmod +x ${RUNDIR}/${TRIAL}/gdb
+        add_handy_scripts
         echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
         if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then # Query duration testing run
           if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
@@ -1896,7 +1901,7 @@ pquery_test() {
         if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null | wc -l) -ge 1 ]; then
           echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null)"
           cd ${RUNDIR}/${TRIAL} || exit 1
-          echo "${SCRIPT_PWD}/stack.sh" > ./stack && chmod +x ${RUNDIR}/${TRIAL}/stack
+          add_handy_scripts
           TEXT=$(${SCRIPT_PWD}/new_text_string.sh)
           echo "${TEXT}" > ${RUNDIR}/${TRIAL}/MYBUG
           cd - >/dev/null || exit 1

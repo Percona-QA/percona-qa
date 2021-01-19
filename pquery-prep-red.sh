@@ -161,7 +161,6 @@ extract_queries_core(){
       AFTERSIZE=`cat ${INPUTFILE} | wc -l`
     done
     echo "  > $[ $AFTERSIZE - $BEFORESIZE ] quer(y)(ies) added 3x to the SQL trace"
-    rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
   fi
 }
 
@@ -180,58 +179,73 @@ extract_queries_error_log(){
       AFTERSIZE=`cat ${INPUTFILE} | wc -l`
     done
     echo "  > $[ $AFTERSIZE - $BEFORESIZE ] quer(y)(ies) added 3x to the SQL trace"
-    rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
   fi
 }
 
 add_select_ones_to_trace(){  # Improve issue reproducibility by adding 3x SELECT 1; to the sql trace
-  echo "* Adding additional 'SELECT 1;' queries to improve issue reproducibility"
-  if [ ! -f ${INPUTFILE} ]; then touch ${INPUTFILE}; fi
+  if [ -z "${1}" ]; then echo "Assert: add_select_ones_to_trace called without option!"; exit 1; fi
+  if [[ "${1}" != *"quick"* ]]; then
+    echo "* Adding additional 'SELECT 1;' queries to improve issue reproducibility"
+  fi
+  if [ ! -f ${1} ]; then touch ${1}; fi
   for i in {1..3}; do
-    echo "SELECT 1;" >> ${INPUTFILE}
+    echo "SELECT 1;" >> ${1}
   done
-  echo "  > 3 'SELECT 1;' queries to the SQL trace"
+  if [[ "${1}" != *"quick"* ]]; then
+    echo "  > 3 'SELECT 1;' queries to the SQL trace"
+  fi
 }
 
 add_select_sleep_to_trace(){  # Improve issue reproducibility by adding 2x SELECT SLEEP(3); to the sql trace
-  echo "* Adding additional 'SELECT SLEEP(5);' queries to improve issue reproducibility"
-  if [ ! -f ${INPUTFILE} ]; then touch ${INPUTFILE}; fi
+  if [ -z "${1}" ]; then echo "Assert: add_select_sleep_to_trace called without option!"; exit 1; fi
+  if [[ "${1}" != *"quick"* ]]; then
+    echo "* Adding additional 'SELECT SLEEP(5);' queries to improve issue reproducibility"
+  fi
+  if [ ! -f ${1} ]; then touch ${1}; fi
   for i in {1..3}; do
-    echo "SELECT SLEEP(3);" >> ${INPUTFILE}
+    echo "SELECT SLEEP(3);" >> ${1}
   done
-  echo "  > 3 'SELECT SLEEP(3);' queries added to the SQL trace"
+  if [[ "${1}" != *"quick"* ]]; then
+    echo "  > 3 'SELECT SLEEP(3);' queries added to the SQL trace"
+  fi
 }
 
 remove_non_sql_from_trace(){
-  echo "* Removing any non-SQL lines (diagnostic output from pquery) to improve issue reproducibility"
-  mv ${INPUTFILE} ${INPUTFILE}.filter1
-  egrep --binary-files=text -v "Last [0-9]+ consecutive queries all failed" ${INPUTFILE}.filter1 > ${INPUTFILE}
-  rm ${INPUTFILE}.filter1
+  if [ -z "${1}" ]; then echo "Assert: add_select_ones_to_trace called without option!"; exit 1; fi
+  if [[ "${1}" != *"quick"* ]]; then
+    echo "* Removing any non-SQL lines (diagnostic output from pquery) to improve issue reproducibility"
+  fi
+  mv ${1} ${1}.filter1
+  egrep --binary-files=text -v "Last [0-9]+ consecutive queries all failed" ${1}.filter1 > ${1}
+  rm ${1}.filter1
 }
 
 auto_interleave_failing_sql(){
+  if [ -z "${1}" ]; then echo "Assert: auto_interleave_failing_sql called without option!"; exit 1; fi
   # sql interleave function based on actual input file size
-  INPUTLINECOUNT=`cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup | wc -l`
-  FAILING_SQL_COUNT=`cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing | wc -l`
-  if [ $FAILING_SQL_COUNT -ge 10 ]; then
-    if [ $INPUTLINECOUNT -le 100 ]; then
-      sed -i "0~5 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
-    elif [ $INPUTLINECOUNT -le 500 ];then
-      sed -i "0~25 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
-    elif [ $INPUTLINECOUNT -le 1000 ];then
-      sed -i "0~50 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
+  INPUTLINECOUNT=$(cat ${1} 2>/dev/null | wc -l)
+  FAILING_SQL_COUNT=$(cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing 2>/dev/null | wc -l)
+  if [ -z "${FAILING_SQL_COUNT}" -o ${FAILING_SQL_COUNT} -eq 0 ]; then
+    return
+  elif [ ${FAILING_SQL_COUNT} -lt 10 ]; then
+    if [ ${INPUTLINECOUNT} -le 100 ]; then
+      sed -i "0~3 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
+    elif [ ${INPUTLINECOUNT} -le 500 ];then
+      sed -i "0~15 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
+    elif [ ${INPUTLINECOUNT} -le 1000 ];then
+      sed -i "0~35 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
     else
-      sed -i "0~75 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
+      sed -i "0~50 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
     fi
   else
-    if [ $INPUTLINECOUNT -le 100 ]; then
-      sed -i "0~3 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
-    elif [ $INPUTLINECOUNT -le 500 ];then
-      sed -i "0~15 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
-    elif [ $INPUTLINECOUNT -le 1000 ];then
-      sed -i "0~35 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
+    if [ ${INPUTLINECOUNT} -le 100 ]; then
+      sed -i "0~5 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
+    elif [ ${INPUTLINECOUNT} -le 500 ];then
+      sed -i "0~25 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
+    elif [ ${INPUTLINECOUNT} -le 1000 ];then
+      sed -i "0~50 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
     else
-      sed -i "0~50 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${INPUTFILE}
+      sed -i "0~75 r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing" ${1}
     fi
   fi
 }
@@ -483,6 +497,63 @@ generate_reducer_script(){
    | sed -e "${PQUERY_EXTRA_OPTIONS}" \
    > ${REDUCER_FILENAME}
   chmod +x ${REDUCER_FILENAME}
+  # If this is a multi-threaded run, create additional quick reducers with only the executed SQL (may/may not work)
+  # The quick_ reducer script is a copy of the normal already generated reducer with a changed inputfile, others below
+  if [ "${MULTI}" == "1" -a ${QC} -eq 0 ]; then
+    QUICK_REDUCER_FILENAME="$(echo "${REDUCER_FILENAME}" | sed 's|^|quick_|')"
+    if [ ! -z "${QUICK_REDUCER_FILENAME}" ]; then
+      if [ -r "${QUICK_REDUCER_FILENAME}" -a ! -d "${QUICK_REDUCER_FILENAME}" ]; then 
+        rm -f "${QUICK_REDUCER_FILENAME}"
+      fi
+      if [ "$(ls --color=never ${WORKD_PWD}/${TRIAL}/*thread-[0-9]*.sql 2>/dev/null | wc -l)" -gt 0 ]; then
+        # ------------------------------------------------------------------------------------------------------------
+        # TODO: test if adding "DROP DATABASE test;", "CREATE DATABASE test;" (next line) and "USE test;" (idem) here
+        # would or would not increase reproducibility. 1st impression is NO unless the needed SQL to produce is simple
+        # The reasoning is that the DROP will be hit regularly by many threads, immediately breaking down an
+        # exixsting potential buildup towards the issue. Partly negated by quick_onethd_rnd_ reducer creation below.
+        # ------------------------------------------------------------------------------------------------------------
+        # Build quick_{trial}.sql file by taking all executed SQL from all threads, ...
+        cat ${WORKD_PWD}/${TRIAL}/*thread-[0-9]*.sql > ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql 2>/dev/null
+        # Then do the same standard processing: add failing queries thrice, add SELECT 1's, add SELECT SLEEP's, ...
+        # Note that if there is one failing query and one in the error log, then result is it will be added 6x
+        # This is fine and >=3 occurences is desired in any case (may help with sporadic issues)
+        cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing >> ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql 2>/dev/null 
+        cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing >> ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql 2>/dev/null 
+        cat ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing >> ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql 2>/dev/null 
+        add_select_ones_to_trace ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql
+        add_select_sleep_to_trace ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql
+        remove_non_sql_from_trace ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql
+        # Then interleave in extra failing queries all along the sql file (scaled/chuncked). This may increase
+        # reproducibility, and is done for multi-threaded issues (who tend to be reduced by random-order replay!) only
+        # Multi-threaded issues are auto-set to random order replay accross many threads, ensuring 
+        auto_interleave_failing_sql ${WORKD_PWD}/${TRIAL}/quick_${TRIAL}.sql
+        sed "s|${TRIAL}/${TRIAL}.sql|${TRIAL}/quick_${TRIAL}.sql|" "${REDUCER_FILENAME}" > "${QUICK_REDUCER_FILENAME}"  # Generates quick_reducer{trial}.sh with new quick_ input file.
+        sed -i "s|^MULTI_THREADS=3|MULTI_THREADS=10|" "${QUICK_REDUCER_FILENAME}"  # Speed things up 
+        sed -i "s|^PQUERY_MULTI_CLIENT_THREADS=30|PQUERY_MULTI_CLIENT_THREADS=20|" "${QUICK_REDUCER_FILENAME}"  # Don't overdo, scale better
+        chmod +x ${QUICK_REDUCER_FILENAME}
+        # Make yet another quick_onethd_reducer{trial}.sh which will attempt an even quicker (and potentially less
+        # likely to reproduce) reduction using the quick_ input file and run it in a single thread run.
+        # The quick_ and quick_onethd_ reducers are meant to reduce the usual "few days" true multi-threaded 
+        # testcase reduction down to a few hours for at least a subset of the issues which are more easy to reproduce
+        QUICK_ONETHD_REDUCER_FILENAME="$(echo "${QUICK_REDUCER_FILENAME}" | sed 's|quick_|quick_onethd_|')"
+        cp ${QUICK_REDUCER_FILENAME} ${QUICK_ONETHD_REDUCER_FILENAME}
+        QUICK_REDUCER_FILENAME=
+        sed -i "s|^PQUERY_MULTI=1|PQUERY_MULTI=0|" ${QUICK_ONETHD_REDUCER_FILENAME}  # Turn of multi-threaded
+        # Note that issue reproducibility for original-multithreaded issues may suffer in many cases when attempting
+        # a single thread replay using quick_onethd_ reducers. For example, a later DROP TABLE may have mixed in from
+        # another thread, thereby rendering the testcase invalid. To counter this, yet another quick_onethd_rnd_
+        # reducer is created which will replay the testcase in random order alike to a true multi-threaded reduction
+        QUICK_ONETHD_RND_REDUCER_FILENAME="$(echo "${QUICK_ONETHD_REDUCER_FILENAME}" | sed 's|onethd_|onethd_rnd_|')"
+        cp ${QUICK_ONETHD_REDUCER_FILENAME} ${QUICK_ONETHD_RND_REDUCER_FILENAME}
+        QUICK_ONETHD_REDUCER_FILENAME=
+        sed -i "s|^PQUERY_REVERSE_NOSHUFFLE_OPT=0|PQUERY_REVERSE_NOSHUFFLE_OPT=1|" ${QUICK_ONETHD_REDUCER_FILENAME}  # Turn on random shuffle replay
+        QUICK_ONETHD_RND_REDUCER_FILENAME=
+        # The 3 additional created reducers (quick random, quick 1 thread sequential, quick 1 thread random) cover
+        # as good as any concievable situation outside of a true multi-threaded reduction (which is the most costly
+        # in terms of machine time). Having all 4 enables one to approach all multi-threaded issues straightforwardly
+      fi
+    fi
+  fi
 }
 
 # Main pquery results processing
@@ -492,7 +563,7 @@ if [ ${QC} -eq 0 ]; then
     for TRIAL in $(ls ./*/node*/*core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep --binary-files=text '^d' | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
-        rm -Rf  ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
+        rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
         touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
         echo "========== Processing pquery trial ${TRIAL}-${SUBDIR}"
         if [ -r ./reducer${TRIAL}-${SUBDIR}.sh ]; then
@@ -512,6 +583,8 @@ if [ ${QC} -eq 0 ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
           if [ ! -r ${INPUTFILE}.backup ]; then
             cp ${INPUTFILE} ${INPUTFILE}.backup
+          else
+            cp ${INPUTFILE}.backup ${INPUTFILE}  # Reset ${INPUTFILE} file contents (avoids the file getting larger every time this script is executed due to auto_interleave_failing_sql() being called again.
           fi
         else
           if [ $(ls -1 ./${TRIAL}/*thread-0.sql 2>/dev/null|wc -l) -gt 1 ]; then
@@ -545,9 +618,9 @@ if [ ${QC} -eq 0 ]; then
             exit 1
           fi
         fi
-        add_select_ones_to_trace
-        add_select_sleep_to_trace
-        remove_non_sql_from_trace
+        add_select_ones_to_trace ${INPUTFILE}
+        add_select_sleep_to_trace ${INPUTFILE}
+        remove_non_sql_from_trace ${INPUTFILE}
         # OLD_WAY: TEXT="$(${SCRIPT_PWD}/OLD/text_string.sh ./${TRIAL}/node${SUBDIR}/node${SUBDIR}.err)"
         if [ ! -r ./${TRIAL}/node${SUBDIR}/MYBUG ]; then  # Sometimes (approx 1/50-1/100 trials) MYBUG is missing, so [re-]generate it. TODO: find reason (in pquery-run.sh likely)
           cd ./${TRIAL}/node${SUBDIR} || exit 1
@@ -559,7 +632,7 @@ if [ ${QC} -eq 0 ]; then
         echo "* TEXT variable set to: '${TEXT}'"
         if [ "${MULTI}" == "1" ]; then
            if [ -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
-             auto_interleave_failing_sql
+             auto_interleave_failing_sql ${INPUTFILE}
            fi
         fi
         generate_reducer_script
@@ -601,8 +674,10 @@ if [ ${QC} -eq 0 ]; then
         fi
         if [ "${MULTI}" == "1" ]; then
           INPUTFILE=${WORKD_PWD}/${TRIAL}/${TRIAL}.sql
-          if [ ! -r ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup ]; then 
-            cp ${INPUTFILE} ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.backup
+          if [ ! -r ${INPUTFILE}.backup ]; then
+            cp ${INPUTFILE} ${INPUTFILE}.backup
+          else
+            cp ${INPUTFILE}.backup ${INPUTFILE}  # Reset ${INPUTFILE} file contents (avoids the file getting larger every time this script is executed due to auto_interleave_failing_sql() being called again.
           fi
         else
           INPUTFILE=`echo ${SQLLOG} | sed "s|^[./]\+|/|;s|^|${WORKD_PWD}|"`
@@ -632,9 +707,9 @@ if [ ${QC} -eq 0 ]; then
           echo "Assert! Error log at ./${TRIAL}/log/master.err could not be read?"
           exit 1
         fi
-        add_select_ones_to_trace
-        add_select_sleep_to_trace
-        remove_non_sql_from_trace
+        add_select_ones_to_trace ${INPUTFILE}
+        add_select_sleep_to_trace ${INPUTFILE}
+        remove_non_sql_from_trace ${INPUTFILE}
         # Check if this trial was/had a startup failure (which would take priority over anything else) - will be used to set REDUCE_STARTUP_ISSUES=1
         check_if_startup_failure
         VALGRIND_CHECK=0
@@ -680,7 +755,7 @@ if [ ${QC} -eq 0 ]; then
           check_if_asan_or_ubsan_or_tsan
           echo "* TEXT variable set to: '${TEXT}'"
           if [ "${MULTI}" == "1" -a -s ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing ];then
-            auto_interleave_failing_sql
+            auto_interleave_failing_sql ${INPUTFILE}
           fi
           generate_reducer_script
         fi

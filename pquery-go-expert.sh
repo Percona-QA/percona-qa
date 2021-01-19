@@ -75,7 +75,7 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
   while [ true ]; do
     touch ${MUTEX}                                  # Create mutex (indicating that background_sed_loop is live)
     sleep 2                                         # Ensure that we have a clean mutex/lock which will not be terminated by the main code anymore (ref: do sleep 1)
-    for REDUCER in $(ls --color=never reducer*.sh 2>/dev/null); do
+    for REDUCER in $(ls --color=never reducer*.sh quick_*reducer*.sh 2>/dev/null); do
       if egrep -q '^finish .INPUTFILE' ${REDUCER}; then  # Ensure that pquery-prep-red.sh has fully finished writing this file (grep is for a string present on the last line only)
         if ! grep --binary-files=text -q '^.DONEDONE' ${REDUCER}; then       # Ensure that we're only updating files that were not updated previously (and possibly subsequently edited manually)
           sed -i "s|^FORCE_SKIPV=0|FORCE_SKIPV=1|" ${REDUCER}
@@ -83,8 +83,8 @@ background_sed_loop(){  # Update reducer<nr>.sh scripts as they are being create
           sed -i "s|^MULTI_THREADS_INCREASE=[0-9]\+|MULTI_THREADS_INCREASE=3|" ${REDUCER}
           sed -i "s|^MULTI_THREADS_MAX=[0-9]\+|MULTI_THREADS_MAX=9 |" ${REDUCER}
           sed -i "s|^STAGE1_LINES=[0-9]\+|STAGE1_LINES=5|" ${REDUCER}
-	  # Auto-set the inputfile to the most recent sql trace inc _out* handling
-	  # Also exclude 'backup/failing' for multi-threaded runs. For example, WORKDIR/TRIALDIR/trial.sql.failing (/data/487127/48/48.sql.failing)
+          # Auto-set the inputfile to the most recent sql trace inc _out* handling
+          # Also exclude 'backup/failing' for multi-threaded runs. For example, WORKDIR/TRIALDIR/trial.sql.failing (/data/487127/48/48.sql.failing)
           sed -i 's|^INPUTFILE="\([^"]\+\)"|INPUTFILE="$(ls -t \1* \| grep --binary-files=text -vE "backup\|failing" \| head -n1)"|' ${REDUCER}
           # Next, we consider if we will set FORCE_KILL=1 by doing many checks to see if it makes sense
           if grep --binary-files=text -qiE "^MODE=3|^MODE=4" ${REDUCER}; then  # Mode 3 or 4 (and not 0)
@@ -135,7 +135,7 @@ while(true); do                                     # Main loop
     ${SCRIPT_PWD}/pquery-clean-known++.sh           # Expert clean known issues (quite strong cleanup)
     ${SCRIPT_PWD}/pquery-eliminate-dups.sh          # Eliminate dups, leaving at least x trials for issues where the number of trials >=x. Will also leave alone all other (<x) trials. x can be set in script
   fi
-  if [ $(ls reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
+  if [ $(ls reducer*.sh quick_*reducer*.sh 2>/dev/null | wc -l) -gt 0 ]; then  # If reducers are available after cleanup
     echo ""
     ${SCRIPT_PWD}/pquery-results.sh                 # Report
   fi
