@@ -93,5 +93,6 @@ cp repeat ${TARGET}
 
 cd ${TARGET}
 git add *
+git restore --staged gomd
 cd ${BUGS}
 git add *.sql
