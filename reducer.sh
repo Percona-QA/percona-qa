@@ -2942,23 +2942,36 @@ process_outcome(){
                   NEWBUGSO="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql"
                   NEWBUGTO="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string"
                   NEWBUGRE="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.reducer.sh"
+                  NEWBUGVM="${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.varmod"
                 else
                   NEWBUGSO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.sql/")"
                   NEWBUGTO="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.string/")"
                   NEWBUGRE="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.reducer.sh/")"
+                  NEWBUGVM="$(echo $INPUTFILE | sed "s/$/_newbug_${EPOCH_RAN}.varmod/")"
                 fi
                 cp "${WORKT}" "${NEWBUGSO}"
                 echo_out "[NewBug] Saved the new testcase to: ${NEWBUGSO}"
                 cp "${WORKD}/MYBUG.FOUND" "${NEWBUGTO}"
                 echo_out "[NewBug] Saved the unique bugid to: ${NEWBUGTO}"
-                cp "$(readlink -f ${BASH_SOURCE[0]})" "${NEWBUGRE}"
-                sed -i "s|^INPUTFILE=\"[^\"]\+\"|INPUTFILE=\"${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql\"|" "${NEWBUGTO}"
-                sed -i "s|^TEXT=\"[^\"]\+\"|TEXT=\"$(cat ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string | head -n1 | tr -d '\n')\"|" "${NEWBUGTO}"
-                chmod +x "${NEWBUGTO}"
-                echo_out "[NewBug] Saved the new bug reducer to: ${NEWBUGTO}"
+                # The next line takes this file (i.e. the current running reducer) and removes the #VARMOD# section
+                # if present (it will be present if the NEWBUG was found by a subreducer), thereby making it a main
+                # reducer itself rather than a subreducer. None of the variables saved in the #VARMOD# section by the
+                # main reducer and used by the subreducer are likely of any significance in reproduction, as they are
+                # mostly copied from the main reducer. Still, to not loose any reproducibility (if any), the varmod
+                # block is stored as a .varmod file along with the epoch .string, .sql, and .reducer.sh newbug files
+                # The exact working is: when ^#VARMOD# is found print it once (as in the next command it is included in
+                # the delete, yet it need to stay. Then (the next command), take from ^MULTI_REDUCER= to ^#VARMOD# and
+                # delete it. For the .varmod creation command, it is the reverse: print that block, (d)elete the rest
+                sed '/^#VARMOD#/p;/^MULTI_REDUCER=/,/^#VARMOD#/d' "$(readlink -f ${BASH_SOURCE[0]})" > "${NEWBUGRE}"
+                sed '/^MULTI_REDUCER=/,/^#VARMOD#/p;d' "$(readlink -f ${BASH_SOURCE[0]})" | grep -v "^#VARMOD#" > "${NEWBUGVM}"
+                sed -i "s|^INPUTFILE=.*$|INPUTFILE=\"\$(ls -t ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.sql* \| grep --binary-files=text -vE \"backup\|failing\" \| head -n1)\"|" "${NEWBUGRE}"
+                sed -i "s|^TEXT=\"[^\"]\+\"|TEXT=\"$(cat ${NEW_BUGS_SAVE_DIR}/newbug_${EPOCH_RAN}.string | head -n1 | tr -d '\n')\"|" "${NEWBUGRE}"
+                chmod +x "${NEWBUGRE}"
+                echo_out "[NewBug] Saved the new bug reducer to: ${NEWBUGRE}"
                 NEWBUGSO=
                 NEWBUGTO=
                 NEWBUGRE=
+                NEWBUGVM=
                 EPOCH_RAN=
               fi  # No else needed; if the bug was found, it means it was pre-exisiting AND not fixed yet (note the secondary if which excludes fixed bugs remarked with a leading '#' in the known bugs list file)
               FINDBUG=

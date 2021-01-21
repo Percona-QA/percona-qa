@@ -3,7 +3,7 @@
 # This script prettifies SQL code specifically for testcases. 
 # It may work less well for SQL containing actual data, as SQL idioms like 'when' are changed to 'WHEN' without regards for wheter such word appears inside a text string or as a SQL idiom
 
-OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1 | sed "s|. mysqld options required for replay:[ \t]\+..sql_mode=[ \t]*$|SET SQL_MODE='';|")"
+OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1 | sed "s|. mysqld options required for replay:[ \t]\+..sql_mode=[ \t]*$|SET sql_mode='';|")"
 set +H
 # Note that there is one shortcoming in deleting '`' on the next line: if a certain keyword is used
 # as a name, for example CREATE TABLE (`primary` INT) then removing the '`' will make it an actual
@@ -61,6 +61,7 @@ cat "${1}" | tr -d '`' | \
   sed 's|set @@global\.|SET GLOBAL |gi' | \
   sed 's|set @@session\.|SET SESSION |gi' | \
   sed 's|use|USE|gi' | \
+  sed 's|concurrent|CONCURRENT|gi' | \
   sed 's|user|USER|gi' | \
   sed 's|natural|NATURAL|gi' | \
   sed 's|join|JOIN|gi' | \
