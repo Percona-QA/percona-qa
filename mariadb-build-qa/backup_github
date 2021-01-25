@@ -81,10 +81,9 @@ cp todaysruns ${TARGET}
 cp allruns ${TARGET}
 cp scan_MYBUG ${TARGET}
 cp linkit ${TARGET}
-cp REGEX_EXCLUDE ${TARGET}
+#cp REGEX_EXCLUDE ${TARGET}  # Excluded as it is different for each system
 cp find_deadlocks ${TARGET}
 cp prep_ram_full ${TARGET}
-cp REGEX_EXCLUDE ${TARGET}
 cp use_new ${TARGET}
 cp use_old ${TARGET}
 cp report_opt ${TARGET}

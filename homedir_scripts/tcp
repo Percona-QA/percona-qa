@@ -11,6 +11,7 @@ set +H
 # Adding sed's to change this does not work as we do not know if the name is used elsehwere.
 cat "${1}" | tr -d '`' | \
   sed 's|;#.*$|;|;s| ;$|;|g;s|;;$|;|g' | \
+  sed 's|^[ ]\+||;s|;[ ]\+$|;|' | \
   sed 's|index|INDEX|g' | \
   sed 's|int|INT|gi;s|integer|INT|gi' | \
   sed 's|create|CREATE|gi' | \
@@ -68,6 +69,10 @@ cat "${1}" | tr -d '`' | \
   sed 's|backup|BACKUP|gi' | \
   sed 's|alter|ALTER|gi' | \
   sed 's|desc|DESC|gi' | \
+  sed 's|change|CHANGE|gi' | \
+  sed 's|master|MASTER|gi' | \
+  sed 's|sql_thread|SQL_THREAD|gi' | \
+  sed 's|io_thread|IO_THREAD|gi' | \
   sed 's|asc|ASC|gi' | \
   sed 's|limit|LIMIT|gi' | \
   sed 's|group by|GROUP BY|gi' | \
@@ -196,6 +201,9 @@ cat "${1}" | tr -d '`' | \
   sed 's|unix_timestamp|UNIX_TIMESTAMP|gi' | \
   sed 's|key_block_size|KEY_BLOCK_SIZE|gi' | \
   sed 's|sql_big_result|SQL_BIG_RESULT|gi' | \
+  sed 's|master_pos_wait|MASTER_POS_WAIT|gi' | \
+  sed 's|initial_size|INITIAL_SIZE|gi' | \
+  sed 's|user@localhost|user@localhost|gi' | \
   sed 's|\.TABLES|\.tables|gi' | \
   sed 's|date_sub[ ]*(|DATE_SUB(|gi' | \
   sed 's|concat_ws[ ]*(|CONCAT_WS(|gi' | \
@@ -204,13 +212,16 @@ cat "${1}" | tr -d '`' | \
   sed 's|char[ ]*(|CHAR(|gi' | \
   sed 's|if[ ]*(|IF(|gi' | \
   sed 's|current_user[ ]*(|CURRENT_USER(|gi' | \
+  sed 's|password[ ]*(|PASSWORD(|gi' | \
   sed 's|make_set[ ]*(|MAKE_SET(|gi' | \
   sed 's|substring_index[ ]*(|SUBSTRING_INDEX(|gi' | \
   sed 's|cast[ ]*(|CAST(|gi' | \
   sed 's|space[ ]*(|SPACE(|gi' | \
   sed 's|sum[ ]*(|SUM(|gi' | \
   sed 's|min[ ]*(|MIN(|gi' | \
-  sed 's|max[ ]*(|MAX(|gi'
+  sed 's|max[ ]*(|MAX(|gi' | \
+  sed 's|transforms|transforms|gi' | \
+  sed 's| = |=|gi'
 
 # Templates for copy/paste
 #  sed 's|||gi' | \

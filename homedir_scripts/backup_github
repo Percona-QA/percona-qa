@@ -34,7 +34,7 @@ cp fix_rqg ${TARGET}
 cp fb ${TARGET}
 cp fc ${TARGET}
 cp fs ${TARGET}
-cp gomd ${TARGET}
+#cp gomd ${TARGET}  # Done manually from time to time as it differs between systems
 cp gomdQC ${TARGET}
 cp ka ${TARGET}
 cp ka2 ${TARGET}

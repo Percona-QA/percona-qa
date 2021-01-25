@@ -1,5 +1,9 @@
 #!/bin/bash
-CLEAN_NEWBUGS=0
+if [ -z "${1}" ]; then
+  CLEAN_NEWBUGS=0
+else
+  CLEAN_NEWBUGS=1
+fi
 
 ~/mariadb-qa/pquery-clean-all++.sh
 

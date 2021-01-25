@@ -1,0 +1,11 @@
+CREATE TABLE t1 (c1 VARCHAR(10));
+CREATE DEFINER=root@localhost EVENT e1 ON SCHEDULE EVERY '1' SECOND COMMENT 'a' DO DELETE FROM t1; 
+SET GLOBAL innodb_lock_wait_timeout=347;
+XA START 'b';
+SET SESSION max_statement_time=65535;
+INSERT INTO t1 VALUES (1),(2),(1);
+SET GLOBAL event_scheduler=on;
+CHANGE MASTER TO master_host='127.0.0.1';
+START SLAVE sql_thread;
+SELECT MASTER_POS_WAIT('MASTER-bin.000001', 1116, 300);
+
