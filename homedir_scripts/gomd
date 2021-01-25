@@ -47,7 +47,7 @@ for RUN in $(seq 1 ${TOTALRUNS}); do
             echo "Assert: ~/sge not available! Cannot start pquery-go-expert!" 
             exit 1; break
           else
-            ~/sge ${DIREND}
+            ~/sge "${DIREND}" "pr${RUN}"
             TYPE="DBG"
             if [ ${RUN} -le ${RUNSOPT} ]; then TYPE="OPT"; fi
             echo "MD ${TYPE} Run ${RUN} started (Dir: ${DIR} Screen: pr${RUN}), and pquery-go-expert started for the same!"
