@@ -145,10 +145,11 @@ check_for_version() {
 echoit() {
   if [ "${ELIMINATE_KNOWN_BUGS}" == "1" ]; then
     echo "[$(date +'%T')] [$SAVED SAVED] [${ALREADY_KNOWN} DUPS] $1"
+    if [ ${WORKDIRACTIVE} -eq 1 ]; then echo "[$(date +'%T')] [$SAVED SAVED] [${ALREADY_KNOWN} DUPS] $1" >> /${WORKDIR}/pquery-run.log; fi
   else
     echo "[$(date +'%T')] [$SAVED] $1"
+    if [ ${WORKDIRACTIVE} -eq 1 ]; then echo "[$(date +'%T')] [$SAVED SAVED] $1" >> /${WORKDIR}/pquery-run.log; fi
   fi
-  if [ ${WORKDIRACTIVE} -eq 1 ]; then echo "[$(date +'%T')] [$SAVED] $1" >> /${WORKDIR}/pquery-run.log; fi
 }
 
 # Diskspace OOS check function
@@ -172,7 +173,7 @@ diskspace() {
 
 add_handy_scripts(){
   # Add handy stack script
-  echo "${SCRIPT_PWD}/stack.sh" > ./stack && chmod +x ${RUNDIR}/${TRIAL}/stack
+  cat "${SCRIPT_PWD}/stack.sh" > ${RUNDIR}/${TRIAL}/stack && chmod +x ${RUNDIR}/${TRIAL}/stack
   # Add handy gdb script
   echo "echo 'Handy copy and paste script:'" > ${RUNDIR}/${TRIAL}/gdb
   echo "echo '  set pagination off'" >> ${RUNDIR}/${TRIAL}/gdb

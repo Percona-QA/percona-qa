@@ -17,6 +17,17 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS ######
+!is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|select_insert::send_ok_packet|select_create::send_eof                      ## DBG MDEV-24672
+SIGABRT|ut_dbg_assertion_failed|lock_wait_table_reserve_slot|lock_wait_suspend_thread|row_mysql_handle_errors                                                                  ## OPT MDEV-24671
+SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|change_password|set_var_password::update                                                                                   ## DBG MDEV-24668
+list.count > 0|SIGABRT|ut_dbg_assertion_failed|ut_list_remove<ut_list_base<buf_page_t, ut_list_node<buf_page_t> buf_page_t::*>, GenericGetNode<buf_page_t> >|ut_list_remove<ut_list_base<buf_page_t, ut_list_node<buf_page_t> buf_page_t::*> >|buf_flush_relocate_on_flush_list  ## OPT |MDEV-24659
+!fsp_is_system_temporary(bpage->id().space())|SIGABRT|buf_flush_relocate_on_flush_list|buf_pool_t::realloc|buf_pool_t::withdraw_blocks|buf_pool_t::resize                      ## DBG |MDEV-24659
+marked_for_read()|SIGABRT|Field_long::val_str|Item_field::val_str|Item::print_value|Item_field::print                                                                          ## DBG MDEV-24658
+block->page.id().page_no() == index->page|SIGABRT|innobase_instant_try|commit_try_norebuild|ha_innobase::commit_inplace_alter_table|handler::ha_commit_inplace_alter_table     ## DBG MDEV-24653
+SIGSEGV|maria_scan_init|ha_maria::rnd_init|handler::ha_rnd_init|handler::read_first_row                                                                                        ## DBG |MDEV-24651
+SIGSEGV|maria_scan_init|handler::ha_rnd_init|handler::read_first_row|handler::ha_read_first_row                                                                                ## DBG |MDEV-24651
+SIGSEGV|maria_status|ha_maria::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                      ## DBG |MDEV-24651
+SIGSEGV|maria_status|ha_maria::info|make_join_statistics|JOIN::optimize_inner                                                                                                  ## DBG |MDEV-24651
 auto_increment_value|SIGABRT|ha_partition::info|ha_partition::update_next_auto_inc_val|ha_partition::write_row|handler::ha_write_row                                           ## DBG |MDEV-24610
 auto_increment_value|SIGABRT|ha_partition::info|ha_partition::write_row|handler::ha_write_row|write_record                                                                     ## DBG |MDEV-24610
 auto_increment_value|SIGABRT|ha_partition::initialize_auto_increment|Partition_helper::set_auto_increment_if_higher|Partition_helper::ph_write_row|ha_partition::write_row     ## DBG |MDEV-24610
@@ -296,6 +307,7 @@ SIGSEGV|handle_grant_table|handle_grant_data|mysql_drop_user|mysql_execute_comma
 SIGSEGV|handle_grant_table|handle_grant_data|mysql_create_user|mysql_execute_command                                                                                           ## OPT |MDEV-22133
 SIGSEGV|handle_grant_table|handle_grant_data|mysql_rename_user|mysql_execute_command                                                                                           ## OPT |MDEV-22133
 SIGSEGV|Binary_string::copy_printable_hhhh|Protocol::store_warning|mysqld_show_warnings|mysql_execute_command                                                                  ## OPT MDEV-22130
+nr != 0|SIGABRT|handler::update_auto_increment|ha_myisam::write_row|handler::ha_write_row|Log_to_csv_event_handler::log_general                                                ## DBG |MDEV-22118
 nr != 0|SIGABRT|handler::update_auto_increment|ha_myisam::write_row|handler::ha_write_row|copy_data_between_tables                                                             ## DBG |MDEV-22118
 nr != 0|SIGABRT|handler::update_auto_increment|ha_heap::write_row|handler::ha_write_row|copy_data_between_tables                                                               ## DBG |MDEV-22118 
 nr != 0|SIGABRT|handler::update_auto_increment|ha_maria::write_row|handler::ha_write_row|copy_data_between_tables                                                              ## DBG |MDEV-22118
@@ -426,6 +438,9 @@ SIGSEGV|select_value_catcher::setup|execute_degenerate_jtbm_semi_join|setup_jtbm
 !field->is_null()|SIGABRT|my_decimal::my_decimal|Field::do_field_decimal|copy_fields|end_write                                                                                 ## DBG MDEV-22702*
 index->table->instant|SIGABRT|btr_pcur_store_position|row_search_mvcc|ha_innobase::index_read|ha_innobase::index_first                                                         ## DBG |MDEV-22714
 !binlog || exist_hton_without_prepare|SIGABRT|MYSQL_BIN_LOG::unlog_xa_prepare|ha_prepare|trans_xa_prepare|mysql_execute_command                                                ## DBG MDEV-22757*
+SIGSEGV|Item_field::type_handler|subselect_engine::set_row|subselect_single_select_engine::fix_length_and_dec|Item_singlerow_subselect::fix_length_and_dec                     ## DBG |MDEV-22786*
+SIGSEGV|Item_subselect::fix_fields|Item::fix_fields_if_needed|Item::fix_fields_if_needed|fix_fields_for_tvc                                                                    ## DBG |MDEV-22786*
+SIGSEGV|Item_subselect::fix_fields|Item::fix_fields_if_needed|fix_fields_for_tvc|table_value_constr::prepare                                                                   ## DBG |MDEV-22786*
 len == ref_length|SIGABRT|ha_innobase::position|find_all_keys|filesort|create_sort_index                                                                                       ## DBG MDEV-22873*
 0|SIGABRT|Item::val_native|Item::val_native_from_item|Item_ref::val_native|Type_handler_timestamp_common::Item_val_native_with_conversion                                      ## DBG MDEV-22885*
 SIGSEGV|maria_status|ha_maria::info|TABLE_LIST::fetch_number_of_rows|make_join_statistics                                                                                      ## DBG |MDEV-23202*

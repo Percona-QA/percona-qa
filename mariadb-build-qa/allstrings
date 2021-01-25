@@ -1,1 +1,2 @@
-./gendirs.sh | xargs -I{} echo "cd {}; echo "{}:"; ~/t; cd .." | xargs -I{} bash -c "{}"
+./gendirs.sh | xargs -I{} echo "cd {}; echo "{}:"; ~/t; cd .." | xargs -I{} bash -c "{}" | sed 's/SIGABRT|Diagnostics_area::set_error_status|[THIS STRING IS LIKELY INCORRECT HERE (AND OFTEN SEEN), AND LIKELY NOT RELATED TO THE ISSUE. PLEASE, DO NOT ASSOCIATE THIS STRING WITH THE ISSUE:] /SIGABRT|Diagnostics_area::set_error_status|/'
+

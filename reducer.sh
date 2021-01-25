@@ -1604,7 +1604,10 @@ init_workdir_and_files(){
     if [ "${FIREWORKS}" != "1" ]; then  # In fireworks mode, we do not need a WORKF file (ref cut_fireworks_chunk_and_shuffle and note ${INPUTFILE} is used instead. The reason for setting it up this way is 1) it greatly improves /dev/shm diskspace as WORKF is not created per-thread, thereby saving let's say 450MB for a standard SQL input file, per-thread, 2) There is no need to maintain a working file (WORKF) as the input is never changed/reduced. INPUTFILE is shuffled and chuncked (as per FIREWORKS_LINES setting) and saved as in.tmp, and if a new bug is found, that file is copied to NEW_BUGS_SAVE_DIR.
       if [ "$MULTI_REDUCER" != "1" -a $FORCE_SKIPV -gt 0 ]; then  # This is the parent/main reducer and verify stage is being skipped, add dropc. If the verify stage is not being skipped (FORCE_SKIPV=0) then the 'else' clause will apply and the verify stage will handle the dropc addition or not (depending on how much initial simplification in the verify stage is possible). Note that FORCE_SKIPV check is defensive programming and not needed atm; the actual call within the verify() uses multi_reducer $1 - i.e. the original input file is used, not the here-modified WORKF file.
         if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-          echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+          #Improvement made on 25/01/2021 RV: the original line was seen producing 'ignoring null byte in input'. I am not 100% confident on this change as testing went into the original line construction many years ago. Monitor results over time. This code was also changed elsewhere in reducer.sh, search for 'DROPC can be on a single line'.
+          #echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+          echo "$DROPC" > $WORKF
+          grep -E --binary-files=text -v "$DROPC" $INPUTFILE >> $WORKF 
         else  # pquery is used; use a multi-line format for DROPC
           cp $INPUTFILE $WORKF
           # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
@@ -3501,7 +3504,10 @@ verify(){
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+              #Improvement made on 25/01/2021 RV: the original line was seen producing 'ignoring null byte in input'. I am not 100% confident on this change as testing went into the original line construction many years ago. Monitor results over time. This code was also changed elsewhere in reducer.sh, search for 'DROPC can be on a single line'.
+              #echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+              echo "$DROPC" > $WORKF
+              grep -E --binary-files=text -v "$DROPC" $INPUTFILE >> $WORKF 
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
               remove_dropc $WORKT
@@ -3538,7 +3544,10 @@ verify(){
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+              #Improvement made on 25/01/2021 RV: the original line was seen producing 'ignoring null byte in input'. I am not 100% confident on this change as testing went into the original line construction many years ago. Monitor results over time. This code was also changed elsewhere in reducer.sh, search for 'DROPC can be on a single line'.
+              #echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+              echo "$DROPC" > $WORKF
+              grep -E --binary-files=text -v "$DROPC" $INPUTFILE >> $WORKF 
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
               remove_dropc $WORKT
@@ -3578,7 +3587,10 @@ verify(){
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+              #Improvement made on 25/01/2021 RV: the original line was seen producing 'ignoring null byte in input'. I am not 100% confident on this change as testing went into the original line construction many years ago. Monitor results over time. This code was also changed elsewhere in reducer.sh, search for 'DROPC can be on a single line'.
+              #echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+              echo "$DROPC" > $WORKF
+              grep -E --binary-files=text -v "$DROPC" $INPUTFILE >> $WORKF 
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
               remove_dropc $WORKT
@@ -3611,7 +3623,10 @@ verify(){
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+              #Improvement made on 25/01/2021 RV: the original line was seen producing 'ignoring null byte in input'. I am not 100% confident on this change as testing went into the original line construction many years ago. Monitor results over time. This code was also changed elsewhere in reducer.sh, search for 'DROPC can be on a single line'.
+              #echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+              echo "$DROPC" > $WORKF
+              grep -E --binary-files=text -v "$DROPC" $INPUTFILE >> $WORKF 
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
               remove_dropc $WORKT
@@ -3642,7 +3657,10 @@ verify(){
           if [ "${INITFILE}" != "" ]; then  # Instead of using an init file, add the init file contents to the top of the testcase
             echo_out "$ATLEASTONCE [Stage $STAGE] Adding contents of --init-file directly into testcase and removing --init-file option from MYEXTRA"
             if [ $USE_PQUERY -eq 0 ]; then  # Standard mysql client is used; DROPC can be on a single line
-              echo "$(echo "$DROPC";cat $INITFILE;cat $WORKT | grep -E --binary-files=text -v "$DROPC")" > $WORKT
+              #Improvement made on 25/01/2021 RV: the original line was seen producing 'ignoring null byte in input'. I am not 100% confident on this change as testing went into the original line construction many years ago. Monitor results over time. This code was also changed elsewhere in reducer.sh, search for 'DROPC can be on a single line'.
+              #echo "$(echo "$DROPC";cat $INPUTFILE | grep -E --binary-files=text -v "$DROPC")" > $WORKF
+              echo "$DROPC" > $WORKF
+              grep -E --binary-files=text -v "$DROPC" $INPUTFILE >> $WORKF 
             else  # pquery is used; use a multi-line format for DROPC
               # Clean any DROPC statements from WORKT (similar to the grep -v above but for multiple lines instead)
               remove_dropc $WORKT
@@ -4027,19 +4045,21 @@ if [ $SKIPSTAGEBELOW -lt 3 -a $SKIPSTAGEABOVE -gt 3 ]; then
     elif [ $TRIAL -eq 38 ]; then sed -e 's/ .*[=<>!]\+.* / 1=1 /gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 39 ]; then sed -e 's/([0-9]\+)/(1)/gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 40 ]; then sed -e 's/([0-9]\+)//gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 41 ]; then sed -e 's/[ ]*/ /g' -e 's/^ //g' $WORKF > $WORKT
-    elif [ $TRIAL -eq 42 ]; then sed -e 's/transforms\.//gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 43 ]; then sed -e 's/test\.//gi' $WORKF > $WORKT
-    elif [ $TRIAL -eq 44 ]; then sed -e "s/'[^']\+'/'abcdefghijklmnopqrstuvwxyz'/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 45 ]; then sed -e "s/'[^']\+'/'abcdefghijklm'/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 46 ]; then sed -e "s/'[^']\+'/'abcde'/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 47 ]; then sed -e "s/'[^']\+'/NULL/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 48 ]; then sed -e "s/'[^']\+'/'a'/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 49 ]; then sed -e "s/'[^']\+'/'0'/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 50 ]; then sed -e "s/'[^']\+'/''/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 51 ]; then sed -e "s/'[^']\+'/1/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 52 ]; then sed -e "s/'[^']\+'/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 53 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/`//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 41 ]; then sed -e 's/[ ]\+/ /g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 42 ]; then sed -e 's/^[ ]\+//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 43 ]; then sed -e 's/[ ]\+$//g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 44 ]; then sed -e 's/transforms\.//gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 45 ]; then sed -e 's/test\.//gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 46 ]; then sed -e "s/'[^']\+'/'abcdefghijklmnopqrstuvwxyz'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 47 ]; then sed -e "s/'[^']\+'/'abcdefghijklm'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 48 ]; then sed -e "s/'[^']\+'/'abcde'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 49 ]; then sed -e "s/'[^']\+'/NULL/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 50 ]; then sed -e "s/'[^']\+'/'a'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 51 ]; then sed -e "s/'[^']\+'/'0'/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 52 ]; then sed -e "s/'[^']\+'/''/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 53 ]; then sed -e "s/'[^']\+'/1/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 54 ]; then sed -e "s/'[^']\+'/0/g" $WORKF > $WORKT
+    elif [ $TRIAL -eq 55 ]; then NEXTACTION="& progress to the next stage"; sed -e 's/`//g' $WORKF > $WORKT
     else break
     fi
     SIZET=`stat -c %s $WORKT`
@@ -4652,44 +4672,46 @@ if [ $SKIPSTAGEBELOW -lt 7 -a $SKIPSTAGEABOVE -gt 7 ]; then
     elif [ $TRIAL -eq 136 ]; then sed -e "s/set[ ]*('','','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 137 ]; then sed -e "s/set[ ]*('','',/SET('',/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 138 ]; then NOSKIP=1; sed -e "s/ ENGINE=TokuDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT # NOSKIP as lenght of 'TokuDB' is same as 'InnoDB' and we want to check if the testcase is engine specific or not
-    elif [ $TRIAL -eq 139 ]; then sed -e "s/ ENGINE=RocksDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT  # NOSKIP not required; InnoDB is shorter then RocksDB
-    elif [ $TRIAL -eq 140 ]; then NOSKIP=1; sed -e "s/ ENGINE=MEMORY/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 141 ]; then NOSKIP=1; sed -e "s/ ENGINE=MyISAM/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 142 ]; then NOSKIP=1; sed -e "s/ ENGINE=CSV/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 143 ]; then NOSKIP=1; sed -e "s/ ENGINE=NDB/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ ENGINE=InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 145 ]; then NOSKIP=1; sed -e "s/ ENGINE=[A-Za-z_-]\+/ /gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 139 ]; then sed -e 's/ ENGINE=RocksDB/ ENGINE=InnoDB/gi' $WORKF > $WORKT  # NOSKIP not required; InnoDB is shorter then RocksDB
+    elif [ $TRIAL -eq 140 ]; then NOSKIP=1; sed -e 's/ ENGINE=MEMORY/ ENGINE=InnoDB/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 141 ]; then NOSKIP=1; sed -e 's/ ENGINE=MyISAM/ ENGINE=InnoDB/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 142 ]; then NOSKIP=1; sed -e 's/ ENGINE=CSV/ ENGINE=InnoDB/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 143 ]; then NOSKIP=1; sed -e 's/ ENGINE=NDB/ ENGINE=InnoDB/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 144 ]; then NOSKIP=1; sed -e 's/ ENGINE=[A-Za-z_-]\+/ ENGINE=InnoDB/gi' $WORKF > $WORKT
+    elif [ $TRIAL -eq 145 ]; then NOSKIP=1; sed -e 's/ ENGINE=[A-Za-z_-]\+/ /gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 146 ]; then sed -e "s/ ENGINE=TokuDB/ ENGINE=none/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 147 ]; then sed -e "s/ ENGINE=RocksDB/ ENGINE=none/gi" $WORKF > $WORKT
     elif [ $TRIAL -eq 148 ]; then NOSKIP=1; sed -e "s/TokuDB/InnoDB/gi" $WORKF > $WORKT
-    elif [ $TRIAL -eq 149 ]; then sed -e "s/RocksDB/InnoDB/gi" $WORKF > $WORKT
+    elif [ $TRIAL -eq 149 ]; then sed -e 's/RocksDB/InnoDB/gi' $WORKF > $WORKT
     elif [ $TRIAL -eq 150 ]; then sed -e 's/[\t ]\+/ /g' -e 's/ \([;,]\)/\1/g' -e 's/ $//g' -e 's/^ //g' $WORKF > $WORKT
     elif [ $TRIAL -eq 151 ]; then sed -e 's/.*/\L&/' $WORKF > $WORKT
     elif [ $TRIAL -eq 152 ]; then sed -e 's/[ ]*([ ]*/(/;s/[ ]*)[ ]*/)/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 153 ]; then sed -e "s/;.*/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 154 ]; then sed -e "s/;#;/;/" $WORKF > $WORKT
-    elif [ $TRIAL -eq 155 ]; then sed "s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 156 ]; then sed "/INSERT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 157 ]; then sed "/SELECT/,/;/s/''/0/g" $WORKF > $WORKT
-    elif [ $TRIAL -eq 158 ]; then sed "s/;[ \t]\+#/;#/" $WORKF > $WORKT  # Remove any spaces/tabs before #EOL comments if present
-    elif [ $TRIAL -eq 159 ]; then sed "s/;[ \t]*#.*/;/" $WORKF > $WORKT  # Attempt to remove #EOL comments
-    elif [ $TRIAL -eq 160 ]; then sed "s/#[^#]\+$/;/" $WORKF > $WORKT  # Another attempt at removing #EOL comments
-    elif [ $TRIAL -eq 161 ]; then sed "s/#[^#]\+$/#/" $WORKF > $WORKT  # If previous attempts do not work, attempt shorter comments
+    elif [ $TRIAL -eq 153 ]; then sed -e 's/;.*/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 154 ]; then sed -e 's/;#;.*$/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 155 ]; then sed -e 's/''/0/g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 156 ]; then sed -e '/INSERT/,/;/s/''/0/g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 157 ]; then sed -e '/SELECT/,/;/s/''/0/g' $WORKF > $WORKT
+    elif [ $TRIAL -eq 158 ]; then sed -e 's/;[ \t]\+#/;#/' $WORKF > $WORKT  # Remove any spaces/tabs before #EOL comments if present
+    elif [ $TRIAL -eq 159 ]; then sed -e 's/;[ \t]*#.*/;/' $WORKF > $WORKT  # Attempt to remove #EOL comments
+    elif [ $TRIAL -eq 160 ]; then sed -e 's/#[^#]\+$/;/' $WORKF > $WORKT  # Another attempt at removing #EOL comments
+    elif [ $TRIAL -eq 161 ]; then sed -e 's/#[^#]\+$/#/' $WORKF > $WORKT  # If previous attempts do not work, attempt shorter comments
     elif [ $TRIAL -eq 162 ]; then sed -e 's/[ \t]\+$//' $WORKF > $WORKT  # Remove spaces at end of line
     elif [ $TRIAL -eq 163 ]; then NOSKIP=1; sed -e 's|\([^;]\)$|\1;|' $WORKF > $WORKT  # Add ';' on lines that do not have it
     elif [ $TRIAL -eq 164 ]; then NOSKIP=1; sed -e 's|#;|;#|' $WORKF > $WORKT  # Ref line above/below for combination effect
-    elif [ $TRIAL -eq 165 ]; then sed -e 's/;[ \t]*;/;/g' $WORKF > $WORKT  # Remove empty statements if possible
+    elif [ $TRIAL -eq 165 ]; then sed -e 's/;[ \t]\+;/;/g' $WORKF > $WORKT  # Remove empty statements if possible
     elif [ $TRIAL -eq 166 ]; then sed -e 's/[ \t]\+/ /g' $WORKF > $WORKT
     elif [ $TRIAL -eq 167 ]; then sed -e 's/  / /' $WORKF > $WORKT
     elif [ $TRIAL -eq 168 ]; then sed -e 's/  / /' $WORKF > $WORKT
     elif [ $TRIAL -eq 169 ]; then sed -e 's/  / /' $WORKF > $WORKT
-    elif [ $TRIAL -eq 170 ]; then sed -e 's/;#.*/;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 170 ]; then sed -e 's|;#.*$|;|' $WORKF > $WORKT
     elif [ $TRIAL -eq 171 ]; then sed -e 's/;  ;/;/' $WORKF > $WORKT
     elif [ $TRIAL -eq 172 ]; then sed -e 's/; ;/;/' $WORKF > $WORKT
     elif [ $TRIAL -eq 173 ]; then sed -e 's/;;/;/' $WORKF > $WORKT
-    elif [ $TRIAL -eq 174 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
-    elif [ $TRIAL -eq 175 ]; then grep -E --binary-files=text -v "^$" $WORKF > $WORKT
+    elif [ $TRIAL -eq 174 ]; then sed -e 's/; /;/' $WORKF > $WORKT
+    elif [ $TRIAL -eq 175 ]; then grep -E --binary-files=text -v '^$' $WORKF > $WORKT
     elif [ $TRIAL -eq 176 ]; then sed -e 's/0D0R0O0P0D0A0T0A0B0A0S0E0t0r0a0n0s0f0o0r0m0s0/NO_SQL_REQUIRED/' $WORKF > $WORKT
+    # RV 25/01/21 Disabled next line to see if this fixes the # mysqld options required insert. Also note 177 changed on the line thereafter: update when removing to higher number
+    # elif [ $TRIAL -eq 177 ]; then grep -E --binary-files=text -v "^#" $WORKF > $WORKT
     elif [ $TRIAL -eq 177 ]; then NEXTACTION="& Finalize run"; sed 's/`//g' $WORKF > $WORKT
     else break
     fi

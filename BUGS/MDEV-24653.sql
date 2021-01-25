@@ -1,0 +1,13 @@
+SET GLOBAL innodb_limit_optimistic_insert_debug=2;
+CREATE TABLE t (c INT) ENGINE=MyISAM;
+INSERT INTO t VALUES (1),(2),(3),(4);
+ALTER TABLE t ADD COLUMN (a INT);
+DELETE FROM t;
+ALTER TABLE t ADD COLUMN (b INT);
+
+SET GLOBAL innodb_limit_optimistic_insert_debug = 2;
+CREATE TABLE t1 (c1 VARCHAR(10));
+INSERT INTO t1 VALUES (41), (42), (43), (44);
+ALTER TABLE t1 ADD COLUMN (i INT);
+DELETE FROM t1;
+ALTER TABLE t1 ADD COLUMN (b INT);

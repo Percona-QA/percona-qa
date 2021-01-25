@@ -203,7 +203,8 @@ if [[ $GRP_RPL -eq 1 ]];then
 
   echo -e "    echo -e \"echo 'Server on socket \$node/socket.sock with datadir \$node halted'\" | cat - ./stop_group_replication > ./temp && mv ./temp ./stop_group_replication" >> ./start_group_replication
   echo -e "    echo -e \"\${BUILD}/bin/mysqladmin -uroot -S\$node/socket.sock shutdown\" | cat - ./stop_group_replication > ./temp && mv ./temp ./stop_group_replication" >> ./start_group_replication
-  echo -e "    echo -e \"rm -Rf \$node.PREV; mv \$node \$node.PREV 2>dev/null\" >> ./wipe_group_replication" >> ./start_group_replication
+  #echo -e "    echo -e \"rm -Rf \$node.PREV; mv \$node \$node.PREV 2>dev/null\" >> ./wipe_group_replication" >> ./start_group_replication  # Removed to save disk space, changed to next line
+  echo -e "    echo -e \"rm -Rf \$node\" >> ./wipe_group_replication" >> ./start_group_replication
   echo -e "    echo -e \"\$BUILD/bin/mysql -A -uroot -S\$node/socket.sock --prompt \\\"node\$i> \\\"\" > \${BUILD}/\${i}cl " >> ./start_group_replication
   echo -e "  done\n" >> ./start_group_replication
   echo -e "}\n" >> ./start_group_replication
@@ -383,8 +384,8 @@ echo "echo \"Order: \$(if grep -qi 'RND_REPLAY_ORDER=1' ~/mariadb-qa/multirun_cl
 echo "echo ''" >> multirun
 ln -s ./multirun ./m 2>/dev/null
 cp ./multirun ./multirun_pquery
-echo "#~/mariadb-qa/multirun_cli.sh 150 100000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
-echo "~/mariadb-qa/multirun_cli.sh 1 10000000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
+echo "~/mariadb-qa/multirun_cli.sh 200 100000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
+echo "#~/mariadb-qa/multirun_cli.sh 1 10000000 in.sql ${PWD}/bin/mysql ${PWD}/socket.sock" >> multirun
 echo "# Note that there are two levels of threading: the number of pquery clients started (as set by $1), and the number of pquery threads initiated/used by each of those pquery clients (as set by $7)." >> multirun_pquery
 echo "" >> multirun_pquery
 echo "## 10 pquery clients, 20 threads each (almost never used)" >> multirun_pquery
@@ -427,7 +428,8 @@ add_san_options test
 echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < ${PWD}/in.sql > ${PWD}/mysql.out 2>&1" >> test
 echo 'MYEXTRA_OPT="$*"' > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
-echo "rm -Rf ${PWD}/data.PREV; mv ${PWD}/data ${PWD}/data.PREV 2>/dev/null" >> wipe
+#echo "rm -Rf ${PWD}/data.PREV; mv ${PWD}/data ${PWD}/data.PREV 2>/dev/null" >> wipe  # Removed to save disk space, changed to next line
+echo "rm -Rf ${PWD}/data" >> wipe
 if [ "${USE_JE}" -eq 1 ]; then
   echo $JE1 >> wipe; echo $JE2 >> wipe; echo $JE3 >> wipe; echo $JE4 >> wipe; echo $JE5 >> wipe; echo $JE6 >> wipe; echo $JE7 >> wipe;
 fi

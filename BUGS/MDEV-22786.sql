@@ -1,0 +1,3 @@
+VALUES ((VALUES(1)));
+
+VALUES ((SELECT 1));
