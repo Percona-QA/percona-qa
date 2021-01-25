@@ -231,15 +231,9 @@ if [ $COUNT -gt 0 ]; then
 fi
 
 # Likely out of disk space trials
-OOS1=$(grep --binary-files=text "Out of disk space" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS2=$(grep --binary-files=text "InnoDB: Error while writing" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS3=$(grep --binary-files=text "bytes should have been written" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS4=$(grep --binary-files=text "Operating system error number 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS5=$(grep --binary-files=text "PerconaFT No space when writing" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS6=$(grep --binary-files=text "OS errno 28 - No space left on device" */log/master.err | sed 's|/.*||' | tr '\n' ' ')  # MySQL 8.0 message
-OOS7=$(grep --binary-files=text "error 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
-OOS8=$(ls -s */data/*core* 2>/dev/null | grep --binary-files=text -o "^ *0 [^/]\+" | awk '{print $2}' | tr '\n' ' ')
-OOS="$(echo "${OOS1} ${OOS2} ${OOS3} ${OOS4} ${OOS5} ${OOS6} ${OOS7} ${OOS8}" | sed "s|  | |g")"
+OOS1=$(egrep --binary-files=text -i "device full error|no space left on device|errno[:]* enospc|can't write.*bytes|errno[:]* 28|mysqld: disk full|waiting for someone to free some space|out of disk space|innodb: error while writing|bytes should have been written|error number[:]* 28|error[:]* 28" */log/master.err | sed 's|/.*||' | tr '\n' ' ')
+OOS2=$(ls -s */data/*core* 2>/dev/null | grep --binary-files=text -o "^ *0 [^/]\+" | awk '{print $2}' | tr '\n' ' ')  # Cores with a file size of 0: good indication of OOS
+OOS="$(echo "${OOS1} ${OOS2}" | sed "s|  | |g")"
 if [ "$(echo "${OOS}" | sed "s| ||g")" != "" ]; then
   echo "================ Likely out of disk space trials:"
   echo "$(echo "${OOS}" | tr ' ' '\n' | sort -nu |  tr '\n' ' ' | sed 's|$|\n|;s|^ \+||')"

@@ -23,16 +23,23 @@ for X in $(seq 0 ${MYSQLD_START_TIMEOUT}); do
 done
 
 # Check server startup
-if egrep -q  "registration as a STORAGE ENGINE failed" $PQUERY_PWD/$TRIAL/log/master.err; then
-  echo "Recovery error : Storage engine registration failed."
+if egrep --binary-files=text -qi "registration as a STORAGE ENGINE failed" $PQUERY_PWD/$TRIAL/log/master.err; then
+  echo "Recovery error : Storage engine registration failed:"
+  egrep --binary-files=text -i "registration as a STORAGE ENGINE failed" $PQUERY_PWD/$TRIAL/log/master.err
   exit 1
-elif egrep -q  "corrupt|crashed" $PQUERY_PWD/$TRIAL/log/master.err; then
-  echo "Recovery error : Log message '$_' indicates database corruption."
+elif egrep --binary-files=text -qi "corrupt|crashed" $PQUERY_PWD/$TRIAL/log/master.err; then
+  echo "Recovery error : Log message '$_' indicates database corruption:"
+  egrep --binary-files=text -i "corrupt|crashed" $PQUERY_PWD/$TRIAL/log/master.err
   exit 1
-elif egrep -q  "device full error|no space left on device" $PQUERY_PWD/$TRIAL/log/master.err; then
-  echo "Recovery error : Check disk space."
+elif egrep --binary-files=text -qi "device full error|no space left on device|errno[:]* enospc|can't write.*bytes|errno[:]* 28|mysqld: disk full|waiting for someone to free some space|out of disk space|innodb: error while writing|bytes should have been written|error number[:]* 28|error[:]* 28" $PQUERY_PWD/$TRIAL/log/master.err
+  echo "Recovery error : Check disk space:"
+  egrep --binary-files=text -i "device full error|no space left on device|errno[:]* enospc|can't write.*bytes|errno[:]* 28|mysqld: disk full|waiting for someone to free some space|out of disk space|innodb: error while writing|bytes should have been written|error number[:]* 28|error[:]* 28" $PQUERY_PWD/$TRIAL/log/master.err
   exit 1
-elif egrep -q  "ready for connections" $PQUERY_PWD/$TRIAL/log/master.err; then
+elif egrep --binary-files=text -qi "got error.*when reading table|got error.*from storage engine" $PQUERY_PWD/$TRIAL/log/master.err; then
+  echo "Recovery error : Log message '$_' indicates database corruption:"
+  egrep --binary-files=text -i "got error.*when reading table|got error.*from storage engine" $PQUERY_PWD/$TRIAL/log/master.err
+  exit 1
+elif egrep --binary-files=text -qi "ready for connections" $PQUERY_PWD/$TRIAL/log/master.err; then
   echo "Recovery info : Server Recovery was apparently successful."
 fi
 

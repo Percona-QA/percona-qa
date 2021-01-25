@@ -17,6 +17,22 @@ sleep 7
 sudo snap install shellcheck
 sudo snap install shfmt
 
+# vimrc Script
+touch ~/.vimrc
+cat << EOF >> ~/.vimrc
+" tabstop:          Width of tab character
+" softtabstop:      Fine tunes the amount of white space to be added
+" shiftwidth        Determines the amount of whitespace to add in normal mode
+" expandtab:        When on uses space instead of tabs
+set tabstop     =2
+set softtabstop =2
+set shiftwidth  =2
+set expandtab
+set nocompatible
+colo torte
+syntax on
+EOF
+
 # Screen Script
 touch ~/.screenrc
 if [ -z "$(cat ~/.screenrc|grep 'termcapinfo xterm')" ]; then cat << EOF > ~/.screenrc
@@ -195,7 +211,11 @@ sudo apt install --reinstall linux-tools-common linux-tools-generic linux-tools-
 if [ "${1}" == "rr" ]; then
   sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
   sudo sed -i 's|^#RemoveIPC=yes|RemoveIPC=no|' /etc/systemd/logind.conf; sudo systemctl restart systemd-logind.service
-  sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/20auto-upgrades
+  if [ -r /etc/apt/apt.conf.d/20auto-upgrades ]; then
+    sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/20auto-upgrades
+  if [ -r /etc/apt/apt.conf.d/50unattended-upgrades ]; then
+    sudo sed -i 's|Unattended-Upgrade "1"|Unattended-Upgrade "0"|' /etc/apt/apt.conf.d/50unattended-upgrades
+  fi
   sudo sed -i 's|vm.swappiness=5|vm.swappiness=1|'  /etc/sysctl.conf
   # Performance mode not necessary ftm it seems on 20.04, may be required on 18.04 for rr to work properly
   #sudo sh -c 'echo "GOVERNOR=\"performance\"" >> /etc/default/cpufrequtils' && sudo systemctl restart cpufrequtils

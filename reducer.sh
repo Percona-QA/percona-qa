@@ -1306,14 +1306,7 @@ multi_reducer(){
               echo_out "Assert: /tmp/$TMP_RND_FILENAME not found or not readable! Did the volume hosting /tmp run out of space?"
               echo_out "Will try and continue assuming this is a recoverable situation, though it may not be"
             fi
-            OOS1=$(grep "Out of disk space" /tmp/$TMP_RND_FILENAME)
-            OOS2=$(grep "InnoDB: Error while writing" /tmp/$TMP_RND_FILENAME)
-            OOS3=$(grep "bytes should have been written" /tmp/$TMP_RND_FILENAME)
-            OOS4=$(grep "Operating system error number 28" /tmp/$TMP_RND_FILENAME)
-            OOS5=$(grep "PerconaFT No space when writing" /tmp/$TMP_RND_FILENAME)
-            OOS6=$(grep "OS errno 28 - No space left on device" /tmp/$TMP_RND_FILENAME)
-            OOS="$(echo "${OOS1}${OOS2}${OOS3}${OOS4}${OOS5}${OOS6}" | tr -d '\n' | tr -d '\r' | sed "s|[ \t]*||g")"
-            if [ "${OOS}" != "" ]; then
+            if egrep --binary-files=text -qi "device full error|no space left on device|errno[:]* enospc|can't write.*bytes|errno[:]* 28|mysqld: disk full|waiting for someone to free some space|out of disk space|innodb: error while writing|bytes should have been written|error number[:]* 28|error[:]* 28" /tmp/$TMP_RND_FILENAME; then
               echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Thread #$t disappeared (mysqld start failed) due to running out of diskspace. Restarted thread with PID #$(eval echo $(echo '$MULTI_PID'"$t"))."
               #echo_out "$ATLEASTONCE [Stage $STAGE] [MULTI] [OOS] Copied the last mysqld error log to /tmp/$TMP_RND_FILENAME for review. Otherwise, please ignore the \"check...\" message just above; the files are no longer there given the restart above)"
             else
