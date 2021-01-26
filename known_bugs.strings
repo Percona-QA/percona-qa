@@ -17,6 +17,7 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS ######
+m_prebuilt->trx == thd_to_trx(m_user_thd)|SIGABRT|ha_innobase::is_read_only|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute       ## DBG MDEV-24503
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|select_insert::send_ok_packet|select_create::send_eof                      ## DBG MDEV-24672
 SIGABRT|ut_dbg_assertion_failed|lock_wait_table_reserve_slot|lock_wait_suspend_thread|row_mysql_handle_errors                                                                  ## OPT MDEV-24671
 SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|change_password|set_var_password::update                                                                                   ## DBG MDEV-24668

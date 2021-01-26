@@ -1,0 +1,10 @@
+#!/bin/bash
+SCAN="${1}"
+if [ -z "${SCAN}" ]; then
+  echo "No scan string specified, will scan error logs for most prevelant corruptions and issues:"
+  SCAN="PHYSICAL RECORD|got error.*when reading table|got error.*from storage engine"
+  echo "${SCAN}"
+fi
+
+grep --binary-files=text -i "${SCAN}" */*/log/master.err | grep -o '^.*err' | sort -u | sed 's|^|wc -l |;s|log/master.err|*_out|' | xargs -I{} bash -c "{} 2>&1" | sed "s|^wc: '||;s|': No such file or directory| : No _out files found, attempt reducer run|;s|_out$|_out << Analyze!|"
+

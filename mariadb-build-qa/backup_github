@@ -80,6 +80,7 @@ cp monitor_runs ${TARGET}
 cp todaysruns ${TARGET}
 cp allruns ${TARGET}
 cp scan_MYBUG ${TARGET}
+cp scan_errorlogs ${TARGET}
 cp linkit ${TARGET}
 #cp REGEX_EXCLUDE ${TARGET}  # Excluded as it is different for each system
 cp find_deadlocks ${TARGET}

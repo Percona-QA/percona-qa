@@ -35,9 +35,9 @@ elif egrep --binary-files=text -qi "device full error|no space left on device|er
   echo "Recovery error : Check disk space:"
   egrep --binary-files=text -i "device full error|no space left on device|errno[:]* enospc|can't write.*bytes|errno[:]* 28|mysqld: disk full|waiting for someone to free some space|out of disk space|innodb: error while writing|bytes should have been written|error number[:]* 28|error[:]* 28" $PQUERY_PWD/$TRIAL/log/master.err
   exit 1
-elif egrep --binary-files=text -qi "got error.*when reading table|got error.*from storage engine" $PQUERY_PWD/$TRIAL/log/master.err; then
+elif egrep --binary-files=text -qi "PHYSICAL RECORD|got error.*when reading table|got error.*from storage engine" $PQUERY_PWD/$TRIAL/log/master.err; then
   echo "Recovery error : Log message '$_' indicates database corruption:"
-  egrep --binary-files=text -i "got error.*when reading table|got error.*from storage engine" $PQUERY_PWD/$TRIAL/log/master.err
+  egrep --binary-files=text -i "PHYSICAL RECORD|got error.*when reading table|got error.*from storage engine" $PQUERY_PWD/$TRIAL/log/master.err
   exit 1
 elif egrep --binary-files=text -qi "ready for connections" $PQUERY_PWD/$TRIAL/log/master.err; then
   echo "Recovery info : Server Recovery was apparently successful."
