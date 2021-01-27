@@ -17,7 +17,12 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS ######
-m_prebuilt->trx == thd_to_trx(m_user_thd)|SIGABRT|ha_innobase::is_read_only|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute       ## DBG MDEV-24503
+SIGSEGV|Event_queue::drop_matching_events|Event_queue::drop_schema_events|Events::drop_schema_events|mysql_rm_db_internal                                                      ## OPT |MDEV-24686
+SIGSEGV|my_scan_weight_utf8_general_ci|my_strnncollsp_utf8_general_ci|sortcmp_lex_string|event_basic_identifier_equal                                                          ## DBG |MDEV-24686
+SIGSEGV|my_scan_weight_utf8mb3_general_ci|my_strnncollsp_utf8mb3_general_ci|charset_info_st::strnncollsp|sortcmp_lex_string                                                    ## DBG |MDEV-24686
+SIGSEGV|main_arena () from|Event_queue::empty_queue|Event_queue::deinit_queue|Event_queue::~Event_queue                                                                        ## OPT |MDEV-24686
+SIGSEGV|Event_db_repository::load_named_event|Events::create_event|mysql_execute_command|mysql_parse                                                                           ## OPT |MDEV-24686
+SIGSEGV|Event_queue::get_top_for_execution_if_time|Event_scheduler::run|event_scheduler_thread|start_thread                                                                    ## DBG |MDEV-24686
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|select_insert::send_ok_packet|select_create::send_eof                      ## DBG MDEV-24672
 SIGABRT|ut_dbg_assertion_failed|lock_wait_table_reserve_slot|lock_wait_suspend_thread|row_mysql_handle_errors                                                                  ## OPT MDEV-24671
 SIGABRT|safe_mutex_unlock|inline_mysql_mutex_unlock|change_password|set_var_password::update                                                                                   ## DBG MDEV-24668
@@ -289,7 +294,10 @@ trx_id > 0 || (flags & BTR_KEEP_SYS_FLAG)|SIGABRT|btr_cur_optimistic_update|row_
 length == pack_length()|SIGABRT|Field_inet6::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                                   ## DBG |MDEV-22256
 length == pack_length()|SIGABRT|Field_datetime_with_dec::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                       ## DBG |MDEV-22256
 length == pack_length()|SIGABRT|Field_timestamp_with_dec::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                      ## DBG |MDEV-22256
-id|SIGABRT|trx_write_trx_id|row_ins_step|row_insert_for_mysql|ha_innobase::write_row                                                                                           ## DBG MDEV-22255
+id|SIGABRT|trx_write_trx_id|row_ins_step|row_insert_for_mysql|ha_innobase::write_row                                                                                           ## DBG |MDEV-22255
+id|SIGABRT|trx_write_trx_id|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                                             ## DBG |MDEV-22255
+id > 0|SIGABRT|trx_write_trx_id|row_ins_step|row_insert_for_mysql|ha_innobase::write_row                                                                                       ## DBG |MDEV-22255
+val > 0|SIGABRT|row_upd_index_entry_sys_field|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                           ## DBG |MDEV-22255
 SIGSEGV|Charset::swap|String::swap|Item_func_json_arrayagg::val_str|Item::str_result                                                                                           ## OPT |MDEV-22236
 SIGSEGV|Charset::swap|String::swap|Item_func_json_arrayagg::val_str|Type_handler::Item_send_str                                                                                ## OPT |MDEV-22236
 SIGABRT|ib::fatal_or_error::~fatal_or_error|ut_allocator<unsigned char, true>::allocate|buf_pool_t::create|srv_start                                                           ## OPT MDEV-22219
@@ -464,6 +472,7 @@ thd->mdl_context.is_lock_owner(MDL_key::TABLE, share->db.str, share->table_name.
 
 ###### FIXED BUGS ######
 # Assert: No parsable frames? ## This is seen for bugs which terminate the sever before a core can be written, like stack smashing. Current related bugs in progress: MDEV-22258  
+#m_prebuilt->trx == thd_to_trx(m_user_thd)|SIGABRT|ha_innobase::is_read_only|ha_innobase::check_if_supported_inplace_alter|mysql_alter_table|Sql_cmd_alter_table::execute ## Fixed ## DBG MDEV-24503
 # SIGSEGV|sf_malloc_usable_size|my_free|delete_dynamic|my_hash_free                                                                                                   ## Fixed ## DBG MDEV-23534
 # SIGSEGV|my_free|delete_dynamic|Rpl_filter::set_wild_ignore_table|Sys_var_rpl_filter::set_filter_value                                                               ## Fixed ## OPT MDEV-22317
 # 0|SIGABRT|Item_func_json_objectagg::reset_field|init_tmptable_sum_functions|end_update|AGGR_OP::put_record                                                          ## Fixed ## DBG MDEV-23029

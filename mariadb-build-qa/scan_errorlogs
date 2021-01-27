@@ -1,10 +1,17 @@
 #!/bin/bash
 SCAN="${1}"
 if [ -z "${SCAN}" ]; then
-  echo "No scan string specified, will scan error logs for most prevelant corruptions and issues:"
+  echo "No scan string specified, will scan error logs for most predominant corruptions and issues:"
   SCAN="PHYSICAL RECORD|got error.*when reading table|got error.*from storage engine"
-  echo "${SCAN}"
 fi
+echo "Scanning for: ${SCAN}"
 
-grep --binary-files=text -i "${SCAN}" */*/log/master.err | grep -o '^.*err' | sort -u | sed 's|^|wc -l |;s|log/master.err|*_out|' | xargs -I{} bash -c "{} 2>&1" | sed "s|^wc: '||;s|': No such file or directory| : No _out files found, attempt reducer run|;s|_out$|_out << Analyze!|"
+COUNT_ERR="$(ls */*/log/master.err 2>/dev/null | wc -l)"
+if [ ${COUNT_ERR} -eq 0 ]; then
+  echo "No */*/log/master.err files found!"
+  exit 1
+else
+  echo "Found ${COUNT_ERR} */*/log/master.err files. Results:"
+  grep --binary-files=text -i "${SCAN}" */*/log/master.err | grep -o '^.*err' | sort -u | sed 's|^|wc -l |;s|log/master.err|*_out|' | xargs -I{} bash -c "{} 2>&1" | sed "s|^wc: '||;s|': No such file or directory| : No _out files found, attempt reducer run|;s|_out$|_out << Analyze!|"
+fi
 

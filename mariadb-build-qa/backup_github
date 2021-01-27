@@ -43,6 +43,7 @@ cp t_all ${TARGET}
 cp all_all ${TARGET}
 cp sge_all ${TARGET}
 cp clean_all ${TARGET}
+cp reducer_live ${TARGET}
 cp multi_sr_all ${TARGET}
 cp multi_sr_leftover ${TARGET}
 cp gen_newbug_reducers ${TARGET}

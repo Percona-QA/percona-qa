@@ -1,0 +1,35 @@
+#!/bin/bash
+set +H
+if [ ! -z "${1}" ]; then
+  if [ "$(echo "${1}" | grep -o '[0-9]')" == "${1}" ]; then
+    echo "== Monitoring /dev/shm/${1}/subreducer/*/MYBUG.FOUND..."
+    while true; do cat /dev/shm/${1}/subreducer/*/MYBUG.FOUND 2>/dev/null | grep -v 'no core'; done
+  else
+    echo "== Scanning /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND for: ${1}"
+    grep --binary-files=text -Fi "${1}" /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND | sed 's|MYBUG.FOUND:|MYBUG.FOUND:\n  |' | sed 's|^|   |' 
+    echo "== And these come from the following reducers:"
+    grep --binary-files=text -Fi "${1}" /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND | sed 's|subreducer.*|reducer.log|' | xargs -I{} grep --binary-files=text 'Init. Reducer:' "{}" | sed 's|.* ||' | sort -u | sed 's|^|   |'
+    echo "== And those reducers are reducing towards:"
+    grep --binary-files=text -Fi "${1}" /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND | sed 's|subreducer.*|reducer.log|' | xargs -I{} grep --binary-files=text 'Init. Reducer:' "{}" | sed 's|.* ||' | sort -u | xargs -I{} grep --binary-files=text '   TEXT=' "{}" | sed "s|TEXT=[\"']||;s|[\"']$||" 
+    if [ -d /data/NEWBUGS ]; then
+      CMD="$(grep --binary-files=text -Fi "${1}" /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND | sed 's|subreducer.*|reducer.log|' | xargs -I{} grep --binary-files=text 'Init. Reducer:' "{}" | sed 's|.* ||' | sort -u | xargs -I{} grep --binary-files=text '   TEXT=' "{}" | sed "s|TEXT=[\"']||;s|[\"']$||" | sed 's|^[ ]\+||' | xargs -I{} echo "grep --binary-files=text -Fi '{}' /data/NEWBUGS/*.string")" 
+      COUNT="$(eval ${CMD} 2>/dev/null | wc -l)"
+      echo "== And there are currently ${COUNT} testcases with reducers for these in /data/NEWBUGS. Command to locate them is:"
+      echo "${CMD}" | sed 's|^|   |'
+      CMD="$(grep --binary-files=text -Fi "${1}" /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND | sed 's|.*MYBUG.FOUND:||' | sort -u | xargs -I{} echo "grep --binary-files=text -Fi '{}' /data/NEWBUGS/*.string")"
+      COUNT="$(eval ${CMD} 2>/dev/null | wc -l)"
+      echo "== And there are currently ${COUNT} testcases with reducers for the search string in /data/NEWBUGS. Command to locate them is:"
+      echo "${CMD}" | sed 's|^|   |'
+      echo "== To find out the testcase lenghts for these, use:"
+      echo "   ${CMD} | sed 's|:.*||;s|\.string|.sql|;s|^|wc -l |' | xargs -I{} bash -c \"{}\""
+    fi
+  fi
+else
+  while true; do
+    echo "== Monitoring /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND..."
+    clear
+    cat /dev/shm/[1-3]*/subreducer/*/MYBUG.FOUND 2>/dev/null | grep -v 'no core' | sort -u | cat -b | sed 's|^[ \t]\+||;s|\t|  |'
+    sleep 3
+  done
+fi
+exit 0

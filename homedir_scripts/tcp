@@ -1,7 +1,10 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
-# This script prettifies SQL code specifically for testcases. 
+# This script prettifies SQL code towards uppercase, and is made as an aid for testcase handling.
 # It may work less well for SQL containing actual data, as SQL idioms like 'when' are changed to 'WHEN' without regards for wheter such word appears inside a text string or as a SQL idiom
+
+echo 'TIP: ~/tcp is beta quality. Watch out for: ERROR 1064 (42000): You have an error in your SQL syntax during SQL replay. Even a small error like "COUNT(" vs "COUNT (" can make a testcase non-reproducible. There are also other shortcomings to this aid-tool, for example data text becoming uppercase which may affect reprodicibilty). For every error you find, please improve ~/tcp handling of the same. A common issue is the space in the "COUNT (" example, and such cases are handled near the end of the ~/tcp script! If your ~/tcp parsed testcase does not immediately work, try the original reducer-produced unparsed testcase! Thank you'
+echo ''
 
 OPTIONS="$(grep -i '^. mysqld options required for replay' "${1}" | head -n1 | sed "s|. mysqld options required for replay:[ \t]\+..sql_mode=[ \t]*$|SET sql_mode='';|")"
 set +H
@@ -25,8 +28,11 @@ cat "${1}" | tr -d '`' | \
   sed 's|hour|HOUR|gi' | \
   sed 's|begin|BEGIN|gi' | \
   sed 's|end|END|gi' | \
+  sed 's|ends|ENDS|gi' | \
   sed 's|then|THEN|gi' | \
   sed 's|add|ADD|gi' | \
+  sed 's|event|EVENT|gi' | \
+  sed 's|procedure|PROCEDURE|gi' | \
   sed 's|sequence|SEQUENCE|gi' | \
   sed 's|if exists|IF EXISTS|gi' | \
   sed 's|help|HELP|gi' | \
@@ -44,6 +50,7 @@ cat "${1}" | tr -d '`' | \
   sed 's|first|FIRST|gi' | \
   sed 's|last|LAST|gi' | \
   sed 's|xa|XA|gi' | \
+  sed 's|shutdown|SHUTDOWN|gi' | \
   sed 's|elt|ELT|gi' | \
   sed 's|trim|TRIM|gi' | \
   sed 's|case|CASE|gi' | \
@@ -217,10 +224,17 @@ cat "${1}" | tr -d '`' | \
   sed 's|substring_index[ ]*(|SUBSTRING_INDEX(|gi' | \
   sed 's|cast[ ]*(|CAST(|gi' | \
   sed 's|space[ ]*(|SPACE(|gi' | \
+  sed 's|now[ ]*(|NOW(|gi' | \
   sed 's|sum[ ]*(|SUM(|gi' | \
   sed 's|min[ ]*(|MIN(|gi' | \
   sed 's|max[ ]*(|MAX(|gi' | \
+  sed 's|date_add[ ]*(|DATE_ADD(|gi' | \
+  sed 's|year_month|YEAR_MONTH|gi' | \
+  sed 's|count[ ]*(|COUNT(|gi' | \
+  sed 's|values[ ]*(|VALUES(|gi' | \
   sed 's|transforms|transforms|gi' | \
+  sed 's|test\([^ ]*\)|test\L\1|gi' | \
+  sed 's|0x\([0-9A-Fa-f]\)|0x\1|gi' | \
   sed 's| = |=|gi'
 
 # Templates for copy/paste
