@@ -17,6 +17,10 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS ######
+thd->transaction->stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                    ## DBG |MDEV-24706
+thd->transaction.stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG |MDEV-24706
+thd->transaction->stmt.is_empty()|SIGABRT|trans_check|trans_rollback|THD::cleanup|unlink_thd                                                                                   ## DBG |MDEV-24706
+thd->transaction.stmt.is_empty()|SIGABRT|trans_check|trans_rollback|THD::cleanup|unlink_thd                                                                                    ## DBG |MDEV-24706
 SIGSEGV|Event_queue::drop_matching_events|Event_queue::drop_schema_events|Events::drop_schema_events|mysql_rm_db_internal                                                      ## OPT |MDEV-24686
 SIGSEGV|my_scan_weight_utf8_general_ci|my_strnncollsp_utf8_general_ci|sortcmp_lex_string|event_basic_identifier_equal                                                          ## DBG |MDEV-24686
 SIGSEGV|my_scan_weight_utf8mb3_general_ci|my_strnncollsp_utf8mb3_general_ci|charset_info_st::strnncollsp|sortcmp_lex_string                                                    ## DBG |MDEV-24686
