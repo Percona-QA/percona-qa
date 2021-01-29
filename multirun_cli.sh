@@ -3,7 +3,7 @@
 # Updated by Roel Van de Paar, MariaDB
 
 RND_DELAY_FUNCTION=0     # If set to 1, insert random delays after starting a new repetition in a thread. This may help to decrease locking issues.
-RND_REPLAY_ORDER=0       # If set to 1, the tool will shuffle the input SQL in various ways
+RND_REPLAY_ORDER=1       # If set to 1, the tool will shuffle the input SQL in various ways
 REPORT_END_THREAD=0      # If set to 1, report the outcome of ended threads (slows things down considerably)
 REPORT_THREADS=0         # If set to 1, report the outcome of ongoing threads (slows things down considerably)
 

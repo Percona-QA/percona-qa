@@ -17,6 +17,8 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
 ###### CURRENT BUGS ######
+thr->graph->trx->id == trx_read_trx_id( static_cast<const byte*>( trx_id->data)) || static_cast<ins_node_t*>( thr->run_node)->bulk_insert|SIGABRT|btr_cur_optimistic_insert|row_ins_clust_index_entry_low|row_ins_clust_index_entry|row_ins_index_entry  ## DBG MDEV-24716
+!node->table->skip_alter_undo|SIGABRT|row_upd_clust_rec|row_upd_clust_step|row_upd|row_upd_step                                                                                ## DBG MDEV-24715
 thd->transaction->stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                    ## DBG |MDEV-24706
 thd->transaction.stmt.is_empty() || thd->in_sub_stmt|SIGABRT|mysql_execute_command|mysql_parse|dispatch_command|do_command                                                     ## DBG |MDEV-24706
 thd->transaction->stmt.is_empty()|SIGABRT|trans_check|trans_rollback|THD::cleanup|unlink_thd                                                                                   ## DBG |MDEV-24706
@@ -190,7 +192,8 @@ report_json_error_ex|Item_func_json_merge_patch::val_str|Type_handler::Item_send
 ! thd->in_sub_stmt|SIGABRT|mysql_execute_command|sp_instr_stmt::exec_core|sp_lex_keeper::reset_lex_and_exec_core|sp_instr_stmt::execute                                        ## DBG MDEV-22853
 SIGSEGV|sortlength|filesort|create_sort_index|st_join_table::sort_table                                                                                                        ## OPT |MDEV-22852
 pos->field != __null || pos->item != __null|SIGABRT|Filesort::make_sortorder|filesort|create_sort_index|st_join_table::sort_table                                              ## DBG |MDEV-22852
-trx_is_registered_for_2pc(trx)|SIGABRT|innobase_xa_prepare|prepare_or_error|ha_commit_trans|trans_commit_implicit                                                              ## DBG MDEV-22848
+trx_is_registered_for_2pc(trx)|SIGABRT|innobase_xa_prepare|prepare_or_error|ha_commit_trans|trans_commit_implicit                                                              ## DBG |MDEV-22848
+trx_is_registered_for_2pc(trx)|SIGABRT|innobase_savepoint|ha_savepoint|trans_savepoint|mysql_execute_command                                                                   ## DBG |MDEV-22848
 SIGSEGV|_ma_reset_history|_ma_trnman_end_trans_hook|trnman_end_trn|ma_commit                                                                                                   ## OPT MDEV-22829
 SIGSEGV|set_field_to_null_with_conversions|Item::save_in_field|Item_result_field::save_in_result_field|copy_sum_funcs                                                          ## OPT |MDEV-22814
 0|SIGABRT|Item_sum_hybrid_simple::create_tmp_field|Item_sum::create_tmp_field_ex|create_tmp_field|Create_tmp_table::add_fields                                                 ## DBG |MDEV-22814
@@ -293,13 +296,14 @@ xid_seqno > wsrep_seqno|SIGABRT|trx_rseg_update_wsrep_checkpoint|trx_rseg_update
 0|SIGABRT|Item_func_div::int_op|Item_func_hybrid_field_type::val_int_from_int_op|Type_handler_int_result::Item_func_hybrid_field_type_val_int|Item_func_hybrid_field_type::val_int             ## DBG |MDEV-22268
 length == Field_timef::pack_length()|SIGABRT|Field_timef::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                      ## DBG MDEV-22267
 m_status == DA_ERROR|SIGABRT|Diagnostics_area::sql_errno|fill_schema_table_by_open|get_all_tables|get_schema_tables_result                                                     ## DBG MDEV-22266
-id|SIGABRT|trx_write_trx_id|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                                             ## DBG |MDEV-22257
-trx_id > 0 || (flags & BTR_KEEP_SYS_FLAG)|SIGABRT|btr_cur_optimistic_update|row_upd_clust_rec|row_upd_clust_step|row_upd                                                       ## DBG |MDEV-22257
 length == pack_length()|SIGABRT|Field_inet6::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                                   ## DBG |MDEV-22256
 length == pack_length()|SIGABRT|Field_datetime_with_dec::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                       ## DBG |MDEV-22256
 length == pack_length()|SIGABRT|Field_timestamp_with_dec::sort_string|Field::make_sort_key_part|make_sortkey|make_sortkey                                                      ## DBG |MDEV-22256
+trx_id > 0 || (flags & BTR_KEEP_SYS_FLAG)|SIGABRT|btr_cur_optimistic_update|row_upd_clust_rec|row_upd_clust_step|row_upd                                                       ## DBG |MDEV-22257
+id|SIGABRT|trx_write_trx_id|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                                             ## DBG |MDEV-22257/5?
+id|SIGABRT|trx_write_trx_id|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                                             ## DBG |MDEV-22255/7?
 id|SIGABRT|trx_write_trx_id|row_ins_step|row_insert_for_mysql|ha_innobase::write_row                                                                                           ## DBG |MDEV-22255
-id|SIGABRT|trx_write_trx_id|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                                             ## DBG |MDEV-22255
+thr_get_trx(thr)->id || index->table->no_rollback()|SIGABRT|row_ins_index_entry|row_ins_index_entry_step|row_ins|row_ins_step                                                  ## DBG |MDEV-22255
 id > 0|SIGABRT|trx_write_trx_id|row_ins_step|row_insert_for_mysql|ha_innobase::write_row                                                                                       ## DBG |MDEV-22255
 val > 0|SIGABRT|row_upd_index_entry_sys_field|row_upd_clust_rec_by_insert|row_upd_clust_step|row_upd                                                                           ## DBG |MDEV-22255
 SIGSEGV|Charset::swap|String::swap|Item_func_json_arrayagg::val_str|Item::str_result                                                                                           ## OPT |MDEV-22236
