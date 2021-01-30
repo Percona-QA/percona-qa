@@ -337,8 +337,8 @@ echo "else" >> repl_setup
 echo "  chmod +x  slavenode_cl stop_repl" >> repl_setup
 echo "fi" >> repl_setup
 
-
-echo "ps -ef | grep \"\$(whoami)\" | grep ${PORT} | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null" > kill
+echo "set +H" > kill
+echo "ps -ef | grep \"\$(whoami)\" | grep \"\${PWD}/log/master.err\" | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null" >> kill
 echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
 echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
@@ -362,6 +362,7 @@ echo 'echo "You may now want to: mv out.sql in.sql and then start ~/b which will
 echo "#!/bin/bash" > multirun
 echo "if [ ! -r ./in.sql ]; then echo 'Missing ./in.sql - please create it!'; exit 1; fi" >> multirun
 echo "if [ ! -r ./all_no_cl ]; then echo 'Missing ./all_no_cl - perhaps run ~/start or ~/mariadb-qa/startup.sh again?'; exit 1; fi" >> multirun
+echo "echo 'Use: --max_connections=10000 as an additional option to multirun if you want to run with more than 255 connections!"
 echo "if [ \"\$(grep -o 'DROP DATABASE test' ./in.sql)\" == \"\" -o \"\$(grep -o 'CREATE DATABASE test' ./in.sql)\" == \"\" -o \"\$(grep -o 'USE test' ./in.sql)\" == \"\" ]; then" >> multirun
 echo "  echo \"Warning: 'DROP/CREATE/USE DATABASE test;' queries NOT all present in in.sql, which may negatively affect issue reproducibilitiy when using multiple executions of the same code (due to pre-exisiting server states)! Consider adding:\"" >> multirun
 echo "  echo '--------------------'" >> multirun

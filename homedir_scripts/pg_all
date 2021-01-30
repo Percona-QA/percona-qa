@@ -1,2 +1,6 @@
 #!/bin/bash
-ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] | xargs -I{} echo "cd {}; ~/pg & cd - 2>&1 >dev/null" | xargs -I{} bash -c "{}"
+# This script starts ~/pg (i.e. pquery-go-expert.sh) against all worker dirs in the current dir
+# Note that this can cause substantial system load (mainly disk, cpu), depending on the number of workdirs & trials
+
+PWDIR="${PWD}"
+ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] | xargs -I{} echo "cd ${PWDIR}{}; ~/pg" | xargs -I{} bash -c "{}"

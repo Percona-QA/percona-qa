@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Roel Van de Paar, MariaDB
 
-# The ./kill script ensures the correct PID is selected (via random PORT= assignment)
+# The ./kill script ensures the correct server datadir is selected by checking for '${PWD}/log/master.err' in the command line. Thus, mysqld's started by reducer.sh, pquery-run.sh and other scripts will not be affected as they use another location for the error log!
 
 GENDIRS=gendirs.sh
 if [ ! -r ./${GENDIRS} ]; then 
