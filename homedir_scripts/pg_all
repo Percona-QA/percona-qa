@@ -1,2 +1,2 @@
 #!/bin/bash
-ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] | xargs -I{} echo "cd {}; ~/pg; cd - 2>&1 >dev/null" | xargs -I{} bash -c "{}"
+ls --color=never -d [0-9][0-9][0-9][0-9][0-9][0-9] | xargs -I{} echo "cd {}; ~/pg & cd - 2>&1 >dev/null" | xargs -I{} bash -c "{}"
