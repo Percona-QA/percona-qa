@@ -58,6 +58,7 @@ cp ooo ${TARGET}
 cp p ${TARGET}
 cp p56 ${TARGET}
 cp pg ${TARGET}
+cp pg_all ${TARGET}
 cp pge ${TARGET}
 cp pr ${TARGET}
 cp prs ${TARGET}

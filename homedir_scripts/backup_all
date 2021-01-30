@@ -1,3 +1,4 @@
+#!/bin/bash
 SCRIPT_PWD=$(cd "`dirname $0`" && pwd)
 cd ${SCRIPT_PWD}
 ./backup_github
