@@ -16,6 +16,11 @@ STACK_SMASHING|SIGABRT|_Z29fill_schema_schema_privilegesP3THDP10TABLE_LISTP4Item
 # SIGSEGV|malloc_size_and_flag|my_free|PROFILING::finish_current_query_impl|PROFILING::finish_current_query                                                                    ## OPT MDEV-23657
 #index->table->is_instant()|SIGABRT|btr_cur_upd_rec_in_place|btr_cur_update_in_place|btr_cur_optimistic_update|row_upd_clust_rec                                               ## OPT |MDEV-22714* NOW 23801
 
+##### DISABLED FILTERS DUE TO VERY GENERIC/NON-SPECIFIC DEBUG ASSERTS ######
+#(longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|maria_create|ha_maria::create                   ## DBG |MDEV-23222
+#(longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|ma_crypt_post_write_hook|write_page             ## OPT |MDEV-18496*
+#(longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|THD::set_db|mysql_change_db_impl                ## DBG |MDEV-24749
+
 ###### CURRENT BUGS ######
 thr->graph->trx->id == trx_read_trx_id( static_cast<const byte*>( trx_id->data)) || static_cast<ins_node_t*>( thr->run_node)->bulk_insert|SIGABRT|btr_cur_optimistic_insert|row_ins_clust_index_entry_low|row_ins_clust_index_entry|row_ins_index_entry  ## DBG MDEV-24716
 !node->table->skip_alter_undo|SIGABRT|row_upd_clust_rec|row_upd_clust_step|row_upd|row_upd_step                                                                                ## DBG MDEV-24715
@@ -138,7 +143,6 @@ SIGABRT|ut_dbg_assertion_failed|SysTablespace::create_file|SysTablespace::open_o
 !srv_read_only_mode || m_ignore_read_only|SIGABRT|SysTablespace::create_file|SysTablespace::open_or_create|srv_start|innodb_init                                               ## DBG |MDEV-23267
 SIGSEGV|Query_cache::unlink_table|Query_cache::register_all_tables|Query_cache::store_query|execute_sqlcom_select                                                              ## DBG MDEV-23256
 inited == RND|SIGABRT|handler::ha_rnd_next|select_unit_ext::send_eof|do_select|JOIN::exec_inner                                                                                ## DBG MDEV-23226
-(longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|maria_create|ha_maria::create                    ## DBG |MDEV-23222
 SIGSEGV|maria_status|ha_maria::info|free_tmp_table|Create_tmp_table::cleanup_on_failure                                                                                        ## OPT |MDEV-23222
 SIGSEGV|free () from|my_free|maria_create|ha_maria::create                                                                                                                     ## OPT |MDEV-23222
 SIGSEGV|tcache_get|__GI___libc_malloc|ut_allocator<unsigned char, true>::allocate|sel_col_prefetch_buf_alloc                                                                   ## OPT |MDEV-23222
@@ -368,7 +372,6 @@ table_list->table|SIGABRT|find_field_in_table_ref|find_field_in_tables|Item_fiel
 !(offset < ((7 + 1 + 1 + 2 + 1) + (share)->crypt_page_header_space))|SIGABRT|_ma_scan_block_record|sort_get_next_record|sort_key_read|find_all_keys                            ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|Sql_cmd_truncate_table::execute|mysql_execute_command                      ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_load|mysql_execute_command                                           ## DBG |MDEV-18496
-(longlong) thd->status_var.local_memory_used >= 0 || !debug_assert_on_not_freed_memory|SIGABRT|my_malloc_size_cb_func|my_free|ma_crypt_post_write_hook|write_page              ## OPT |MDEV-18496*
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|drop_routine|mysql_execute_command                                         ## DBG |MDEV-18496
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|simple_rename_or_index_change|mysql_alter_table                            ## OPT |MDEV-18496*
 !is_set() || (m_status == DA_OK_BULK && is_bulk_op())|SIGABRT|Diagnostics_area::set_ok_status|my_ok|mysql_rm_table|mysql_execute_command                                       ## OPT |MDEV-18496*

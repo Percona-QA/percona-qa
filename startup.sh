@@ -97,8 +97,8 @@ else
 fi
 
 # Setup scritps
-rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl cl_noprompt cl_noprompt_nobinary test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb fixin stack wipe_group_replication multirun multirun_pquery
-BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_errorlog.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | multirun_pquery | loopin | gdb | fixin | stack | myrocks_tokudb_init"
+rm -f start start_group_replication start_valgrind start_gypsy repl_setup stop setup cl cl_noprompt cl_noprompt_nobinary test init wipe all all_no_cl sysbench_prepare sysbench_run sysbench_measure myrocks_tokudb_init pmm_os_agent pmm_mysql_agent stop_group_replication *cl gdb fixin stack wipe_group_replication multirun multirun_pquery reducer_*
+BASIC_SCRIPTS="start | start_valgrind | start_gypsy | repl_setup | stop | kill | setup | cl | test | init | wipe | sqlmode | binlog | all | all_stbe | all_no_cl | reducer_new_text_string.sh | reducer_new_text_string_pquery.sh | reducer_errorlog.sh | reducer_errorlog_pquery.sh | reducer_fireworks.sh | sysbench_prepare | sysbench_run | sysbench_measure | multirun | multirun_pquery | loopin | gdb | fixin | stack | myrocks_tokudb_init"
 GRP_RPL_SCRIPTS="start_group_replication (and stop_group_replication is created dynamically on group replication startup)"
 if [[ $GRP_RPL -eq 1 ]];then
   echo "Adding scripts: ${BASIC_SCRIPTS} | ${GRP_RPL_SCRIPTS}"
@@ -246,23 +246,39 @@ echo 'MYEXTRA_OPT="$*"' > start
 echo 'MYEXTRA=" --no-defaults "' >> start
 echo '#MYEXTRA=" --no-defaults --sql_mode="' >> start
 #echo '#MYEXTRA=" --no-defaults --log-bin --server-id=0 --plugin-load=TokuDB=ha_tokudb.so --tokudb-check-jemalloc=0 --plugin-load-add=RocksDB=ha_rocksdb.so"    # --init-file=${SCRIPT_PWD}/plugins_57.sql --performance-schema --thread_handling=pool-of-threads"' >> start
-echo '#MYEXTRA=" --no-defaults --log-bin --server-id=0 --plugin-load-add=RocksDB=ha_rocksdb.so"    # --init-file=${SCRIPT_PWD}/plugins_57.sql --performance-schema --thread_handling=pool-of-threads"' >> start
+#echo '#MYEXTRA=" --no-defaults --log-bin --server-id=0 --plugin-load-add=RocksDB=ha_rocksdb.so"    # --init-file=${SCRIPT_PWD}/plugins_57.sql --performance-schema --thread_handling=pool-of-threads"' >> start
 echo '#MYEXTRA=" --no-defaults --gtid_mode=ON --enforce_gtid_consistency=ON --log_slave_updates=ON --log_bin=binlog --binlog_format=ROW --master_info_repository=TABLE --relay_log_info_repository=TABLE"' >> start
-echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"  # For PMM" >> start
-echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB  # For fb-mysql only"' >> start
+echo "#MYEXTRA=\" --no-defaults --performance-schema --performance-schema-instrument='%=on'\"" >> start
+#echo '#MYEXTRA=" --no-defaults --default-tmp-storage-engine=MyISAM --rocksdb --skip-innodb --default-storage-engine=RocksDB  # For fb-mysql only"' >> start
 echo '#MYEXTRA=" --no-defaults --event-scheduler=ON --maximum-bulk_insert_buffer_size=1M --maximum-join_buffer_size=1M --maximum-max_heap_table_size=1M --maximum-max_join_size=1M --maximum-myisam_max_sort_file_size=1M --maximum-myisam_mmap_size=1M --maximum-myisam_sort_buffer_size=1M --maximum-optimizer_trace_max_mem_size=1M --maximum-preload_buffer_size=1M --maximum-query_alloc_block_size=1M --maximum-query_prealloc_size=1M --maximum-range_alloc_block_size=1M --maximum-read_buffer_size=1M --maximum-read_rnd_buffer_size=1M --maximum-sort_buffer_size=1M --maximum-tmp_table_size=1M --maximum-transaction_alloc_block_size=1M --maximum-transaction_prealloc_size=1M --log-output=none --sql_mode=ONLY_FULL_GROUP_BY"' >> start
 add_san_options start
 if [ "${USE_JE}" -eq 1 ]; then
   echo $JE1 >> start; echo $JE2 >> start; echo $JE3 >> start; echo $JE4 >> start; echo $JE5 >> start; echo $JE6 >> start; echo $JE7 >> start;
 fi
-cp start start_valgrind  # Idem for Valgrind
-cp start start_gypsy     # Idem for gypsy
+cp start start_valgrind  # Idem setup for Valgrind
+cp start start_gypsy     # Idem setup for gypsy
+cp start start_rr        # Idem setup for rr
 echo "$BIN  \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} ${ROCKSDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err --server-id=100 \${MYEXTRA_OPT}  2>&1 &" >> start
 echo "for X in \$(seq 0 70); do if ${PWD}/bin/mysqladmin ping -uroot -S${PWD}/socket.sock > /dev/null 2>&1; then break; fi; sleep 0.25; done" >> start
 if [ "${VERSION_INFO}" != "5.1" -a "${VERSION_INFO}" != "5.5" -a "${VERSION_INFO}" != "5.6" ]; then
   echo "${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test;'" >> start
 fi
+echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
+echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
+echo "export _RR_TRACE_DIR=\"${PWD}/rr\"" >> start_rr
+echo "if [ -d \"\${_RR_TRACE_DIR}\" ]; then  # Security measure to avoid incorrect mass-rm" >> start_rr
+echo "  if [ \"\${_RR_TRACE_DIR}\" == \"\${PWD}/rr\" ]; then  # Security measure to avoid incorrect mass-rm" >> start_rr
+echo "    rm -Rf \"\${_RR_TRACE_DIR}\"" >> start_rr 
+echo "  fi" >> start_rr 
+echo "fi" >> start_rr 
+echo "mkdir -p \"${_RR_TRACE_DIR}\"" >> start_rr 
+echo "/usr/bin/rr record --chaos $BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_rr
+echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
+tail -n1 start >> start_valgrind
+tail -n1 start >> start_gypsy
+tail -n1 start >> start_rr
 
+# -- Replication setup
 echo '#!/usr/bin/env bash' > repl_setup
 echo "REPL_TYPE=\$1" >> repl_setup
 echo "if [[ \"\$REPL_TYPE\" = \"MSR\" ]]; then" >> repl_setup
@@ -339,11 +355,6 @@ echo "fi" >> repl_setup
 
 echo "set +H" > kill
 echo "ps -ef | grep \"\$(whoami)\" | grep \"\${PWD}/log/master.err\" | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null" >> kill
-echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
-echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
-echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
-tail -n1 start >> start_valgrind
-tail -n1 start >> start_gypsy
 echo "timeout -k90 -s9 90s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop  # 90 seconds to allow core dump to be written if needed (seems ~60 is the minimum for busy high-end severs)
 echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
@@ -481,11 +492,12 @@ echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.so
 
 # Add handy local reducers
 if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
-  # -------------------
+  # ------------------- ./reducer_new_text_string.sh creation
   cp ${SCRIPT_PWD}/reducer.sh ./reducer_new_text_string.sh
   sed -i 's|somebug|${2}|' ./reducer_new_text_string.sh
   sed -i 's|^\(MYEXTRA="[^"]\+\)"|\1 ${3}"|' ./reducer_new_text_string.sh
   sed -i 's|^MODE=4|MODE=3|' ./reducer_new_text_string.sh
+  sed -i 's|^MULTI_THREADS=[0-9]\+|MULTI_THREADS=13|' ./reducer_new_text_string.sh
   sed -i 's|^KNOWN_BUGS_LOC=[^#]\+|KNOWN_BUGS_LOC="/home/$(whoami)/mariadb-qa/known_bugs.strings"   |' ./reducer_new_text_string.sh
   sed -i 's|^FORCE_SKIPV=0|FORCE_SKIPV=1|' ./reducer_new_text_string.sh
   sed -i 's|^USE_NEW_TEXT_STRING=0|USE_NEW_TEXT_STRING=1|' ./reducer_new_text_string.sh
@@ -495,11 +507,17 @@ if [ -r ${SCRIPT_PWD}/reducer.sh ]; then
   sed -i 's|^TEXT_STRING_LOC=[^#]\+|TEXT_STRING_LOC="/home/$(whoami)/mariadb-qa/new_text_string.sh"   |' ./reducer_new_text_string.sh
   sed -i 's|^PQUERY_LOC=[^#]\+|PQUERY_LOC="/home/$(whoami)/mariadb-qa/pquery/pquery2-md"   |' ./reducer_new_text_string.sh
   sed -i 's|^SCAN_FOR_NEW_BUGS=0|SCAN_FOR_NEW_BUGS=1|' ./reducer_new_text_string.sh  # If not set already
-  # -------------------
+  # ------------------- ./reducer_errorlog.sh creation
   cp ./reducer_new_text_string.sh ./reducer_errorlog.sh
   sed -i 's|^USE_NEW_TEXT_STRING=1|USE_NEW_TEXT_STRING=0|' ./reducer_errorlog.sh
-  sed -i 's|^SCAN_FOR_NEW_BUGS=1|SCAN_FOR_NEW_BUGS=0|' ./reducer_errorlog.sh  # Not supported yet
-  # -------------------
+  sed -i 's|^SCAN_FOR_NEW_BUGS=1|SCAN_FOR_NEW_BUGS=0|' ./reducer_errorlog.sh  # SCAN_FOR_NEW_BUGS=1 Not supported yet when using USE_NEW_TEXT_STRING=0
+  # ------------------- ./reducer_errorlog_pquery.sh creation
+  cp ./reducer_errorlog.sh ./reducer_errorlog_pquery.sh
+  sed -i 's|^USE_PQUERY=0|USE_PQUERY=1|' ./reducer_errorlog_pquery.sh
+  # ------------------- ./reducer_new_text_string_pquery.sh creation
+  cp ./reducer_new_text_string.sh ./reducer_new_text_string_pquery.sh
+  sed -i 's|^USE_PQUERY=0|USE_PQUERY=1|' ./reducer_new_text_string_pquery.sh
+  # ------------------- ./reducer_fireworks.sh creation
   cp ./reducer_new_text_string.sh ./reducer_fireworks.sh
   sed -i 's|^FIREWORKS=0|FIREWORKS=1|' ./reducer_fireworks.sh
   sed -i 's|^NEW_BUGS_COPY_DIR=[^#]\+|NEW_BUGS_COPY_DIR="/data/FIREWORKS"   |' ./reducer_fireworks.sh
@@ -539,8 +557,10 @@ echo 'MYEXTRA_OPT="$*"' > all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
 echo "./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
+echo 'MYEXTRA_OPT="$*"' > all_rr
+echo "./kill >/dev/null 2>&1;./stop >/dev/null 2>&1;./kill >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start_rr \${MYEXTRA_OPT};./cl" >> all_rr
 if [ -r ${SCRIPT_PWD}/startup_scripts/multitest ]; then cp ${SCRIPT_PWD}/startup_scripts/multitest .; fi
-chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe sqlmode binlog all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb stack fixin loopin myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup multirun multirun_pquery 2>/dev/null
+chmod +x start start_valgrind start_gypsy start_rr stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe sqlmode binlog all all_stbe all_no_cl all_rr sysbench_prepare sysbench_run sysbench_measure gdb stack fixin loopin myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup multirun multirun_pquery reducer_* 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
 ./init

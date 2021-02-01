@@ -1,0 +1,5 @@
+#!/bin/bash
+set +H
+
+echo "Live instances (based on gendirs.sh list):"
+./gendirs.sh | xargs -I{} echo "$(echo "{}" | sed 's|$|/log/master.err|')" | xargs -I{} echo "ps -ef | grep '{}' | grep -v grep" | xargs -I{} bash -c "{}"
