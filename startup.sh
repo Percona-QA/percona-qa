@@ -271,7 +271,7 @@ echo "  if [ \"\${_RR_TRACE_DIR}\" == \"\${PWD}/rr\" ]; then  # Security measure
 echo "    rm -Rf \"\${_RR_TRACE_DIR}\"" >> start_rr 
 echo "  fi" >> start_rr 
 echo "fi" >> start_rr 
-echo "mkdir -p \"${_RR_TRACE_DIR}\"" >> start_rr 
+echo "mkdir -p \"\${_RR_TRACE_DIR}\"" >> start_rr 
 echo "/usr/bin/rr record --chaos $BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_rr
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
 tail -n1 start >> start_valgrind
@@ -441,7 +441,7 @@ echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < $
 echo 'MYEXTRA_OPT="$*"' > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
 #echo "rm -Rf ${PWD}/data.PREV; mv ${PWD}/data ${PWD}/data.PREV 2>/dev/null" >> wipe  # Removed to save disk space, changed to next line
-echo "rm -Rf ${PWD}/data" >> wipe
+echo "rm -Rf ${PWD}/data ${PWD}/rr" >> wipe
 if [ "${USE_JE}" -eq 1 ]; then
   echo $JE1 >> wipe; echo $JE2 >> wipe; echo $JE3 >> wipe; echo $JE4 >> wipe; echo $JE5 >> wipe; echo $JE6 >> wipe; echo $JE7 >> wipe;
 fi
