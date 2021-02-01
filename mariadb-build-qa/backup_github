@@ -91,13 +91,14 @@ cp use_old ${TARGET}
 cp report_opt ${TARGET}
 cp report_dbg ${TARGET}
 cp clean ${TARGET}
-cp results ${TARGET}
+#cp results ${TARGET}  # Done manually to avoid constantly updating repo with server-vs-server updates
 cp newbug_clean ${TARGET}
 cp allstrings ${TARGET}
 cp allstrings_merged ${TARGET}
 cp allstrings_new ${TARGET}
 cp semaphore ${TARGET}
 cp uniq_newbugs ${TARGET}
+cp whoislive ${TARGET}
 
 cd ${TARGET}
 git add *

@@ -180,7 +180,7 @@ if [ ${SAN_MODE} -eq 0 ]; then
     rm -f /tmp/${RANDF}.gdba
   else
     NOCORE=1
-    echo "THIS TESTCASE DID NOT CRASH ${SERVER_VERSION} (the version of the basedir in which you started this script), SO NO BACKTRACE IS SHOWN HERE. YOU CAN RE-EXECUTE THIS SCRIPT FROM ONE OF THE 'Bug confirmed present in' DIRECTORIES BELOW TO OBTAIN ONE, OR EXECUTE ./all_no_cl; ./test; ./gdb FROM WITHIN THAT DIRECTORY TO GET A BACKTRACE MANUALLY!"
+    echo "THIS TESTCASE DID NOT CRASH ${SERVER_VERSION} (the version of the basedir in which you started this script), SO NO BACKTRACE IS SHOWN HERE. YOU CAN RE-EXECUTE THIS SCRIPT FROM ONE OF THE 'Bug confirmed present in' DIRECTORIES BELOW TO OBTAIN ONE, OR EXECUTE ./all_no_cl; ./test; ./stack FROM WITHIN THAT DIRECTORY TO GET A BACKTRACE ETC. MANUALLY!"
   fi
 else
   echo "{noformat:title=${SERVER_VERSION} ${SOURCE_CODE_REV} ${BUILD_TYPE}}"
