@@ -91,7 +91,9 @@ flag_ready_check(){
 # Error log scanning & parsing
 FLAG_ASAN_IN_PROGRESS=0; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=0
 FLAG_ASAN_READY=0; FLAG_TSAN_READY=0; FLAG_UBSAN_READY=0
+LINE_COUNTER=0
 while IFS=$'\n' read LINE; do
+  LINE_COUNTER=$[ ${LINE_COUNTER} + 1 ]
   # Prevent current or future issues with tabs. Note: do not modify the next line as space based parsing exists below
   LINE="$(echo "${LINE}" | sed 's|\t| |g')"
   if [[ "${LINE}" == *"=ERROR:"* ]]; then  # ASAN Issue detected, and commencing
@@ -131,17 +133,55 @@ while IFS=$'\n' read LINE; do
     if [[ "${LINE}" == *" #3 0x"* ]]; then
       UBSAN_FRAME4="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
       FLAG_UBSAN_IN_PROGRESS=0  # UBSAN issues are herewith fully defined
+      FLAG_UBSAN_READY=1
     fi
      
       
   fi
+  if [ ${LINE_COUNTER} -eq ${ERROR_LOG_LINES} ]; then  # End of file reached, check for any final in-progress issues
+    flag_ready_check
+  fi
   if [ "${FLAG_UBSAN_READY}" -eq 1 ]; then
-    UNIQUE_ID="${UBSAN_FILE_PREPARSE}|${UBSAN_ERROR}"
-    if [ ! -z "${UBSAN_FILE_PREPARSE}
+    FLAG_UBSAN_STRING_COMMENCED=0
+    UNIQUE_ID=
+    if [ ! -z "${UBSAN_FILE_PREPARSE}" ]; then 
+      UNIQUE_ID="${UBSAN_FILE_PREPARSE}"
+      FLAG_UBSAN_STRING_COMMENCED=1
+    fi
+    if [ ! -z "${UBSAN_ERROR}" ]; then
+      if [ "${FLAG_UBSAN_STRING_COMMENCED}" -eq 1 ]; then
+        UNIQUE_ID="${UNIQUE_ID}|${UBSAN_ERROR}"
+      else
+        UNIQUE_ID="${UBSAN_ERROR}"
+        FLAG_UBSAN_STRING_COMMENCED=1
+      fi
+    fi
     if [ ! -z "${UBSAN_FRAME1}" ]; then 
-    echo "${UBSAN_FILE_PREPARSE}|${UBSAN_ERROR}"
-    echo "${UBSAN_FRAME1}"
+      if [ "${FLAG_UBSAN_STRING_COMMENCED}" -eq 1 ]; then
+        UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME1}"
+      else
+        UNIQUE_ID="${UBSAN_FRAME1}"
+        FLAG_UBSAN_STRING_COMMENCED=1
+      fi
+    else 
+      if [ -z "${UNIQUE_ID}" ]; then
+        echo "Assert: UBSAN UNIQUE_ID generation issue"
+        exit 1
+      fi
+    fi
+    if [ ! -z "${UBSAN_FRAME2}" ]; then
+      UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME2}" 
+    fi
+    if [ ! -z "${UBSAN_FRAME3}" ]; then
+      UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME3}" 
+    fi
+    if [ ! -z "${UBSAN_FRAME4}" ]; then
+      UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME4}" 
+    fi
+    echo "${UNIQUE_ID}"
     FLAG_UBSAN_READY=0
+    FLAG_UBSAN_STRING_COMMENCED=0
+    UNIQUE_ID=
   fi
 done < "${ERROR_LOG}"
 
