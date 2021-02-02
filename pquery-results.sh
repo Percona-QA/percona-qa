@@ -52,7 +52,7 @@ fi
 TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep --binary-files=text -o "==.*TRIAL.*==" | tail -n1 | sed 's|[^0-9]*||;s|[ \t=]||g')
 echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials done, $(ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l) remaining reducers)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
-if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
+if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then  # Normal non-Galera, non-GR run
   for STRING in $(grep --binary-files=text "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u); do
     MATCHING_TRIALS=()
     if grep -qi "^USE_NEW_TEXT_STRING=1" reducer*.sh; then  # New text string (i.e. no regex) mode
@@ -109,7 +109,7 @@ if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
       fi
     fi
   done
-else  # Normal (non-Galera or GR run)
+else  # Galera or GR run
   for STRING in $(grep --binary-files=text '   TEXT=' reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u); do
     MATCHING_TRIALS=()
     for TRIAL in $(grep ${NTS} -H --binary-files=text "${STRING}" reducer* 2>/dev/null | awk '{print $1}' | cut -d'-' -f1 | tr -d '[:alpha:]' | sort -un) ; do

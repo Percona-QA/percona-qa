@@ -271,7 +271,7 @@ echo "  if [ \"\${_RR_TRACE_DIR}\" == \"\${PWD}/rr\" ]; then  # Security measure
 echo "    rm -Rf \"\${_RR_TRACE_DIR}\"" >> start_rr 
 echo "  fi" >> start_rr 
 echo "fi" >> start_rr 
-echo "mkdir -p \"${_RR_TRACE_DIR}\"" >> start_rr 
+echo "mkdir -p \"\${_RR_TRACE_DIR}\"" >> start_rr 
 echo "/usr/bin/rr record --chaos $BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_rr
 echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
 tail -n1 start >> start_valgrind
@@ -353,8 +353,14 @@ echo "else" >> repl_setup
 echo "  chmod +x  slavenode_cl stop_repl" >> repl_setup
 echo "fi" >> repl_setup
 
-echo "set +H" > kill
-echo "ps -ef | grep \"\$(whoami)\" | grep \"\${PWD}/log/master.err\" | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null" >> kill
+# TODO: fix the line below somehow, and add binary-files=text for all greps. Also revert redirect to >> for second line
+#echo "set +H" > kill  # Fails with odd './kill: 1: set: Illegal option -H' when kill_all is used?  
+echo "ps -ef | grep \"\$(whoami)\" | grep \"\${PWD}/log/master.err\" | grep -v grep | awk '{print \$2}' | xargs kill -9 2>/dev/null" > kill
+echo " valgrind --suppressions=${PWD}/mysql-test/valgrind.supp --num-callers=40 --show-reachable=yes $BIN \${MYEXTRA} ${START_OPT} --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err >>${PWD}/log/master.err 2>&1 &" >> start_valgrind
+echo "$BIN \${MYEXTRA} ${START_OPT} --general_log=1 --general_log_file=${PWD}/general.log --basedir=${PWD} --tmpdir=${PWD}/data --datadir=${PWD}/data ${TOKUDB} --socket=${PWD}/socket.sock --port=$PORT --log-error=${PWD}/log/master.err 2>&1 &" >> start_gypsy
+echo "echo 'Server socket: ${PWD}/socket.sock with datadir: ${PWD}/data'" >> start
+tail -n1 start >> start_valgrind
+tail -n1 start >> start_gypsy
 echo "timeout -k90 -s9 90s ${PWD}/bin/mysqladmin -uroot -S${PWD}/socket.sock shutdown" > stop  # 90 seconds to allow core dump to be written if needed (seems ~60 is the minimum for busy high-end severs)
 echo "./kill >/dev/null 2>&1" >> stop
 echo "echo 'Server on socket ${PWD}/socket.sock with datadir ${PWD}/data halted'" >> stop
@@ -441,7 +447,7 @@ echo "${PWD}/bin/mysql -A -uroot -S${PWD}/socket.sock --force ${BINMODE}test < $
 echo 'MYEXTRA_OPT="$*"' > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
 #echo "rm -Rf ${PWD}/data.PREV; mv ${PWD}/data ${PWD}/data.PREV 2>/dev/null" >> wipe  # Removed to save disk space, changed to next line
-echo "rm -Rf ${PWD}/data" >> wipe
+echo "rm -Rf ${PWD}/data ${PWD}/rr" >> wipe
 if [ "${USE_JE}" -eq 1 ]; then
   echo $JE1 >> wipe; echo $JE2 >> wipe; echo $JE3 >> wipe; echo $JE4 >> wipe; echo $JE5 >> wipe; echo $JE6 >> wipe; echo $JE7 >> wipe;
 fi
