@@ -1,8 +1,12 @@
 #!/bin/bash
 #Created by Roel Van de Paar, MariaDB
-set +H
 
-# ${1}: First input, only option, point to mysqld error log or to basedir which contains ./log/master.err
+# This script generates a unique ID for all ASAN, TSAN and UBSAN errors seen in a mysqld error log
+# ${1}: First input, only option, point to mysqld error log directly, or to basedir which contains ./log/master.err
+#       If the option is not specified, the script will attempt looking in ${PWD}/log/master.err and ${PWD}/master.err
+
+set +H
+PROFILING=0  # Set to 1 to profile Bash to /tmp/bashstart.$$.log (slows down script by a factor of 10x)
 
 help_info(){
   echo "Usage:"
@@ -16,6 +20,13 @@ help_info(){
   echo "   ~/mariadb-qa/san_text_string.sh"
   echo "   Without any options, as this will automatically use \${PWD}/log/master.err"
 }
+
+# Profiling
+if [ "${PROFILING}" -eq 1 ]; then
+  PS4='+ $(date "+%s.%N")\011 '
+  exec 3>&2 2>/tmp/bashstart.$$.log
+  set -x
+fi
 
 # Variable and error log dir/file checking
 ERROR_LOG=
@@ -88,14 +99,25 @@ flag_ready_check(){
   fi
 }
 
+# Preflight check
+FLAG_ASAN_PRESENT=0; FLAG_TSAN_PRESENT=0; FLAG_UBSAN_PRESENT=0
+if grep -iq --binary-files=text "=ERROR:" "${ERROR_LOG}"; then
+  FLAG_ASAN_PRESENT=1
+fi
+if grep -iq --binary-files=text "ThreadSanitizer:" "${ERROR_LOG}"; then
+  FLAG_TSAN_PRESENT=1
+fi
+if grep -iq --binary-files=text "runtime error:" "${ERROR_LOG}"; then
+  FLAG_UBSAN_PRESENT=1
+fi
+
 # Error log scanning & parsing
 FLAG_ASAN_IN_PROGRESS=0; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=0
 FLAG_ASAN_READY=0; FLAG_TSAN_READY=0; FLAG_UBSAN_READY=0
+UBSAN_FRAME1=; UBSAN_FRAME2=; UBSAN_FRAME3=; UBSAN_FRAME4=
 LINE_COUNTER=0
 while IFS=$'\n' read LINE; do
   LINE_COUNTER=$[ ${LINE_COUNTER} + 1 ]
-  # Prevent current or future issues with tabs. Note: do not modify the next line as space based parsing exists below
-  LINE="$(echo "${LINE}" | sed 's|\t| |g')"
   if [[ "${LINE}" == *"=ERROR:"* ]]; then  # ASAN Issue detected, and commencing
     flag_ready_check
     FLAG_ASAN_IN_PROGRESS=1; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=0
@@ -110,79 +132,117 @@ while IFS=$'\n' read LINE; do
     
   fi
 
-  if [[ "${LINE}" == *"runtime error:"* ]]; then  # UBSAN Issue detected, and commencing
-    flag_ready_check
-    FLAG_ASAN_IN_PROGRESS=0; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=1
-    UBSAN_FRAME1=; UBSAN_FRAME2=; UBSAN_FRAME3=; UBSAN_FRAME4=
-    UBSAN_ERROR="$(echo "${LINE}" | sed 's|.*runtime error:|runtime error:|')"
-    UBSAN_FILE_PREPARSE="$(echo "${LINE}" | sed 's| runtime error:.*||;s|:[0-9]\+:[0-9]\+:[ ]*$||')" 
-    UBSAN_FILE_PREPARSE="$(echo "${UBSAN_FILE_PREPARSE}" | sed 's|.*/client/|client/|;s|.*/cmake/|cmake/|;s|.*/dbug/|dbug/|;s|.*/debian/|debian/|;s|.*/extra/|extra/|;s|.*/include/|include/|;s|.*/libmariadb/|libmariadb/|;s|.*/libmysqld/|libmysqld/|;s|.*/libservices/|libservices/|;s|.*/mysql-test/|mysql-test/|;s|.*/mysys/|mysys/|;s|.*/mysys_ssl/|mysys_ssl/|;s|.*/plugin/|plugin/|;s|.*/scripts/|scripts/|;s|.*/sql/|sql/|;s|.*/sql-bench/|sql-bench/|;s|.*/sql-common/|sql-common/|;s|.*/storage/|storage/|;s|.*/strings/|strings/|;s|.*/support-files/|support-files/|;s|.*/tests/|tests/|;s|.*/tpool/|tpool/|;s|.*/unittest/|unittest/|;s|.*/vio/|vio/|;s|.*/win/|win/|;s|.*/wsrep-lib/|wsrep-lib/|;s|.*/zlib/|zlib/|;s|.*/components/|components/|;s|.*/libbinlogevents/|libbinlogevents/|;s|.*/libbinlogstandalone/|libbinlogstandalone/|;s|.*/libmysql/|libmysql/|;s|.*/router/|router/|;s|.*/share/|share/|;s|.*/testclients/|testclients/|;s|.*/utilities/|utilities/|;s|.*/regex/|regex/|;')"  # Drop path prefix (build directory), leaving only relevant part for MD/MS
-    
+  # ------------- ASAN Issue check (if present) -------------
+  if [ ${FLAG_ASAN_PRESENT} -eq 1 ]; then
+    sleep 0
   fi
-  if [ "${FLAG_UBSAN_IN_PROGRESS}" -eq 1 ]; then
-    # Parse first 4 stack frames if discovered in current line
-    if [[ "${LINE}" == *" #0 0x"* ]]; then
-      UBSAN_FRAME1="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
-    fi
-    if [[ "${LINE}" == *" #1 0x"* ]]; then
-      UBSAN_FRAME2="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
-    fi
-    if [[ "${LINE}" == *" #2 0x"* ]]; then
-      UBSAN_FRAME3="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
-    fi
-    if [[ "${LINE}" == *" #3 0x"* ]]; then
-      UBSAN_FRAME4="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
-      FLAG_UBSAN_IN_PROGRESS=0  # UBSAN issues are herewith fully defined
-      FLAG_UBSAN_READY=1
-    fi
-     
-      
+  # ------------- TSAN Issue check (if present) -------------
+  if [ ${FLAG_TSAN_PRESENT} -eq 1 ]; then
+    sleep 0
   fi
+  # ------------- UBSAN Issue check (if present) -------------
+  if [ ${FLAG_UBSAN_PRESENT} -eq 1 ]; then
+    if [[ "${LINE}" == *"runtime error:"* ]]; then  # UBSAN Issue detected, and commencing
+      flag_ready_check
+      FLAG_ASAN_IN_PROGRESS=0; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=1
+      UBSAN_FRAME1=; UBSAN_FRAME2=; UBSAN_FRAME3=; UBSAN_FRAME4=
+      UBSAN_ERROR="$(echo "${LINE}" | sed 's|.*runtime error:|runtime error:|')"
+      UBSAN_FILE_PREPARSE="$(echo "${LINE}" | sed 's| runtime error:.*||;s|:[0-9]\+:[0-9]\+:[ ]*$||;s|.*/client/|client/|;s|.*/cmake/|cmake/|;s|.*/dbug/|dbug/|;s|.*/debian/|debian/|;s|.*/extra/|extra/|;s|.*/include/|include/|;s|.*/libmariadb/|libmariadb/|;s|.*/libmysqld/|libmysqld/|;s|.*/libservices/|libservices/|;s|.*/mysql-test/|mysql-test/|;s|.*/mysys/|mysys/|;s|.*/mysys_ssl/|mysys_ssl/|;s|.*/plugin/|plugin/|;s|.*/scripts/|scripts/|;s|.*/sql/|sql/|;s|.*/sql-bench/|sql-bench/|;s|.*/sql-common/|sql-common/|;s|.*/storage/|storage/|;s|.*/strings/|strings/|;s|.*/support-files/|support-files/|;s|.*/tests/|tests/|;s|.*/tpool/|tpool/|;s|.*/unittest/|unittest/|;s|.*/vio/|vio/|;s|.*/win/|win/|;s|.*/wsrep-lib/|wsrep-lib/|;s|.*/zlib/|zlib/|;s|.*/components/|components/|;s|.*/libbinlogevents/|libbinlogevents/|;s|.*/libbinlogstandalone/|libbinlogstandalone/|;s|.*/libmysql/|libmysql/|;s|.*/router/|router/|;s|.*/share/|share/|;s|.*/testclients/|testclients/|;s|.*/utilities/|utilities/|;s|.*/regex/|regex/|;')"  # Drop path prefix (build directory), leaving only relevant part for MD/MS
+    fi
+    if [ "${FLAG_UBSAN_IN_PROGRESS}" -eq 1 ]; then
+      # Parse first 4 stack frames if discovered in current line
+      if [[ "${LINE}" == *"#0 0x"* ]]; then
+        UBSAN_FRAME1="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
+      fi
+      if [[ "${LINE}" == *" #1 0x"* ]]; then
+        UBSAN_FRAME2="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
+      fi
+      if [[ "${LINE}" == *" #2 0x"* ]]; then
+        UBSAN_FRAME3="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
+      fi
+      if [[ "${LINE}" == *" #3 0x"* ]]; then
+        UBSAN_FRAME4="$(echo "${LINE}" | sed 's|^[^i]\+in[ ]\+||;s|[ ]\+.*||;s|(.*)[ ]*$||')"
+        FLAG_UBSAN_IN_PROGRESS=0  # UBSAN issues are herewith fully defined
+        FLAG_UBSAN_READY=1
+      fi
+    fi
+  fi
+  # ------------- Error log sanity check + EOF handling for in-progress issues -------------
   if [ ${LINE_COUNTER} -eq ${ERROR_LOG_LINES} ]; then  # End of file reached, check for any final in-progress issues
     flag_ready_check
+  elif [ ${LINE_COUNTER} -gt ${ERROR_LOG_LINES} ]; then
+    echo "Assert: LINE_COUNTER > ERROR_LOG_LINES (${LINE_COUNTER} > ${ERROR_LOG_LINES})"
+    exit 1
   fi
-  if [ "${FLAG_UBSAN_READY}" -eq 1 ]; then
-    FLAG_UBSAN_STRING_COMMENCED=0
-    UNIQUE_ID=
-    if [ ! -z "${UBSAN_FILE_PREPARSE}" ]; then 
-      UNIQUE_ID="${UBSAN_FILE_PREPARSE}"
-      FLAG_UBSAN_STRING_COMMENCED=1
+  # ------------- ASAN Issue roundup (if present) -------------
+  if [ ${FLAG_ASAN_PRESENT} -eq 1 ]; then
+    if [ "${FLAG_ASAN_READY}" -eq 1 ]; then
+      FLAG_ASAN_IN_PROGRESS=0; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=0
+      FLAG_ASAN_STRING_COMMENCED=0
+      UNIQUE_ID=
+      # ...
+      #echo "${UNIQUE_ID}"
+      FLAG_ASAN_READY=0
+      FLAG_ASAN_STRING_COMMENCED=0
+      ASAN_FRAME1=; ASAN_FRAME2=; ASAN_FRAME3=; ASAN_FRAME4=  # Will this be used?
+      UNIQUE_ID=
     fi
-    if [ ! -z "${UBSAN_ERROR}" ]; then
-      if [ "${FLAG_UBSAN_STRING_COMMENCED}" -eq 1 ]; then
-        UNIQUE_ID="${UNIQUE_ID}|${UBSAN_ERROR}"
-      else
-        UNIQUE_ID="${UBSAN_ERROR}"
+  fi
+  # ------------- TSAN Issue roundup (if present) -------------
+  if [ ${FLAG_TSAN_PRESENT} -eq 1 ]; then
+    sleep 0
+  fi 
+  # ------------- UBSAN Issue roundup (if present) -------------
+  if [ ${FLAG_UBSAN_PRESENT} -eq 1 ]; then
+    if [ "${FLAG_UBSAN_READY}" -eq 1 ]; then
+      FLAG_ASAN_IN_PROGRESS=0; FLAG_TSAN_IN_PROGRESS=0; FLAG_UBSAN_IN_PROGRESS=0
+      FLAG_UBSAN_STRING_COMMENCED=0
+      UNIQUE_ID=
+      if [ ! -z "${UBSAN_FILE_PREPARSE}" ]; then 
+        UNIQUE_ID="${UBSAN_FILE_PREPARSE}"
         FLAG_UBSAN_STRING_COMMENCED=1
       fi
-    fi
-    if [ ! -z "${UBSAN_FRAME1}" ]; then 
-      if [ "${FLAG_UBSAN_STRING_COMMENCED}" -eq 1 ]; then
-        UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME1}"
-      else
-        UNIQUE_ID="${UBSAN_FRAME1}"
-        FLAG_UBSAN_STRING_COMMENCED=1
+      if [ ! -z "${UBSAN_ERROR}" ]; then
+        if [ "${FLAG_UBSAN_STRING_COMMENCED}" -eq 1 ]; then
+          UNIQUE_ID="${UNIQUE_ID}|${UBSAN_ERROR}"
+        else
+          UNIQUE_ID="${UBSAN_ERROR}"
+          FLAG_UBSAN_STRING_COMMENCED=1
+        fi
       fi
-    else 
-      if [ -z "${UNIQUE_ID}" ]; then
-        echo "Assert: UBSAN UNIQUE_ID generation issue"
-        exit 1
+      if [ ! -z "${UBSAN_FRAME1}" ]; then 
+        if [ "${FLAG_UBSAN_STRING_COMMENCED}" -eq 1 ]; then
+          UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME1}"
+        else
+          UNIQUE_ID="${UBSAN_FRAME1}"
+          FLAG_UBSAN_STRING_COMMENCED=1
+        fi
+      else 
+        if [ -z "${UNIQUE_ID}" ]; then
+          echo "Assert: UBSAN UNIQUE_ID generation issue"
+          exit 1
+        fi
       fi
+      if [ ! -z "${UBSAN_FRAME2}" ]; then
+       UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME2}" 
+      fi
+      if [ ! -z "${UBSAN_FRAME3}" ]; then
+        UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME3}" 
+      fi
+      if [ ! -z "${UBSAN_FRAME4}" ]; then
+        UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME4}" 
+      fi
+      echo "${UNIQUE_ID}"
+      FLAG_UBSAN_READY=0
+      FLAG_UBSAN_STRING_COMMENCED=0
+      UBSAN_FRAME1=; UBSAN_FRAME2=; UBSAN_FRAME3=; UBSAN_FRAME4=
+      UNIQUE_ID=
     fi
-    if [ ! -z "${UBSAN_FRAME2}" ]; then
-      UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME2}" 
-    fi
-    if [ ! -z "${UBSAN_FRAME3}" ]; then
-      UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME3}" 
-    fi
-    if [ ! -z "${UBSAN_FRAME4}" ]; then
-      UNIQUE_ID="${UNIQUE_ID}|${UBSAN_FRAME4}" 
-    fi
-    echo "${UNIQUE_ID}"
-    FLAG_UBSAN_READY=0
-    FLAG_UBSAN_STRING_COMMENCED=0
-    UNIQUE_ID=
   fi
 done < "${ERROR_LOG}"
 
-
+# Profiling
+if [ "${PROFILING}" -eq 1 ]; then
+  set +x
+  exec 2>&3 3>&-
+fi
