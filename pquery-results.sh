@@ -20,11 +20,11 @@ if [ "$1" == "scan" ]; then
   SCANBUGS=1
 fi
 
-# Check if this is a pxc run
-if [ "$(grep --binary-files=text 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
-  PXC=1
+# Check if this is a mdg run
+if [ "$(grep --binary-files=text 'MDG Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*MDG Mode[: \t]*||' )" == "TRUE" ]; then
+  MDG=1
 else
-  PXC=0
+  MDG=0
 fi
 
 # Check if this is a group replication run
@@ -52,7 +52,7 @@ fi
 TRIALS_EXECUTED=$(cat pquery-run.log 2>/dev/null | grep --binary-files=text -o "==.*TRIAL.*==" | tail -n1 | sed 's|[^0-9]*||;s|[ \t=]||g')
 echo "================ [Run: $(echo ${PWD} | sed 's|.*/||')] Sorted unique issue strings (${TRIALS_EXECUTED} trials done, $(ls reducer*.sh qcreducer*.sh 2>/dev/null | wc -l) remaining reducers)"
 ORIG_IFS=$IFS; IFS=$'\n'  # Use newline seperator instead of space seperator in the for loop
-if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then  # Normal non-Galera, non-GR run
+if [[ $MDG -eq 0 && $GRP_RPL -eq 0 ]]; then  # Normal non-Galera, non-GR run
   for STRING in $(grep --binary-files=text "   TEXT=" reducer* 2>/dev/null | sed 's|.*TEXT=.||;s|.[ \t]*$||' | sort -u); do
     MATCHING_TRIALS=()
     if grep -qi "^USE_NEW_TEXT_STRING=1" reducer*.sh; then  # New text string (i.e. no regex) mode
@@ -152,7 +152,7 @@ fi
 IFS=$ORIG_IFS
 
 # MODE 4 TRIALS
-if [[ $PXC -eq 0 && $GRP_RPL -eq 0 ]]; then
+if [[ $MDG -eq 0 && $GRP_RPL -eq 0 ]]; then
   COUNT=0
   MATCHING_TRIALS=()
   for MATCHING_TRIAL in $(grep ${NTS} -H --binary-files=text "^MODE=4$" reducer* 2>/dev/null | awk '{print $1}' | sed 's|:.*||;s|[^0-9]||g' | sort -un) ; do

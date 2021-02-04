@@ -58,7 +58,7 @@ echo ${WORKDIR} > /tmp/gomd_helper # gomd helper
 PQUERY_TOOL_NAME=$(basename ${PQUERY_BIN})
 if [ "${SEED}" == "" ]; then SEED=${RANDOMD}; fi
 # TODO: research this new code (and how it affects trials, though it seeems backwards compatible; checking for PQUERY3 varialbe happens AFTER all other checks are done (i.e. first core, then other checks, then PQUERY3 check, so should be fine? Though trial-1 is apparently removed; research further))
-if [[ ${PQUERY_TOOL_NAME} == "pquery3-ps" || ${PQUERY_TOOL_NAME} == "pquery3-pxc" ]]; then PQUERY3=1; fi
+if [[ ${PQUERY_TOOL_NAME} == "pquery3-ps" || ${PQUERY_TOOL_NAME} == "pquery3-mdg" ]]; then PQUERY3=1; fi
 
 # Safety checks: ensure variables are correctly set to avoid rm -Rf issues (if not set correctly, it was likely due to altering internal variables at the top of this file)
 if [ "${WORKDIR}" == "/sd[a-z][/]" ]; then
@@ -240,23 +240,24 @@ if [[ ${PXB_CRASH_RUN} -eq 1 ]]; then
 fi
 
 # Automatic variable adjustments
-if [ "$1" == "pxc" -o "$2" == "pxc" -o "$1" == "PXC" -o "$2" == "PXC" ]; then PXC=1; fi # Check if this is a a PXC run as indicated by first or second option to this script
+if [ "$1" == "mdg" -o "$2" == "mdg" -o "$1" == "MDG" -o "$2" == "MDG" ]; then export MDG=1; fi # Check if this is a a MDG run as indicated by first or second option to this script
 if [ "$(whoami)" == "root" ]; then MYEXTRA="--user=root ${MYEXTRA}"; fi
-if [ "${PXC_CLUSTER_RUN}" == "1" ]; then
-  echoit "As PXC_CLUSTER_RUN=1, this script is auto-assuming this is a PXC run and will set PXC=1"
-  PXC=1
+if [ "${MDG_CLUSTER_RUN}" == "1" ]; then
+  echoit "As MDG_CLUSTER_RUN=1, this script is auto-assuming this is a MDG run and will set MDG=1"
+  MDG=1
 fi
 if [ "${GRP_RPL_CLUSTER_RUN}" == "1" ]; then
   echoit "As GRP_RPL_CLUSTER_RUN=1, this script is auto-assuming this is a Group Replication run and will set GRP_RPL=1"
   GRP_RPL=1
 fi
-if [ "${PXC}" == "1" ]; then
+if [ "${MDG}" == "1" ]; then
+  export MDG=1
   if [ ${QUERIES_PER_THREAD} -lt 2147483647 ]; then # Starting up a cluster takes more time, so don't rotate too quickly
-    echoit "Note: As this is a PXC=1 run, and QUERIES_PER_THREAD was set to only ${QUERIES_PER_THREAD}, this script is setting the queries per thread to the required minimum of 2147483647 for this run."
+    echoit "Note: As this is a MDG=1 run, and QUERIES_PER_THREAD was set to only ${QUERIES_PER_THREAD}, this script is setting the queries per thread to the required minimum of 2147483647 for this run."
     QUERIES_PER_THREAD=2147483647 # Max int
   fi
   if [ ${PQUERY_RUN_TIMEOUT} -lt 60 ]; then # Starting up a cluster takes more time, so don't rotate too quickly
-    echoit "Note: As this is a PXC=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
+    echoit "Note: As this is a MDG=1 run, and PQUERY_RUN_TIMEOUT was set to only ${PQUERY_RUN_TIMEOUT}, this script is setting the timeout to the required minimum of 120 for this run."
     PQUERY_RUN_TIMEOUT=60
   fi
   ADD_RANDOM_OPTIONS=0
@@ -277,8 +278,8 @@ if [ "${GRP_RPL}" == "1" ]; then
   fi
   ADD_RANDOM_TOKUDB_OPTIONS=0
   ADD_RANDOM_ROCKSDB_OPTIONS=0
-  PXC=0
-  PXC_CLUSTER_RUN=0
+  MDG=0
+  MDG_CLUSTER_RUN=0
 fi
 
 if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then echoit "MODE: Query Duration Testing"; fi
@@ -450,7 +451,47 @@ check_cmd() {
   fi
 }
 
-if [[ $PXC -eq 1 ]]; then
+handle_bugs() {
+  cd ${RUNDIR}/${TRIAL} || exit 1
+  add_handy_scripts
+  TEXT=$(${SCRIPT_PWD}/new_text_string.sh)
+  if [[ ${MDG} -eq 1 ]]; then
+    echo "${TEXT}" > ${RUNDIR}/${TRIAL}/node${j}/MYBUG
+  else
+    echo "${TEXT}" > ${RUNDIR}/${TRIAL}/MYBUG
+  fi
+  cd - >/dev/null || exit 1
+  if [[ ${MDG} -eq 1 ]]; then
+    if grep -qi "No .* found [ia][nt]" ${RUNDIR}/${TRIAL}/node${j}/MYBUG; then
+      echoit "Assert: we found a coredump at $(ls ${RUNDIR}/${TRIAL}/node${j}/*core* 2> /dev/null), yet ${SCRIPT_PWD}/new_text_string.sh produced this output: ${TEXT}"
+      exit 1
+    fi
+  else
+    if grep -qi "No .* found [ia][nt]" ${RUNDIR}/${TRIAL}/MYBUG; then
+      echoit "Assert: we found a coredump at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null), yet ${SCRIPT_PWD}/new_text_string.sh produced this output: ${TEXT}"
+      exit 1
+    fi
+  fi
+  echoit "Bug found (as per new_text_string.sh): ${TEXT}"
+  TRIAL_TO_SAVE=1
+  if [ "${ELIMINATE_KNOWN_BUGS}" == "1" -a -r ${SCRIPT_PWD}/known_bugs.strings ]; then # "1": String check hack to ensure backwards compatibility with older pquery-run.conf files
+    set +H                                                                          # Disables history substitution and avoids  -bash: !: event not found  like errors
+    FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
+    if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
+    if [ ! -z "${FINDBUG}" ]; then  # do not call savetrial, known/filtered bug seen
+      echoit "This is aleady known and logged, non-fixed bug: ${FINDBUG}"
+      echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"
+      ALREADY_KNOWN=$[ ${ALREADY_KNOWN} + 1]
+      TRIAL_TO_SAVE=0
+    else
+      NEWBUGS=$[ ${NEWBUGS} + 1 ]
+      echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings, or found but marked as already fixed)"
+    fi
+    FINDBUG=
+  fi
+}
+
+if [[ $MDG -eq 1 ]]; then
   # Creating default my.cnf file
   SUSER=root
   SPASS=
@@ -460,21 +501,12 @@ if [[ $PXC -eq 1 ]]; then
   echo "wsrep-debug=1" >> ${BASEDIR}/my.cnf
   echo "innodb_file_per_table" >> ${BASEDIR}/my.cnf
   echo "innodb_autoinc_lock_mode=2" >> ${BASEDIR}/my.cnf
-  if ! check_for_version $MYSQL_VERSION "8.0.0"; then
-    # TODO: research why is this here?
-    # MariaDB: [ERROR] /test/MD300420-mariadb-10.5.3-linux-x86_64-opt/bin/mysqld: unknown variable 'innodb_locks_unsafe_for_binlog=1'
-    # echo "innodb_locks_unsafe_for_binlog=1" >> ${BASEDIR}/my.cnf
-    # echo "wsrep_sst_auth=$SUSER:$SPASS" >> ${BASEDIR}/my.cnf
-    echo "TODO"
-  else
-    echo "log-error-verbosity=1" >> ${BASEDIR}/my.cnf
-  fi
   echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${BASEDIR}/my.cnf
   echo "wsrep_sst_method=rsync" >> ${BASEDIR}/my.cnf
-  #echo "wsrep_sst_method=xtrabackup-v2" >> ${BASEDIR}/my.cnf
   echo "core-file" >> ${BASEDIR}/my.cnf
   echo "log-output=none" >> ${BASEDIR}/my.cnf
   echo "wsrep_slave_threads=2" >> ${BASEDIR}/my.cnf
+  echo "wsrep_on=1" >> ${BASEDIR}/my.cnf
   if [[ "$ENCRYPTION_RUN" == 1 ]]; then
     echo "log_bin=binlog" >> ${BASEDIR}/my.cnf
     echo "binlog_format=ROW" >> ${BASEDIR}/my.cnf
@@ -482,52 +514,33 @@ if [[ $PXC -eq 1 ]]; then
     echo "enforce_gtid_consistency=ON" >> ${BASEDIR}/my.cnf
     echo "master_verify_checksum=on" >> ${BASEDIR}/my.cnf
     echo "binlog_checksum=CRC32" >> ${BASEDIR}/my.cnf
-    echo "binlog_encryption=ON" >> ${BASEDIR}/my.cnf
-    echo "innodb_sys_tablespace_encrypt=ON" >> ${BASEDIR}/my.cnf
-    echo "pxc_encrypt_cluster_traffic=ON" >> ${BASEDIR}/my.cnf
+    echo "encrypt_binlog=ON" >> ${BASEDIR}/my.cnf
     if [[ $WITH_KEYRING_VAULT -ne 1 ]]; then
       echo "early-plugin-load=keyring_file.so" >> ${BASEDIR}/my.cnf
       echo "keyring_file_data=keyring" >> ${BASEDIR}/my.cnf
     fi
-  else
-    if check_for_version $MYSQL_VERSION "8.0.0"; then
-      echo "pxc_encrypt_cluster_traffic=OFF" >> ${BASEDIR}/my.cnf
-    fi
   fi
 fi
-pxc_startup() {
+
+mdg_startup() {
   IS_STARTUP=$1
   ADDR="127.0.0.1"
   RPORT=$(((RANDOM % 21 + 10) * 1000))
   SOCKET1=${RUNDIR}/${TRIAL}/node1/node1_socket.sock
   SOCKET2=${RUNDIR}/${TRIAL}/node2/node2_socket.sock
   SOCKET3=${RUNDIR}/${TRIAL}/node3/node3_socket.sock
-  if check_for_version $MYSQL_VERSION "5.7.0"; then
-    if [[ "$ENCRYPTION_RUN" == 1 ]]; then
-      #MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
-      #TODO check if this is actually MD or MS/PS. If MD, use below, if MS/PS, use above.
-      MID="${BASEDIR}/bin/mysqld --no-defaults --force --auth-root-authentication-method=normal --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON --basedir=${BASEDIR}"
-    else
-      #MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-      #TODO check if this is actually MD or MS/PS. If MD, use below, if MS/PS, use above.
-      MID="${BASEDIR}/bin/mysqld --no-defaults --force --auth-root-authentication-method=normal --basedir=${BASEDIR}"
-    fi
-  else
-    MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
-  fi
-  pxc_startup_chk() {
+  mdg_startup_chk() {
     ERROR_LOG=$1
     if grep -qi "ERROR. Aborting" $ERROR_LOG; then
       if grep -qi "TCP.IP port.*Address already in use" $ERROR_LOG; then
-
         echoit "Assert! The text '[ERROR] Aborting' was found in the error log due to a IP port conflict (the port was already in use)"
         removetrial
       else
-        if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 0 ]; then # Halt for PXC_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the PXC_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
-          echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${PXC_WSREP_OPTIONS_INFILE} and ${PXC_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
+        if [ ${MDG_ADD_RANDOM_OPTIONS} -eq 0 ]; then # Halt for MDG_ADD_RANDOM_OPTIONS=0 runs which have 'ERROR. Aborting' in the error log, as they should not produce errors like these, given that the MDG_MYEXTRA and WSREP_PROVIDER_OPT lists are/should be high-quality/non-faulty
+          echoit "Assert! '[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MDG_MYEXTRA (${MDG_MYEXTRA}) startup or \$WSREP_PROVIDER_OPT ($WSREP_PROVIDER_OPT) congifuration options. Saving trial for further analysis, and dumping error log here for quick analysis. Please check the output against these variables settings. The respective files for these options (${MDG_WSREP_OPTIONS_INFILE} and ${MDG_WSREP_PROVIDER_OPTIONS_INFILE}) may require editing."
           grep "ERROR" -B5 -A3 $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
-          if [ ${PXC_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
-            echoit "PXC_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
+          if [ ${MDG_IGNORE_ALL_OPTION_ISSUES} -eq 1 ]; then
+            echoit "MDG_IGNORE_ALL_OPTION_ISSUES=1, so irrespective of the assert given, pquery-run.sh will continue running. Please check your option files!"
           else
             if grep -qi "Could not open mysql.plugin" $ERROR_LOG; then  # Likely OOS on /dev/shm
               echoit "Found 'Could not open mysql.plugin' in error log, likely OOS on ${RUNDIR} or in /tmp or root (/). Removing trial to maximize space, and pausing 0.5 hour before trying again (reducer's may be running and consuming space)"
@@ -540,8 +553,8 @@ pxc_startup() {
               exit 1
             fi
           fi
-        else # Do not halt for PXC_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as PXC_MYEXTRA was randomly changed
-          echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$PXC_MYEXTRA (${PXC_MYEXTRA}) startup options. As \$PXC_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$PXC_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
+        else # Do not halt for MDG_ADD_RANDOM_OPTIONS=1 runs, they are likely to produce errors like these as MDG_MYEXTRA was randomly changed
+          echoit "'[ERROR] Aborting' was found in the error log. This is likely an issue with one of the \$MDG_MYEXTRA (${MDG_MYEXTRA}) startup options. As \$MDG_ADD_RANDOM_OPTIONS=1, this is likely to be encountered given the random addition of mysqld options. Not saving trial. If you see this error for every trial however, set \$MDG_ADD_RANDOM_OPTIONS=0 & try running pquery-run.sh again. If it still fails, it is likely that your base \$MYEXTRA (${MYEXTRA}) setting is faulty."
           grep "ERROR" -B5 -A3 $ERROR_LOG | tee -a /${WORKDIR}/pquery-run.log
           FAILEDSTARTABORT=1
           return
@@ -550,23 +563,23 @@ pxc_startup() {
     fi
   }
   if [ "$IS_STARTUP" != "startup" ]; then
-    echo "echo '=== Starting PXC cluster for recovery...'" > ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i 's|safe_to_bootstrap:.*$|safe_to_bootstrap: 1|' ${WORKDIR}/${TRIAL}/node1/grastate.dat" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "echo '=== Starting MDG cluster for recovery...'" > ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "sed -i 's|safe_to_bootstrap:.*$|safe_to_bootstrap: 1|' ${WORKDIR}/${TRIAL}/node1/grastate.dat" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
   fi
-  pxc_startup_status() {
+  mdg_startup_status() {
     NR=$1
-    for X in $(seq 0 ${PXC_START_TIMEOUT}); do
+    for X in $(seq 0 ${MDG_START_TIMEOUT}); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S${SOCKET} ping > /dev/null 2>&1; then
         break
       fi
-      pxc_startup_chk ${ERR_FILE}
+      mdg_startup_chk ${ERR_FILE}
     done
   }
-  unset PXC_PORTS
-  unset PXC_LADDRS
-  PXC_PORTS=""
-  PXC_LADDRS=""
+  unset MDG_PORTS
+  unset MDG_LADDRS
+  MDG_PORTS=""
+  MDG_LADDRS=""
   for i in $(seq 1 3); do
     if [ "$IS_STARTUP" == "startup" ]; then
       node="${WORKDIR}/node${i}.template"
@@ -583,8 +596,8 @@ pxc_startup() {
     mkdir -p $DATADIR/tmp${i}
     RBASE1="$((RPORT + (100 * $i)))"
     LADDR1="127.0.0.1:$((RBASE1 + 8))"
-    PXC_PORTS+=("$RBASE1")
-    PXC_LADDRS+=("$LADDR1")
+    MDG_PORTS+=("$RBASE1")
+    MDG_LADDRS+=("$LADDR1")
     cp ${BASEDIR}/my.cnf ${DATADIR}/n${i}.cnf
     sed -i "2i server-id=10${i}" ${DATADIR}/n${i}.cnf
     sed -i "2i wsrep_node_incoming_address=$ADDR" ${DATADIR}/n${i}.cnf
@@ -612,7 +625,7 @@ pxc_startup() {
     echo "ssl-cert = ${WORKDIR}/cert/server-cert.pem" >> ${DATADIR}/n${i}.cnf
     echo "ssl-key = ${WORKDIR}/cert/server-key.pem" >> ${DATADIR}/n${i}.cnf
     if [ "$IS_STARTUP" == "startup" ]; then
-      ${MID} --datadir=$node > ${WORKDIR}/startup_node1.err 2>&1 || exit 1
+      ${INIT_TOOL} ${INIT_OPT} --basedir=${BASEDIR} --datadir=$node > ${WORKDIR}/startup_node1.err 2>&1
     fi
   done
   if check_for_version $MYSQL_VERSION "8.0.0"; then
@@ -633,7 +646,7 @@ pxc_startup() {
     fi
   }
   if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
-    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/vault/keyring_vault_pxc${i}.cnf"
+    MYEXTRA_KEYRING="--early-plugin-load=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/vault/keyring_vault_mdg${i}.cnf"
   fi
 
   if [ "${VALGRIND_RUN}" == "1" ]; then
@@ -642,49 +655,55 @@ pxc_startup() {
     VALGRIND_CMD=""
   fi
   diskspace
-  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n1.cnf
-  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[2]},${PXC_LADDRS[3]}" ${DATADIR}/n2.cnf
-  sed -i "2i wsrep_cluster_address=gcomm://${PXC_LADDRS[1]},${PXC_LADDRS[3]},${PXC_LADDRS[3]}" ${DATADIR}/n3.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${MDG_LADDRS[1]},${MDG_LADDRS[2]},${MDG_LADDRS[3]}" ${DATADIR}/n1.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${MDG_LADDRS[1]},${MDG_LADDRS[2]},${MDG_LADDRS[3]}" ${DATADIR}/n2.cnf
+  sed -i "2i wsrep_cluster_address=gcomm://${MDG_LADDRS[1]},${MDG_LADDRS[3]},${MDG_LADDRS[3]}" ${DATADIR}/n3.cnf
   get_error_socket_file 1
-  $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
-  pxc_startup_status 1
+  if [ "${RR_TRACING}" == "0" ]; then
+    $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
+  else
+    export _RR_TRACE_DIR="${RUNDIR}/${TRIAL}/rr"
+    mkdir -p "${_RR_TRACE_DIR}"
+    /usr/bin/rr record --chaos ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA --wsrep-new-cluster > ${ERR_FILE} 2>&1 &
+  fi
+  mdg_startup_status 1
   get_error_socket_file 2
   $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n2.cnf \
-    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
-  pxc_startup_status 2
+    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA > ${ERR_FILE} 2>&1 &
+  mdg_startup_status 2
   get_error_socket_file 3
   $VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${DATADIR}/n3.cnf \
-    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${ERR_FILE} 2>&1 &
-  pxc_startup_status 3
+    $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA > ${ERR_FILE} 2>&1 &
+  mdg_startup_status 3
 
   if [ "$IS_STARTUP" != "startup" ]; then
-    echo "RUNDIR=$RUNDIR" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "WORKDIR=${WORKDIR}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n1.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n2.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n3.cnf" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "startup_check(){ " >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "  SOCKET=\$1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "  for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "    sleep 1" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "    if ${BASEDIR}/bin/mysqladmin -uroot -S\${SOCKET} ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "      break" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "    fi" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "  done" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA  --wsrep-new-cluster > ${RUNDIR}/${TRIAL}/node1/node1.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "startup_check ${SOCKET1}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n2.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node2/node2.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "startup_check ${SOCKET2}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n3.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $PXC_MYEXTRA > ${RUNDIR}/${TRIAL}/node3/node3.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "startup_check ${SOCKET3}" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    echo "chmod +x ${WORKDIR}/${TRIAL}/stop_pxc_recovery" >> ${RUNDIR}/${TRIAL}/start_pxc_recovery
-    chmod +x ${RUNDIR}/${TRIAL}/start_pxc_recovery
+    echo "RUNDIR=$RUNDIR" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "WORKDIR=${WORKDIR}" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n1.cnf" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n2.cnf" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "sed -i \"s|\$RUNDIR|\${WORKDIR}|g\" ${WORKDIR}/${TRIAL}/n3.cnf" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "startup_check(){ " >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "  SOCKET=\$1" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "  for X in \`seq 0 200\`; do" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "    sleep 1" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "    if ${BASEDIR}/bin/mysqladmin -uroot -S\${SOCKET} ping > /dev/null 2>&1; then" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "      break" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "    fi" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "  done" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "}" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n1.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA  --wsrep-new-cluster > ${RUNDIR}/${TRIAL}/node1/node1.err 2>&1 &" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "startup_check ${SOCKET1}" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n2.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA > ${RUNDIR}/${TRIAL}/node2/node2.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "startup_check ${SOCKET2}" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "$VALGRIND_CMD ${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/${TRIAL}/n3.cnf $STARTUP_OPTION $MYEXTRA_KEYRING $MYEXTRA $MDG_MYEXTRA > ${RUNDIR}/${TRIAL}/node3/node3.err  2>&1 &" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "startup_check ${SOCKET3}" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node3/node3_socket.sock shutdown > /dev/null 2>&1\" > ${WORKDIR}/${TRIAL}/stop_mdg_recovery" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node2/node2_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_mdg_recovery" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "echo \"${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/${TRIAL}/node1/node1_socket.sock shutdown > /dev/null 2>&1\" >> ${WORKDIR}/${TRIAL}/stop_mdg_recovery" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    echo "chmod +x ${WORKDIR}/${TRIAL}/stop_mdg_recovery" >> ${RUNDIR}/${TRIAL}/start_mdg_recovery
+    chmod +x ${RUNDIR}/${TRIAL}/start_mdg_recovery
 
   fi
   if [ "$IS_STARTUP" == "startup" ]; then
@@ -905,7 +924,7 @@ pquery_test() {
   echoit "Generating new trial workdir ${RUNDIR}/${TRIAL}..."
   ISSTARTED=0
   diskspace
-  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+  if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if check_for_version $MYSQL_VERSION "8.0.0"; then
       mkdir -p ${RUNDIR}/${TRIAL}/data ${RUNDIR}/${TRIAL}/tmp ${RUNDIR}/${TRIAL}/log # Cannot create /data/test, /data/mysql in 8.0
     else
@@ -1161,7 +1180,7 @@ pquery_test() {
         sudo pmm-admin add mysql pq${RANDOMD}-${TRIAL} --socket=${SOCKET} --user=root --query-source=perfschema
       fi
     fi
-  elif [[ "${PXC}" == "1" ]]; then
+  elif [[ "${MDG}" == "1" ]]; then
     diskspace
     if [[ ${PQUERY3} -eq 1 && ${TRIAL} -gt 1 ]]; then
       mkdir -p ${RUNDIR}/${TRIAL}/
@@ -1179,54 +1198,54 @@ pquery_test() {
       cp -R ${WORKDIR}/node3.template ${RUNDIR}/${TRIAL}/node3 2>&1
     fi
 
-    PXC_MYEXTRA=
-    # === PXC Options Stage 1: Add random mysqld options to PXC_MYEXTRA
-    if [ ${PXC_ADD_RANDOM_OPTIONS} -eq 1 ]; then
+    MDG_MYEXTRA=
+    # === MDG Options Stage 1: Add random mysqld options to MDG_MYEXTRA
+    if [ ${MDG_ADD_RANDOM_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
-      NR_OF_OPTIONS_TO_ADD=$((RANDOM % PXC_MAX_NR_OF_RND_OPTS_TO_ADD + 1))
+      NR_OF_OPTIONS_TO_ADD=$((RANDOM % MDG_MAX_NR_OF_RND_OPTS_TO_ADD + 1))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
-        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_OPTIONS_INFILE} | head -n1)"
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${MDG_OPTIONS_INFILE} | head -n1)"
         if [ "$(echo ${OPTION_TO_ADD} | sed 's| ||g;s|.*query.alloc.block.size=1125899906842624.*||')" != "" ]; then # http://bugs.mysql.com/bug.php?id=78238
           OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
         fi
       done
-      echoit "PXC_ADD_RANDOM_OPTIONS=1: adding mysqld option(s) ${OPTIONS_TO_ADD} to this run's PXC_MYEXTRA..."
-      PXC_MYEXTRA="${OPTIONS_TO_ADD}"
+      echoit "MDG_ADD_RANDOM_OPTIONS=1: adding mysqld option(s) ${OPTIONS_TO_ADD} to this run's MDG_MYEXTRA..."
+      MDG_MYEXTRA="${OPTIONS_TO_ADD}"
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         MYEXTRA2="${MYEXTRA2} ${OPTIONS_TO_ADD}"
       fi
     fi
-    # === PXC Options Stage 2: Add random wsrep mysqld options to PXC_MYEXTRA
-    if [ ${PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS} -eq 1 ]; then
+    # === MDG Options Stage 2: Add random wsrep mysqld options to MDG_MYEXTRA
+    if [ ${MDG_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
-      NR_OF_OPTIONS_TO_ADD=$((RANDOM % PXC_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD + 1))
+      NR_OF_OPTIONS_TO_ADD=$((RANDOM % MDG_WSREP_MAX_NR_OF_RND_OPTS_TO_ADD + 1))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
-        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_WSREP_OPTIONS_INFILE} | head -n1)"
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${MDG_WSREP_OPTIONS_INFILE} | head -n1)"
         OPTIONS_TO_ADD="${OPTIONS_TO_ADD} ${OPTION_TO_ADD}"
       done
-      echoit "PXC_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS=1: adding wsrep provider mysqld option(s) ${OPTIONS_TO_ADD} to this run's PXC_MYEXTRA..."
-      PXC_MYEXTRA="${PXC_MYEXTRA} ${OPTIONS_TO_ADD}"
+      echoit "MDG_WSREP_ADD_RANDOM_WSREP_MYSQLD_OPTIONS=1: adding wsrep provider mysqld option(s) ${OPTIONS_TO_ADD} to this run's MDG_MYEXTRA..."
+      MDG_MYEXTRA="${MDG_MYEXTRA} ${OPTIONS_TO_ADD}"
     fi
-    # === PXC Options Stage 3: Add random wsrep (Galera) configuration options
-    if [ ${PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS} -eq 1 ]; then
+    # === MDG Options Stage 3: Add random wsrep (Galera) configuration options
+    if [ ${MDG_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS} -eq 1 ]; then
       OPTIONS_TO_ADD=
-      NR_OF_OPTIONS_TO_ADD=$((RANDOM % PXC_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD + 1))
+      NR_OF_OPTIONS_TO_ADD=$((RANDOM % MDG_WSREP_PROVIDER_MAX_NR_OF_RND_OPTS_TO_ADD + 1))
       for X in $(seq 1 ${NR_OF_OPTIONS_TO_ADD}); do
-        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${PXC_WSREP_PROVIDER_OPTIONS_INFILE} | head -n1)"
+        OPTION_TO_ADD="$(shuf --random-source=/dev/urandom ${MDG_WSREP_PROVIDER_OPTIONS_INFILE} | head -n1)"
         OPTIONS_TO_ADD="${OPTION_TO_ADD};${OPTIONS_TO_ADD}"
       done
-      echoit "PXC_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS=1: adding wsrep provider configuration option(s) ${OPTIONS_TO_ADD} to this run..."
+      echoit "MDG_WSREP_PROVIDER_ADD_RANDOM_WSREP_PROVIDER_CONFIG_OPTIONS=1: adding wsrep provider configuration option(s) ${OPTIONS_TO_ADD} to this run..."
       WSREP_PROVIDER_OPT="$OPTIONS_TO_ADD"
     fi
-    echo "${MYEXTRA} ${PXC_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
+    echo "${MYEXTRA} ${MDG_MYEXTRA}" > ${RUNDIR}/${TRIAL}/MYEXTRA
     echo "${MYINIT}" > ${RUNDIR}/${TRIAL}/MYINIT
     echo "$WSREP_PROVIDER_OPT" > ${RUNDIR}/${TRIAL}/WSREP_PROVIDER_OPT
     if [ "${VALGRIND_RUN}" == "1" ]; then
       touch ${RUNDIR}/${TRIAL}/VALGRIND
-      echoit "Waiting for all PXC nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-180 seconds even on an high end server)..."
+      echoit "Waiting for all MDG nodes to fully start (note this is slow for Valgrind runs, and can easily take 90-180 seconds even on an high end server)..."
     fi
-    pxc_startup
-    echoit "Checking 3 node PXC Cluster startup..."
+    mdg_startup
+    echoit "Checking 3 node MDG Cluster startup..."
     for X in $(seq 0 10); do
       sleep 1
       CLUSTER_UP=0
@@ -1241,7 +1260,7 @@ pquery_test() {
       # If count reached 6 (there are 6 checks), then the Cluster is up & running and consistent in it's Cluster topology views (as seen by each node)
       if [ ${CLUSTER_UP} -eq 6 ]; then
         ISSTARTED=1
-        echoit "3 Node PXC Cluster started ok. Clients:"
+        echoit "3 Node MDG Cluster started ok. Clients:"
         echoit "Node #1: $(echo ${BIN} | sed 's|/mysqld|/mysql|') -uroot -S${SOCKET1}"
         echoit "Node #2: $(echo ${BIN} | sed 's|/mysqld|/mysql|') -uroot -S${SOCKET2}"
         echoit "Node #3: $(echo ${BIN} | sed 's|/mysqld|/mysql|') -uroot -S${SOCKET3}"
@@ -1461,7 +1480,7 @@ pquery_test() {
         sed -i "s|ndbcluster|${QC_SEC_ENGINE}|gi" ${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}
         SQL_FILE_1="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_PRI_ENGINE}"
         SQL_FILE_2="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql.${QC_SEC_ENGINE}"
-        if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+        if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
           echoit "Starting Primary pquery run for engine ${QC_PRI_ENGINE} (log stored in ${RUNDIR}/${TRIAL}/pquery1.log)..."
           if [ ${QUERY_CORRECTNESS_MODE} -ne 2 ]; then
             ${PQUERY_BIN} ${SQL_FILE_1} --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --no-shuffle --log-query-statistics --user=root --socket=${SOCKET} > ${RUNDIR}/${TRIAL}/pquery1.log 2>&1
@@ -1508,12 +1527,12 @@ pquery_test() {
         add_handy_scripts
         echoit "Starting pquery (log stored in ${RUNDIR}/${TRIAL}/pquery.log)..."
         if [ ${QUERY_DURATION_TESTING} -eq 1 ]; then # Query duration testing run
-          if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+          if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --log-query-duration --user=root --socket=${SOCKET} > ${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
-            if [[ ${PXC_CLUSTER_RUN} -eq 1 ]]; then
-              cat ${PXC_CLUSTER_CONFIG} |
+            if [[ ${MDG_CLUSTER_RUN} -eq 1 ]]; then
+              cat ${MDG_CLUSTER_CONFIG} |
                 sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" |
                 sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
                   > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
@@ -1532,12 +1551,12 @@ pquery_test() {
             fi
           fi
         else # Standard pquery run / Not a query duration testing run
-          if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+          if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
             ${PQUERY_BIN} --infile=${INFILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${SOCKET} > ${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
-            if [[ ${PXC_CLUSTER_RUN} -eq 1 ]]; then
-              cat ${PXC_CLUSTER_CONFIG} |
+            if [[ ${MDG_CLUSTER_RUN} -eq 1 ]]; then
+              cat ${MDG_CLUSTER_CONFIG} |
                 sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" |
                 sed -e "s|\/home\/ramesh\/mariadb-qa|${SCRIPT_PWD}|" \
                   > ${RUNDIR}/${TRIAL}/pquery-cluster.cfg
@@ -1569,13 +1588,13 @@ pquery_test() {
           else
             echoit "Loading metadata from ${WORKDIR}/step_$((${TRIAL} - 1)).dll ..."
           fi
-          if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+          if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
             CMD="${PQUERY_BIN} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --user=root --socket=${SOCKET} --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}"
-          elif [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
-            cat ${PXC_CLUSTER_CONFIG} |
+          elif [ ${MDG_CLUSTER_RUN} -eq 1 ]; then
+            cat ${MDG_CLUSTER_CONFIG} |
               sed -e "s|\/tmp|${RUNDIR}\/${TRIAL}|" \
-                > ${RUNDIR}/${TRIAL}/pquery3-cluster-pxc.cfg
-            CMD="${PQUERY_BIN} --database=test --config-file=${RUNDIR}/${TRIAL}/pquery3-cluster-pxc.cfg --queries-per-thread=${QUERIES_PER_THREAD} --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}"
+                > ${RUNDIR}/${TRIAL}/pquery3-cluster-mdg.cfg
+            CMD="${PQUERY_BIN} --database=test --config-file=${RUNDIR}/${TRIAL}/pquery3-cluster-mdg.cfg --queries-per-thread=${QUERIES_PER_THREAD} --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}"
           else
             CMD="${PQUERY_BIN} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL}/node1/ --user=root --socket=${SOCKET1} --seed ${SEED} --step ${TRIAL} --metadata-path ${WORKDIR}/ --seconds ${PQUERY_RUN_TIMEOUT} ${DYNAMIC_QUERY_PARAMETER}"
           fi
@@ -1587,7 +1606,7 @@ pquery_test() {
           echoit "Taking ${MULTI_THREADED_TESTC_LINES} lines randomly from ${INFILE} as testcase for this multi-threaded trial..."
           shuf --random-source=/dev/urandom ${INFILE} | head -n${MULTI_THREADED_TESTC_LINES} > ${RUNDIR}/${TRIAL}/${TRIAL}.sql
           SQL_FILE="--infile=${RUNDIR}/${TRIAL}/${TRIAL}.sql"
-          if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+          if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
             ${PQUERY_BIN} ${SQL_FILE} --database=test --threads=${THREADS} --queries-per-thread=${QUERIES_PER_THREAD} --logdir=${RUNDIR}/${TRIAL} --log-all-queries --log-failed-queries --user=root --socket=${SOCKET} > ${RUNDIR}/${TRIAL}/pquery.log 2>&1 &
             PQPID="$!"
           else
@@ -1616,7 +1635,7 @@ pquery_test() {
         fi
         if [ ${CRASH_RECOVERY_TESTING} -eq 1 ]; then
           if [ $X -ge $CRASH_RECOVERY_KILL_BEFORE_END_SEC ]; then
-            if [ $PXC -eq 1 ]; then
+            if [ $MDG -eq 1 ]; then
               ps -ef | grep -e 'node1_socket\|node2_socket\|node3_socket' | grep -v grep | grep $RANDOMD | awk '{print $2}' | xargs kill -9 > /dev/null 2>&1
             else
               kill -9 ${MPID} > /dev/null 2>&1
@@ -1658,7 +1677,7 @@ pquery_test() {
       fi
     fi
   else
-    if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+    if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
       if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
         echoit "Either the Primary server (PID: ${MPID} | Socket: ${SOCKET}), or the Secondary server (PID: ${MPID2} | Socket: ${RUNDIR}/${TRIAL}/socket2.sock) failed to start after ${MYSQLD_START_TIMEOUT} seconds. Will issue extra kill -9 to ensure it's gone..."
         (
@@ -1678,8 +1697,8 @@ pquery_test() {
       timeout -k5 -s9 5s wait ${MPID} > /dev/null 2>&1
       sleep 2
       sync
-    elif [[ ${PXC} -eq 1 ]]; then
-      echoit "3 Node PXC Cluster failed to start after ${PXC_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
+    elif [[ ${MDG} -eq 1 ]]; then
+      echoit "3 Node MDG Cluster failed to start after ${MDG_START_TIMEOUT} seconds. Will issue an extra cleanup to ensure nothing remains..."
       (ps -ef | grep 'n[0-9].cnf' | grep ${RUNDIR} | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2>&1 || true)
       sleep 2
       sync
@@ -1702,7 +1721,7 @@ pquery_test() {
   # and if there is no core/Valgrind issue and there is no output of mariadb-qa/text_string.sh either (in case core dumps are not configured correctly, and thus no core file is
   # generated, text_string.sh will still produce output in case the server crashed based on the information in the error log), then we do not need to save this trial (as it is a
   # standard occurence for this to happen). If however we saw 250 queries failed before the timeout was complete, then there may be another problem and the trial should be saved.
-  if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+  if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
     if [ "${VALGRIND_RUN}" == "1" ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin.
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
@@ -1778,7 +1797,7 @@ pquery_test() {
       ) & # Terminate pquery (if it went past ${PQUERY_RUN_TIMEOUT} time, also see NOTE** above)
     fi
     sleep 1 # <^ Make sure all is gone
-  elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+  elif [[ ${MDG} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     if [ "${VALGRIND_RUN}" == "1" ]; then # For Valgrind, we want the full Valgrind output in the error log, hence we need a proper/clean (and slow...) shutdown
       # Note that even if mysqladmin is killed with the 'timeout --signal=9', it will not affect the actual state of mysqld, all that was terminated was mysqladmin.
       # Thus, mysqld would (presumably) have received a shutdown signal (even if the timeout was 2 seconds it likely would have)
@@ -1809,7 +1828,7 @@ pquery_test() {
       ); do
         sleep 1
         if [[ ! -r ${RUNDIR}/${TRIAL}/node1/node1.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err || ! -r ${RUNDIR}/${TRIAL}/node2/node2.err ]]; then
-          echoit "Assert: PXC error logs (${RUNDIR}/${TRIAL}/node[13]/node[13].err) not found during a Valgrind run. Please check. Trying to continue, but something is wrong already..."
+          echoit "Assert: MDG error logs (${RUNDIR}/${TRIAL}/node[13]/node[13].err) not found during a Valgrind run. Please check. Trying to continue, but something is wrong already..."
           break
         elif [ $(egrep "==[0-9]+== ERROR SUMMARY: [0-9]+ error" ${RUNDIR}/${TRIAL}/node*/node*.err | wc -l) -eq 3 ]; then # Summary found, Valgrind is done
           VALGRIND_SUMMARY_FOUND=1
@@ -1836,7 +1855,7 @@ pquery_test() {
     if [ ${QUERY_CORRECTNESS_TESTING} -eq 1 ]; then
       echoit "Pri engine pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
       echoit "Sec engine pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
-    elif [[ ${PXC} -eq 1 && ${PXC_CLUSTER_RUN} -eq 0 ]]; then
+    elif [[ ${MDG} -eq 1 && ${MDG_CLUSTER_RUN} -eq 0 ]]; then
       echoit "pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/node1/*.sql ${RUNDIR}/${TRIAL}/node1/*.log | sed 's|.*:||')"
     else
       echoit "pquery run details:$(grep -i 'SUMMARY.*queries failed' ${RUNDIR}/${TRIAL}/*.sql ${RUNDIR}/${TRIAL}/*.log | sed 's|.*:||')"
@@ -1900,43 +1919,29 @@ pquery_test() {
       # TODO: verify if this means that /data/ is completely replaced by /node1/ at the same level
       if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null | wc -l) -ge 1 -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/log/master.err 2> /dev/null)" != "" -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err 2> /dev/null)" != "" -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err 2> /dev/null)" != "" -o "$(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err 2> /dev/null)" != "" ]; then
         if [ $(ls -l ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null | wc -l) -ge 1 ]; then
-          echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null)"
-          cd ${RUNDIR}/${TRIAL} || exit 1
-          add_handy_scripts
-          TEXT=$(${SCRIPT_PWD}/new_text_string.sh)
-          echo "${TEXT}" > ${RUNDIR}/${TRIAL}/MYBUG
-          cd - >/dev/null || exit 1
-          if grep -qi "No .* found [ia][nt]" ${RUNDIR}/${TRIAL}/MYBUG; then
-            echoit "Assert: we found a coredump at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null), yet ${SCRIPT_PWD}/new_text_string.sh produced this output: ${TEXT}"
-            exit 1
-          fi
-          echoit "Bug found (as per new_text_string.sh): ${TEXT}"
-          TRIAL_TO_SAVE=1
-          if [ "${ELIMINATE_KNOWN_BUGS}" == "1" -a -r ${SCRIPT_PWD}/known_bugs.strings ]; then # "1": String check hack to ensure backwards compatibility with older pquery-run.conf files
-            set +H                                                                          # Disables history substitution and avoids  -bash: !: event not found  like errors
-            FINDBUG="$(grep -Fi --binary-files=text "${TEXT}" ${SCRIPT_PWD}/known_bugs.strings)"
-            if [ "$(echo "${FINDBUG}" | sed 's|[ \t]*\(.\).*|\1|')" == "#" ]; then FINDBUG=""; fi  # Bugs marked as fixed need to be excluded. This cannot be done by using "^${TEXT}" as the grep is not regex aware, nor can it be, due to the many special (regex-like) characters in the unique bug strings
-            if [ ! -z "${FINDBUG}" ]; then  # do not call savetrial, known/filtered bug seen
-              echoit "This is aleady known and logged, non-fixed bug: ${FINDBUG}"
-              echoit "Deleting trial as ELIMINATE_KNOWN_BUGS=1, bug was already logged and is still open"
-              ALREADY_KNOWN=$[ ${ALREADY_KNOWN} + 1]
-              TRIAL_TO_SAVE=0
-            else
-              NEWBUGS=$[ ${NEWBUGS} + 1 ]
-              echoit "[${NEWBUGS}] *** NEW BUG *** (not found in ${SCRIPT_PWD}/known_bugs.strings, or found but marked as already fixed)"
-            fi
-            FINDBUG=
+          if [[ ${MDG} -eq 1 ]]; then
+            for j in $(seq 1 3); do
+              if [ $(ls -l ${RUNDIR}/${TRIAL}/node${j}/*core* 2> /dev/null | wc -l) -ge 1 ]; then
+                export GALERA_ERROR_LOG=${RUNDIR}/${TRIAL}/node${j}/node${j}.err
+                export GALERA_CORE_LOC=$(ls -t ${RUNDIR}/${TRIAL}/node${j}/*core* 2> /dev/null)
+                echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/node${j}/*core* 2> /dev/null)"
+                handle_bugs
+              fi
+            done
+          else
+            echoit "mysqld coredump detected at $(ls ${RUNDIR}/${TRIAL}/*/*core* 2> /dev/null)"
+            handle_bugs
           fi
         else
           echoit "mysqld crash detected in the error log via old text_string.sh scan #TODO" #TODO marker is placed here because the new_text_string.sh may not be able to handle all cases correctly yet (like where there is an error log with a crash, but no coredump - though that may be OOS caused also). Also adding a #TODO marker into ${RUNDIR}/${TRIAL}/MYBUG to make it easy to scan for these trials.
           echo "#TODO" > ${RUNDIR}/${TRIAL}/MYBUG
         fi
-        if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 && -r ${WORKDIR}/${TRIAL}/log/master.err ]]; then
+        if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 && -r ${WORKDIR}/${TRIAL}/log/master.err ]]; then
           echoit "Bug found (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/log/master.err)"
-        elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 && -r ${WORKDIR}/${TRIAL}/node1/node1.err ]]; then
-          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/node1/node1.err 2> /dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #1 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err)"; fi
-          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/node2/node2.err 2> /dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #2 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
-          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/node3/node3.err 2> /dev/null)" != "" ]; then echoit "Bug found in PXC/GR node #3 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
+        elif [[ ${MDG} -eq 1 || ${GRP_RPL} -eq 1 && -r ${WORKDIR}/${TRIAL}/node1/node1.err ]]; then
+          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/node1/node1.err 2> /dev/null)" != "" ]; then echoit "Bug found in MDG/GR node #1 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node1/node1.err)"; fi
+          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/node2/node2.err 2> /dev/null)" != "" ]; then echoit "Bug found in MDG/GR node #2 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node2/node2.err)"; fi
+          if [ "$(${SCRIPT_PWD}/OLD/text_string.sh ${WORKDIR}/${TRIAL}/node3/node3.err 2> /dev/null)" != "" ]; then echoit "Bug found in MDG/GR node #3 (as per error log)(as per old text_string.sh): $(${SCRIPT_PWD}/OLD/text_string.sh ${RUNDIR}/${TRIAL}/node3/node3.err)"; fi
         fi
         if [ ${TRIAL_TO_SAVE} -eq 1 ]; then
           savetrial
@@ -2027,21 +2032,21 @@ WORKDIRACTIVE=1
 ONGOING=
 # User for recovery testing
 echo "create user recovery@'%';grant all on *.* to recovery@'%';flush privileges;" > ${WORKDIR}/recovery-user.sql
-if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} "
   echoit "${ONGOING}"
-elif [[ ${PXC} -eq 1 ]]; then
-  ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | PXC Mode: TRUE"
+elif [[ ${MDG} -eq 1 ]]; then
+  ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | MDG Mode: TRUE"
   echoit "${ONGOING}"
-  if [ ${PXC_CLUSTER_RUN} -eq 1 ]; then
-    echoit "PXC Cluster run: 'YES'"
+  if [ ${MDG_CLUSTER_RUN} -eq 1 ]; then
+    echoit "MDG Cluster run: 'YES'"
   else
-    echoit "PXC Cluster run: 'NO'"
+    echoit "MDG Cluster run: 'NO'"
   fi
   if [ ${ENCRYPTION_RUN} -eq 1 ]; then
-    echoit "PXC Encryption run: 'YES'"
+    echoit "MDG Encryption run: 'YES'"
   else
-    echoit "PXC Encryption run: 'NO'"
+    echoit "MDG Encryption run: 'NO'"
   fi
 elif [[ ${GRP_RPL} -eq 1 ]]; then
   ONGOING="Workdir: ${WORKDIR} | Rundir: ${RUNDIR} | Basedir: ${BASEDIR} | Group Replication Mode: TRUE"
@@ -2065,8 +2070,8 @@ if [[ $WITH_KEYRING_VAULT -eq 1 ]]; then
   mkdir ${WORKDIR}/vault
   rm -rf ${WORKDIR}/vault/*
   killall vault
-  if [[ $PXC -eq 1 ]]; then
-    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=${WORKDIR}/vault --setup-pxc-mount-points --use-ssl
+  if [[ $MDG -eq 1 ]]; then
+    ${SCRIPT_PWD}/vault_test_setup.sh --workdir=${WORKDIR}/vault --setup-mdg-mount-points --use-ssl
   else
     ${SCRIPT_PWD}/vault_test_setup.sh --workdir=${WORKDIR}/vault --use-ssl
     #MYEXTRA="$MYEXTRA --early-plugin-load=keyring_vault.so --loose-keyring_vault_config=${WORKDIR}/vault/keyring_vault.cnf"
@@ -2142,7 +2147,20 @@ elif [ "${VERSION_INFO}" != "5.7" -a "${VERSION_INFO}" != "8.0" ]; then
   echo "=========================================================================================="
 fi
 
-if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
+echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
+if [ ! -r ${INIT_TOOL} ]; then  # TODO: This is a hack, improve it
+  ALT_INIT_TOOL="$(echo "${INIT_TOOL}" | sed 's|mariadb-install-db|mysql_install_db|')"
+  if [ -r ${ALT_INIT_TOOL} ]; then
+    echoit "Swapped ${INIT_TOOL} for ${ALT_INIT_TOOL}! (It's a hack, please improve this script to handle this version of MariaDB better)"
+    INIT_TOOL="${ALT_INIT_TOOL}"
+    ALT_INIT_TOOL=
+  else
+    echoit "Assert: neither ${INIT_TOOL} nor ${ALT_INIT_TOOL} were found/readable, please check. Terminating."
+    exit 1
+  fi
+fi
+
+if [[ ${MDG} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   echoit "Making a copy of the mysqld used to ${RUNDIR} for in-run coredump analysis..."
   cp ${BIN} ${RUNDIR}
   echoit "${BIN} ${RUNDIR}"
@@ -2154,18 +2172,7 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
   cd ${WORKDIR}/mysqld || exit 1
   ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE} || exit 1
-  echoit "Generating datadir template (using mysql_install_db or mysqld --init)..."
-  if [ ! -r ${INIT_TOOL} ]; then  # TODO: This is a hack, improve it
-    ALT_INIT_TOOL="$(echo "${INIT_TOOL}" | sed 's|mariadb-install-db|mysql_install_db|')"
-    if [ -r ${ALT_INIT_TOOL} ]; then
-      echoit "Swapped ${INIT_TOOL} for ${ALT_INIT_TOOL}! (It's a hack, please improve this script to handle this version of MariaDB better)"
-      INIT_TOOL="${ALT_INIT_TOOL}"
-      ALT_INIT_TOOL=
-    else
-      echoit "Assert: neither ${INIT_TOOL} nor ${ALT_INIT_TOOL} were found/readable, please check. Terminating."
-      exit 1
-    fi
-  fi
+
   ${INIT_TOOL} ${INIT_OPT} --basedir=${BASEDIR} --datadir=${WORKDIR}/data.template > ${WORKDIR}/log/mysql_install_db.txt 2>&1
   # Sysbench dataload
   diskspace
@@ -2230,7 +2237,7 @@ if [[ ${PXC} -eq 0 && ${GRP_RPL} -eq 0 ]]; then
       fi
     fi
   fi
-elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+elif [[ ${MDG} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
   echoit "Making a copy of the mysqld used to ${RUNDIR} for in-run coredump analysis..."
   cp ${BIN} ${RUNDIR}
   echoit "Making a copy of the mysqld used to ${WORKDIR}/mysqld (handy for coredump analysis and manual bundle creation)..."
@@ -2241,29 +2248,29 @@ elif [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
   cd ${WORKDIR}/mysqld || exit 1
   ${SCRIPT_PWD}/ldd_files.sh
   cd ${PWDTMPSAVE} || exit 1
-  if [[ ${PXC} -eq 1 ]]; then
-    echoit "Ensuring PXC templates created for pquery run.."
-    pxc_startup startup
+  if [[ ${MDG} -eq 1 ]]; then
+    echoit "Ensuring MDG templates created for pquery run.."
+    mdg_startup startup
     sleep 5
     if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock ping > /dev/null 2>&1; then
-      echoit "PXC node1.template started"
+      echoit "MDG node1.template started"
     else
-      echoit "Assert: PXC data template creation failed.."
+      echoit "Assert: MDG data template creation failed.."
       exit 1
     fi
     if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock ping > /dev/null 2>&1; then
-      echoit "PXC node2.template started"
+      echoit "MDG node2.template started"
     else
-      echoit "Assert: PXC data template creation failed.."
+      echoit "Assert: MDG data template creation failed.."
       exit 1
     fi
     if ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock ping > /dev/null 2>&1; then
-      echoit "PXC node3.template started"
+      echoit "MDG node3.template started"
     else
-      echoit "Assert: PXC data template creation failed.."
+      echoit "Assert: MDG data template creation failed.."
       exit 1
     fi
-    echoit "Created PXC data templates for pquery run.."
+    echoit "Created MDG data templates for pquery run.."
     ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node3.template/node3_socket.sock shutdown > /dev/null 2>&1
     ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node2.template/node2_socket.sock shutdown > /dev/null 2>&1
     ${BASEDIR}/bin/mysqladmin -uroot -S${WORKDIR}/node1.template/node1_socket.sock shutdown > /dev/null 2>&1
@@ -2299,7 +2306,7 @@ for X in $(seq 1 ${TRIALS}); do
 done
 # All done, wrap up pquery run
 echoit "pquery finished requested number of trials (${TRIALS})... Terminating..."
-if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+if [[ ${MDG} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
   echoit "Cleaning up any leftover processes..."
   KILL_PIDS=$(ps -ef | grep "$RANDOMD" | grep -v "grep" | awk '{print $2}' | tr '\n' ' ')
   if [ "${KILL_PIDS}" != "" ]; then

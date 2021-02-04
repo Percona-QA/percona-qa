@@ -38,7 +38,13 @@ if [ -z "${MYSQLD}" ]; then
 fi
 
 # The */ in the */*core* core search pattern is for to the /node1/ dir setup for cluster runs
-LATEST_CORE=$(ls -t */*core* 2>/dev/null | grep -v 'PREV' | head -n1)  # Exclude data.PREV
+if [[ ${MDG} -eq 1 ]]; then
+  ERROR_LOG=${GALERA_ERROR_LOG}
+  LATEST_CORE=${GALERA_CORE_LOC}
+else
+  ERROR_LOG=$(ls log/master.err 2>/dev/null | head -n1)
+  LATEST_CORE=$(ls -t */*core* 2>/dev/null | grep -v 'PREV' | head -n1)  # Exclude data.PREV
+fi
 if [ -z "${LATEST_CORE}" ]; then
   # TODO: Improve code for when there is an error log (with possible assert) but no core dump (unlikely)
   # Idea; can we fallback to OLD/text_string.sh in that case?
@@ -46,9 +52,8 @@ if [ -z "${LATEST_CORE}" ]; then
   exit 1
 fi
 
-ERROR_LOG=$(ls log/master.err 2>/dev/null | head -n1)
 if [ -z "${ERROR_LOG}" ]; then
-  echo "Assert: no error log found at log/master.err - exiting"
+  echo "Assert: no error log found at ${ERROR_LOG} - exiting"
   exit 1
 fi
 

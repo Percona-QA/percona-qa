@@ -59,11 +59,11 @@ if [ ${SCAN_FOR_NEW_BUGS} -eq 1 -a ! -r ${SCRIPT_PWD}/known_bugs.strings ]; then
   exit 1
 fi
 
-# Check if this is a pxc run
-if [ "$(grep 'PXC Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*PXC Mode[: \t]*||' )" == "TRUE" ]; then
-  PXC=1
+# Check if this is a mdg run
+if [ "$(grep 'MDG Mode:' ./pquery-run.log 2> /dev/null | sed 's|^.*MDG Mode[: \t]*||' )" == "TRUE" ]; then
+  MDG=1
 else
-  PXC=0
+  MDG=0
 fi
 
 # Check if this is a group replication run
@@ -407,12 +407,12 @@ generate_reducer_script(){
     MULTI_STRING2="0,/#VARMOD#/s:#VARMOD#:FORCE_SKIPV=1\n#VARMOD#:"
     MULTI_STRING3="0,/#VARMOD#/s:#VARMOD#:FORCE_SPORADIC=1\n#VARMOD#:"
   fi
-  if [[ ${PXC} -eq 1 ]]; then
-    PXC_CLEANUP1="0,/^[ \t]*PXC_MOD[ \t]*=.*$/s|^[ \t]*PXC_MOD[ \t]*=.*$|#PXC_MOD=<set_below_in_machine_variables_section>|"
-    PXC_STRING1="0,/#VARMOD#/s:#VARMOD#:PXC_MOD=1\n#VARMOD#:"
+  if [[ ${MDG} -eq 1 ]]; then
+    MDG_CLEANUP1="0,/^[ \t]*MDG_MOD[ \t]*=.*$/s|^[ \t]*MDG_MOD[ \t]*=.*$|#MDG_MOD=<set_below_in_machine_variables_section>|"
+    MDG_STRING1="0,/#VARMOD#/s:#VARMOD#:MDG_MOD=1\n#VARMOD#:"
   else
-    PXC_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
-    PXC_STRING1="s|ZERO0|ZERO0|"
+    MDG_CLEANUP1="s|ZERO0|ZERO0|"  # Idem as above
+    MDG_STRING1="s|ZERO0|ZERO0|"
   fi
   if [[ ${GRP_RPL} -eq 1 ]]; then
     GRP_RPL_CLEANUP1="0,/^[ \t]*GRP_RPL_MOD[ \t]*=.*$/s|^[ \t]*GRP_RPL_MOD[ \t]*=.*$|#GRP_RPL_MOD=<set_below_in_machine_variables_section>|"
@@ -464,7 +464,7 @@ generate_reducer_script(){
    | sed -e "0,/^[ \t]*BASEDIR[ \t]*=.*$/s|^[ \t]*BASEDIR[ \t]*=.*$|#BASEDIR=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*USE_PQUERY[ \t]*=.*$/s|^[ \t]*USE_PQUERY[ \t]*=.*$|#USE_PQUERY=<set_below_in_machine_variables_section>|" \
    | sed -e "0,/^[ \t]*PQUERY_LOC[ \t]*=.*$/s|^[ \t]*PQUERY_LOC[ \t]*=.*$|#PQUERY_LOC=<set_below_in_machine_variables_section>|" \
-   | sed -e "${PXC_CLEANUP1}" \
+   | sed -e "${MDG_CLEANUP1}" \
    | sed -e "${GRP_RPL_CLEANUP1}" \
    | sed -e "${SI_CLEANUP1}" \
    | sed -e "${SI_STRING1}" \
@@ -488,7 +488,7 @@ generate_reducer_script(){
    | sed -e "0,/#VARMOD#/s:#VARMOD#:PQUERY_LOC=${PQUERY_BIN}\n#VARMOD#:" \
    | sed -e "${SAVE_RESULTS_CLEANUP}" \
    | sed -e "0,/#VARMOD#/s:#VARMOD#:SAVE_RESULTS=0\n#VARMOD#:" \
-   | sed -e "${PXC_STRING1}" \
+   | sed -e "${MDG_STRING1}" \
    | sed -e "${GRP_RPL_STRING1}" \
    | sed -e "${QC_STRING1}" \
    | sed -e "${QC_STRING2}" \
@@ -559,7 +559,7 @@ generate_reducer_script(){
 # Main pquery results processing
 ASAN_OR_UBSAN_OR_TSAN_BUG=0
 if [ ${QC} -eq 0 ]; then
-  if [[ ${PXC} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
+  if [[ ${MDG} -eq 1 || ${GRP_RPL} -eq 1 ]]; then
     for TRIAL in $(ls ./*/node*/*core* 2>/dev/null | sed 's|./||;s|/.*||' | sort | sort -u); do
       for SUBDIR in `ls -lt ${TRIAL} --time-style="long-iso"  | egrep --binary-files=text '^d' | awk '{print $8}' | tr -dc '0-9\n' | sort`; do
         OUTFILE="${TRIAL}-${SUBDIR}"
@@ -657,7 +657,7 @@ if [ ${QC} -eq 0 ]; then
         echo "Warning: no MYEXTRA file found for trial ${TRIAL} (./${TRIAL}/MYEXTRA). This should not be the case, unless this run ran out of diskspace"
       fi
       MYINIT=$(cat ./${TRIAL}/MYINIT 2>/dev/null)
-      if [ ${PXC} -eq 0 ]; then
+      if [ ${MDG} -eq 0 ]; then
         OUTFILE=$TRIAL
         rm -Rf ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
         touch ${WORKD_PWD}/${TRIAL}/${TRIAL}.sql.failing
