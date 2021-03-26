@@ -1,8 +1,22 @@
 #!/bin/bash
-# Created by Ramesh Sivaraman, Percona LLC
+#######################################################################################
+# Created by Ramesh Sivaraman, Percona LLC                                            #
+# Updated by Mohit Joshi, Percona LLC                                                 #
+# - Added support for PXC-8.0                                                         #
+# - Improved the cleanup function                                                     #
+# - Handled sysbench errors in version >=1.0 due to prepared statements (PS)          #
+# Pre-requisites:                                                                     #
+# - Ensure proxysql package is installed on the machine                               #
+# - Ensure sysbench is installed on the machine                                       #
+# Usage:                                                                              #
+# - Create a work directory                                                           #
+# - Download the latest PXC and PS tarball (tar.gz) pacakges inside work directory    #
+#   URL: https://www.percona.com/downloads/Percona-XtraDB-Cluster-LATEST/#            #
+# - Invoke the script:                                                                #
+# eg ./pxc-proxysql-test.sh </path/to/workdir>                                        #
+#######################################################################################
 
 # User Configurable Variables
-SBENCH="sysbench"
 PORT=$[50000 + ( $RANDOM % ( 9999 ) ) ]
 WORKDIR=$1
 ROOT_FS=$WORKDIR
@@ -13,6 +27,21 @@ RPORT=$(( RANDOM%21 + 10 ))
 RBASE="$(( RPORT*1000 ))"
 SUSER=root
 SPASS=
+
+if [[ ! -e `which proxysql` ]];then
+  echo "ProxySQL not found"
+  exit 1
+else
+  PROXYSQL=`which proxysql`
+fi
+
+if [[ ! -e `which sysbench` ]];then
+  echo "Sysbench not found"
+  exit 1
+else
+  SBENCH=`which sysbench`
+fi
+
 
 # For local run - User Configurable Variables
 if [ -z ${BUILD_NUMBER} ]; then
@@ -35,10 +64,15 @@ fi
 killall -9 proxysql > /dev/null 2>&1 || true
 
 #Kill existing mysqld process
-ps -ef | grep 'n[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2>&1 || true
+ps -ef | grep 'node[0-9].sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 > /dev/null 2>&1 || true
+
+#Cleanup previous build directory
+rm -rf $ROOT_FS/$BUILD_NUMBER
+rm -rf $ROOT_FS/proxysql_datadir
 
 cleanup(){
-  tar cvzf $ROOT_FS/results-${BUILD_NUMBER}.tar.gz $WORKDIR/logs || true
+  tar czf results-${BUILD_NUMBER}.tar.gz -C $WORKDIR/logs . || true
+  echo "Logs zipped successfully. Logs stored at: results-${BUILD_NUMBER}.tar.gz"
 }
 
 trap cleanup EXIT KILL
@@ -47,7 +81,7 @@ cd $ROOT_FS
 sysbench_run(){
   TEST_TYPE="$1"
   DB="$2"
-  SDURATION=50
+  SDURATION=30
   if [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "0.5" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/parallel_prepare.lua --oltp-table-size=$TSIZE --oltp_tables_count=$TCOUNT --mysql-db=$DB  --num-threads=$NUMT --db-driver=mysql"
@@ -70,73 +104,45 @@ sysbench_run(){
 PXC_TAR=`ls -1td ?ercona-?tra??-?luster* | grep ".tar" | head -n1`
 
 if [ ! -z $PXC_TAR ];then
+  echo "Found PXC tarball package"
   tar -xzf $PXC_TAR
+  echo "Extracted PXC tarball package successfully"
   PXCBASE=`ls -1td ?ercona-?tra??-?luster* | grep -v ".tar" | head -n1`
-  #Checking proxysql binary
-  PROXYSQL_BIN=`ls -1t proxysql | head -n1`
-  if [ ! -z $PROXYSQL_BIN ];then
-    cp $PROXYSQL_BIN $PXCBASE/bin/
-  fi
-  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
+else
+  echo "Could not locate PXC tarball package in the $ROOT_FS. Exiting..."
+  exit 1
 fi
 
 PS_TAR=`ls -1td ?ercona-?erver* | grep ".tar" | head -n1`
 
 if [ ! -z $PS_TAR ];then
+  echo "Found PS tarball package"
   tar -xzf $PS_TAR
+  echo "Extracted PS tarball package successfully"
   PS_BASE=`ls -1td ?ercona-?erver* | grep -v ".tar" | head -n1`
-  export PATH="$ROOT_FS/$PS_BASE/bin:$PATH"
+  PSBASE="$ROOT_FS/$PS_BASE"
+else
+  echo "Could not locate PS tarball package in the $ROOT_FS. Exiting..."
+  exit 1
 fi
-PSBASE="$ROOT_FS/$PS_BASE"
-if [ ! -e $ROOT_FS/garbd ];then
-  wget http://jenkins.percona.com/job/pxc56.buildandtest.galera3/Btype=release,label_exp=centos6-64/lastSuccessfulBuild/artifact/garbd
-  cp garbd $ROOT_FS/$PXCBASE/bin/
-  export PATH="$ROOT_FS/$PXCBASE/bin:$PATH"
-fi
-
-if [ ! -d ${ROOT_FS}/test_db ]; then
-  git clone https://github.com/datacharmer/test_db.git
-fi
-
-function create_emp_db()
-{
-  DB_NAME=$1
-  SE_NAME=$2
-  SQL_FILE=$3
-  pushd ${ROOT_FS}/test_db
-  cat ${ROOT_FS}/test_db/$SQL_FILE \
-   | sed -e "s|DROP DATABASE IF EXISTS employees|DROP DATABASE IF EXISTS ${DB_NAME}|" \
-   | sed -e "s|CREATE DATABASE IF NOT EXISTS employees|CREATE DATABASE IF NOT EXISTS ${DB_NAME}|" \
-   | sed -e "s|USE employees|USE ${DB_NAME}|" \
-   | sed -e "s|set default_storage_engine = InnoDB|set default_storage_engine = ${SE_NAME}|" \
-   > ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql
-   $PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${ROOT_FS}/test_db/${DB_NAME}_${SE_NAME}.sql || true
-   popd
-}
 
 if [[ ! -e `which proxysql` ]];then
-  echo "proxysql not found"
+  echo "ProxySQL not found"
   exit 1
 else
   PROXYSQL=`which proxysql`
 fi
-
-check_script(){
-  MPID=$1
-  if [ ${MPID} -ne 0 ]; then echo "Assert! ${MPID} empty. Terminating!"; exit 1; fi
-}
-
-GARBDBASE="$(( RBASE1 + 500 ))"
-GARBDP="$ADDR:$GARBDBASE"
 
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 BASEDIR="${ROOT_FS}/$PXCBASE"
 mkdir -p $WORKDIR  $WORKDIR/logs
 
 # Setting seeddb creation configuration
-if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '8\.[0]' | head -n1)" == "8.0" ]; then
   MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
-elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
+elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.7" ]; then
+  MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
+elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.6" ]; then
   MID="${BASEDIR}/scripts/mysql_install_db --no-defaults --basedir=${BASEDIR}"
 fi
 
@@ -146,9 +152,16 @@ function pxc_startup(){
     RBASE1="$(( RBASE + ( 100 * $i ) ))"
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     PORT_ARRAY+=("$RBASE1")
-    WSREP_CLUSTER="${WSREP_CLUSTER}gcomm://$LADDR1,"
+    WSREP_CLUSTER="${WSREP_CLUSTER}$LADDR1,"
+    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.6" ]; then
+      WSREP_SST_AUTH="--wsrep_sst_auth=$USER:$PASS"
+    elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.7" ]; then
+      WSREP_SST_AUTH="--wsrep_sst_auth=$USER:$PASS"
+    elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '8\.[0]' | head -n1)" == "8.0" ]; then
+      WSREP_SST_AUTH=""
+    fi
     node="${WORKDIR}/node$i"
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" != "5.7" ]; then
+    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.6" ]; then
       mkdir -p $node
       ${MID} --datadir=$node  > $WORKDIR/logs/startup_node$i.err 2>&1
     else
@@ -159,134 +172,138 @@ function pxc_startup(){
     if [ $i -eq 1 ]; then
       WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm:// "
     else
-      WSREP_CLUSTER_ADD="--wsrep_cluster_address=$WSREP_CLUSTER"
+      WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm://$WSREP_CLUSTER"
     fi
 
-    ${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
-      --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
-      --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=rsync --wsrep_sst_auth=$SUSER:$SPASS \
-      --wsrep_node_address=$ADDR --datadir=$node \
-      --innodb_autoinc_lock_mode=2 $WSREP_CLUSTER_ADD $PXC_MYEXTRA \
-      --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
-      --log-error=$WORKDIR/logs/node$i.err  \
-      --socket=/tmp/node${i}.sock --port=$RBASE1  --max-connections=2048 > $node/node$i.err 2>&1 &
+    CMD="${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
+ --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
+ --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=xtrabackup-v2 $WSREP_SST_AUTH \
+ --wsrep_node_address=$ADDR --datadir=$node \
+ --innodb_autoinc_lock_mode=2 $WSREP_CLUSTER_ADD \
+ --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
+ --wsrep_debug=1 \
+ --pxc-encrypt-cluster-traffic=OFF \
+ --log-error=$WORKDIR/logs/node$i.err  \
+ --socket=/tmp/node${i}.sock --port=$RBASE1  --max-connections=2048"
+
+    #echo "$CMD";
+    $CMD > $node/node$i.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
       sleep 1
       if ${BASEDIR}/bin/mysqladmin -uroot -S/tmp/node${i}.sock ping > /dev/null 2>&1; then
-        echo "Started PXC node$i. Socket : /tmp/node${i}.sock"
-        break
+        echo "PXC Node$i started ok. Client: `echo "${BASEDIR}/bin/mysqld" | sed 's|/mysqld|/mysql|'` -uroot -S/tmp/node${i}.sock"
+	break
       fi
     done
   done
   chmod 755 $WORKDIR/logs/*
-  ${BASEDIR}/bin/mysql -uroot -S/tmp/node1.sock -e "create database if not exists test" > /dev/null 2>&1
 }
 
 proxysql_startup(){
-  $PROXYSQL --initial -f -c $SCRIPT_PWD/proxysql.cnf > /dev/null 2>&1 &
-  check_script $?
-  sleep 10
-  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%' IDENTIFIED BY 'proxysql'"
-  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'monitor'@'%' IDENTIFIED BY 'monitor'"
-  check_script $?
+  # Creating proxysql datadir
+  echo "Creating ProxySQL data directory";
+  mkdir -p $ROOT_FS/proxysql_datadir/
+  # Copying the conf file into work directory
+  echo "Writing the ProxySQL configuration file";
+  cp $SCRIPT_PWD/proxysql.cnf $ROOT_FS/proxysql_datadir
+  echo "Starting ProxySQL server...";
+  echo "$PROXYSQL --initial -f -c $ROOT_FS/proxysql_datadir/proxysql.cnf > $ROOT_FS/proxysql_datadir/proxy.err"
+  $PROXYSQL --initial -f -c $ROOT_FS/proxysql_datadir/proxysql.cnf > $ROOT_FS/proxysql_datadir/proxy.err 2>&1 &
   sleep 5
-  echo  "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', ${PORT_ARRAY[0]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[1]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[2]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[3]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[4]}, 20)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  check_script $?
-  echo  "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  check_script $?
-#  echo "INSERT INTO mysql_query_rules(active,match_pattern,destination_hostgroup,apply) VALUES(1,'^SELECT',0,1),(1,'^DELETE',0,1),(1,'^UPDATE',1,1),(1,'^INSERT',1,1)" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  echo "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;" | ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin
-  check_script $?
-  sleep 10
+
+  echo "Creating ProxySQL users on PXC cluster node 1";
+
+  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "CREATE USER 'proxysql'@'%' IDENTIFIED WITH mysql_native_password BY 'proxysql'"
+  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "CREATE USER 'monitor'@'%' IDENTIFIED BY 'monitor'"
+  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'proxysql'@'%'"
+  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "GRANT ALL ON *.* TO 'monitor'@'%'"
+  ${BASEDIR}/bin/mysql -uroot  -S/tmp/node1.sock  -e "DROP DATABASE IF EXISTS sbtest;CREATE DATABASE sbtest;"
+
+  echo "Inserting values into ProxySQL Database";
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_servers (hostgroup_id, hostname, port, max_replication_lag) VALUES (0, '127.0.0.1', ${PORT_ARRAY[0]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[1]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[2]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[3]}, 20),(0, '127.0.0.1', ${PORT_ARRAY[4]}, 20)"
+
+  echo "Adding proxysql user in PXC server"
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "INSERT INTO mysql_users (username, password, active, default_hostgroup, max_connections) VALUES ('proxysql', 'proxysql', 1, 0, 1024)"
+
+  echo "Loading newly added MySQL users and Server to runtime"
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -e "LOAD MYSQL SERVERS TO RUNTIME; SAVE MYSQL SERVERS TO DISK; LOAD MYSQL USERS TO RUNTIME; SAVE MYSQL USERS TO DISK;LOAD MYSQL QUERY RULES TO RUNTIME;SAVE MYSQL QUERY RULES TO DISK;"
 }
 
 #PXC startup
+echo "Starting PXC nodes..."
 pxc_startup
+
 #ProxySQL startup
 proxysql_startup
-check_script $?
+
+echo "PXC and ProxySQL server started and configured successfully";
 
 get_connection_pool(){
   echo -e "ProxySQL connection pool status\n"
-  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e"select srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv from stats_mysql_connection_pool;"
-
+  ${PSBASE}/bin/mysql -h 127.0.0.1 -P6032 -uadmin -padmin -t -e"SELECT srv_host,srv_port,status,Queries,Bytes_data_sent,Bytes_data_recv FROM stats_mysql_connection_pool;"
 }
+
 #Sysbench data load
-sysbench_run load_data test
-$SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
+sysbench_run load_data sbtest
+echo -e "Preparing metadata for sysbench run...\n"
+echo "$SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 prepare"
+$SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 prepare  2>&1 | tee $WORKDIR/logs/sysbench_prepare.txt
 
-check_script $?
 get_connection_pool
-
-echo "Loading sakila test database"
-#$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila.sql
-$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/sakila_workaround_bug81497.sql
-check_script $?
-get_connection_pool
-
-echo "Loading world test database"
-$PSBASE/bin/mysql --user=proxysql --password=proxysql --host=127.0.0.1 < ${SCRIPT_PWD}/sample_db/world.sql
-check_script $?
-get_connection_pool
-
-echo "Loading employees database with innodb engine.."
-create_emp_db employee_1 innodb employees.sql
-check_script $?
-get_connection_pool
-
-echo "Loading employees partitioned database with innodb engine.."
-create_emp_db employee_2 innodb employees_partitioned.sql
-check_script $?
-get_connection_pool
-
 
 #Sysbench run
 echo -e "Sysbench readonly run...\n"
-for i in `seq 1 5`; do
-  sysbench_run oltp_read test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
-  check_script $?
+for i in `seq 1 3`; do
+  sysbench_run oltp_read sbtest
+  echo "$SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 run"
+  $SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 run 2>&1 | tee -a $WORKDIR/logs/sysbench_run.txt
   sleep 1
   get_connection_pool
 done
 
 echo -e "Sysbench read write run...\n"
-for i in `seq 1 5`; do
-  sysbench_run oltp test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
-  check_script $?
+for i in `seq 1 3`; do
+  sysbench_run oltp sbtest
+  echo "$SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 --mysql-ignore-errors=1317,1180,2013,1213,1062,1205 --db-ps-mode=disable run"
+  $SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 --mysql-ignore-errors=1317,1180,2013,1213,1062,1205 --db-ps-mode=disable run 2>&1 | tee -a $WORKDIR/logs/sysbench_run.txt
   sleep 1
   get_connection_pool
 done
 
 echo -e "Shutting down node3 to check proxysql connection pooling status"
-#Shutdown PXC node1
-$BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
+#Shutdown PXC node3
+$BASEDIR/bin/mysqladmin --socket=/tmp/node3.sock -uroot shutdown
+
+sleep 20
+get_connection_pool
 
 #Sysbench run
 echo -e "Sysbench readonly run...\n"
-for i in `seq 1 5`; do
-  sysbench_run oltp_read test
-  $SBENCH $SYSBENCH_OPTIONS --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
-  check_script $?
+for i in `seq 1 3`; do
+  sysbench_run oltp_read sbtest
+  echo "$SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 run"
+  $SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 run 2>&1 | tee -a $WORKDIR/logs/sysbench_run.txt
   sleep 1
   get_connection_pool
 done
 
 echo -e "Sysbench read write run...\n"
-for i in `seq 1 5`; do
-  sysbench_run oltp test
-  $SBENCH $SYSBENCH_OPTIONS--mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 run 2>&1 | tee $WORKDIR/logs/sysbench_run.txt
-  check_script $?
+for i in `seq 1 3`; do
+  sysbench_run oltp sbtest
+  echo "$SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 run --mysql-ignore-errors=1317,1180,2013,1213,1062,1205 --db-ps-mode=disable"
+  $SBENCH $SYSBENCH_OPTIONS --forced-shutdown=5 --mysql-user=proxysql --mysql-password=proxysql --mysql-host=127.0.0.1 --mysql-port=6033 --mysql-ignore-errors=1317,1180,2013,1213,1062,1205 --db-ps-mode=disable run 2>&1 | tee -a $WORKDIR/logs/sysbench_run.txt
   sleep 1
   get_connection_pool
 done
 
-echo -e "Shutting down remaining PXC nodes\n"
+echo -e "Shutting down remaining PXC nodes"
 #Shutdown remaining PXC nodes
+$BASEDIR/bin/mysqladmin  --socket=/tmp/node1.sock -u root shutdown
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node2.sock -u root shutdown
-$BASEDIR/bin/mysqladmin  --socket=/tmp/node3.sock -u root shutdown
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node4.sock -u root shutdown
 $BASEDIR/bin/mysqladmin  --socket=/tmp/node5.sock -u root shutdown
 
+echo "Waiting for all nodes to shutdown completely..."
+sleep 30
+get_connection_pool
