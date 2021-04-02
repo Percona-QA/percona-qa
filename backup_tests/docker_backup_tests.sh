@@ -105,7 +105,15 @@ test_pxb24_docker() {
     echo "Stopping and removing mysql-5.7 docker container"
     sudo docker stop mysql-5.7
     sudo docker rm mysql-5.7
+
+    echo "Removing all images and volumes not being used by any container"
+    sudo docker image prune -a -f
+    sudo docker volume prune -f
 }
+
+echo "Removing all images and volumes not being used by any container"
+sudo docker image prune -a -f
+sudo docker volume prune -f
 
 if [ "$1" = "pxb8" ]; then
     test_pxb8_docker

@@ -13,16 +13,16 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_22_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_23_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS081220_8_0_22_debug"
+export mysqldir="$HOME/MS_8_0_23"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
+rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
 
 # Set sysbench variables
 num_tables=10
@@ -35,6 +35,8 @@ encrypt_key="mHU3Zs5sRcSB7zBAJP1BInPP5lgShKly"
 
 # Set user for backup
 backup_user="root"
+
+#set -o pipefail
 
 initialize_db() {
     # This function initializes and starts mysql database
@@ -355,8 +357,8 @@ incremental_backup() {
     popd >/dev/null 2>&1
     echo "The mysql server was started successfully"
 
-    # Binlog can't be applied if binlog is encrypted
-    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption" ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]]; then
+    # Binlog can't be applied if binlog is encrypted or skipped
+    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption" ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]] && [[ "${MYSQLD_OPTIONS}" != *"skip-log-bin"* ]]; then
         echo "Check xtrabackup for binlog position"
         xb_binlog_file=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $1}'|head -1)
         xb_binlog_pos=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $2}'|head -1)
@@ -993,6 +995,45 @@ grant_tables() {
     done ) &
 }
 
+add_drop_invisible_column() {
+    # This function adds an invisible column and then drops it
+
+    echo "Add an invisible column and then drop it"
+    ( for ((i=1; i<=10; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ADD COLUMN invisible int DEFAULT 1 invisible first;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET invisible = id;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 DROP COLUMN invisible;" >/dev/null 2>&1
+    done ) &
+}
+
+
+add_drop_blob_column() {
+    # This function adds a blob column and then drops it
+
+    echo "Add an blob column and then drop it"
+    ( for ((i=1; i<=30; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ADD COLUMN blob_col blob;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET blob_col = c;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET blob_col = NULL;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET blob_col = id;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET blob_col = NULL;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 DROP COLUMN blob_col;" >/dev/null 2>&1
+        echo "[$(date +"%H:%M:%S")] Count: $i"
+    done ) &
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -1346,6 +1387,7 @@ test_inc_backup_encryption_8_0() {
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
         lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        #lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
 
     else
         if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
@@ -1477,12 +1519,12 @@ test_inc_backup_encryption_8_0() {
     echo "Test: Backup and Restore during column compression using compression dictionary"
     compression_dictionary
     eval $lock_ddl_cmd
-    #echo "###################################################################################"
+    echo "###################################################################################"
 
     # Commented due to PXB-2277
-    #echo "Test: Backup and Restore during encryption change"
-    #change_encryption
-    #eval $lock_ddl_cmd
+    echo "Test: Backup and Restore during encryption change"
+    change_encryption
+    eval $lock_ddl_cmd
 }
 
 test_inc_backup_encryption_2_4() {
@@ -1497,7 +1539,7 @@ test_inc_backup_encryption_2_4() {
         if [ "${server_type}" = "MS" ]; then
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
         else
-            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
         fi
 
         echo "Test Suite: Incremental Backup and Restore for ${server_type}5.7 using PXB2.4 with keyring_file encryption"
@@ -1534,9 +1576,9 @@ test_inc_backup_encryption_2_4() {
         if [ "${server_type}" = "MS" ]; then
             lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
         else
-            initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+            initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
-            lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
+            lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
         fi
 
     else
@@ -1550,7 +1592,7 @@ test_inc_backup_encryption_2_4() {
         # PXB 2.4 does not support redo log and undo log encryption
         echo "Test: Incremental Backup and Restore when all encryption options are enabled in PS5.7"
 
-        server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --innodb-encryption-threads=10 --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+        server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
         initialize_db "${server_options} --encrypt-binlog"
 
@@ -1582,11 +1624,11 @@ test_inc_backup_encryption_2_4() {
         initialize_db "${server_options}"
 
         lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        #lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
     fi
 
     # Running test suites with lock ddl backup command
 
-    # Commented due to PXB-2092
     echo "Test: Backup and Restore during add and drop index"
     add_drop_index
     eval $lock_ddl_cmd
@@ -1602,13 +1644,11 @@ test_inc_backup_encryption_2_4() {
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    # Commented due to PXB-2097
     echo "Test: Backup and Restore during change in row format"
     change_row_format
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    # Commented due to PXB-2237
     echo "Test: Backup and Restore during update and truncate of a table"
     update_truncate_table
     eval $lock_ddl_cmd
@@ -1619,7 +1659,6 @@ test_inc_backup_encryption_2_4() {
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    # Commented due to PXB-2240
     echo "Test: Backup and Restore during add and drop full text index"
     add_drop_full_text_index
     eval $lock_ddl_cmd
@@ -1635,7 +1674,6 @@ test_inc_backup_encryption_2_4() {
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    # Commented due to PXB-2239
     echo "Test: Backup and Restore during creation of partitioned tables"
     partitioned_tables
     eval $lock_ddl_cmd
@@ -1844,7 +1882,7 @@ test_inc_backup_archive_log() {
     fi
 
     if [ ! -d ${mysqldir}/archive ]; then
-        mkdir -m 444 ${mysqldir}/archive
+        mkdir -m 744 ${mysqldir}/archive
     fi
 
     echo "Test: Incremental Backup and Restore with --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
@@ -1921,35 +1959,135 @@ test_inc_backup_innodb_params() {
     initialize_db "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
 
     incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with --skip-log-bin"
+
+    # Note: This test might produce differences between original and restored data since binlog cannot be applied after restore
+
+    initialize_db "--skip-log-bin"
+
+    incremental_backup "" "" "" "--skip-log-bin" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with --log-bin=mysql_binlog --log-bin-index=binlog_index.file"
+
+    initialize_db "--log-bin=mysql_binlog --log-bin-index=binlog_index.file"
+
+    incremental_backup "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "" ""
+
 }
 
+test_invisible_column() {
+    # This test suite takes an incremental backup when an invisible column is added/dropped
+
+    echo "Test: Backup and Restore during add and drop of an invisible column"
+
+    add_drop_invisible_column
+
+    incremental_backup "--lock-ddl"
+}
+
+test_blob_column() {
+    # This test suite takes an incremental backup when a blob column is added/dropped
+
+    echo "Test: Backup and Restore during add and drop of a blob column"
+
+    add_drop_blob_column
+
+    incremental_backup
+}
+
+if [ "$#" -lt 1 ]; then
+    echo "Usage: Please run the script with the following testsuites"
+    echo "Various_ddl_tests"
+    echo "File_encrypt_compress_stream_tests"
+    echo "Encryption_PXB2_4_PS5_7_tests"
+    echo "Encryption_PXB2_4_MS5_7_tests"
+    echo "Encryption_PXB8_0_PS8_0_tests"
+    echo "Encryption_PXB8_0_MS8_0_tests"
+    echo "Cloud_backup_tests"
+    echo "Innodb_params_redo_archive_tests"
+    echo "SSL_tests"
+    exit 1
+fi
+
 echo "Running Tests"
-# Various test suites
-#for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_grant_tables test_run_all_statements; do
+for tsuitelist in $*; do
+    case "${tsuitelist}" in
+        Various_ddl_tests)
+            echo "Various test suites"
 
-# Cloud backup test suite
-#for testsuite in test_cloud_inc_backup; do
+            for testsuite in test_inc_backup test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_grant_tables test_invisible_column test_blob_column test_run_all_statements; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-# File encryption, compression and streaming test suites
-#for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup test_compress_backup; do
+        File_encrypt_compress_stream_tests)
+            echo "File encryption, compression and streaming test suites"
+            for testsuite in test_streaming_backup test_compress_stream_backup test_encrypt_compress_stream_backup test_compress_backup; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-# SSL options test suite
-#for testsuite in test_ssl_backup; do
+        Encryption_PXB2_4_PS5_7_tests)
+            echo "Encryption test suites for PXB2.4 and PS5.7"
+            for testsuite in "test_inc_backup_encryption_2_4 keyring_file PS" "test_inc_backup_encryption_2_4 keyring_vault PS"; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-# Encryption test suites for PXB2.4 and PS5.7
-#for testsuite in "test_inc_backup_encryption_2_4 keyring_file PS" "test_inc_backup_encryption_2_4 keyring_vault PS"; do
+        Encryption_PXB2_4_MS5_7_tests)
+            echo "Encryption_PXB2_4_MS5_7_tests"
+            for testsuite in "test_inc_backup_encryption_2_4 keyring_file MS"; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-# Encryption test suites for PXB2.4 and MS5.7
-#for testsuite in "test_inc_backup_encryption_2_4 keyring_file MS"; do
+        Encryption_PXB8_0_PS8_0_tests)
+            echo "Encryption test suites for PXB8.0 and PS8.0"
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-# Encryption test suites for PXB8.0 and PS8.0
-#for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
+        Encryption_PXB8_0_MS8_0_tests)
+            echo "Encryption test suites for PXB8.0 and MS8.0"
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_file"; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-# Encryption test suites for PXB8.0 and MS8.0
-#for testsuite in "test_inc_backup_encryption_8_0 keyring_file"; do
+        Cloud_backup_tests)
+            echo "Cloud backup test suite"
+            for testsuite in test_cloud_inc_backup; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
 
-#Innodb parameters and redo archive log test suites
-for testsuite in test_inc_backup_innodb_params test_inc_backup_archive_log; do
-    $testsuite
-    echo "###################################################################################"
+        Innodb_params_redo_archive_tests)
+            echo "Innodb parameters and redo archive log test suites"
+            for testsuite in test_inc_backup_innodb_params test_inc_backup_archive_log; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
+
+        SSL_tests)
+            echo "SSL options test suite"
+            for testsuite in test_ssl_backup; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
+    esac
 done
