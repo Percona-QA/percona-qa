@@ -95,8 +95,8 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-                PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-                mv binary.tar.gz ${PS_TARBALL}
+#               PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+#               mv binary.tar.gz ${PS_TARBALL}
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=innodb
