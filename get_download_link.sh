@@ -227,7 +227,7 @@ get_link(){
         TARBALL="percona-xtrabackup-${VERSION_FULL}-Linux-${BUILD_ARCH}.${OPT}.tar.gz"
         if [[ ! -z ${TARBALL} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/Percona-XtraBackup-${VERSION_FULL}/binary/tarball/${TARBALL}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/source/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/source/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
