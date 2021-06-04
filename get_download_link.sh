@@ -276,11 +276,11 @@ get_link(){
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
         BASE_LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/"
-        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -P "(mysql|MySQL)-[0-9]+\.[0-9]+\.[0-9]+.*${BUILD_ARCH}\.tar\..."|grep -v "mysql-test"|head -n1)
+        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -E "(mysql|MySQL)-${VERSION}\.[0-9]+.*${BUILD_ARCH}\.tar\..."|grep -v "mysql-test"|head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       else
         BASE_LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/"
-        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=src|grep -o -P "(mysql|MySQL)-[0-9]+\.[0-9]+\.[0-9]+\.tar\..."|head -n1)
+        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=src|grep -o -E "(mysql|MySQL)-${VERSION}\.[0-9]+\.tar\..."|head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       fi
     else
