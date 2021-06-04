@@ -136,12 +136,15 @@
   ./get_download_link.sh --product pmm-client --source
 }
 
-@test "check mysql 5.5" {
-  ./get_download_link.sh --product mysql --version 5.5
+@test "check mysql 5.5 fails" {
+  run ./get_download_link.sh --product mysql --version 5.5
+  [ "$status" -eq 1 ]
 }
-@test "check mysql 5.6" {
-  ./get_download_link.sh --product mysql --version 5.6
+@test "check mysql 5.6 fails" {
+  run ./get_download_link.sh --product mysql --version 5.6
+  [ "$status" -eq 1 ]
 }
+
 @test "check mysql 5.7" {
   ./get_download_link.sh --product mysql --version 5.7
 }
