@@ -286,7 +286,7 @@ get_link(){
     else
       if [[ ${SOURCE} = 0 ]]; then
         BASE_LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/"
-        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -P "(mysql|MySQL)-${VERSION_FULL}.*${BUILD_ARCH}.tar.gz"|grep -v "mysql-test"|head -n1)
+        TARBALL=$(wget -qO- https://dev.mysql.com/downloads/mysql/${VERSION}.html\?os\=2|grep -o -E "(mysql|MySQL)-${VERSION_FULL}.*${BUILD_ARCH}.tar.gz"|grep -v "mysql-test"|head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       else
         LINK="https://dev.mysql.com/get/Downloads/MySQL-${VERSION}/mysql-${VERSION_FULL}.tar.gz"
@@ -363,10 +363,10 @@ get_link(){
 
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        TARBALL=$(wget -qO- https://www.mongodb.org/dl/linux/x86_64 | grep -o -P "mongodb-linux-x86_64${DISTRIBUTION}-${VERSION}\..{1,6}\.tgz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
+        TARBALL=$(wget -qO- https://www.mongodb.org/dl/linux/x86_64 | grep -o -E "mongodb-linux-x86_64${DISTRIBUTION}-${VERSION}\..{1,6}\.tgz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       else
-        TARBALL=$(wget -qO- https://www.mongodb.org/dl/src | grep -o -P "mongodb-src-r${VERSION}\..{1,6}\.tar.gz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
+        TARBALL=$(wget -qO- https://www.mongodb.org/dl/src | grep -o -E "mongodb-src-r${VERSION}\..{1,6}\.tar.gz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       fi
     else
@@ -384,7 +384,7 @@ get_link(){
     fi
 
     if [[ -z ${VERSION_FULL} ]]; then
-      VERSION_FULL=$(wget -qO- https://releases.hashicorp.com/vault/ |grep -o "vault_.*"|grep -vP "alpha|beta|rc|ent"|sed "s:</a>::"|sed "s:vault_::"|head -n1)
+      VERSION_FULL=$(wget -qO- https://releases.hashicorp.com/vault/ |grep -o "vault_.*"|grep -vE "alpha|beta|rc|ent"|sed "s:</a>::"|sed "s:vault_::"|head -n1)
       TARBALL="vault_${VERSION_FULL}_linux_${BUILD_ARCH}.zip"
       LINK="${BASE_LINK}${VERSION_FULL}/${TARBALL}"
     else
@@ -400,7 +400,7 @@ get_link(){
     fi
 
     if [[ -z ${VERSION_FULL} ]]; then
-      TARBALL=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-${VERSION}.*${BUILD_ARCH}-.*.tar.gz")
+      TARBALL=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oE "postgresql-${VERSION}.*${BUILD_ARCH}-.*.tar.gz")
       LINK="${BASE_LINK}${TARBALL}"
     else
       LINK="${BASE_LINK}postgresql-${VERSION_FULL}-1-linux${BUILD_ARCH}-binaries.tar.gz"
