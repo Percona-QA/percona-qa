@@ -10,6 +10,16 @@
   ./get_download_link.sh --product ps --version 8.0
 }
 
+@test "check ps 5.6 source" {
+  ./get_download_link.sh --product ps --version 5.6 --source
+}
+@test "check ps 5.7 source" {
+  ./get_download_link.sh --product ps --version 5.7 --source
+}
+@test "check ps 8.0 source" {
+  ./get_download_link.sh --product ps --version 8.0 --source
+}
+
 @test "check pxc 5.5" {
   ./get_download_link.sh --product pxc --version 5.5
 }
@@ -22,6 +32,20 @@
 @test "check pxc 8.0" {
   ./get_download_link.sh --product pxc --version 8.0
 }
+
+@test "check pxc 5.5 source" {
+  ./get_download_link.sh --product pxc --version 5.5 --source
+}
+@test "check pxc 5.6 source" {
+  ./get_download_link.sh --product pxc --version 5.6 --source
+}
+@test "check pxc 5.7 source" {
+  ./get_download_link.sh --product pxc --version 5.7 --source
+}
+@test "check pxc 8.0 source" {
+  ./get_download_link.sh --product pxc --version 8.0 --source
+}
+
 
 @test "check psmdb 3.4" {
   ./get_download_link.sh --product psmdb --version 3.4
@@ -36,8 +60,25 @@
   ./get_download_link.sh --product psmdb --version 4.2
 }
 
+@test "check psmdb 3.4 source" {
+  ./get_download_link.sh --product psmdb --version 3.4 --source
+}
+@test "check psmdb 3.6 source" {
+  ./get_download_link.sh --product psmdb --version 3.6 --source
+}
+@test "check psmdb 4.0 source" {
+  ./get_download_link.sh --product psmdb --version 4.0 --source
+}
+@test "check psmdb 4.2 source" {
+  ./get_download_link.sh --product psmdb --version 4.2 --source
+}
+
 @test "check pt" {
   ./get_download_link.sh --product pt
+}
+
+@test "check pt source" {
+  ./get_download_link.sh --product pt --source
 }
 
 @test "check pxb 2.4" {
@@ -47,8 +88,19 @@
   ./get_download_link.sh --product pxb --version 8.0
 }
 
+@test "check pxb 2.4 source" {
+  ./get_download_link.sh --product pxb --version 2.4 --source
+}
+@test "check pxb 8.0 source" {
+  ./get_download_link.sh --product pxb --version 8.0 --source
+}
+
 @test "check pmm-client" {
   ./get_download_link.sh --product pmm-client
+}
+
+@test "check pmm-client source" {
+  ./get_download_link.sh --product pmm-client --source
 }
 
 @test "check mysql 5.5" {
@@ -64,6 +116,13 @@
   ./get_download_link.sh --product mysql --version 8.0
 }
 
+@test "check mysql 5.7 source" {
+  ./get_download_link.sh --product mysql --version 5.7 --source
+}
+@test "check mysql 8.0 source" {
+  ./get_download_link.sh --product mysql --version 8.0 --source
+}
+
 @test "check mariadb 10.2" {
   ./get_download_link.sh --product mariadb --version 10.2
 }
@@ -72,6 +131,16 @@
 }
 @test "check mariadb 10.4" {
   ./get_download_link.sh --product mariadb --version 10.4
+}
+
+@test "check mariadb 10.2 source" {
+  ./get_download_link.sh --product mariadb --version 10.2 --source
+}
+@test "check mariadb 10.3 source" {
+  ./get_download_link.sh --product mariadb --version 10.3 --source
+}
+@test "check mariadb 10.4 source" {
+  ./get_download_link.sh --product mariadb --version 10.4 --source
 }
 
 @test "check mongodb 3.4" {
@@ -89,6 +158,10 @@
 
 @test "check proxysql" {
   ./get_download_link.sh --product proxysql
+}
+
+@test "check proxysql source" {
+  ./get_download_link.sh --product proxysql --source
 }
 
 @test "check vault" {
