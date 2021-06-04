@@ -142,7 +142,7 @@ get_link(){
         #LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/|grep -oE "Percona-Server-${VERSION}\.[0-9]+-${OPT}[0-9]+-Linux\.${BUILD_ARCH}\.${SSL_VER}\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/binary/tarball/Percona-Server-${PS_VER_MAJ}-${OPT}${PS_VER_MIN}-Linux.${BUILD_ARCH}.${SSL_VER}.tar.gz"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/source/|grep -oE "percona-server-${VERSION}\.[0-9]+-${OPT}[0-9]+\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/source/|grep -oE "percona-server-${VERSION}\.[0-9]+-${OPT}[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-Server-${VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
