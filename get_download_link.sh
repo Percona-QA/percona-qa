@@ -168,7 +168,7 @@ get_link(){
         LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/|grep -oE "Percona-XtraDB-Cluster[-_]${VERSION}\.[0-9]+(-rel[0-9]+)?${OPT}-[0-9]+\.[0-9]+(\.[0-9]+)?[\._]Linux\.${BUILD_ARCH}${OPT2}\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/tarball/${LINK}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/|grep -oE "Percona-XtraDB-Cluster-${VERSION}\.[0-9]+-[0-9]+\.[0-9]+\.tar\.gz"|head -n1)
+        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/|grep -oE "Percona-XtraDB-Cluster-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
         if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
