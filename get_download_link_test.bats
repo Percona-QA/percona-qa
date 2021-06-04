@@ -10,6 +10,22 @@
   ./get_download_link.sh --product ps --version 8.0
 }
 
+@test "check ps for centos" {
+  run ./get_download_link.sh --product ps --distribution centos
+  [ "$status" -eq 0 ]
+  [ "$(echo $output | grep -c 'ssl101')" -eq 1 ]
+}
+@test "check ps for ubuntu bionic" {
+  run ./get_download_link.sh --product ps --distribution ubuntu-bionic
+  [ "$status" -eq 0 ]
+  [ "$(echo $output | grep -c 'ssl102')" -eq 1 ]
+}
+@test "check ps for debian stretch" {
+  run ./get_download_link.sh --product ps --distribution debian-stretch
+  [ "$status" -eq 0 ]
+  [ "$(echo $output | grep -c 'ssl102')" -eq 1 ]
+}
+
 @test "check ps 5.6 source" {
   ./get_download_link.sh --product ps --version 5.6 --source
 }
@@ -73,6 +89,12 @@
   ./get_download_link.sh --product psmdb --version 4.2 --source
 }
 
+@test "check psmdb 3.4 for centos" {
+  run ./get_download_link.sh --product psmdb --version 3.4 --distribution centos
+  [ "$status" -eq 0 ]
+  [ "$(echo $output | grep -c 'centos6')" -eq 1 ]
+}
+
 @test "check pt" {
   ./get_download_link.sh --product pt
 }
@@ -93,6 +115,17 @@
 }
 @test "check pxb 8.0 source" {
   ./get_download_link.sh --product pxb --version 8.0 --source
+}
+
+@test "check pxb 2.4 for centos" {
+  run ./get_download_link.sh --product pxb --version 2.4 --distribution centos
+  [ "$status" -eq 0 ]
+  [ "$(echo $output | grep -c 'libgcrypt145')" -eq 1 ]
+}
+@test "check pxb 8.0 for centos" {
+  run ./get_download_link.sh --product pxb --version 8.0 --distribution centos
+  [ "$status" -eq 0 ]
+  [ "$(echo $output | grep -c 'glibc2.12')" -eq 1 ]
 }
 
 @test "check pmm-client" {
