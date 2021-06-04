@@ -100,7 +100,7 @@ if [[ -z "${VERSION}" && "${PRODUCT}" = "mariadb" ]]; then VERSION="10.4"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "psmdb" ]]; then VERSION="4.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "mongodb" ]]; then VERSION="4.2"; fi
 if [[ -z "${VERSION}" && "${PRODUCT}" = "postgresql" ]]; then
-  VERSION=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oP "postgresql-.*-x64-.*.tar.gz"|head -n1|grep -oP "[0-9]+\.[0-9]+(\.[0-9]+)?")
+  VERSION=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oE "postgresql-.*-x64-.*.tar.gz"|head -n1|grep -oE "[0-9]+\.[0-9]+(\.[0-9]+)?"|head -n1)
 fi
 
 if [[ "${DISTRIBUTION}" = *"-"* ]]; then
@@ -400,7 +400,7 @@ get_link(){
     fi
 
     if [[ -z ${VERSION_FULL} ]]; then
-      TARBALL=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oE "postgresql-${VERSION}.*${BUILD_ARCH}-.*.tar.gz")
+      TARBALL=$(wget -qO- https://www.enterprisedb.com/download-postgresql-binaries|grep -oE "postgresql-${VERSION}.*?${BUILD_ARCH}-.*?.tar.gz"|head -n 1)
       LINK="${BASE_LINK}${TARBALL}"
     else
       LINK="${BASE_LINK}postgresql-${VERSION_FULL}-1-linux${BUILD_ARCH}-binaries.tar.gz"
