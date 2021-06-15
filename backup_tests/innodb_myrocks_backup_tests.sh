@@ -13,16 +13,16 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_23_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/MS_8_0_23"
+export mysqldir="$HOME/PS220421_8_0_23_14_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
-export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
+export vault_config="$HOME/test_mode/vault/keyring_vault_ps.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
+rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
 
 # Set sysbench variables
 num_tables=10
@@ -41,6 +41,10 @@ backup_user="root"
 initialize_db() {
     # This function initializes and starts mysql database
     local MYSQLD_OPTIONS="$1"
+
+    if [ ! -d ${logdir} ]; then
+        mkdir ${logdir}
+    fi
 
     echo "Starting mysql database"
     pushd $mysqldir >/dev/null 2>&1
@@ -332,6 +336,19 @@ incremental_backup() {
         rm -r ${mysqldir}/data_orig_$(date +"%d_%m_%Y")
     fi
     mv ${mysqldir}/data ${mysqldir}/data_orig_$(date +"%d_%m_%Y")
+
+    if [[ "${BACKUP_PARAMS}" = *"--transition-key"* ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring_vault"* ]]; then
+        echo "Moving keyring file from ${mysqldir} dir"
+        if [ -f "${keyring_file}" ]; then
+            mv "${keyring_file}" "${keyring_file}"_orig
+        fi
+        #mv ${mysqldir}/keyring ${mysqldir}/keyring_orig
+    fi
+
+    if [ -d "${mysqldir}"/binlog ]; then
+        mv "${mysqldir}"/binlog/* ${mysqldir}/data_orig_$(date +"%d_%m_%Y")
+        rm -r "${mysqldir}"/binlog
+    fi
 
     echo "Restoring full backup"
     ${xtrabackup_dir}/xtrabackup --user=root --password='' --copy-back --target-dir=${backup_dir}/full --datadir=${datadir} ${RESTORE_PARAMS} 2>${logdir}/res_backup_${log_date}_log
@@ -856,9 +873,9 @@ create_delete_encrypted_table() {
             break
         fi
 
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test_innodb.sbtest1 (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y' COMPRESSION='lz4';"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test_innodb.sbtest1 (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y' COMPRESSION='lz4';" >/dev/null 2>&1
         sysbench /usr/share/sysbench/oltp_insert.lua --tables=1 --mysql-db=test_innodb --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=1 run >/dev/null 2>&1
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE test_innodb.sbtest1;"
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "DROP TABLE test_innodb.sbtest1;" >/dev/null 2>&1
     done ) &
 }
 
@@ -902,7 +919,7 @@ compression_dictionary() {
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE COMPRESSION_DICTIONARY numbers('08566691963-88624912351-16662227201-46648573979-64646226163-77505759394-75470094713-41097360717-15161106334-50535565977');" >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
         echo "Skipping test as the compression dictionary sql was unsuccessful, the mysql server does not support it"
-        return
+        return 1
     fi
 
     ( for ((i=1; i<=10; i++)); do
@@ -1030,7 +1047,6 @@ add_drop_blob_column() {
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET blob_col = id;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET blob_col = NULL;" >/dev/null 2>&1
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 DROP COLUMN blob_col;" >/dev/null 2>&1
-        echo "[$(date +"%H:%M:%S")] Count: $i"
     done ) &
 }
 
@@ -1111,7 +1127,7 @@ test_spatial_data_index() {
 
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
         echo "Skipping Test: Backup and Restore during add and drop spatial index, for PS/MS5.7 as it is not supported"
-        continue
+        return
     fi
 
     echo "Test: Backup and Restore during add and drop spatial index"
@@ -1255,7 +1271,7 @@ test_create_drop_database() {
 
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
         echo "Skipping Test: Backup and Restore during create and drop of a database, for PS/MS5.7 as this scenario is not supported"
-        continue
+        return
     fi
 
     echo "Test: Backup and Restore during create and drop of a database"
@@ -1280,6 +1296,9 @@ test_compression_dictionary() {
     echo "Test: Backup and Restore during column compression using compression dictionary"
 
     compression_dictionary
+    if [ "$?" -ne 0 ]; then
+        return
+    fi
 
     incremental_backup
 }
@@ -1389,10 +1408,10 @@ test_inc_backup_encryption_8_0() {
         lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
         #lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
 
-    else
+    elif [ "${encrypt_type}" = "keyring_vault" ]; then
         if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
             echo "MS 8.0 does not support keyring vault for encryption, skipping keyring vault tests"
-            continue
+            return
         fi
 
         # Run keyring_vault tests for PS8.0
@@ -1448,6 +1467,91 @@ test_inc_backup_encryption_8_0() {
 
         lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
 
+    elif [ "${encrypt_type}" = "keyring_component" ]; then
+        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+            server_type="MS"
+            server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        else
+            server_type="PS"
+            server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
+        fi
+
+        echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_file component encryption"
+
+        keyring_file="${mysqldir}/lib/plugin/component_keyring_file"
+
+        echo "Create global manifest file"
+        cat <<EOF >"${mysqldir}"/bin/mysqld.my
+{
+    "components": "file://component_keyring_file"
+}
+EOF
+        if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
+            echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
+            exit 1
+        fi
+        #chmod ugo=+r "${mysqldir}"/bin/mysqld.my
+
+        echo "Create global configuration file"
+        cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_file.cnf
+{
+    "path": "$mysqldir/lib/plugin/component_keyring_file",
+    "read_only": true
+}
+EOF
+        if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
+            echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_file.cnf"
+            exit 1
+        fi
+
+        echo "Test: Incremental Backup and Restore with basic keyring_file component encryption options"
+
+        initialize_db "--default-table-encryption=ON"
+
+        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--default-table-encryption=ON"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} running with all encryption options enabled"
+
+        initialize_db "${server_options} --binlog-encryption"
+
+        # The --keyring_file_data option is not required to backup/prepare/restore in component by default, but it can be included if it is different than the mysql config
+        incremental_backup "--keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
+
+        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key} --generate-new-master-key" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
+
+        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key --generate-new-master-key" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
+
+        initialize_db "${server_options}"
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
+
+        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
+
+        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
+
+        lock_ddl_cmd='incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
     fi
 
     # Running test suites with lock ddl backup command
@@ -1517,11 +1621,12 @@ test_inc_backup_encryption_8_0() {
     echo "###################################################################################"
 
     echo "Test: Backup and Restore during column compression using compression dictionary"
-    compression_dictionary
+    if ! compression_dictionary; then
+        return
+    fi
     eval $lock_ddl_cmd
     echo "###################################################################################"
 
-    # Commented due to PXB-2277
     echo "Test: Backup and Restore during encryption change"
     change_encryption
     eval $lock_ddl_cmd
@@ -1584,7 +1689,7 @@ test_inc_backup_encryption_2_4() {
     else
         if [ "${server_type}" = "MS" ]; then
             echo "MS 5.7 does not support keyring vault for encryption, skipping keyring vault tests"
-            continue
+            return
         fi
 
         echo "Test Suite: Incremental Backup and Restore for PS5.7 using PXB2.4 with keyring_vault encryption"
@@ -1624,7 +1729,6 @@ test_inc_backup_encryption_2_4() {
         initialize_db "${server_options}"
 
         lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
-        #lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
     fi
 
     # Running test suites with lock ddl backup command
@@ -1715,7 +1819,7 @@ test_compress_stream_backup() {
 
     # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
-        continue
+        return
     fi
 
     echo "Test: Incremental Backup and Restore with lz4 compression and streaming"
@@ -1734,7 +1838,7 @@ test_encrypt_compress_stream_backup() {
 
     # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
-        continue
+        return
     fi
 
     echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
@@ -1761,7 +1865,7 @@ test_compress_backup() {
 
     # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
-        continue
+        return
     fi
 
     echo "Test: Lz4 compression"
@@ -1920,11 +2024,17 @@ test_grant_tables() {
 
     echo "Test: Backup and Restore during creation and dropping of a user"
 
-    initialize_db "--binlog-format=mixed"
+    if [ "${rocksdb}" = "enabled" ]; then
+        mysql_options="--log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+    else
+        mysql_options="--binlog-format=mixed"
+    fi
     
+    initialize_db "${mysql_options}"
+
     grant_tables
 
-    incremental_backup "" "" "" "--binlog-format=mixed" "" ""
+    incremental_backup "" "" "" "${mysql_options}" "" ""
 }
 
 test_inc_backup_innodb_params() {
@@ -1972,16 +2082,41 @@ test_inc_backup_innodb_params() {
 
     echo "###################################################################################"
 
-    echo "Test: Backup and Restore with --log-bin=mysql_binlog --log-bin-index=binlog_index.file"
+    echo "Test: Backup and Restore with binary logs using absolute path"
 
-    initialize_db "--log-bin=mysql_binlog --log-bin-index=binlog_index.file"
+    initialize_db "--log-bin=${mysqldir}/data/binlog --log-bin-index=${mysqldir}/data/binlog.index"
 
-    incremental_backup "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "" ""
+    incremental_backup "" "" "" "--log-bin=${mysqldir}/data/binlog --log-bin-index=${mysqldir}/data/binlog.index" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with binary logs in a different location than data directory"
+
+    mkdir "${mysqldir}"/binlog
+
+    initialize_db "--log-bin=${mysqldir}/binlog/mysql-bin --log-bin-index=${mysqldir}/binlog/mysql-bin.index"
+
+    incremental_backup "" "" "--log-bin=${mysqldir}/binlog/mysql-bin --log-bin-index=${mysqldir}/binlog/mysql-bin.index" "--log-bin=${mysqldir}/binlog/mysql-bin --log-bin-index=${mysqldir}/binlog/mysql-bin.index" "" ""
+
+    # The below test fails, there is an existing PXB issue filed
+
+    #echo "###################################################################################"
+
+    #echo "Test: Backup and Restore with --log-bin=mysql_binlog --log-bin-index=binlog_index.file"
+
+    #initialize_db "--log-bin=mysql_binlog --log-bin-index=binlog_index.file"
+
+    #incremental_backup "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "--log-bin=mysql_binlog --log-bin-index=binlog_index.file" "" ""
 
 }
 
 test_invisible_column() {
     # This test suite takes an incremental backup when an invisible column is added/dropped
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Skipping Test: Backup and Restore during add and drop of an invisible column for PS/MS5.7 as this scenario is not supported"
+        return
+    fi
 
     echo "Test: Backup and Restore during add and drop of an invisible column"
 
@@ -2052,7 +2187,7 @@ for tsuitelist in $*; do
 
         Encryption_PXB8_0_PS8_0_tests)
             echo "Encryption test suites for PXB8.0 and PS8.0"
-            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault"; do
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault" "test_inc_backup_encryption_8_0 keyring_component"; do
                 $testsuite
                 echo "###################################################################################"
             done
@@ -2060,7 +2195,7 @@ for tsuitelist in $*; do
 
         Encryption_PXB8_0_MS8_0_tests)
             echo "Encryption test suites for PXB8.0 and MS8.0"
-            for testsuite in "test_inc_backup_encryption_8_0 keyring_file"; do
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_component"; do
                 $testsuite
                 echo "###################################################################################"
             done
@@ -2089,5 +2224,5 @@ for tsuitelist in $*; do
                 echo "###################################################################################"
             done
             ;;
-    esac
+       esac
 done
