@@ -331,7 +331,7 @@ echo 'MYEXTRA_OPT="$*"' > wipe
 echo "./stop >/dev/null 2>&1" >> wipe
 echo "if [ -d ${PWD}/data.PREV ]; then rm -Rf ${PWD}/data.PREV.older; mv ${PWD}/data.PREV ${PWD}/data.PREV.older 2>/dev/null; fi; mv ${PWD}/data ${PWD}/data.PREV 2>/dev/null" >> wipe
 echo $JE1 >> wipe; echo $JE2 >> wipe; echo $JE3 >> wipe; echo $JE4 >> wipe; echo $JE5 >> wipe
-echo "$INIT_TOOL ${INIT_OPT} \${MYEXTRA_OPT} --basedir=${PWD} --datadir=${PWD}/data" >> wipe
+echo "$INIT_TOOL ${INIT_OPT} \${MYEXTRA_OPT} --basedir=${PWD} --datadir=${PWD}/data --server-id=100" >> wipe
 echo "if [ -r log/master.err.PREV ]; then rm -f log/master.err.PREV; fi" >> wipe
 echo "if [ -r log/master.err ]; then mv log/master.err log/master.err.PREV; fi" >> wipe
 
@@ -358,7 +358,7 @@ fi
 echo "./stop 2>/dev/null;./wipe;./start;./sysbench_prepare;./sysbench_run;./stop" > sysbench_measure
 
 # Replacement for code below which was disabled. RV/RS considered it necessary to leave this to make it easier to use start and immediately have the test db available so it can be used for quick access. It also does not affect using --init-file=...plugins_80.sql 
-echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ./stop" >> wipe
+echo "./start \${MYEXTRA_OPT}; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock  -e'CREATE DATABASE IF NOT EXISTS test' ; ${PWD}/bin/mysql -uroot --socket=${PWD}/socket.sock -e \"ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';\"" >> wipe
 
 # RV/RS discussed this code 19/12/18 and decided we should disable and ultimately remove it. There is myrocks_tokudb_init already, which can do the same if needed (i.e. load extra TokuDB and RocksDB plugins). The main reason to remove this code is that loading these extra plugins always by defaut will make --init-file=...plugins_80.sql not work with errors like 'Function 'tokudb_file_map' already exists.' which can affect issue reproducibility (as not all plugins are loaded), or even hide bugs with plugins_80.sql if there are any (when it's used with ./start).
 #if [ ! -z $LOAD_TOKUDB_INIT_FILE ]; then
@@ -398,7 +398,7 @@ echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTR
 echo 'MYEXTRA_OPT="$*"' > all_stbe
 echo "./all --early-plugin-load=keyring_file.so --keyring_file_data=keyring --innodb_sys_tablespace_encrypt=ON \${MYEXTRA_OPT}" >> all_stbe  # './all_stbe' is './all' with system tablespace encryption
 echo 'MYEXTRA_OPT="$*"' > all_no_cl
-echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT};./start \${MYEXTRA_OPT}" >> all_no_cl
+echo "./stop >/dev/null 2>&1;rm -f socket.sock socket.sock.lock;./wipe \${MYEXTRA_OPT}" >> all_no_cl
 chmod +x start start_valgrind start_gypsy stop setup cl cl_noprompt cl_noprompt_nobinary test kill init wipe all all_stbe all_no_cl sysbench_prepare sysbench_run sysbench_measure gdb myrocks_tokudb_init pmm_os_agent pmm_mysql_agent repl_setup 2>/dev/null
 echo "Setting up server with default directories"
 ./stop >/dev/null 2>&1
