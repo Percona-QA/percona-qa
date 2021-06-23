@@ -40,8 +40,8 @@ usage(){
 # Check if we have a functional getopt(1)
 if ! getopt --test
   then
-  go_out="$(getopt --options=sw:di:p:mh \
-  --longoptions=use-ssl,workdir:,vault-dev-mode,vault-ip:,vault-port:,setup-pxc-mount-points,help \
+  go_out="$(getopt --options=sw:di:p:mh:c \
+  --longoptions=use-ssl,generate-certs-only,workdir:,vault-dev-mode,vault-ip:,vault-port:,setup-pxc-mount-points,help \
   --name="$(basename "$0")" -- "$@")"
   test $? -eq 0 || exit 1
   eval set -- $go_out
