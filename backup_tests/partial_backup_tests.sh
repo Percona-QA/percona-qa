@@ -11,8 +11,8 @@
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
-export xtrabackup_dir="$HOME/pxb_8_0_22_debug/bin"
-export mysqldir="$HOME/PS081220_8_0_22_debug"
+export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin"
+export mysqldir="$HOME/MS_8_0_25"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -33,8 +33,15 @@ check_dependencies() {
     fi
 
     if ! pt-table-checksum --version >/dev/null 2>&1 ; then
-        exit 1
         echo "ERR: The percona toolkit is not installed. It is required to check the data."
+        exit 1
+    fi
+
+    if [ ! -f ${mysql_random_data_load_tool} ]; then
+        echo "The mysql_random_data_load tool is not installed. It is required to create the data."
+        echo "Installing mysql_random_data_load tool"
+        wget https://github.com/Percona-Lab/mysql_random_data_load/releases/download/v0.1.12/mysql_random_data_load_0.1.12_Linux_x86_64.tar.gz
+        tar -C $HOME -xf mysql_random_data_load_0.1.12_Linux_x86_64.tar.gz
     fi
 }
 
@@ -108,7 +115,7 @@ take_partial_backup() {
     fi
 
     # Collect data before restore
-    orig_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4,$8}')
+    orig_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4}')
 
     echo "Tables list to restore: ${TABLES_LIST}"
     for table in ${TABLES_LIST}; do
@@ -138,7 +145,7 @@ take_partial_backup() {
 
     echo "Check the restored data"
     # Collect data after restore
-    res_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4,$8}')
+    res_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4}')
 
     if [[ "${orig_data}" != "${res_data}" ]]; then
         echo "ERR: Data changed after restore. Original data: ${orig_data} Restored data: ${res_data}"
@@ -196,6 +203,11 @@ test_partial_table_backup() {
 
     echo "Add data in the alltypes table"
     ${mysql_random_data_load_tool} test alltypes 10 --user root --password '' --host=127.0.0.1 --port=${port_no} >"${logdir}"/data_load_log 2>&1
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: The mysql_random_data_load_tool could not add data to the alltypes table. Please check the logs at: ${logdir}/data_load_log"
+        exit 1
+    fi
+
     "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "UPDATE alltypes SET k = 'a', af = POINT(1,2), ag = '{\"key1\": \"value1\", \"key2\": \"value2\"}';" test
 
     take_partial_backup "" "" "" "sbtest1 sbtest2 alltypes"

@@ -11,8 +11,8 @@
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
-export xtrabackup_dir="$HOME/pxb_8_0_22_debug/bin"
-export mysqldir="$HOME/PS081220_8_0_22_debug"
+export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin"
+export mysqldir="$HOME/MS_8_0_25"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -145,7 +145,7 @@ take_backup() {
     fi
 
     # Collect data before restore
-    orig_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4,$8}')
+    orig_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4}')
 
     echo "Stopping mysql server and moving data directory"
 
@@ -190,14 +190,32 @@ take_backup() {
     fi
     echo "The mysql server was started successfully"
 
+    # Binlog can't be applied if binlog is encrypted or skipped
+    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption" ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]] && [[ "${MYSQLD_OPTIONS}" != *"skip-log-bin"* ]]; then
+        echo "Check xtrabackup for binlog position"
+        xb_binlog_file=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $1}'|head -1)
+        xb_binlog_pos=$(cat ${backup_dir}/full/xtrabackup_binlog_info|awk '{print $2}'|head -1)
+        echo "Xtrabackup binlog position: $xb_binlog_file, $xb_binlog_pos"
+
+        echo "Applying binlog to restored data starting from $xb_binlog_file, $xb_binlog_pos"
+        ${mysqldir}/bin/mysqlbinlog ${mysqldir}/data_orig_$(date +"%d_%m_%Y")/$xb_binlog_file --start-position=$xb_binlog_pos | ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: The binlog could not be applied to the restored data"
+        fi
+
+        sleep 5
+    fi
+
     check_tables
 
     echo "Check the restored data"
     # Collect data after restore
-    res_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4,$8}')
+    res_data=$(pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null | awk '{print $4}')
 
     if [[ "${orig_data}" != "${res_data}" ]]; then
-        echo "ERR: Data changed after restore. Original data: ${orig_data} Restored data: ${res_data}"
+        echo "ERR: Data changed after restore."
+        echo "Original data: ${orig_data}"
+        echo "Restored data: ${res_data}"
     else
         echo "Restored data is correct"
     fi
@@ -327,13 +345,13 @@ test_tablespaces_encrypt() {
 
     if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
         server_type="MS"
-        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --table-encryption-privilege-check=ON"
     else
         server_type="PS"
-        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
+        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
     fi
 
-    initialize_db "${server_options} --binlog-encryption --innodb-data-home-dir=${innodb_data_home_dir} --innodb-directories=${innodb_directories} --innodb-undo-directory=${innodb_undo_dir}"
+    initialize_db "${server_options} --innodb-data-home-dir=${innodb_data_home_dir} --innodb-directories=${innodb_directories} --innodb-undo-directory=${innodb_undo_dir}"
 
     "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "CREATE UNDO TABLESPACE undo_tablespace_1 ADD DATAFILE 'new_undo_1.ibu';"
     "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "CREATE TABLESPACE tspod ADD DATAFILE '$innodb_directories/tspod.ibd' Engine=Innodb;"
@@ -343,7 +361,7 @@ test_tablespaces_encrypt() {
     echo "Run a load"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket="${mysqldir}"/socket.sock --time=5 run >>"${logdir}"/sysbench.log &
 
-    take_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --innodb-data-home-dir=${innodb_data_home_dir} --innodb-undo-directory=${innodb_undo_dir}" "${server_options} --binlog-encryption --innodb-data-home-dir=${innodb_data_home_dir} --innodb-directories=${innodb_directories} --innodb-undo-directory=${innodb_undo_dir}"
+    take_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --innodb-data-home-dir=${innodb_data_home_dir} --innodb-undo-directory=${innodb_undo_dir}" "${server_options} --innodb-data-home-dir=${innodb_data_home_dir} --innodb-directories=${innodb_directories} --innodb-undo-directory=${innodb_undo_dir}"
     
     check_dir_structure "${innodb_data_home_dir}" "${innodb_directories}" "${innodb_undo_dir}"
 
@@ -354,7 +372,7 @@ test_tablespaces_encrypt() {
     echo "Run a load"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket="${mysqldir}"/socket.sock --time=10 run >>"${logdir}"/sysbench.log &
 
-    take_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --innodb-data-home-dir=${innodb_data_home_dir} --innodb-undo-directory=${innodb_undo_dir}" "${server_options} --binlog-encryption --innodb-data-home-dir=${innodb_data_home_dir} --innodb-directories=${innodb_directories} --innodb-undo-directory=${innodb_undo_dir}" "incremental"
+    take_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --innodb-data-home-dir=${innodb_data_home_dir} --innodb-undo-directory=${innodb_undo_dir}" "${server_options} --innodb-data-home-dir=${innodb_data_home_dir} --innodb-directories=${innodb_directories} --innodb-undo-directory=${innodb_undo_dir}" "incremental"
     
     check_dir_structure "${innodb_data_home_dir}" "${innodb_directories}" "${innodb_undo_dir}"
 }
