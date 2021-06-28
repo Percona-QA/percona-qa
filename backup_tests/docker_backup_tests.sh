@@ -17,7 +17,7 @@ test_pxb8_docker() {
     # This function runs tests for pxb 8.0 and ms 8.0 docker image
 
     echo "Run mysql 8.0 docker container"
-    if ! sudo docker run --name mysql-8.0 -p 3306:3306 -p 3060:3060 -e MYSQL_ROOT_HOST='%' -e MYSQL_ROOT_PASSWORD='mysql' -d mysql/mysql-server:latest ; then
+    if ! sudo docker run --name mysql-8.0 -v mysql_data:/var/lib/mysql -p 3306:3306 -p 3060:3060 -e MYSQL_ROOT_HOST='%' -e MYSQL_ROOT_PASSWORD='mysql' -d mysql/mysql-server:8.0 ; then
         echo "ERR: The docker command to start mysql 8.0 failed"
         exit 1
     fi
@@ -64,7 +64,7 @@ test_pxb24_docker() {
     # This function runs tests for pxb 2.4 and ms 5.7 docker image
 
     echo "Run mysql 5.7 docker container"
-    if ! sudo docker run --name mysql-5.7 -p 3306:3306 -p 3060:3060 -e MYSQL_ROOT_HOST='%' -e MYSQL_ROOT_PASSWORD='mysql' -d mysql/mysql-server:5.7 ; then
+    if ! sudo docker run --name mysql-5.7 -v mysql_data:/var/lib/mysql -p 3306:3306 -p 3060:3060 -e MYSQL_ROOT_HOST='%' -e MYSQL_ROOT_PASSWORD='mysql' -d mysql/mysql-server:5.7 ; then
         echo "ERR: The docker command to start mysql 5.7 failed"
         exit 1
     fi
