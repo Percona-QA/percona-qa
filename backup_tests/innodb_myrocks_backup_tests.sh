@@ -13,16 +13,17 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin"
+export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin" # Set this to /usr/bin for install_type as package
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export mysqldir="$HOME/PS220421_8_0_23_14_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
-export vault_config="$HOME/test_mode/vault/keyring_vault_ps.cnf"  # Only required for keyring_vault encryption
+export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
 rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
+install_type="tarball" # Set value to tarball/package
 
 # Set sysbench variables
 num_tables=10
@@ -1357,13 +1358,19 @@ test_inc_backup_encryption_8_0() {
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
         fi
 
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring"
+        else
+            pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
         echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_file encryption"
 
         echo "Test: Incremental Backup and Restore with basic keyring_file encryption options"
 
         initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --default-table-encryption=ON"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --default-table-encryption=ON"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --default-table-encryption=ON"
 
         echo "###################################################################################"
 
@@ -1371,19 +1378,23 @@ test_inc_backup_encryption_8_0() {
 
         initialize_db "${server_options} --binlog-encryption"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
+        if [ "${install_type}" = "package" ]; then
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
+        else
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
+        fi
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
@@ -1393,20 +1404,19 @@ test_inc_backup_encryption_8_0() {
 
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
-        lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
-        #lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_vault" ]; then
         if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
@@ -1418,32 +1428,42 @@ test_inc_backup_encryption_8_0() {
 
         server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
 
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options="--keyring_vault_config=${vault_config}"
+        else
+            pxb_encrypt_options="--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
         echo "Test Suite: Incremental Backup and Restore for PS8.0 using PXB8.0 with keyring_vault encryption"
 
         echo "Test: Incremental Backup and Restore with basic keyring_vault encryption options"
 
         initialize_db "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --default-table-encryption=ON"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --default-table-encryption=ON"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --default-table-encryption=ON"
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for PS running with all encryption options enabled"
         initialize_db "${server_options} --binlog-encryption"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for PS8.0 using transition-key and generate-new-master-key"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
+        if [ "${install_type}" = "package" ]; then
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
+        else
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
+        fi
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for PS8.0 using generate-transition-key and generate-new-master-key"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
@@ -1453,19 +1473,19 @@ test_inc_backup_encryption_8_0() {
 
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
-        lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_component" ]; then
         if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
@@ -1505,10 +1525,15 @@ EOF
         fi
 
         echo "Test: Incremental Backup and Restore with basic keyring_file component encryption options"
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options=""
+        else
+            pxb_encrypt_options="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
 
         initialize_db "--default-table-encryption=ON"
 
-        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--default-table-encryption=ON"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "--default-table-encryption=ON"
 
         echo "###################################################################################"
 
@@ -1517,19 +1542,19 @@ EOF
         initialize_db "${server_options} --binlog-encryption"
 
         # The --keyring_file_data option is not required to backup/prepare/restore in component by default, but it can be included if it is different than the mysql config
-        incremental_backup "--keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options} --keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file" "${pxb_encrypt_options} --keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file" "${pxb_encrypt_options} --keyring_file_data=${mysqldir}/lib/plugin/component_keyring_file" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
-        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key} --generate-new-master-key" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
 
-        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key --generate-new-master-key" "${server_options} --binlog-encryption"
+        incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key" "${server_options} --binlog-encryption"
 
         echo "###################################################################################"
 
@@ -1539,19 +1564,19 @@ EOF
 
         ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
 
-        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
-        incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
-        lock_ddl_cmd='incremental_backup "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
     fi
 
     # Running test suites with lock ddl backup command
@@ -1630,6 +1655,15 @@ EOF
     echo "Test: Backup and Restore during encryption change"
     change_encryption
     eval $lock_ddl_cmd
+
+    # Remove keyring component configuration so that test suites after this test suite can run without encryption
+    if [[ -f "${mysqldir}"/bin/mysqld.my ]]; then
+        rm "${mysqldir}"/bin/mysqld.my
+    fi
+
+    if [[ -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
+        rm "${mysqldir}"/lib/plugin/component_keyring_file.cnf
+    fi
 }
 
 test_inc_backup_encryption_2_4() {
@@ -1647,6 +1681,12 @@ test_inc_backup_encryption_2_4() {
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-binlog"
         fi
 
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring"
+        else
+            pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
         echo "Test Suite: Incremental Backup and Restore for ${server_type}5.7 using PXB2.4 with keyring_file encryption"
 
         # PXB 2.4 does not support redo log and undo log encryption
@@ -1654,36 +1694,40 @@ test_inc_backup_encryption_2_4() {
 
         initialize_db "${server_options}"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"
 
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
+        if [ "${install_type}" = "package" ]; then
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
+        else
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
+        fi
 
         echo "###################################################################################"
 
         # Test commented due to PXB-2158
         #echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
 
-        #incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
+        #incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
 
         #echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
         echo "Various tests: binlog-encryption is not included so that binlog can be applied"
         if [ "${server_type}" = "MS" ]; then
-            lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl-per-table" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+            lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl-per-table" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
         else
             initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
-            lock_ddl_cmd='incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
+            lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"'
         fi
 
     else
@@ -1697,30 +1741,39 @@ test_inc_backup_encryption_2_4() {
         # PXB 2.4 does not support redo log and undo log encryption
         echo "Test: Incremental Backup and Restore when all encryption options are enabled in PS5.7"
 
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options="--keyring_vault_config=${vault_config}"
+        else
+            pxb_encrypt_options="--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
         server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-encrypt-tables=ON --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
         initialize_db "${server_options} --encrypt-binlog"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --encrypt-binlog"
-
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options} --encrypt-binlog"
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
+        if [ "${install_type}" = "package" ]; then
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
+        else
+            incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
+        fi
 
         echo "###################################################################################"
 
         # Test commented due to PXB-2158
         #echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
 
-        #incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --generate-transition-key --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
+        #incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
 
         #echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
 
-        incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --encrypt-binlog" "stream" ""
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options} --encrypt-binlog" "stream" ""
 
         echo "###################################################################################"
 
@@ -1728,7 +1781,7 @@ test_inc_backup_encryption_2_4() {
 
         initialize_db "${server_options}"
 
-        lock_ddl_cmd='incremental_backup "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --lock-ddl" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_vault_config=${vault_config} --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}"'
+        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
     fi
 
     # Running test suites with lock ddl backup command
@@ -1911,12 +1964,19 @@ test_cloud_inc_backup() {
 
         initialize_db "${server_options}"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring"
+        else
+            pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
         echo "###################################################################################"
 
         echo "Test: Incremental Backup and Restore for MS/PS 5.7 with keyring_file encryption, quicklz compression, file encryption and streaming"
 
-        incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
 
         return
     fi
@@ -1931,11 +1991,20 @@ test_cloud_inc_backup() {
     server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 
     initialize_db "${server_options}"
-    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
+    if [ "${install_type}" = "package" ]; then
+        pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring"
+    else
+        pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+    fi
+
+    incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
     echo "###################################################################################"
 
     echo "Test: Incremental Backup and Restore for MS/PS 8.0 with keyring_file encryption, lz4 compression, file encryption and streaming"
-    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
+    incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
 
     rocksdb="${rocksdb_status}"
 }
@@ -2016,7 +2085,13 @@ test_inc_backup_archive_log() {
 
     initialize_db "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
 
-    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --innodb-log-file-size=4MB" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    if [ "${install_type}" = "package" ]; then
+        pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring"
+    else
+        pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+    fi
+
+    incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options} --innodb-log-file-size=4MB" "${pxb_encrypt_options}" "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
 }
 
 test_grant_tables() {
