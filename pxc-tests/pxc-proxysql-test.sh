@@ -136,7 +136,6 @@ fi
 WORKDIR="${ROOT_FS}/$BUILD_NUMBER"
 BASEDIR="${ROOT_FS}/$PXCBASE"
 mkdir -p $WORKDIR  $WORKDIR/logs
-
 # Setting seeddb creation configuration
 if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '8\.[0]' | head -n1)" == "8.0" ]; then
   MID="${BASEDIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${BASEDIR}"
@@ -148,18 +147,11 @@ fi
 
 PORT_ARRAY=()
 function pxc_startup(){
-  for i in `seq 1 5`;do
+  for i in `seq 1 5`; do
     RBASE1="$(( RBASE + ( 100 * $i ) ))"
     LADDR1="$ADDR:$(( RBASE1 + 8 ))"
     PORT_ARRAY+=("$RBASE1")
     WSREP_CLUSTER="${WSREP_CLUSTER}$LADDR1,"
-    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.6" ]; then
-      WSREP_SST_AUTH="--wsrep_sst_auth=$USER:$PASS"
-    elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.7" ]; then
-      WSREP_SST_AUTH="--wsrep_sst_auth=$USER:$PASS"
-    elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '8\.[0]' | head -n1)" == "8.0" ]; then
-      WSREP_SST_AUTH=""
-    fi
     node="${WORKDIR}/node$i"
     if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.6" ]; then
       mkdir -p $node
@@ -175,18 +167,32 @@ function pxc_startup(){
       WSREP_CLUSTER_ADD="--wsrep_cluster_address=gcomm://$WSREP_CLUSTER"
     fi
 
-    CMD="${BASEDIR}/bin/mysqld --no-defaults --basedir=${BASEDIR} \
- --wsrep-provider=${BASEDIR}/lib/libgalera_smm.so \
- --wsrep_node_incoming_address=$ADDR --wsrep_sst_method=xtrabackup-v2 $WSREP_SST_AUTH \
- --wsrep_node_address=$ADDR --datadir=$node \
- --innodb_autoinc_lock_mode=2 $WSREP_CLUSTER_ADD \
- --wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1 \
- --wsrep_debug=1 \
- --pxc-encrypt-cluster-traffic=OFF \
- --log-error=$WORKDIR/logs/node$i.err  \
- --socket=/tmp/node${i}.sock --port=$RBASE1  --max-connections=2048"
+    echo "[mysqld]" > ${WORKDIR}/n$i.cnf
+    echo "wsrep-provider=${BASEDIR}/lib/libgalera_smm.so" >> ${WORKDIR}/n$i.cnf
+    echo "wsrep_node_incoming_address=$ADDR" >> ${WORKDIR}/n$i.cnf
+    echo "wsrep_sst_method=xtrabackup-v2" >> ${WORKDIR}/n$i.cnf
+    echo "wsrep_node_address=$ADDR" >> ${WORKDIR}/n$i.cnf
+    if [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.6" ]; then
+      echo "wsrep_sst_auth=$USER:$PASS" >> ${WORKDIR}/n$i.cnf
+    elif [ "$(${BASEDIR}/bin/mysqld --version | grep -oe '5\.[67]' | head -n1)" == "5.7" ]; then
+      echo "wsrep_sst_auth=$USER:$PASS" >> ${WORKDIR}/n$i.cnf
+    fi
+    echo "datadir=$node" >> ${WORKDIR}/n$i.cnf
+    echo "innodb_autoinc_lock_mode=2" >> ${WORKDIR}/n$i.cnf
+    echo "wsrep_provider_options=gmcast.listen_addr=tcp://$LADDR1" >> ${WORKDIR}/n$i.cnf
+    echo "wsrep_debug=1" >> ${WORKDIR}/n$i.cnf
+    echo "pxc-encrypt-cluster-traffic=OFF" >> ${WORKDIR}/n$i.cnf
+    echo "log-error=$WORKDIR/logs/node$i.err" >> ${WORKDIR}/n$i.cnf
+    echo "socket=/tmp/node${i}.sock" >> ${WORKDIR}/n$i.cnf
+    echo "port=$RBASE1" >> ${WORKDIR}/n$i.cnf
+    echo "max-connections=2048" >> ${WORKDIR}/n$i.cnf
 
-    #echo "$CMD";
+    if [ $i -eq 1 ]; then
+      CMD="${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/n$i.cnf --basedir=${BASEDIR} --wsrep-new-cluster ${WSREP_CLUSTER_ADD}"
+    else
+      CMD="${BASEDIR}/bin/mysqld --defaults-file=${WORKDIR}/n$i.cnf --basedir=${BASEDIR} ${WSREP_CLUSTER_ADD}"
+    fi
+
     $CMD > $node/node$i.err 2>&1 &
 
     for X in $(seq 0 ${PXC_START_TIMEOUT}); do
