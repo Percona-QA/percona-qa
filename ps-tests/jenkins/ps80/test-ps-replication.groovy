@@ -77,7 +77,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -129,7 +129,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -181,7 +181,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -233,7 +233,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -285,7 +285,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
