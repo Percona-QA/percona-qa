@@ -91,7 +91,7 @@ pipeline {
                   PT_BIN=$(./get_download_link.sh --product=pt)
                 fi
                 if [ -z "${PXB_BIN}" ]; then
-                  PXB_BIN=$(./get_download_link.sh --product=pxb --version=8.0.10)
+                  PXB_BIN=$(./get_download_link.sh --product=pxb --version=8.0)
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
