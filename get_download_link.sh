@@ -223,7 +223,8 @@ get_link(){
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
         #LINK=$(wget -qO- https://www.percona.com/downloads/XtraBackup/LATEST/binary/|grep -oE "percona-xtrabackup-[0-9]+\.[0-9]+\.[0-9]+-Linux-${BUILD_ARCH}\.tar\.gz"|head -n1)
-        VERSION_FULL=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/binary/|grep -oiE "Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+"|sort -Vr|head -n1|grep -oE "[0-9]+\.[0-9]+\.[0-9]+$")
+        #VERSION_FULL=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/binary/|grep -oiE "Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+"|sort -Vr|head -n1|grep -oE "[0-9]+\.[0-9]+\.[0-9]+$")
+        VERSION_FULL=$(wget -qO- https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/LATEST/binary/|grep -oiE "Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+|Percona-XtraBackup-[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+[0-9]+"|sort -Vr|head -n1|grep -oE "[0-9]+\.[0-9]+\.[0-9]+$|[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+[0-9]+$")
         TARBALL="percona-xtrabackup-${VERSION_FULL}-Linux-${BUILD_ARCH}.${OPT}.tar.gz"
         if [[ ! -z ${TARBALL} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraBackup-${VERSION}/Percona-XtraBackup-${VERSION_FULL}/binary/tarball/${TARBALL}"; fi
       else

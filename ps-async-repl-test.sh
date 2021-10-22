@@ -402,6 +402,10 @@ function async_rpl_test(){
         echo "default-storage-engine=rocksdb" >> ${PS_BASEDIR}/n${i}.cnf
         echo "rocksdb-flush-log-at-trx-commit=2" >> ${PS_BASEDIR}/n${i}.cnf
         echo "rocksdb-wal-recovery-mode=2" >> ${PS_BASEDIR}/n${i}.cnf
+        # TokuDB is going to be discontinued in PS 8.0.28. In PS 8.0.26 it can be enabled only with the additional option in conf file.
+        if check_for_version $MYSQL_VERSION "8.0.26" ; then
+          echo "loose-tokudb_enabled=1" >> ${PS_BASEDIR}/n${i}.cnf
+        fi
       elif [ "$ENGINE" == "tokudb" ]; then
         echo "plugin-load-add=tokudb=ha_tokudb.so" >> ${PS_BASEDIR}/n${i}.cnf
         echo "tokudb-check-jemalloc=0" >> ${PS_BASEDIR}/n${i}.cnf

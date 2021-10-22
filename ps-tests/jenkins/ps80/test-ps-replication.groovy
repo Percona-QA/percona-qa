@@ -77,7 +77,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -91,12 +91,15 @@ pipeline {
                   PT_BIN=$(./get_download_link.sh --product=pt)
                 fi
                 if [ -z "${PXB_BIN}" ]; then
-                  PXB_BIN=$(./get_download_link.sh --product=pxb --version=8.0.10)
+                  PXB_BIN=$(./get_download_link.sh --product=pxb --version=8.0)
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-#               PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-#               mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=innodb
@@ -129,7 +132,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -147,8 +150,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-#               PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-#               mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=rocksdb
@@ -181,7 +187,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -199,8 +205,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-#               PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-#               mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=tokudb
@@ -233,7 +242,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -251,8 +260,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-#               PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-#               mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --with-encryption --keyring-plugin=file
@@ -285,7 +297,7 @@ pipeline {
                 sudo percona-release enable original
                 sudo apt update
                 UCF_FORCE_CONFOLD=1 DEBIAN_FRONTEND=noninteractive sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq -y install openssl
-                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6
+                sudo apt install -y sysbench libasan5 libaio1 libdbi-perl libdbd-mysql-perl unzip libevent-2.1-6 libevent-core-2.1-6 libevent-pthreads-2.1-6
                 #
                 rm -rf percona-qa
                 rm -rf ${TEST_DIR}
@@ -303,8 +315,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-#               PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-#               mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --with-encryption --keyring-plugin=vault
