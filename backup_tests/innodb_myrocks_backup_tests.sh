@@ -13,16 +13,16 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin" # Set this to /usr/bin for install_type as package
+export xtrabackup_dir="$HOME/pxb_8_0_27_debug/bin" # Set this to /usr/bin for install_type as package
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS220421_8_0_23_14_debug"
+export mysqldir="$HOME/MS_8_0_27"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
-export vault_config="$HOME/test_mode/vault/keyring_vault.cnf"  # Only required for keyring_vault encryption
+export vault_config="$HOME/test_mode/vault/keyring_vault_ps.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
+rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
 install_type="tarball" # Set value to tarball/package
 
 # Set sysbench variables
@@ -1646,10 +1646,9 @@ EOF
     echo "###################################################################################"
 
     echo "Test: Backup and Restore during column compression using compression dictionary"
-    if ! compression_dictionary; then
-        return
+    if compression_dictionary; then
+        eval $lock_ddl_cmd
     fi
-    eval $lock_ddl_cmd
     echo "###################################################################################"
 
     echo "Test: Backup and Restore during encryption change"
@@ -2167,6 +2166,11 @@ test_inc_backup_innodb_params() {
 
     echo "Test: Backup and Restore with binary logs in a different location than data directory"
 
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Skipping test as it will not work in PXB 2.4, due to the defect PXB-2536"
+        return
+    fi
+
     mkdir "${mysqldir}"/binlog
 
     initialize_db "--log-bin=${mysqldir}/binlog/mysql-bin --log-bin-index=${mysqldir}/binlog/mysql-bin.index"
@@ -2207,7 +2211,11 @@ test_blob_column() {
 
     add_drop_blob_column
 
-    incremental_backup
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        incremental_backup "--lock-ddl-per-table"
+    else
+        incremental_backup "--lock-ddl"
+    fi
 }
 
 if [ "$#" -lt 1 ]; then
