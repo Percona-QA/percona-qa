@@ -25,8 +25,8 @@ AFL_LOCATION="$(cd `dirname $0` && pwd)/fuzzer/afl-2.52b"
 
 RANDOMD=$(echo $RANDOM$RANDOM$RANDOM | sed 's/..\(......\).*/\1/')  # Random 6 digit for tmp directory name
 
-if [ ! -r VERSION ]; then
-  echo "Assert: 'VERSION' file not found!"
+if [ ! -r MYSQL_VERSION ]; then
+  echo "Assert: 'MYSQL_VERSION' file not found!"
   exit 1
 fi
 
@@ -39,9 +39,9 @@ fi
 # Please note when building the facebook-mysql-5.6 tree this setting is automatically ignored
 # For daily builds of fb tree (opt and debug) also see http://jenkins.percona.com/job/fb-mysql-5.6/
 # This is also auto-turned off for all 5.5 and 5.6 builds
-MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" VERSION | sed 's|.*=||')
-MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" VERSION | sed 's|.*=||')
-MYSQL_VERSION_PATCH=$(grep "MYSQL_VERSION_PATCH" VERSION | sed 's|.*=||')
+MYSQL_VERSION_MAJOR=$(grep "MYSQL_VERSION_MAJOR" MYSQL_VERSION | sed 's|.*=||')
+MYSQL_VERSION_MINOR=$(grep "MYSQL_VERSION_MINOR" MYSQL_VERSION | sed 's|.*=||')
+MYSQL_VERSION_PATCH=$(grep "MYSQL_VERSION_PATCH" MYSQL_VERSION | sed 's|.*=||')
 CURRENT_VERSION=$(printf %02d%02d%02d $MYSQL_VERSION_MAJOR $MYSQL_VERSION_MINOR $MYSQL_VERSION_PATCH)
 
 WITH_ROCKSDB=0
@@ -68,7 +68,7 @@ PREFIX=
 FB=0
 MS=0
 if [ ! -d rocksdb ]; then  # MS, PS
-  VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
+  VERSION_EXTRA="$(grep "MYSQL_VERSION_EXTRA=" MYSQL_VERSION | sed 's|MYSQL_VERSION_EXTRA=||;s|[ \t]||g')"
   if [ "${VERSION_EXTRA}" == "" -o "${VERSION_EXTRA}" == "-dmr" -o "${VERSION_EXTRA}" == "-rc" ]; then  # MS has no extra version number, or shows '-dmr' or '-rc' (both exactly and only) in this place
     MS=1
     PREFIX="MS${DATE}"
