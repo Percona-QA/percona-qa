@@ -14,8 +14,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin"
-export mysqldir="$HOME/MS_8_0_25"
+export xtrabackup_dir="$HOME/pxb_8_0_27_debug/bin"
+export mysqldir="$HOME/MS_8_0_27"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -264,6 +264,21 @@ check_tables() {
     fi
 }
 
+start_server() {
+    # This function starts the server
+
+    echo "Starting mysql server"
+    pushd "$mysqldir" >/dev/null 2>&1 || exit
+    ./start "${MYSQLD_OPTIONS}" >/dev/null 2>&1
+    "${mysqldir}"/bin/mysqladmin ping --user=root --socket="${mysqldir}"/socket.sock >/dev/null 2>&1
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Database could not be started in location ${mysqldir}. Database logs: ${mysqldir}/log"
+        popd >/dev/null 2>&1 || exit
+        exit 1
+    fi
+    echo "The mysql server was started successfully"
+}
+
 run_load_tests() {
     # This function runs the load backup tests with normal options
     MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
@@ -383,10 +398,164 @@ EOF
     check_tables
 }
 
+run_crash_tests_pstress() {
+    # This function crashes the server during load and then runs backup
+    MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+    BACKUP_PARAMS="--core-file --lock-ddl"
+    PREPARE_PARAMS="--core-file"
+    RESTORE_PARAMS=""
+
+    if [ -d "${backup_dir}" ]; then
+        rm -r "${backup_dir}"
+    fi
+    mkdir "${backup_dir}"
+    log_date=$(date +"%d_%m_%Y_%M")
+
+    tool_options_normal="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --undo-tbs-sql 0"
+
+    initialize_db
+
+    echo "Run pstress prepare with options: ${tool_options_normal}"
+    pushd "$tool_dir" >/dev/null 2>&1 || exit
+    ./pstress-ps ${tool_options_normal} --prepare --logdir="${logdir}" --socket "${mysqldir}"/socket.sock >"${logdir}"/pstress_prepare.log 
+    popd >/dev/null 2>&1 || exit
+
+    run_load "${tool_options_normal} --step 2"
+
+    echo "Taking full backup"
+    "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
+        exit 1
+    else
+        echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
+    fi
+
+    # Save the full backup dir
+    cp -pr ${backup_dir}/full ${backup_dir}/full_save
+
+    sleep 1
+
+    inc_num=1
+    for ((i=1; i<=20; i++)); do
+
+        if [ -d "${mysqldir}"/data_crash_save ]; then
+            rm -r "${mysqldir}"/data_crash_save
+        fi
+
+        echo "Crash the mysql server"
+        "${mysqldir}"/kill
+        cp -pr "${mysqldir}"/data "${mysqldir}"/data_crash_save
+
+        start_server
+
+        run_load "${tool_options_normal} --step $(($i + 2))"
+
+        echo "Taking incremental backup: $inc_num"
+        if [[ "${inc_num}" -eq 1 ]]; then
+            "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+        else
+            "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+        fi
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Inc backup was successfully created at: ${backup_dir}/inc${inc_num}. Logs available at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
+        fi
+
+        # Save the incremental backup dir
+        cp -pr ${backup_dir}/inc${inc_num} ${backup_dir}/inc${inc_num}_save
+        let inc_num++
+        sleep 2
+    done
+
+	echo "Preparing full backup"
+    "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full ${PREPARE_PARAMS} 2>"${logdir}"/prepare_full_backup_"${log_date}"_log
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
+        exit 1
+    else
+        echo "Prepare of full backup was successful. Logs available at: ${logdir}/prepare_full_backup_${log_date}_log"
+    fi
+	
+    for ((i=1; i<inc_num; i++)); do
+
+        echo "Preparing incremental backup: $i"
+        if [[ "${i}" -eq "${inc_num}" ]]; then
+            "${xtrabackup_dir}"/xtrabackup --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
+        else
+            "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
+        fi
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc${i}_backup_${log_date}_log"
+            exit 1
+        else
+            echo "Prepare of incremental backup was successful. Logs available at: ${logdir}/prepare_inc${i}_backup_${log_date}_log"
+        fi
+    done
+
+    echo "Collecting existing table count"
+    pushd "$mysqldir" >/dev/null 2>&1 || exit
+    count_rows >file1
+    popd >/dev/null 2>&1 || exit
+	
+    echo "Stopping mysql server and moving data directory"
+    "${mysqldir}"/bin/mysqladmin -uroot -S"${mysqldir}"/socket.sock shutdown
+    if [ -d "${mysqldir}"/data_orig_"$(date +"%d_%m_%Y")" ]; then
+        rm -r "${mysqldir}"/data_orig_"$(date +"%d_%m_%Y")"
+    fi
+    mv "${mysqldir}"/data "${mysqldir}"/data_orig_"$(date +"%d_%m_%Y")"
+
+    echo "Restoring full backup"
+    "${xtrabackup_dir}"/xtrabackup --copy-back --target-dir="${backup_dir}"/full --datadir="${datadir}" ${RESTORE_PARAMS} 2>"${logdir}"/res_backup_"${log_date}"_log
+    if [ "$?" -ne 0 ]; then
+        echo "ERR: Restore of full backup failed. Please check the log at: ${logdir}/res_backup_${log_date}_log"
+        exit 1
+    else
+        echo "Restore of full backup was successful. Logs available at: ${logdir}/res_backup_${log_date}_log"
+    fi
+
+    start_server
+
+    # Binlog can't be applied if binlog is encrypted or skipped
+    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption"* ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]] && [[ "${MYSQLD_OPTIONS}" != *"skip-log-bin"* ]]; then
+        echo "Check xtrabackup for binlog position"
+        xb_binlog_file=$(cat "${backup_dir}"/full/xtrabackup_binlog_info|awk '{print $1}'|head -1)
+        xb_binlog_pos=$(cat "${backup_dir}"/full/xtrabackup_binlog_info|awk '{print $2}'|head -1)
+        echo "Xtrabackup binlog position: $xb_binlog_file, $xb_binlog_pos"
+
+        echo "Applying binlog to restored data starting from $xb_binlog_file, $xb_binlog_pos"
+        "${mysqldir}"/bin/mysqlbinlog "${mysqldir}"/data_orig_$(date +"%d_%m_%Y")/$xb_binlog_file --start-position=$xb_binlog_pos | "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: The binlog could not be applied to the restored data"
+        fi
+
+        sleep 5
+
+        echo "Collecting table count after restore" 
+        count_rows >file2
+        diff file1 file2
+        if [ "$?" -ne 0 ]; then
+            echo "ERR: Difference found in table count before and after restore."
+        else
+            echo "Data is the same before and after restore: Pass"
+        fi
+        popd >/dev/null 2>&1 || exit
+    else
+        echo "Binlog applying skipped, ignore differences between actual data and restored data"
+
+    fi
+
+    check_tables
+}
+
 echo "################################## Running Tests ##################################"
 run_load_tests
 echo "###################################################################################"
 run_load_keyring_plugin_tests
 echo "###################################################################################"
 run_load_keyring_component_tests
+echo "###################################################################################"
+run_crash_tests_pstress
 echo "###################################################################################"
