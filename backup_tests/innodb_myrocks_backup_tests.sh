@@ -15,14 +15,14 @@
 # Set script variables
 export xtrabackup_dir="$HOME/pxb_8_0_27_debug/bin" # Set this to /usr/bin for install_type as package
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/MS_8_0_27"
+export mysqldir="$HOME/PS260122_8_0_27_18_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/test_mode/vault/keyring_vault_ps.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
+rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
 install_type="tarball" # Set value to tarball/package
 
 # Set sysbench variables
@@ -36,6 +36,13 @@ encrypt_key="mHU3Zs5sRcSB7zBAJP1BInPP5lgShKly"
 
 # Set user for backup
 backup_user="root"
+
+# Set Kmip configuration
+kmip_server_address="0.0.0.0"
+kmip_server_port=5696
+kmip_client_ca="/home/manish.chawla/cert.pem"
+kmip_client_key="/home/manish.chawla/key.pem"
+kmip_server_ca="/home/manish.chawla/ca.pem"
 
 #set -o pipefail
 
@@ -1577,6 +1584,93 @@ EOF
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
+
+    elif [ "${encrypt_type}" = "keyring_kmip" ]; then
+        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+            echo "MS 8.0 does not support keyring kmip for encryption, skipping keyring kmip tests"
+            return
+        fi
+
+        # Run keyring_kmip tests for PS8.0
+        server_type="PS"
+        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295"
+
+        echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_kmip component encryption"
+
+        echo "Create global manifest file"
+        cat <<EOF >"${mysqldir}"/bin/mysqld.my
+{
+    "components": "file://component_keyring_kmip"
+}
+EOF
+        if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
+            echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
+            exit 1
+        fi
+
+        echo "Create global configuration file"
+        cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_kmip.cnf
+{
+    "path": "$mysqldir/keyring_kmip", "server_addr": "$kmip_server_address", "server_port": "$kmip_server_port", "client_ca": "$kmip_client_ca", "client_key": "$kmip_client_key", "server_ca": "$kmip_server_ca"
+}
+EOF
+        if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf ]]; then
+            echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_kmip.cnf"
+            exit 1
+        fi
+
+        echo "Test: Incremental Backup and Restore with basic keyring_kmip component encryption options"
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options=""
+        else
+            pxb_encrypt_options="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
+        initialize_db "--default-table-encryption=ON"
+
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "--default-table-encryption=ON"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} running with all encryption options enabled"
+
+        initialize_db "${server_options} --binlog-encryption"
+
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
+
+        incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
+
+        incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
+
+        initialize_db "${server_options}"
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
+
+        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
     fi
 
     # Running test suites with lock ddl backup command
@@ -1662,6 +1756,10 @@ EOF
 
     if [[ -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
         rm "${mysqldir}"/lib/plugin/component_keyring_file.cnf
+    fi
+
+    if [[ -f "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf ]]; then
+        rm "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf
     fi
 }
 
@@ -2270,7 +2368,7 @@ for tsuitelist in $*; do
 
         Encryption_PXB8_0_PS8_0_tests)
             echo "Encryption test suites for PXB8.0 and PS8.0"
-            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault" "test_inc_backup_encryption_8_0 keyring_component"; do
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault" "test_inc_backup_encryption_8_0 keyring_component" "test_inc_backup_encryption_8_0 keyring_kmip"; do
                 $testsuite
                 echo "###################################################################################"
             done
