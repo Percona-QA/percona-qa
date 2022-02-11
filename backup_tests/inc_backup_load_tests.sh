@@ -26,10 +26,14 @@ export logdir="$HOME/backuplogs"
 load_tool="pstress" # Set value as pquery/pstress/sysbench
 num_tables=10 # Used for Sysbench
 table_size=1000 # Used for Sysbench
-tool_dir="$HOME/pstress_ms8025/src" # Pquery/pstress dir
+tool_dir="$HOME/pstress/src" # Pquery/pstress dir
 
 initialize_db() {
     # This function initializes and starts mysql database
+
+    if [ ! -d "${logdir}" ]; then
+        mkdir "${logdir}"
+    fi
 
     echo "Starting mysql database"
     pushd "$mysqldir" >/dev/null 2>&1 || exit
@@ -290,6 +294,8 @@ run_load_tests() {
     tool_options_normal="--tables 10 --records 200 --threads 10 --seconds 350 --no-encryption --undo-tbs-sql 0"
     tool_options_large="--tables 20 --records 1000 --threads 200 --seconds 150 --no-encryption --undo-tbs-sql 0"
 
+    echo "Test: Incremental Backup and Restore with ${load_tool}"
+
     initialize_db
     run_load "${tool_options_normal}"
     take_backup
@@ -335,6 +341,8 @@ run_load_keyring_plugin_tests() {
             tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-temp-tables 1"
         fi
     fi
+
+    echo "Test: Incremental Backup and Restore for keyring_file plugin with ${load_tool}"
 
     initialize_db
     run_load "${tool_options_encrypt}"
@@ -400,10 +408,58 @@ EOF
 
 run_crash_tests_pstress() {
     # This function crashes the server during load and then runs backup
-    MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-    BACKUP_PARAMS="--core-file --lock-ddl"
-    PREPARE_PARAMS="--core-file"
-    RESTORE_PARAMS=""
+
+    local test_type="$1"
+
+    if [[ "${test_type}" = "encryption" ]]; then
+        echo "Running crash tests with ${load_tool} and mysql running with encryption"
+        if "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
+            if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+                # Server is MS 8.0
+                MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
+
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
+            else
+
+                # Server is PS 8.0
+                MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --max-connections=5000"
+
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
+            fi
+        else
+            # Server is MS/PS 5.7
+
+            if "${mysqldir}"/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+                # Server is MS 5.7
+                MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+
+                # Run pstress without ddl
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-ddl"
+            else
+
+                # Server is PS 5.7 --innodb-temp-tablespace-encrypt is not GA and is deprecated
+                MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+
+                # Run pstress without temp tables encryption - existing issue PXB-2534
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-temp-tables 1"
+            fi
+        fi
+
+        BACKUP_PARAMS="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
+        PREPARE_PARAMS="${BACKUP_PARAMS}"
+        PREPARE_PARAMS="${BACKUP_PARAMS}"
+
+    else
+
+        echo "Running crash tests with ${load_tool}"
+
+        MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+        BACKUP_PARAMS="--core-file --lock-ddl"
+        PREPARE_PARAMS="--core-file"
+        RESTORE_PARAMS=""
+
+        load_options="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --undo-tbs-sql 0"
+    fi
 
     if [ -d "${backup_dir}" ]; then
         rm -r "${backup_dir}"
@@ -411,16 +467,15 @@ run_crash_tests_pstress() {
     mkdir "${backup_dir}"
     log_date=$(date +"%d_%m_%Y_%M")
 
-    tool_options_normal="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --undo-tbs-sql 0"
 
     initialize_db
 
-    echo "Run pstress prepare with options: ${tool_options_normal}"
+    echo "Run pstress prepare with options: ${load_options}"
     pushd "$tool_dir" >/dev/null 2>&1 || exit
-    ./pstress-ps ${tool_options_normal} --prepare --logdir="${logdir}" --socket "${mysqldir}"/socket.sock >"${logdir}"/pstress_prepare.log 
+    ./pstress-ps "${load_options}" --prepare --logdir="${logdir}" --socket "${mysqldir}"/socket.sock >"${logdir}"/pstress_prepare.log 
     popd >/dev/null 2>&1 || exit
 
-    run_load "${tool_options_normal} --step 2"
+    run_load "${load_options} --step 2"
 
     echo "Taking full backup"
     "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
@@ -449,7 +504,7 @@ run_crash_tests_pstress() {
 
         start_server
 
-        run_load "${tool_options_normal} --step $(($i + 2))"
+        run_load "${load_options} --step $(($i + 2))"
 
         echo "Taking incremental backup: $inc_num"
         if [[ "${inc_num}" -eq 1 ]]; then
@@ -466,6 +521,7 @@ run_crash_tests_pstress() {
 
         # Save the incremental backup dir
         cp -pr ${backup_dir}/inc${inc_num} ${backup_dir}/inc${inc_num}_save
+
         let inc_num++
         sleep 2
     done
@@ -558,4 +614,6 @@ echo "##########################################################################
 run_load_keyring_component_tests
 echo "###################################################################################"
 run_crash_tests_pstress
+echo "###################################################################################"
+run_crash_tests_pstress "encryption"
 echo "###################################################################################"
