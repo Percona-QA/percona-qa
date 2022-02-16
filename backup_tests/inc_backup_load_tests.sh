@@ -15,7 +15,7 @@
 
 # Set script variables
 export xtrabackup_dir="$HOME/pxb_8_0_27_debug/bin"
-export mysqldir="$HOME/MS_8_0_27"
+export mysqldir="$HOME/PS260122_8_0_27_18_debug"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -158,7 +158,7 @@ take_backup() {
     for ((i=1; i<inc_num; i++)); do
 
         echo "Preparing incremental backup: $i"
-        if [[ "${i}" -eq "${inc_num}" ]]; then
+        if [[ "${i}" -eq "${inc_num}-1" ]]; then
             "${xtrabackup_dir}"/xtrabackup --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
         else
             "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
@@ -234,6 +234,24 @@ take_backup() {
     fi
 }
 
+count_rows() {
+    if [ ! -z "$1" ]; then
+        database="$1"
+    else
+        database=test
+    fi
+
+    while read table; do
+        echo -n "Row count for $database.$table: "
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "select count(*) from $database.$table"
+    done < <("${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "SHOW TABLES FROM $database;")
+
+    while read table; do
+        echo -n "Checksum of table $database.$table: "
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "checksum table $database.$table"|awk '{print $2}'
+    done < <("${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "SHOW TABLES FROM $database;")
+}
+
 check_tables() {
     echo "Check the table status"
     check_err=0
@@ -291,13 +309,23 @@ run_load_tests() {
     RESTORE_PARAMS=""
 
     # Pstress options
-    tool_options_normal="--tables 10 --records 200 --threads 10 --seconds 350 --no-encryption --undo-tbs-sql 0"
-    tool_options_large="--tables 20 --records 1000 --threads 200 --seconds 150 --no-encryption --undo-tbs-sql 0"
-
-    echo "Test: Incremental Backup and Restore with ${load_tool}"
+    if [[ "$1" = "rocksdb" ]]; then
+        echo "Test: Incremental Backup and Restore for rocksdb with ${load_tool}"
+        tool_options="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --engine=rocksdb"
+    else
+        echo "Test: Incremental Backup and Restore with ${load_tool}"
+        tool_options="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --undo-tbs-sql 0"
+    fi
 
     initialize_db
-    run_load "${tool_options_normal}"
+
+    if [[ "$1" = "pagetracking" ]]; then
+        echo "Running test with page tracking enabled"
+        BACKUP_PARAMS="--core-file --lock-ddl --page-tracking"
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
+    fi
+
+    run_load "${tool_options}"
     take_backup
     check_tables
 }
@@ -345,6 +373,13 @@ run_load_keyring_plugin_tests() {
     echo "Test: Incremental Backup and Restore for keyring_file plugin with ${load_tool}"
 
     initialize_db
+
+    if [[ "$1" = "pagetracking" ]]; then
+        echo "Running test with page tracking enabled"
+        BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
+    fi
+
     run_load "${tool_options_encrypt}"
     take_backup
     check_tables
@@ -401,9 +436,25 @@ EOF
     tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
 
     initialize_db
+
+    if [[ "$1" = "pagetracking" ]]; then
+        echo "Running test with page tracking enabled"
+        BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
+    fi
+
     run_load "${tool_options_encrypt}"
     take_backup
     check_tables
+
+    # Remove keyring component configuration so that test suites after this test suite can run without encryption
+    if [[ -f "${mysqldir}"/bin/mysqld.my ]]; then
+        rm "${mysqldir}"/bin/mysqld.my
+    fi
+
+    if [[ -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
+        rm "${mysqldir}"/lib/plugin/component_keyring_file.cnf
+    fi
 }
 
 run_crash_tests_pstress() {
@@ -449,6 +500,17 @@ run_crash_tests_pstress() {
         PREPARE_PARAMS="${BACKUP_PARAMS}"
         PREPARE_PARAMS="${BACKUP_PARAMS}"
 
+    elif [[ "${test_type}" = "rocksdb" ]]; then
+
+        echo "Running crash tests with ${load_tool} for rocksdb"
+
+        MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+        BACKUP_PARAMS="--core-file --lock-ddl"
+        PREPARE_PARAMS="--core-file"
+        RESTORE_PARAMS=""
+
+        load_options="--tables 10 --records 1000 --threads 10 --seconds 150 --no-encryption --engine=rocksdb"
+
     else
 
         echo "Running crash tests with ${load_tool}"
@@ -470,9 +532,15 @@ run_crash_tests_pstress() {
 
     initialize_db
 
+    if [[ "$2" = "pagetracking" ]]; then
+        echo "Running test with page tracking enabled"
+        BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
+    fi
+
     echo "Run pstress prepare with options: ${load_options}"
     pushd "$tool_dir" >/dev/null 2>&1 || exit
-    ./pstress-ps "${load_options}" --prepare --logdir="${logdir}" --socket "${mysqldir}"/socket.sock >"${logdir}"/pstress_prepare.log 
+    ./pstress-ps ${load_options} --prepare --logdir="${logdir}" --socket "${mysqldir}"/socket.sock >"${logdir}"/pstress_prepare.log 
     popd >/dev/null 2>&1 || exit
 
     run_load "${load_options} --step 2"
@@ -552,9 +620,7 @@ run_crash_tests_pstress() {
     done
 
     echo "Collecting existing table count"
-    pushd "$mysqldir" >/dev/null 2>&1 || exit
-    count_rows >file1
-    popd >/dev/null 2>&1 || exit
+    orig_data=$(count_rows)
 	
     echo "Stopping mysql server and moving data directory"
     "${mysqldir}"/bin/mysqladmin -uroot -S"${mysqldir}"/socket.sock shutdown
@@ -590,14 +656,16 @@ run_crash_tests_pstress() {
         sleep 5
 
         echo "Collecting table count after restore" 
-        count_rows >file2
-        diff file1 file2
-        if [ "$?" -ne 0 ]; then
-            echo "ERR: Difference found in table count before and after restore."
+        res_data=$(count_rows)
+        if [[ "${orig_data}" != "${res_data}" ]]; then
+            echo "ERR: Data changed after restore."
+            echo "Original data:"
+            echo "${orig_data}"
+            echo "Restored data:"
+            echo "${res_data}"
         else
             echo "Data is the same before and after restore: Pass"
         fi
-        popd >/dev/null 2>&1 || exit
     else
         echo "Binlog applying skipped, ignore differences between actual data and restored data"
 
@@ -606,14 +674,52 @@ run_crash_tests_pstress() {
     check_tables
 }
 
+if [ "$#" -lt 1 ]; then
+    echo "Usage: Please run the script with the following testsuites"
+    echo "Normal_and_Encryption_tests"
+    echo "Rocksdb_tests"
+    echo "Page_Tracking_tests"
+    exit 1
+fi
+
 echo "################################## Running Tests ##################################"
-run_load_tests
-echo "###################################################################################"
-run_load_keyring_plugin_tests
-echo "###################################################################################"
-run_load_keyring_component_tests
-echo "###################################################################################"
-run_crash_tests_pstress
-echo "###################################################################################"
-run_crash_tests_pstress "encryption"
-echo "###################################################################################"
+for tsuitelist in $*; do
+    case "${tsuitelist}" in
+		Normal_and_Encryption_tests)
+			run_load_tests
+			echo "###################################################################################"
+			run_load_keyring_plugin_tests
+			echo "###################################################################################"
+			run_load_keyring_component_tests
+			echo "###################################################################################"
+			run_crash_tests_pstress "normal"
+			echo "###################################################################################"
+			run_crash_tests_pstress "encryption"
+			echo "###################################################################################"
+			;;
+
+        Rocksdb_tests)
+            echo "Rocksdb Tests"
+            run_load_tests "rocksdb"
+            echo "###################################################################################"
+            run_crash_tests_pstress "rocksdb"
+            echo "###################################################################################"
+            ;;
+
+        Page_Tracking_tests)
+            echo "Page Tracking Tests"
+            run_load_tests "pagetracking"
+            echo "###################################################################################"
+            run_load_keyring_plugin_tests "pagetracking"
+            echo "###################################################################################"
+            run_load_keyring_component_tests "pagetracking"
+            echo "###################################################################################"
+            run_crash_tests_pstress "normal" "pagetracking"
+            echo "###################################################################################"
+            run_crash_tests_pstress "encryption" "pagetracking"
+            echo "###################################################################################"
+            run_crash_tests_pstress "rocksdb" "pagetracking"
+            echo "###################################################################################"
+            ;;
+    esac
+done
