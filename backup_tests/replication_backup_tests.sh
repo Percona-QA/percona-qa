@@ -14,8 +14,8 @@
 ########################################################################
 
 # Set mysql and backup variables
-export xtrabackup_dir="$HOME/pxb_8_0_22_debug/bin"
-export mysqldir="$HOME/PS081220_8_0_22_debug"
+export xtrabackup_dir="$HOME/percona-xtrabackup-8.0.27-19-Linux-x86_64.glibc2.17/bin"
+export mysqldir="$HOME/Percona-Server-8.0.27-18-Linux.x86_64.glibc2.17-debug"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -25,10 +25,11 @@ export logdir="$HOME/backuplogs"
 # Set replication variables
 replication_dir1="$HOME/replica1_dir"
 replication_dir2="$HOME/replica2_dir"
-mysql_tarball="$HOME/PS081220-percona-server-8.0.22-13-linux-x86_64-debug.tar.gz"
+mysql_tarball="$HOME/Percona-Server-8.0.27-18-Linux.x86_64.glibc2.17-debug.tar.gz"
+
 GTID_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 NO_GTID_OPTIONS="--log-bin=binlog --log-slave-updates"
-ENCRYPT_OPTIONS_8="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+ENCRYPT_OPTIONS_8="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 ENCRYPT_OPTIONS_57="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring"
 
 # Set sysbench variables
@@ -54,6 +55,10 @@ check_dependencies() {
 initialize_db() {
     # This function initializes and starts mysql database
     local MYSQLD_OPTIONS="$1"
+
+    if [ ! -d "${logdir}" ]; then
+        mkdir "${logdir}"
+    fi
 
     echo "Starting mysql database"
     pushd "$mysqldir" >/dev/null 2>&1 || exit
@@ -150,15 +155,14 @@ replicate_primary() {
 
     echo "Start the replica server"
     "${replication_dir1}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir1} --tmpdir=${replication_dir1}/data --datadir=${replication_dir1}/data --socket=${replication_dir1}/socket.sock --port=18615 --log-error=${replication_dir1}/master.err --server-id=102 --report-host=127.0.0.1 --report-port=18615 ${MYSQLD_OPTIONS} 2>&1 &
-    for ((i=1; i<=10; i++)); do
-        "${replication_dir1}"/bin/mysqladmin ping --user=root --socket="${replication_dir1}"/socket.sock >/dev/null 2>&1
-        if [ "$?" -ne 0 ]; then
+    for ((i=1; i<=30; i++)); do
+        if ! "${replication_dir1}"/bin/mysqladmin ping --user=root --socket="${replication_dir1}"/socket.sock >/dev/null 2>&1; then
             sleep 1
         else
             break
         fi
 
-        if [[ $i -eq 10 ]]; then
+        if [[ "$i" -eq 30 ]]; then
             echo "ERR: The replica server failed to start. Please check the log at: ${replication_dir1}/master.err"
             exit 1
         fi
@@ -232,8 +236,13 @@ replicate_primary() {
     echo "Run a load on primary"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=20 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
 
-    echo "Taking full backup with --slave-info"
-    "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket.sock --datadir="${replication_dir1}"/data --slave-info ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+    if [[ "${MYSQLD_OPTIONS}" != *"gtid-mode=ON"* ]]; then
+        echo "Taking full backup with --slave-info --safe-slave-backup"
+        "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket.sock --datadir="${replication_dir1}"/data --slave-info --safe-slave-backup ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+    else
+        echo "Taking full backup with --slave-info"
+        "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket.sock --datadir="${replication_dir1}"/data --slave-info ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+    fi
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
@@ -267,12 +276,18 @@ replicate_primary() {
 
     echo "Start the replica server --skip-slave-start --server-id=103"
     "${replication_dir2}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir2} --tmpdir=${replication_dir2}/data --datadir=${replication_dir2}/data --socket=${replication_dir2}/socket.sock --port=18620 --log-error=${replication_dir2}/master.err --skip-slave-start --server-id=103 --report-host=127.0.0.1 --report-port=18620 ${MYSQLD_OPTIONS} 2>&1 &
-    sleep 10
-    "${replication_dir2}"/bin/mysqladmin ping --user=root --socket="${replication_dir2}"/socket.sock >/dev/null 2>&1
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: The replica server failed to start. Please check the log at: ${replication_dir2}/master.err"
-        exit 1
-    fi
+    for ((j=1; j<=30; j++)); do
+        if ! "${replication_dir2}"/bin/mysqladmin ping --user=root --socket="${replication_dir2}"/socket.sock >/dev/null 2>&1; then
+            sleep 1
+        else
+            break
+        fi
+
+        if [[ "$j" -eq 30 ]]; then
+            echo "ERR: The replica server failed to start. Please check the log at: ${replication_dir2}/master.err"
+            exit 1
+        fi
+    done
 
     "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
 
