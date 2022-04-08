@@ -94,8 +94,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-                PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-                mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=innodb
@@ -146,8 +149,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-                PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-                mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=rocksdb
@@ -198,8 +204,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-                PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-                mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --storage-engine=tokudb
@@ -250,8 +259,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-                PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-                mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --with-encryption --keyring-plugin=file
@@ -302,8 +314,11 @@ pipeline {
                 fi
                 wget -q ${PT_BIN}
                 wget -q ${PXB_BIN}
-                PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
-                mv binary.tar.gz ${PS_TARBALL}
+                # Rename PS binary tarball in case its name is binary.tar.gz.
+                if echo "${PS_BIN}" | grep -Eq "binary.tar.gz"; then
+                  PS_TARBALL="$(tar -ztf binary.tar.gz|head -n1|sed 's:/$::').tar.gz"
+                  mv binary.tar.gz ${PS_TARBALL}
+                fi
                 cd -
                 git clone https://github.com/Percona-QA/percona-qa.git --depth 1
                 ${WORKSPACE}/percona-qa/ps-async-repl-test.sh --workdir=${WORKSPACE}/${TEST_DIR} --build-number=${BUILD_NUMBER} --testcase=${TEST_CASE} --with-encryption --keyring-plugin=vault
