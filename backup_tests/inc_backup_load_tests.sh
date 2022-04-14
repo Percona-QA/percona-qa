@@ -683,7 +683,7 @@ run_crash_tests_pstress() {
     for ((i=1; i<inc_num; i++)); do
 
         echo "Preparing incremental backup: $i"
-        if [[ "${i}" -eq "${inc_num}" ]]; then
+        if [[ "${i}" -eq "${inc_num}-1" ]]; then
             "${xtrabackup_dir}"/xtrabackup --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
         else
             "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
