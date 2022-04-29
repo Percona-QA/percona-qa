@@ -13,9 +13,9 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_27_debug/bin" # Set this to /usr/bin for install_type as package
+export xtrabackup_dir="$HOME/pxb_8_0_28_debug/bin" # Set this to /usr/bin for install_type as package
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS260122_8_0_27_18_debug"
+export mysqldir="$HOME/PS140422_8_0_28_19_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
@@ -33,6 +33,7 @@ random_type=uniform
 # Set stream and encryption key
 backup_stream="backup.xbstream"
 encrypt_key="mHU3Zs5sRcSB7zBAJP1BInPP5lgShKly"
+backup_tar="backup.tar"
 
 # Set user for backup
 backup_user="root"
@@ -193,17 +194,23 @@ incremental_backup() {
     case "${BACKUP_TYPE}" in
         'cloud')
             echo "Taking full backup and uploading it"
-            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
             ;;
 
         'stream')
             echo "Taking full backup and creating a stream file"
-            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
+            ;;
+
+        'tar')
+            echo "Taking full backup and creating a tar file"
+            # Note: The --stream=tar option does not support --parallel option
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=tar > ${backup_dir}/${backup_tar} 2>${logdir}/full_backup_${log_date}_log
             ;;
 
         *)
             echo "Taking full backup"
-            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -216,6 +223,22 @@ incremental_backup() {
         fi
     else
         echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
+    fi
+
+    if [ "${BACKUP_TYPE}" = "tar" ]; then
+        if [ -z "${backup_dir}/${backup_tar}" ]; then
+            echo "ERR: The backup tar file was not created in ${backup_dir}/${backup_tar}. Please check the backup logs in ${logdir} for errors."
+            exit 1
+        else
+            echo "Extract the backup from the tar file at ${backup_dir}/${backup_tar}"
+            tar -xvf ${backup_dir}/${backup_tar} -C ${backup_dir}/full >${logdir}/extract_backup_${log_date}_log
+            if [ "$?" -ne 0 ]; then
+                echo "ERR: Extract of backup failed using tar. Please check the log at: ${logdir}/extract_backup_${log_date}_log"
+                exit 1
+            else
+                echo "Backup was successfully extracted. Logs available at: ${logdir}/extract_backup_${log_date}_log"
+            fi
+        fi
     fi
 
     if [ "${BACKUP_TYPE}" = "cloud" ]; then
@@ -244,17 +267,19 @@ incremental_backup() {
     case "${BACKUP_TYPE}" in
         'cloud')
             echo "Taking incremental backup and uploading it"
-            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
             ;;
 
         'stream')
             echo "Taking incremental backup and creating a stream file"
-            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
             ;;
+
+            # Note: The --stream=tar option is not supported for incremental backup in PXB2.4
 
         *)
             echo "Taking incremental backup"
-            ${xtrabackup_dir}/xtrabackup --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -302,7 +327,7 @@ incremental_backup() {
     process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/inc"
 
     echo "Preparing full backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
+    ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
         exit 1
@@ -311,7 +336,7 @@ incremental_backup() {
     fi
 
     echo "Preparing incremental backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_${log_date}_log
+    ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc_backup_${log_date}_log"
         exit 1
@@ -359,7 +384,7 @@ incremental_backup() {
     fi
 
     echo "Restoring full backup"
-    ${xtrabackup_dir}/xtrabackup --user=root --password='' --copy-back --target-dir=${backup_dir}/full --datadir=${datadir} ${RESTORE_PARAMS} 2>${logdir}/res_backup_${log_date}_log
+    ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --copy-back --target-dir=${backup_dir}/full --datadir=${datadir} ${RESTORE_PARAMS} 2>${logdir}/res_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Restore of full backup failed. Please check the log at: ${logdir}/res_backup_${log_date}_log"
         exit 1
@@ -1956,6 +1981,15 @@ test_streaming_backup() {
     initialize_db
 
     incremental_backup "" "" "" "--log-bin=binlog" "stream" ""
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with streaming format as tar"
+
+        incremental_backup "" "" "" "--log-bin=binlog" "tar" ""
+    fi
 }
 
 test_compress_stream_backup() {
