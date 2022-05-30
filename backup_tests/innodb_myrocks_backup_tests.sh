@@ -45,11 +45,11 @@ kmip_client_ca="/home/manish.chawla/cert.pem"
 kmip_client_key="/home/manish.chawla/key.pem"
 kmip_server_ca="/home/manish.chawla/ca.pem"
 
-# For kms tests set the values of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_ACCESS_KEY in the shell and then run the tests
+# For kms tests set the values of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY in the shell and then run the tests
 kms_region="${KMS_REGION:-us-east-1}"  # Set KMS_REGION to change default value us-east-1
 kms_id="${KMS_KEYID:-}"
 kms_auth_key="${KMS_AUTH_KEY:-}"
-kms_secret_key="${KMS_SECRET_ACCESS_KEY:-}"
+kms_secret_key="${KMS_SECRET_KEY:-}"
 
 #set -o pipefail
 
@@ -469,49 +469,53 @@ incremental_backup() {
         echo "After restore, some tables may be corrupt, check table status is not OK"
     fi
 
-    echo "Check the record count of tables in databases: ${database_list}"
-    # Get record count for each table in databases test and test_rocksdb
-    rc_err=0
-    checksum_err=0
-    for ((i=1; i<=${num_tables}; i++)); do
-        rc_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test.sbtest$i;")
-        if [[ "${rc_innodb_orig[$i]}" -ne "${rc_innodb_res[$i]}" ]]; then
-            echo "ERR: The record count of test.sbtest$i changed after restore. Record count in original data: ${rc_innodb_orig[$i]}. Record count in restored data: ${rc_innodb_res[$i]}."
-            rc_err=1
-        fi
-
-        if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
-            rc_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test_rocksdb.sbtest$i;")
-            if [[ "${rc_myrocks_orig[$i]}" -ne "${rc_myrocks_res[$i]}" ]]; then
-                echo "ERR: The record count of test_rocksdb.sbtest$i changed after restore. Record count in original data: ${rc_myrocks_orig[$i]}. Record count in restored data: ${rc_myrocks_res[$i]}."
+    # Record count and checksum can't be checked if binlog encryption is enabled and binlogs are not applied
+    if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption" ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]] && [[ "${MYSQLD_OPTIONS}" != *"skip-log-bin"* ]]; then
+        echo "Check the record count of tables in databases: ${database_list}"
+        # Get record count for each table in databases test and test_rocksdb
+        rc_err=0
+        checksum_err=0
+        for ((i=1; i<=${num_tables}; i++)); do
+            rc_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test.sbtest$i;")
+            if [[ "${rc_innodb_orig[$i]}" -ne "${rc_innodb_res[$i]}" ]]; then
+                echo "ERR: The record count of test.sbtest$i changed after restore. Record count in original data: ${rc_innodb_orig[$i]}. Record count in restored data: ${rc_innodb_res[$i]}."
                 rc_err=1
             fi
-        fi
-    done
-    if [[ "$rc_err" -eq 0 ]]; then
-        echo "Match record count of tables in databases ${database_list} with original data: Pass"
-    fi
 
-    echo "Check the checksum of each table in databases: ${database_list}"
-    # Get checksum of each table in databases test and test_rocksdb
-    for ((i=1; i<=${num_tables}; i++)); do
-        chk_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.sbtest$i;"|awk '{print $2}')
-        if [[ "${chk_innodb_orig[$i]}" -ne "${chk_innodb_res[$i]}" ]]; then
-            echo "ERR: The checksum of test.sbtest$i changed after restore. Checksum in original data: ${chk_innodb_orig[$i]}. Checksum in restored data: ${chk_innodb_res[$i]}."
-            checksum_err=1;
+            if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
+                rc_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "SELECT COUNT(*) FROM test_rocksdb.sbtest$i;")
+                if [[ "${rc_myrocks_orig[$i]}" -ne "${rc_myrocks_res[$i]}" ]]; then
+                    echo "ERR: The record count of test_rocksdb.sbtest$i changed after restore. Record count in original data: ${rc_myrocks_orig[$i]}. Record count in restored data: ${rc_myrocks_res[$i]}."
+                    rc_err=1
+                fi
+            fi
+        done
+        if [[ "$rc_err" -eq 0 ]]; then
+            echo "Match record count of tables in databases ${database_list} with original data: Pass"
         fi
 
-        if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
-            chk_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
-            if [[ "${chk_myrocks_orig[$i]}" -ne "${chk_myrocks_res[$i]}" ]]; then
-                echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksum in restored data: ${chk_myrocks_res[$i]}."
+        echo "Check the checksum of each table in databases: ${database_list}"
+        # Get checksum of each table in databases test and test_rocksdb
+        for ((i=1; i<=${num_tables}; i++)); do
+            chk_innodb_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test.sbtest$i;"|awk '{print $2}')
+            if [[ "${chk_innodb_orig[$i]}" -ne "${chk_innodb_res[$i]}" ]]; then
+                echo "ERR: The checksum of test.sbtest$i changed after restore. Checksum in original data: ${chk_innodb_orig[$i]}. Checksum in restored data: ${chk_innodb_res[$i]}."
                 checksum_err=1;
             fi
-        fi
-    done
 
-    if [[ "$checksum_err" -eq 0 ]]; then
-        echo "Match checksum of all tables in databases ${database_list} with original data: Pass"
+            if [[ "${rocksdb}" = "enabled" ]] && [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
+                chk_myrocks_res[$i]=$(${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -Bse "CHECKSUM TABLE test_rocksdb.sbtest$i;"|awk '{print $2}')
+                if [[ "${chk_myrocks_orig[$i]}" -ne "${chk_myrocks_res[$i]}" ]]; then
+                    echo "ERR: The checksum of test_rocksdb.sbtest$i changed after restore. Checksum in original data: ${chk_myrocks_orig[$i]}. Checksum in restored data: ${chk_myrocks_res[$i]}."
+                    checksum_err=1;
+                fi
+            fi
+        done
+
+        if [[ "$checksum_err" -eq 0 ]]; then
+            echo "Match checksum of all tables in databases ${database_list} with original data: Pass"
+        fi
+
     fi
 
     echo "Check for gaps in primary sequence id of tables"
@@ -1719,19 +1723,24 @@ EOF
 
         echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_kms component encryption"
 
-        # Set KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_ACCESS_KEY to create the kms configuration file
+        # Set KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY to create the kms configuration file
         if [[ -z "${kms_id}" ]]; then
-            echo "ERR: KMS_KEYID is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_ACCESS_KEY and run the kms tests again."
+            echo "ERR: KMS_KEYID is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
             exit 1
         fi
 
         if [[ -z "${kms_auth_key}" ]]; then
-            echo "ERR: KMS_AUTH_KEY is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_ACCESS_KEY and run the kms tests again."
+            echo "ERR: KMS_AUTH_KEY is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
             exit 1
         fi
 
         if [[ -z "${kms_secret_key}" ]]; then
-            echo "ERR: KMS_SECRET_ACCESS_KEY is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_ACCESS_KEY and run the kms tests again."
+            echo "ERR: KMS_SECRET_KEY is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
+            exit 1
+        fi
+
+        if [[ -z "${kms_region}" ]]; then
+            echo "ERR: KMS_REGION is not set. Please set the value of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
             exit 1
         fi
 
@@ -1750,7 +1759,7 @@ EOF
 
         cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_kms.cnf
 {
-    "path": "$mysqldir/keyring_kms", "region": "us-east-1", "kms_key": "$KMS_KEYID", "auth_key": "$KMS_AUTH_KEY", "secret_access_key": "$KMS_SECRET_ACCESS_KEY", "read_only": false 
+    "path": "$mysqldir/keyring_kms", "region": "us-east-1", "kms_key": "$KMS_KEYID", "auth_key": "$KMS_AUTH_KEY", "secret_access_key": "$KMS_SECRET_KEY", "read_only": false 
 }
 EOF
         if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_kms.cnf ]]; then
@@ -1902,6 +1911,10 @@ EOF
 
     if [[ -f "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf ]]; then
         rm "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf
+    fi
+
+    if [[ -f "${mysqldir}"/lib/plugin/component_keyring_kms.cnf ]]; then
+        rm "${mysqldir}"/lib/plugin/component_keyring_kms.cnf
     fi
 }
 
