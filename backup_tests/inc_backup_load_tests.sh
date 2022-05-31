@@ -14,8 +14,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_27_debug/bin"
-export mysqldir="$HOME/PS260122_8_0_27_18_debug"
+export xtrabackup_dir="$HOME/pxb_8_0_28_debug/bin"
+export mysqldir="$HOME/PS160522_8_0_28_19_debug"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -34,6 +34,12 @@ kmip_server_port=5696
 kmip_client_ca="/home/manish.chawla/cert.pem"
 kmip_client_key="/home/manish.chawla/key.pem"
 kmip_server_ca="/home/manish.chawla/ca.pem"
+
+# For kms tests set the values of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY in the shell and then run the tests
+kms_region="${KMS_REGION:-us-east-1}"  # Set KMS_REGION to change default value us-east-1
+kms_id="${KMS_KEYID:-}"
+kms_auth_key="${KMS_AUTH_KEY:-}"
+kms_secret_key="${KMS_SECRET_KEY:-}"
 
 initialize_db() {
     # This function initializes and starts mysql database
@@ -110,7 +116,7 @@ take_backup() {
     log_date=$(date +"%d_%m_%Y_%M")
 
     echo "Taking full backup"
-    "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+    "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
@@ -123,9 +129,9 @@ take_backup() {
     while [[ $(pgrep ${load_tool}) ]]; do
         echo "Taking incremental backup: $inc_num"
         if [[ "${inc_num}" -eq 1 ]]; then
-            "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
         else
-            "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
         fi
         if [ "$?" -ne 0 ]; then
             grep -e "PXB will not be able to make a consistent backup" -e "PXB will not be able to take a consistent backup" "${logdir}"/inc${inc_num}_backup_"${log_date}"_log
@@ -134,9 +140,9 @@ take_backup() {
                 rm -r "${backup_dir}"/inc${inc_num}
 
                 if [[ "${inc_num}" -eq 1 ]]; then
-                    "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} --lock-ddl 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+                    "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} --lock-ddl 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
                 else
-                    "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} --lock-ddl 2>>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+                    "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} --lock-ddl 2>>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
                     if [ "$?" -ne 0 ]; then
                         echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
                         exit 1
@@ -154,7 +160,7 @@ take_backup() {
     done
 
     echo "Preparing full backup"
-    "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full ${PREPARE_PARAMS} 2>"${logdir}"/prepare_full_backup_"${log_date}"_log
+    "${xtrabackup_dir}"/xtrabackup --no-defaults --prepare --apply-log-only --target_dir="${backup_dir}"/full ${PREPARE_PARAMS} 2>"${logdir}"/prepare_full_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
         exit 1
@@ -166,9 +172,9 @@ take_backup() {
 
         echo "Preparing incremental backup: $i"
         if [[ "${i}" -eq "${inc_num}-1" ]]; then
-            "${xtrabackup_dir}"/xtrabackup --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
         else
-            "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
         fi
         if [ "$?" -ne 0 ]; then
             echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc${i}_backup_${log_date}_log"
@@ -192,7 +198,7 @@ take_backup() {
     mv "${mysqldir}"/data "${mysqldir}"/data_orig_"$(date +"%d_%m_%Y")"
 
     echo "Restoring full backup"
-    "${xtrabackup_dir}"/xtrabackup --copy-back --target-dir="${backup_dir}"/full --datadir="${datadir}" ${RESTORE_PARAMS} 2>"${logdir}"/res_backup_"${log_date}"_log
+    "${xtrabackup_dir}"/xtrabackup --no-defaults --copy-back --target-dir="${backup_dir}"/full --datadir="${datadir}" ${RESTORE_PARAMS} 2>"${logdir}"/res_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Restore of full backup failed. Please check the log at: ${logdir}/res_backup_${log_date}_log"
         exit 1
@@ -242,6 +248,8 @@ take_backup() {
 }
 
 count_rows() {
+    # This function counts the rows of all the tables in a database
+
     if [ ! -z "$1" ]; then
         database="$1"
     else
@@ -260,6 +268,8 @@ count_rows() {
 }
 
 check_tables() {
+    # This function checks the tables in a database
+
     echo "Check the table status"
     check_err=0
 
@@ -393,9 +403,9 @@ run_load_keyring_plugin_tests() {
 }
 
 run_load_keyring_component_tests() {
-    # This function runs the load backup tests with keyring_file plugin options
+    # This function runs the load backup tests with keyring_file component options
     BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
-    PREPARE_PARAMS="${BACKUP_PARAMS}"
+    PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf"
     RESTORE_PARAMS="${BACKUP_PARAMS}"
 
     if "${mysqldir}"/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
@@ -408,7 +418,7 @@ run_load_keyring_component_tests() {
 
     else
         # Server is MS/PS 5.7
-        echo "Component is not supported in MS/PS 5.7"
+        echo "Component is not supported in MS/PS 5.7, skipping tests"
         return
     fi
 
@@ -422,7 +432,6 @@ run_load_keyring_component_tests() {
         "components": "file://component_keyring_file"
     }
 EOF
-
     if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
         echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
         exit 1
@@ -465,9 +474,9 @@ EOF
 }
 
 run_load_kmip_component_tests() {
-    # This function runs the load backup tests with keyring_kmip plugin options
+    # This function runs the load backup tests with keyring_kmip component options
     BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
-    PREPARE_PARAMS="${BACKUP_PARAMS}"
+    PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_kmip.cnf"
     RESTORE_PARAMS="${BACKUP_PARAMS}"
 
     if "${mysqldir}"/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
@@ -481,7 +490,7 @@ run_load_kmip_component_tests() {
 
     else
         # Server is MS/PS 5.7
-        echo "Kmip Component is not supported in MS/PS 5.7"
+        echo "Kmip Component is not supported in MS/PS 5.7, skipping tests"
         return
     fi
 
@@ -493,7 +502,6 @@ run_load_kmip_component_tests() {
         "components": "file://component_keyring_kmip"
     }
 EOF
-
     if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
         echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
         exit 1
@@ -531,6 +539,97 @@ EOF
 
     if [[ -f "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf ]]; then
         rm "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf
+    fi
+}
+
+run_load_kms_component_tests() {
+    # This function runs the load backup tests with keyring_kms component options
+    BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
+    PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_kms.cnf"
+    RESTORE_PARAMS="${BACKUP_PARAMS}"
+
+    if "${mysqldir}"/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        # Server is MS 8.0
+        echo "MS 8.0 does not support keyring kms for encryption, skipping keyring kms tests"
+        return
+
+    elif "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
+        # Server is PS 8.0
+        MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --innodb-default-encryption-key-id=4294967295 --max-connections=5000"
+
+    else
+        # Server is MS/PS 5.7
+        echo "Kms Component is not supported in MS/PS 5.7, skipping tests"
+        return
+    fi
+
+    echo "Test: Incremental Backup and Restore for keyring_kms component with ${load_tool}"
+
+    # Set KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY to create the kms configuration file
+    if [[ -z "${kms_id}" ]]; then
+        echo "ERR: KMS_KEYID is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
+        exit 1
+    fi
+
+    if [[ -z "${kms_auth_key}" ]]; then
+        echo "ERR: KMS_AUTH_KEY is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
+        exit 1
+    fi
+
+    if [[ -z "${kms_secret_key}" ]]; then
+        echo "ERR: KMS_SECRET_KEY is not set. Please set the value of KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
+        exit 1
+    fi
+
+    if [[ -z "${kms_region}" ]]; then
+        echo "ERR: KMS_REGION is not set. Please set the value of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY and run the kms tests again."
+        exit 1
+    fi
+
+    echo "Create global manifest file"
+    cat <<EOF >"${mysqldir}"/bin/mysqld.my
+{
+    "components": "file://component_keyring_kms"
+}
+EOF
+    if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
+        echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
+        exit 1
+    fi
+
+    echo "Create global configuration file"
+
+    cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_kms.cnf
+{
+    "path": "$mysqldir/keyring_kms", "region": "us-east-1", "kms_key": "$KMS_KEYID", "auth_key": "$KMS_AUTH_KEY", "secret_access_key": "$KMS_SECRET_KEY", "read_only": false 
+}
+EOF
+    if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_kms.cnf ]]; then
+        echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_kms.cnf"
+        exit 1
+    fi
+
+    tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 150 --undo-tbs-sql 0" # Used for pstress
+
+    initialize_db
+
+    if [[ "$1" = "pagetracking" ]]; then
+        echo "Running test with page tracking enabled"
+        BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
+        "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
+    fi
+
+    run_load "${tool_options_encrypt}"
+    take_backup
+    check_tables
+
+    # Remove keyring component configuration so that test suites after this test suite can run without encryption
+    if [[ -f "${mysqldir}"/bin/mysqld.my ]]; then
+        rm "${mysqldir}"/bin/mysqld.my
+    fi
+
+    if [[ -f "${mysqldir}"/lib/plugin/component_keyring_kms.cnf ]]; then
+        rm "${mysqldir}"/lib/plugin/component_keyring_kms.cnf
     fi
 }
 
@@ -575,7 +674,7 @@ run_crash_tests_pstress() {
 
         BACKUP_PARAMS="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
         PREPARE_PARAMS="${BACKUP_PARAMS}"
-        PREPARE_PARAMS="${BACKUP_PARAMS}"
+        RESTORE_PARAMS="${BACKUP_PARAMS}"
 
     elif [[ "${test_type}" = "rocksdb" ]]; then
 
@@ -623,7 +722,7 @@ run_crash_tests_pstress() {
     run_load "${load_options} --step 2"
 
     echo "Taking full backup"
-    "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+    "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
@@ -653,9 +752,9 @@ run_crash_tests_pstress() {
 
         echo "Taking incremental backup: $inc_num"
         if [[ "${inc_num}" -eq 1 ]]; then
-            "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
         else
-            "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/inc${inc_num} --incremental-basedir="${backup_dir}"/inc$((inc_num - 1)) -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/inc${inc_num}_backup_"${log_date}"_log
         fi
         if [ "$?" -ne 0 ]; then
             echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
@@ -672,7 +771,7 @@ run_crash_tests_pstress() {
     done
 
 	echo "Preparing full backup"
-    "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full ${PREPARE_PARAMS} 2>"${logdir}"/prepare_full_backup_"${log_date}"_log
+    "${xtrabackup_dir}"/xtrabackup --no-defaults --prepare --apply-log-only --target_dir="${backup_dir}"/full ${PREPARE_PARAMS} 2>"${logdir}"/prepare_full_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
         exit 1
@@ -684,9 +783,9 @@ run_crash_tests_pstress() {
 
         echo "Preparing incremental backup: $i"
         if [[ "${i}" -eq "${inc_num}-1" ]]; then
-            "${xtrabackup_dir}"/xtrabackup --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --prepare --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
         else
-            "${xtrabackup_dir}"/xtrabackup --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
+            "${xtrabackup_dir}"/xtrabackup --no-defaults --prepare --apply-log-only --target_dir="${backup_dir}"/full --incremental-dir="${backup_dir}"/inc"${i}" ${PREPARE_PARAMS} 2>"${logdir}"/prepare_inc"${i}"_backup_"${log_date}"_log
         fi
         if [ "$?" -ne 0 ]; then
             echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc${i}_backup_${log_date}_log"
@@ -707,7 +806,7 @@ run_crash_tests_pstress() {
     mv "${mysqldir}"/data "${mysqldir}"/data_orig_"$(date +"%d_%m_%Y")"
 
     echo "Restoring full backup"
-    "${xtrabackup_dir}"/xtrabackup --copy-back --target-dir="${backup_dir}"/full --datadir="${datadir}" ${RESTORE_PARAMS} 2>"${logdir}"/res_backup_"${log_date}"_log
+    "${xtrabackup_dir}"/xtrabackup --no-defaults --copy-back --target-dir="${backup_dir}"/full --datadir="${datadir}" ${RESTORE_PARAMS} 2>"${logdir}"/res_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Restore of full backup failed. Please check the log at: ${logdir}/res_backup_${log_date}_log"
         exit 1
@@ -755,6 +854,7 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: Please run the script with the following testsuites"
     echo "Normal_and_Encryption_tests"
     echo "Kmip_Encryption_tests"
+    echo "Kms_Encryption_tests"
     echo "Rocksdb_tests"
     echo "Page_Tracking_tests"
     exit 1
@@ -783,7 +883,19 @@ for tsuitelist in $*; do
             echo "###################################################################################"
             ;;
 
+        Kms_Encryption_tests)
+            run_load_kms_component_tests
+            echo "###################################################################################"
+            run_load_kms_component_tests "pagetracking"
+            echo "###################################################################################"
+            ;;
+
         Rocksdb_tests)
+            if "${mysqldir}"/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+                echo "Rocksdb backup is not supported in MS/PS 5.7, skipping tests"
+                return
+            fi
+
             echo "Rocksdb Tests"
             run_load_tests "rocksdb"
             echo "###################################################################################"
@@ -792,6 +904,11 @@ for tsuitelist in $*; do
             ;;
 
         Page_Tracking_tests)
+            if "${mysqldir}"/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+                echo "Page Tracking is not supported in MS/PS 5.7, skipping tests"
+                return
+            fi
+
             echo "Page Tracking Tests"
             run_load_tests "pagetracking"
             echo "###################################################################################"
