@@ -12,21 +12,38 @@
 #                                                                                             #
 ###############################################################################################
 
-BASEDIR_56=$1
-BASEDIR_57=$2
-PXC_START_TIMEOUT=60
+BASEDIR_56=$(realpath $1)
+BASEDIR_57=$(realpath $2)
+
+PXC_START_TIMEOUT=30
+
+# Sysbench Internal variables
+SYS_TABLES=50
+SYS_DURATION=60
+SYS_THREADS=5
 
 # Check if xtrabackup 2.4 is installed
 echo "...Looking for xtrabackup package installed on the machine"
-if [[ ! -e `which xtrabackup` ]];then
+if [[ ! -e `which xtrabackup` ]]; then
   echo "Xtrabackup not found"
   echo "...Installing percona-xtrabackup-24 package"
   sudo percona-release enable tools release > /dev/null 2>&1
   sudo apt-get install percona-xtrabackup-24 > /dev/null 2>&1
   echo "Xtrabackup installed successfully"
 else
-  XTRABACKUP=$(which xtrabackup)
-  echo "Xtrabackup found at $XTRABACKUP"
+  echo "Xtrabackup found at $(which xtrabackup)"
+  xtrabackup --version
+fi
+
+# Check if sysbench is installed
+echo "...Looking for sysbench installed on the machine"
+if [[ ! -e `which sysbench` ]]; then
+  echo "Sysbench not found"
+  echo "...Installing sysbench"
+  sudo apt-get install sysbench > /dev/null 2>&1
+  echo "Sysbench installed successfully"
+else
+  echo "Sysbench found at: $(which sysbench)"
 fi
 
 echo "Killing old mysqld instances"
@@ -36,13 +53,13 @@ echo "Basedir 57 has been set to: $BASEDIR_57";
 
 if [ -d $BASEDIR_56/pxc-node ]; then
   echo "...Found existing work directory for PXC-5.6"
-  rm -irf $BASEDIR_56/pxc-node
+  rm -rf $BASEDIR_56/pxc-node
   echo "Removed"
 fi
 
 if [ -d $BASEDIR_57/pxc-node ]; then
   echo "...Found existing work directory for PXC-5.7"
-  rm -irf $BASEDIR_57/pxc-node
+  rm -rf $BASEDIR_57/pxc-node
   echo "Removed"
 fi
 
@@ -52,15 +69,15 @@ for X in $(seq 1 2); do
     WORKDIR_56=$BASEDIR_56/pxc-node
     mkdir $WORKDIR_56
     echo "Workdir has been set to: $WORKDIR_56" 
-    SOCKET_56=$BASEDIR_56/pxc-node/dn_56/mysqld_56.sock
-    ERR_FILE_56=$BASEDIR_56/pxc-node/node1.err
+    SOCKET_56=$WORKDIR_56/dn_56/mysqld_56.sock
+    ERR_FILE_56=$WORKDIR_56/node1.err
   else
     echo "...Creating work directory for PXC-5.7"
     WORKDIR_57=$BASEDIR_57/pxc-node
     mkdir $WORKDIR_57
     echo "Workdir has been set to: $WORKDIR_57" 
-    SOCKET_57=$BASEDIR_57/pxc-node/dn_57/mysqld_57.sock
-    ERR_FILE_57=$BASEDIR_57/pxc-node/node2.err
+    SOCKET_57=$WORKDIR_57/dn_57/mysqld_57.sock
+    ERR_FILE_57=$WORKDIR_57/node2.err
   fi
 done
 
@@ -192,18 +209,23 @@ pxc_startup_status(){
     sleep 1
     if [ $NR -eq 1 ]; then
       if $BASEDIR_56/bin/mysqladmin -uroot -S$SOCKET_56 ping > /dev/null 2>&1; then
-        echo "Node1 with socket $SOCKET_56 started successfully"
+	echo "Node $NR started successfully"
         break
       fi
     else
       if $BASEDIR_57/bin/mysqladmin -uroot -S$SOCKET_57 ping > /dev/null 2>&1; then
-        echo "Node2 with socket $SOCKET_57 started successfully"
+	echo "Node $NR started successfully"
         break
       fi
     fi
     if [ $X -eq ${PXC_START_TIMEOUT} ]; then
-      echo "Node could not start within the timeout period"
-      exit 1
+      if [ $NR -eq 1 ]; then
+        echo "ERROR: Node $NR failed to start. Check Error logs: $WORKDIR_56/node1.err"
+        exit 1
+      else
+        echo "ERROR: Node $NR failed to start. Check Error logs: $WORKDIR_57/node2.err"
+        exit 1
+      fi
     fi
   done
 }
@@ -230,9 +252,6 @@ sleep 20;
 echo "...Shutting down PXC 5.7 to restart with upgraded data directory"
 $BASEDIR_57/bin/mysqladmin -uroot -h127.0.0.1 -P5000 shutdown > /dev/null 2>&1
 sleep 20; 
-if [ ! $BASEDIR_57/bin/mysqladmin -uroot -h127.0.0.1 -P5000 ping > /dev/null 2>&1 ]; then
-  echo "Shutdown successful"
-fi
 
 echo "...Starting PXC node2"
 fetch_err_socket 2
@@ -240,7 +259,7 @@ $BASEDIR_57/bin/mysqld --defaults-file=$BASEDIR_57/pxc-node/n2.cnf > ${ERR_FILE}
 pxc_startup_status 2
 
 echo "...Checking if PXC Cluster started"
-for X in $(seq 0 10); do
+for X in $(seq 1 10); do
   sleep 1
   CLUSTER_UP=0;
   if $BASEDIR_56/bin/mysqladmin -uroot -S$SOCKET_56 ping > /dev/null 2>&1; then
@@ -264,9 +283,14 @@ for X in $(seq 0 10); do
     echo "Node #2: `echo $BASEDIR_57/bin/mysql | sed 's|/mysqld|/mysql|'` -uroot -S$SOCKET_57"
     break
   fi
+  if [ $X -eq 10 ]; then
+    echo "Server may have started, but the cluster does not seem to be in a consistent state"
+    echo "Check Error logs for more info:"
+    echo "$WORKDIR_56/node1.err"
+    echo "$WORKDIR_57/node2.err"
+  fi
 done
 
-echo "...Preparing for sysbench runs"
 echo "...Creating sysbench user"
 $BASEDIR_56/bin/mysql -uroot -S$SOCKET_56 -e"CREATE USER 'sysbench'@'localhost' IDENTIFIED BY 'test'"
 echo "Successful"
@@ -279,11 +303,11 @@ $BASEDIR_56/bin/mysql -uroot -S$SOCKET_56 -e"CREATE DATABASE sbtest"
 echo "Successful"
 
 echo "...Preparing sysbench data on Node 1"
-sysbench /usr/share/sysbench/oltp_insert.lua --mysql-db=sbtest --mysql-user=sysbench --mysql-password=test --db-driver=mysql --mysql-socket=$SOCKET_56 --threads=5 --tables=50 --table-size=100 prepare > /dev/null 2>&1
+sysbench /usr/share/sysbench/oltp_insert.lua --mysql-db=sbtest --mysql-user=sysbench --mysql-password=test --db-driver=mysql --mysql-socket=$SOCKET_56 --threads=$SYS_THREADS --tables=$SYS_TABLES --table-size=100 prepare > /dev/null 2>&1
 echo "Data loaded successfully"
-TIME=60
-echo "...Running sysbench load on Node 1 for $TIME seconds"
-sysbench /usr/share/sysbench/oltp_read_write.lua --mysql-db=sbtest --mysql-user=sysbench --mysql-password=test --db-driver=mysql --mysql-socket=$SOCKET_56 --threads=5 --tables=50 --time=$TIME --report-interval=1 --events=1870000000 --db-ps-mode=disable run > /dev/null 2>&1
+echo "...Running sysbench load on Node 1 for $SYS_DURATION seconds"
+sysbench /usr/share/sysbench/oltp_read_write.lua --mysql-db=sbtest --mysql-user=sysbench --mysql-password=test --db-driver=mysql --mysql-socket=$SOCKET_56 --threads=$SYS_THREADS --tables=$SYS_TABLES --time=$SYS_DURATION --report-interval=1 --events=1870000000 --db-ps-mode=disable run > /dev/null 2>&1
+echo "Sysbench run successful"
 
 # Wait for the nodes sync
 sleep 2;

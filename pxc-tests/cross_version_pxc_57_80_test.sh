@@ -84,14 +84,25 @@ for X in $(seq 1 2); do
 done
 
 # Finding the libgalera binaries and copying to basedir
-LIB_GALERA_PATH_57=$(find $BASEDIR_57 -name libgalera_smm.so | head -n1)
-if [ ! -e $BASEDIR_57/libgalera_smm.so ]; then
-  cp $LIB_GALERA_PATH_57 $BASEDIR_57
-fi
+# Below command will not work due to the fact the libgalera libray is not
+# copied to build directory in PXC-5.7
+# Reported JIRA: https://jira.percona.com/browse/PXC-3969
+#
+# Uncomment below lines, incase the above bug is fixed.
+#
+#LIB_GALERA_PATH_57=$(find $BASEDIR_57 -name libgalera_smm.so | head -n1)
+#if [ ! -e $BASEDIR_57/libgalera_smm.so ]; then
+#  cp $LIB_GALERA_PATH_57 $BASEDIR_57
+#fi
 
 LIB_GALERA_PATH_80=$(find $BASEDIR_80 -name libgalera_smm.so | head -n1)
 if [ ! -e $BASEDIR_80/libgalera_smm.so ]; then
-  cp $LIB_GALERA_PATH_80 $BASEDIR_80
+  if [ "$LIB_GALERA_PATH_80" != "" ]; then
+    cp $LIB_GALERA_PATH_80 $BASEDIR_80
+  else
+    echo "ERROR: script could not find libgalera_smm.so in the build directory"
+    exit 1
+  fi
 fi
 
 echo "
@@ -127,7 +138,11 @@ pxc_encrypt_cluster_traffic=OFF
 # wsrep variables
 wsrep_sst_auth=root:
 wsrep_cluster_address='gcomm://127.0.0.1:5030'
-wsrep_provider=$BASEDIR_57/libgalera_smm.so
+#################################################################
+# Incase PXC-3969 is fixed, change the wsrep_provider value to  #
+# wsrep_provider=$BASEDIR_57/libgalera_smm.so                   #
+#################################################################
+wsrep_provider=$BASEDIR_57/../../percona-xtradb-cluster-galera/libgalera_smm.so
 wsrep_sst_receive_address=127.0.0.1:4020
 wsrep_node_incoming_address=127.0.0.1
 wsrep_slave_threads=2
@@ -238,10 +253,10 @@ pxc_startup_status(){
 
     if [ $X -eq ${PXC_START_TIMEOUT} ]; then
       if [ $NR -eq 1 ]; then
-        echo "Node $NR failed to start. Check Error logs: $WORKDIR_57/node1.err"
+        echo "ERROR: Node $NR failed to start. Check Error logs: $WORKDIR_57/node1.err"
         exit 1
       else
-        echo "Node $NR failed to start. Check Error logs: $WORKDIR_80/node2.err"
+        echo "ERROR: Node $NR failed to start. Check Error logs: $WORKDIR_80/node2.err"
         exit 1
       fi
     fi
@@ -321,8 +336,7 @@ for X in $(seq 1 10); do
   if [ $count_57 -eq $count_80 ]; then
    echo "Data replicated and matched successfully sbtest$RAND count: $count_57 = $count_80"
   else
-   echo "Data mismatch found. sbtest$RAND count: $count_57 = $count_80"
-   echo "Exiting.."
+   echo "ERROR: Data mismatch found. sbtest$RAND count: $count_57 = $count_80"
    exit 1
   fi
 done
