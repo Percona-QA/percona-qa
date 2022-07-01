@@ -21,21 +21,53 @@
 BUILD_57=$(realpath $1)
 BUILD_80=$(realpath $2)
 
-PXC_START_TIMEOUT=60
+#################################################################################################
+# Some machines (like CentOS-7) on Jenkins may take upto 2 mins for the cluster to start. Hence #
+# do not change the value. In case, the server starts early the script does not wait until the  #
+# timeout period.                                                                               #
+#################################################################################################
+PXC_START_TIMEOUT=120
 
 # Sysbench Internal variables
 SYS_TABLES=50
 SYS_DURATION=60
 SYS_THREADS=5
 
+# Check if Build paths are valid
+if [ ! -d "$BUILD_57" -o ! -d "$BUILD_80" ]; then
+  echo "The Build path does not exist. Exiting..."
+  exit 1
+fi
+
+# Check if percona-release is installed
+echo "...Looking for percona-release installed on the machine"
+if [[ ! -e `which percona-release` ]]; then
+  echo "percona-release not found"
+  echo "...Installing percona-release"
+  if [ -f /usr/bin/yum ]; then
+    sudo yum install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+  elif [ -f /usr/bin/apt ]; then
+    wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+    sudo dpkg -i percona-release_latest.generic_all.deb
+    sudo apt-get update
+  fi
+  echo "percona-release installed successfully at $(which percona-release)"
+else
+  echo "percona-release found at $(which percona-release)"
+fi
+
 # Check if xtrabackup 2.4 or 8.0 is installed
 echo "...Looking for xtrabackup package installed on the machine"
 if [[ ! -e `which xtrabackup` ]]; then
   echo "Xtrabackup not found"
   echo "...Installing percona-xtrabackup-24 package"
-  sudo percona-release enable tools release > /dev/null 2>&1
-  sudo apt-get install percona-xtrabackup-24 > /dev/null 2>&1
-  echo "Xtrabackup installed successfully"
+  sudo percona-release enable tools release
+  if [ -f /usr/bin/yum ]; then
+    sudo yum install -y percona-xtrabackup-24
+  elif [ -f /usr/bin/apt ]; then
+    sudo apt-get install -y percona-xtrabackup-24
+  fi
+  echo "Xtrabackup installed successfully at $(which xtrabackup)"
 else
   echo "Xtrabackup found at $(which xtrabackup)"
   xtrabackup --version
@@ -46,10 +78,14 @@ echo "...Looking for sysbench installed on the machine"
 if [[ ! -e `which sysbench` ]]; then
   echo "Sysbench not found"
   echo "...Installing sysbench"
-  sudo apt-get install sysbench > /dev/null 2>&1
-  echo "Sysbench installed successfully"
+  if [ -f /usr/bin/yum ]; then
+    sudo yum install -y sysbench
+  elif [ -f /usr/bin/apt ]; then
+    sudo apt-get install -y sysbench
+  fi
+  echo "Sysbench installed successfully at $(which sysbench)"
 else
-  echo "Sysbench found at: $(which sysbench)"
+  echo "Sysbench found at $(which sysbench)"
 fi
 
 echo "Basedir 57 has been set to: $BUILD_57";
@@ -152,6 +188,7 @@ encrypt = 0
 ssl-ca = $WORKDIR_57/cert/ca.pem
 ssl-cert = $WORKDIR_57/cert/server-cert.pem
 ssl-key = $WORKDIR_57/cert/server-key.pem
+wsrep_debug=1
 
 
 " > $WORKDIR_57/n1.cnf
@@ -208,6 +245,7 @@ encrypt = 0
 ssl-ca = $WORKDIR_80/cert/ca.pem
 ssl-cert = $WORKDIR_80/cert/server-cert.pem
 ssl-key = $WORKDIR_80/cert/server-key.pem
+wsrep_debug=1
 
 " > $WORKDIR_80/n2.cnf
 
@@ -327,3 +365,9 @@ for X in $(seq 1 10); do
    exit 1
   fi
 done
+
+echo "Killing running mysqld instances"
+pkill -9 mysqld 2>/dev/null
+
+echo "Done. Exiting $0 with exit code 0..."
+exit 0
