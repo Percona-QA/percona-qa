@@ -21,7 +21,7 @@
 BUILD_57=$(realpath $1)
 BUILD_80=$(realpath $2)
 
-PXC_START_TIMEOUT=60
+PXC_START_TIMEOUT=120
 
 # Sysbench Internal variables
 SYS_TABLES=50
