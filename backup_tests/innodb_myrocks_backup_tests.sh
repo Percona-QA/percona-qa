@@ -13,9 +13,9 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_28_debug/bin" # Set this to /usr/bin for install_type as package
+export xtrabackup_dir="$HOME/pxb_8_0_29_debug/bin" # Set this to /usr/bin for install_type as package
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS160522_8_0_28_19_debug"
+export mysqldir="$HOME/PS070722_8_0_29_21_debug"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
@@ -1093,6 +1093,67 @@ add_drop_blob_column() {
     done ) &
 }
 
+add_drop_column_instant() {
+    # This function adds a column, drops it using instant algorithm and truncates the table
+
+    echo "Add a column and then drop it"
+    for table in sbtest1 sbtest2 sbtest3 sbtest4 sbtest5; do
+        ( for ((i=1; i<=20; i++)); do
+            # Check if database is up otherwise exit the loop
+            ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+            if [ "$?" -ne 0 ]; then
+                break
+            fi
+
+            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.$table ADD COLUMN b CHAR(50) NOT NULL DEFAULT '' AFTER k, ALGORITHM=INSTANT;" >/dev/null 2>&1
+            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.$table SET b = k;" >/dev/null 2>&1
+            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.$table DROP COLUMN b, ALGORITHM=INSTANT;" >/dev/null 2>&1
+            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "TRUNCATE TABLE test.$table;" >/dev/null 2>&1
+        done ) &
+    done
+}
+
+add_drop_column_algorithms() {
+    # This function adds a column and then drops it using different algorithms
+
+    echo "Add a column and then drop it"
+    ( for ((i=1; i<=20; i++)); do
+        # Check if database is up otherwise exit the loop
+        ${mysqldir}/bin//mysqladmin ping --user=root --socket=${mysqldir}/socket.sock 2>/dev/null 1>&2
+        if [ "$?" -ne 0 ]; then
+            break
+        fi
+
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 ADD COLUMN b CHAR(50) NOT NULL DEFAULT '' AFTER k, ALGORITHM=DEFAULT;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest1 SET b = k;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest1 DROP COLUMN b, ALGORITHM=DEFAULT;" >/dev/null 2>&1
+    done ) &
+
+    ( for ((j=1; j<=20; j++)); do
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 ADD COLUMN b CHAR(50) NOT NULL DEFAULT '' AFTER k, ALGORITHM=INPLACE;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest2 SET b = k;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest2 DROP COLUMN b, ALGORITHM=INPLACE;" >/dev/null 2>&1
+    done ) &
+
+    ( for ((k=1; k<=20; k++)); do
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest3 ADD COLUMN b CHAR(50) NOT NULL DEFAULT '' AFTER k, ALGORITHM=COPY;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest3 SET b = k;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest3 DROP COLUMN b, ALGORITHM=COPY;" >/dev/null 2>&1
+    done ) &
+
+    ( for ((l=1; l<=20; l++)); do
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest4 ADD COLUMN b CHAR(50) NOT NULL DEFAULT '' AFTER k;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest4 SET b = k;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest4 DROP COLUMN b;" >/dev/null 2>&1
+    done ) &
+
+    ( for ((m=1; m<=20; m++)); do
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest5 ADD COLUMN b CHAR(50) NOT NULL DEFAULT '' AFTER k, ALGORITHM=INPLACE;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "UPDATE test.sbtest5 SET b = k;" >/dev/null 2>&1
+        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER TABLE test.sbtest5 DROP COLUMN b, ALGORITHM=COPY;" >/dev/null 2>&1
+    done ) &
+}
+
 ###################################################################################
 ##                                  Test Suites                                  ##
 ###################################################################################
@@ -1358,6 +1419,33 @@ test_partitioned_tables() {
     else
         incremental_backup "--lock-ddl"
     fi
+}
+
+test_add_drop_column_instant() {
+    # This test suite takes an incremental backup when a column is added or dropped using instant algorithm
+
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        echo "Skipping Test: Backup and Restore during add and drop column as the instant algorithm is not supported in MS/PS 5.7"
+        return
+    fi
+
+    echo "Test: Backup and Restore during column add and drop using instant algorithm"
+
+    add_drop_column_instant
+    sleep 2
+
+    incremental_backup
+}
+
+test_add_drop_column_algorithms() {
+    # This test suite takes an incremental backup when a column is added or dropped using different algorithms
+
+    echo "Test: Backup and Restore during column add and drop using different algorithms"
+
+    add_drop_column_algorithms
+    sleep 2
+
+    incremental_backup
 }
 
 test_run_all_statements() {
@@ -2502,7 +2590,7 @@ for tsuitelist in $*; do
         Various_ddl_tests)
             echo "Various test suites"
 
-            for testsuite in test_inc_backup test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_grant_tables test_invisible_column test_blob_column test_run_all_statements; do
+            for testsuite in test_inc_backup test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_grant_tables test_invisible_column test_blob_column test_add_drop_column_instant test_add_drop_column_algorithms test_run_all_statements; do
                 $testsuite
                 echo "###################################################################################"
             done
