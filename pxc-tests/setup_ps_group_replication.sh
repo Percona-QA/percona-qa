@@ -19,6 +19,8 @@ BUILD_DIR=$(realpath $1)
 UUID=$(uuidgen)
 ONLY_GR_SETUP=1
 
+MYSQL_VERSION=$(${BUILD_DIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+
 # Check if Build paths are valid
 if [ ! -d $BUILD_DIR ]; then
   echo "ERROR: The Build path does not exist. Exiting..."
@@ -34,6 +36,12 @@ if [ -d $WORKDIR ]; then
 fi
 
 mkdir $WORKDIR
+
+if [ "$MYSQL_VERSION" == "8.0" ]; then
+  PLUGIN_DIR=$BUILD_DIR/lib/plugin
+elif [ "$MYSQL_VERSION" == "5.7" ]; then
+  PLUGIN_DIR=$BUILD_DIR/lib/mysql/plugin
+fi
 
 # Create datadir
 echo "...Creating datadir 1"
@@ -55,6 +63,7 @@ echo "
 
 # General replication settings
 disabled_storage_engines="MyISAM,BLACKHOLE,FEDERATED,ARCHIVE,MEMORY"
+plugin-load=group_replication.so
 gtid_mode = ON
 enforce_gtid_consistency = ON
 master_info_repository = TABLE
@@ -91,6 +100,7 @@ echo "
 
 # General replication settings
 disabled_storage_engines="MyISAM,BLACKHOLE,FEDERATED,ARCHIVE,MEMORY"
+plugin-load=group_replication.so
 gtid_mode = ON
 enforce_gtid_consistency = ON
 master_info_repository = TABLE
@@ -127,6 +137,7 @@ echo "
 
 # General replication settings
 disabled_storage_engines="MyISAM,BLACKHOLE,FEDERATED,ARCHIVE,MEMORY"
+plugin-load=group_replication.so
 gtid_mode = ON
 enforce_gtid_consistency = ON
 master_info_repository = TABLE
@@ -166,18 +177,19 @@ SOCKET_2=/tmp/mysql_22002.sock
 SOCKET_3=/tmp/mysql_22004.sock
 
 # Start server nodes
-$BUILD_DIR/bin/mysqld --defaults-file=$DATADIR_1/n1.cnf --datadir=$DATADIR_1 --port=$PORT_1 --socket=$SOCKET_1 --plugin-dir=$BUILD_DIR/lib/plugin --early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR_1/mykey --max-connections=1024 --log-error --general-log --log-error-verbosity=3 --core-file &
+$BUILD_DIR/bin/mysqld --defaults-file=$DATADIR_1/n1.cnf --datadir=$DATADIR_1 --port=$PORT_1 --socket=$SOCKET_1 --plugin-dir=$PLUGIN_DIR --early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR_1/mykey --max-connections=1024 --log-error --general-log --log-error-verbosity=3 --core-file &
 
 sleep 3;
 
-$BUILD_DIR/bin/mysqld --defaults-file=$DATADIR_2/n2.cnf --datadir=$DATADIR_2 --port=$PORT_2 --socket=$SOCKET_2 --plugin-dir=$BUILD_DIR/lib/plugin --early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR_2/mykey --max-connections=1024 --log-error --general-log --log-error-verbosity=3 --core-file &
+$BUILD_DIR/bin/mysqld --defaults-file=$DATADIR_2/n2.cnf --datadir=$DATADIR_2 --port=$PORT_2 --socket=$SOCKET_2 --plugin-dir=$PLUGIN_DIR --early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR_2/mykey --max-connections=1024 --log-error --general-log --log-error-verbosity=3 --core-file &
 
 sleep 3;
 
-$BUILD_DIR/bin/mysqld --defaults-file=$DATADIR_3/n3.cnf --datadir=$DATADIR_3 --port=$PORT_3 --socket=$SOCKET_3 --plugin-dir=$BUILD_DIR/lib/plugin --early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR_3/mykey --max-connections=1024 --log-error --general-log --log-error-verbosity=3 --core-file &
+$BUILD_DIR/bin/mysqld --defaults-file=$DATADIR_3/n3.cnf --datadir=$DATADIR_3 --port=$PORT_3 --socket=$SOCKET_3 --plugin-dir=$PLUGIN_DIR --early-plugin-load=keyring_file.so --keyring_file_data=$DATADIR_3/mykey --max-connections=1024 --log-error --general-log --log-error-verbosity=3 --core-file &
 
 sleep 3;
 
+if [ "$MYSQL_VERSION" == "8.0" ]; then
 echo "
 SET SQL_LOG_BIN=0;
 CREATE USER 'repl'@'%' IDENTIFIED BY 'password' REQUIRE SSL;
@@ -185,8 +197,17 @@ GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
 FLUSH PRIVILEGES;
 SET SQL_LOG_BIN=1;
 CHANGE REPLICATION SOURCE TO SOURCE_USER='repl', SOURCE_PASSWORD='password' FOR CHANNEL 'group_replication_recovery';
-INSTALL PLUGIN group_replication SONAME 'group_replication.so';
 " > $WORKDIR/gr_setup.sql
+elif [ "$MYSQL_VERSION" == "5.7" ]; then
+echo "
+SET SQL_LOG_BIN=0;
+CREATE USER 'repl'@'%' IDENTIFIED BY 'password' REQUIRE SSL;
+GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
+FLUSH PRIVILEGES;
+SET SQL_LOG_BIN=1;
+CHANGE MASTER TO MASTER_USER='repl', MASTER_PASSWORD='password' FOR CHANNEL 'group_replication_recovery';
+" > $WORKDIR/gr_setup.sql
+fi
 
 $BUILD_DIR/bin/mysql -uroot -S$SOCKET_1 -Ns -e"source $WORKDIR/gr_setup.sql"
 sleep 2;
