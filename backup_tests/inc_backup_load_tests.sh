@@ -14,8 +14,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_28_debug/bin"
-export mysqldir="$HOME/PS160522_8_0_28_19_debug"
+export xtrabackup_dir="$HOME/pxb_8_0_30_debug/bin"
+export mysqldir="$HOME/PS070722_8_0_29_21_debug"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -325,10 +325,24 @@ run_load_tests() {
     PREPARE_PARAMS="--core-file"
     RESTORE_PARAMS=""
 
+    original_tool="${load_tool}"
+
     # Pstress options
     if [[ "$1" = "rocksdb" ]]; then
         echo "Test: Incremental Backup and Restore for rocksdb with ${load_tool}"
         tool_options="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --engine=rocksdb"
+    elif [[ "$1" = "memory_estimation" ]]; then
+        if "${mysqldir}"/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+            echo "Memory estimation is not supported in PXB 2.4 version, skipping tests"
+            return
+        fi
+
+        # This test can only be run using sysbench, since all ddl are blocked with lock-ddl
+        load_tool="sysbench"
+
+        echo "Test: Incremental Backup and Restore with ${load_tool} and using memory estimation"
+        BACKUP_PARAMS="--core-file --lock-ddl --throttle=1"
+        PREPARE_PARAMS="--core-file --use-free-memory-pct=20"
     else
         echo "Test: Incremental Backup and Restore with ${load_tool}"
         tool_options="--tables 10 --records 200 --threads 10 --seconds 150 --no-encryption --undo-tbs-sql 0"
@@ -345,6 +359,7 @@ run_load_tests() {
     run_load "${tool_options}"
     take_backup
     check_tables
+    load_tool="${original_tool}"
 }
 
 run_load_keyring_plugin_tests() {
@@ -869,6 +884,8 @@ for tsuitelist in $*; do
 			run_load_keyring_plugin_tests
 			echo "###################################################################################"
 			run_load_keyring_component_tests
+			echo "###################################################################################"
+            run_load_tests "memory_estimation"
 			echo "###################################################################################"
 			run_crash_tests_pstress "normal"
 			echo "###################################################################################"
