@@ -1,15 +1,16 @@
 #!/bin/bash
 
-########################################################################
-# Created By Manish Chawla, Percona LLC                                #
-# This script tests backup for docker containers                       #
-# Usage:                                                               #
-# 1. Run the script as: ./docker_backup_tests.sh pxb24/pxb8            #
-# 3. Logs are available in: $PWD/backup_log                            #
-########################################################################
+##########################################################################
+# Created By Manish Chawla, Percona LLC                                  #
+# This script tests backup for docker containers                         #
+# Usage:                                                                 #
+# 1. Run the script as: ./docker_backup_tests.sh pxb24/pxb8 main/testing #
+# 3. Logs are available in: $PWD/backup_log                              #
+##########################################################################
 
-if [ "$#" -ne 1 ]; then
-    echo "Please run the script with parameter: pxb24 or pxb8"
+if [ "$#" -ne 2 ]; then
+    echo "Please run the script with parameters: <version as pxb24/pxb8> <repo as main/testing>"
+    echo "Main repo is the percona docker image and testing repo is the perconalab docker image"
     exit 1
 fi
 
@@ -71,7 +72,15 @@ test_pxb8_docker() {
     sudo docker exec -it mysql-8.0 mysql -uroot -pmysql -e "INSERT INTO test.t1 VALUES (1), (2), (3), (4), (5);" >/dev/null 2>&1
 
     echo "Run pxb 8.0 docker container, take backup and prepare it"
-    if ! sudo docker run --volumes-from mysql-8.0 -v pxb_backup_data:/backup -it --rm --user root percona/percona-xtrabackup /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=/backup --user=root --password=mysql ; xtrabackup --prepare --target-dir=/backup" >>backup_log 2>&1; then
+    if [[ "$1" = "main" ]]; then
+        echo "Using main repo docker image"
+        sudo docker run --volumes-from mysql-8.0 -v pxb_backup_data:/backup -it --rm --user root percona/percona-xtrabackup /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=/backup --user=root --password=mysql ; xtrabackup --prepare --target-dir=/backup" >>backup_log 2>&1
+    else
+        echo "Using testing repo docker image"
+        sudo docker run --volumes-from mysql-8.0 -v pxb_backup_data:/backup -it --rm --user root perconalab/percona-xtrabackup:8.0 /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=/backup --user=root --password=mysql ; xtrabackup --prepare --target-dir=/backup" >>backup_log 2>&1
+    fi
+
+    if [ "$?" -ne 0 ]; then
         echo "ERR: The docker command to run pxb 8.0 failed"
         exit 1
     else
@@ -85,7 +94,15 @@ test_pxb8_docker() {
     mkdir /tmp/mysql_data
 
     echo "Run pxb 8.0 docker container to restore the backup"
-    if ! sudo docker run --volumes-from mysql-8.0 -v pxb_backup_data:/backup -it --rm --user root percona/percona-xtrabackup /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=/backup" >>backup_log 2>&1; then
+    if [[ "$1" = "main" ]]; then
+        echo "Using main repo docker image"
+        sudo docker run --volumes-from mysql-8.0 -v pxb_backup_data:/backup -it --rm --user root percona/percona-xtrabackup /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=/backup" >>backup_log 2>&1
+    else
+        echo "Using testing repo docker image"
+        sudo docker run --volumes-from mysql-8.0 -v pxb_backup_data:/backup -it --rm --user root perconalab/percona-xtrabackup:8.0 /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=/backup" >>backup_log 2>&1
+    fi
+
+    if [ "$?" -ne 0 ]; then
         echo "ERR: The docker command to restore the data failed"
         exit 1
     else
@@ -160,7 +177,15 @@ test_pxb24_docker() {
     sudo docker exec -it mysql-5.7 mysql -uroot -pmysql -e "INSERT INTO test.t1 VALUES (1), (2), (3), (4), (5);" >/dev/null 2>&1
     
     echo "Run pxb 2.4 docker container, take backup and prepare it"
-    if ! sudo docker run --volumes-from mysql-5.7 -v pxb_backup_data:/backup -it --rm percona/percona-xtrabackup:2.4 /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=/backup --user=root --password=mysql ; xtrabackup --prepare --target-dir=/backup" >>backup_log 2>&1; then
+    if [[ "$1" = "main" ]]; then
+        echo "Using main repo docker image"
+        sudo docker run --volumes-from mysql-5.7 -v pxb_backup_data:/backup -it --rm percona/percona-xtrabackup:2.4 /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=/backup --user=root --password=mysql ; xtrabackup --prepare --target-dir=/backup" >>backup_log 2>&1
+    else
+        echo "Using testing repo docker image"
+        sudo docker run --volumes-from mysql-5.7 -v pxb_backup_data:/backup -it --rm perconalab/percona-xtrabackup:2.4 /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=/backup --user=root --password=mysql ; xtrabackup --prepare --target-dir=/backup" >>backup_log 2>&1
+    fi
+
+    if [ "$?" -ne 0 ]; then
         echo "ERR: The docker command to run pxb 5.7 failed"
         exit 1
     else
@@ -174,7 +199,15 @@ test_pxb24_docker() {
     mkdir /tmp/mysql_data
 
     echo "Run pxb 5.7 docker container to restore the backup"
-    if ! sudo docker run --volumes-from mysql-5.7 -v pxb_backup_data:/backup -it --rm percona/percona-xtrabackup:2.4 /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=/backup" >>backup_log 2>&1; then
+    if [[ "$1" = "main" ]]; then
+        echo "Using main repo docker image"
+        sudo docker run --volumes-from mysql-5.7 -v pxb_backup_data:/backup -it --rm percona/percona-xtrabackup:2.4 /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=/backup" >>backup_log 2>&1
+    else
+        echo "Using testing repo docker image"
+        sudo docker run --volumes-from mysql-5.7 -v pxb_backup_data:/backup -it --rm perconalab/percona-xtrabackup:2.4 /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=/backup" >>backup_log 2>&1
+    fi
+
+    if [ "$?" -ne 0 ]; then
         echo "ERR: The docker command to restore the data failed"
         exit 1
     else
@@ -220,9 +253,9 @@ test_pxb24_docker() {
 clean_setup "$1"
 
 if [ "$1" = "pxb8" ]; then
-    test_pxb8_docker | tee -a backup_log
+    test_pxb8_docker "$2" | tee -a backup_log
 else
-    test_pxb24_docker | tee -a backup_log
+    test_pxb24_docker "$2" | tee -a backup_log
 fi
 
 # Clean up
