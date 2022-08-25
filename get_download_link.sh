@@ -214,7 +214,7 @@ get_link(){
     elif [[ "${VERSION}" == "2.4" ]]; then
       OPT="libgcrypt145"
     elif [[ "${VERSION}" == "8.0" ]]; then
-      OPT="glibc2.12"
+      OPT="glibc2.17"
     elif [[ "${DISTRIBUTION}" == "ubuntu" ]]; then
       OPT="bionic"
     else
