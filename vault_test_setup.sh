@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Created by Tomislav Plavcic, Percona LLC
+ABC
 
 SCRIPT_PWD=$(cd `dirname $0` && pwd)
 
