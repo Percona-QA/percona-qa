@@ -1075,7 +1075,7 @@ function async_rpl_test(){
       sleep 5
     done
 
-    sleep 10
+    sleep 40
     echoit "5. multi thread replication: Checksum result."
     if [ "$ENGINE" == "rocksdb" ]; then
       run_mysqlchecksum "mtr_db_ps1_1" "/tmp/ps1.sock" "/tmp/ps2.sock"
