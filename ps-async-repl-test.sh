@@ -931,7 +931,7 @@ function async_rpl_test(){
       fi
       sleep 5
     done
-    sleep 30
+    sleep 40
     echoit "4. multi source replication: Checksum result."
 
     if [ "$ENGINE" == "rocksdb" ]; then
