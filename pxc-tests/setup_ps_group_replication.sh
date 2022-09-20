@@ -19,7 +19,7 @@ BUILD_DIR=$(realpath $1)
 UUID=$(uuidgen)
 ONLY_GR_SETUP=1
 
-MYSQL_VERSION=$(${BUILD_DIR}/bin/mysqld --version 2>&1 | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+MYSQL_VERSION=$(${BUILD_DIR}/bin/mysqld --version 2>&1 | grep -oe 'Ver [0-9]\.[0-9]*' | grep -oe '[0-9]\.[0-9]*')
 
 # Check if Build paths are valid
 if [ ! -d $BUILD_DIR ]; then
