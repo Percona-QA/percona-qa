@@ -281,6 +281,7 @@ if [[ $SETUP_PXC_MOUNT_POINTS -eq 1 ]];then
   export VAULT_TOKEN=${ROOT_TOKEN}
   for i in `seq 1 3`; do
     ${WORKDIR}/vault mount -tls-skip-verify -path=pxc_node${i} generic 2>/dev/null
+    ${WORKDIR}/vault secrets enable -tls-skip-verify -path=pxc_node${i} kv
     echo "vault_url = ${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" > ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "secret_mount_point = pxc_node${i}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
     echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault_pxc${i}.cnf
