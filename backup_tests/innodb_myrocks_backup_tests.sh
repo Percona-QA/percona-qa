@@ -13,16 +13,16 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_29_debug/bin" # Set this to /usr/bin for install_type as package
+export xtrabackup_dir="$HOME/pxb_8_0_30_debug/bin" # Set this to /usr/bin for install_type as package
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS070722_8_0_29_21_debug"
+export mysqldir="$HOME/MS_8_0_30"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export vault_config="$HOME/vault/keyring_vault_ps.cnf"  # Only required for keyring_vault encryption
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
-rocksdb="enabled" # Set this to disabled for PXB2.4 and MySQL versions
+rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
 install_type="tarball" # Set value to tarball/package
 
 # Set sysbench variables
@@ -41,9 +41,9 @@ backup_user="root"
 # Set Kmip configuration
 kmip_server_address="0.0.0.0"
 kmip_server_port=5696
-kmip_client_ca="/home/manish.chawla/cert.pem"
-kmip_client_key="/home/manish.chawla/key.pem"
-kmip_server_ca="/home/manish.chawla/ca.pem"
+kmip_client_ca="/home/manish.chawla/.local/etc/pykmip/client_certificate_john_smith.pem"
+kmip_client_key="/home/manish.chawla/.local/etc/pykmip/client_key_john_smith.pem"
+kmip_server_ca="/home/manish.chawla/.local/etc/pykmip/server_certificate.pem"
 
 # For kms tests set the values of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY in the shell and then run the tests
 kms_region="${KMS_REGION:-us-east-1}"  # Set KMS_REGION to change default value us-east-1
@@ -332,6 +332,12 @@ incremental_backup() {
     # Call function to process backup for streaming, encryption and compression
     process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/inc"
 
+    # Save the backup before prepare
+    if [ -d $HOME/dbbackup_save ]; then
+        rm -r $HOME/dbbackup_save
+    fi
+    cp -r ${backup_dir} $HOME/dbbackup_save
+
     echo "Preparing full backup"
     ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
@@ -453,6 +459,7 @@ incremental_backup() {
             if [[ "$table_status" != "OK" ]]; then
                 echo "ERR: CHECK TABLE $database.sbtest$i query displayed the table status as '$table_status'"
                 check_err=1
+                exit 1
             fi
         done
     done
@@ -1544,6 +1551,12 @@ test_inc_backup_encryption_8_0() {
 
         echo "###################################################################################"
 
+        echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
@@ -1610,6 +1623,12 @@ test_inc_backup_encryption_8_0() {
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
@@ -1706,6 +1725,12 @@ EOF
 
         echo "###################################################################################"
 
+        echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
 
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}"'
@@ -1792,6 +1817,12 @@ EOF
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
@@ -1903,6 +1934,12 @@ EOF
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
@@ -2219,7 +2256,7 @@ test_compress_stream_backup() {
 
     echo "###################################################################################"
 
-    # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
+    # Skip lz4 and zstd compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
         return
     fi
@@ -2227,6 +2264,12 @@ test_compress_stream_backup() {
     echo "Test: Incremental Backup and Restore with lz4 compression and streaming"
 
     incremental_backup "--compress=lz4 --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with zstd compression and streaming"
+
+    incremental_backup "--compress=zstd --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
 }
 
 test_encrypt_compress_stream_backup() {
@@ -2238,7 +2281,7 @@ test_encrypt_compress_stream_backup() {
 
     echo "###################################################################################"
 
-    # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
+    # Skip lz4 and zstd compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
         return
     fi
@@ -2246,6 +2289,12 @@ test_encrypt_compress_stream_backup() {
     echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
     incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
 }
 
 test_compress_backup() {
@@ -2265,7 +2314,7 @@ test_compress_backup() {
     incremental_backup "--compress=quicklz --compress-threads=10 --parallel=10 --compress-chunk-size=64K" "" "" "--log-bin=binlog" "" ""
     echo "###################################################################################"
 
-    # Skip lz4 compression tests in PXB2.4 and PS/MS 5.7
+    # Skip lz4 and zstd compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
         return
     fi
@@ -2280,6 +2329,22 @@ test_compress_backup() {
 
     echo "Test: Lz4 compression with --compress-chunk-size=4096K --compress-threads=100 --parallel=100"
     incremental_backup "--compress=lz4 --compress-chunk-size=4096K --compress-threads=100 --parallel=100" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Zstd compression"
+    incremental_backup "--compress=zstd" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Zstd compression with --compress-threads=10 --parallel=10"
+    incremental_backup "--compress=zstd --compress-threads=10 --parallel=10" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Zstd compression with --compress-chunk-size=4096K --compress-threads=100 --parallel=100"
+    incremental_backup "--compress=zstd --compress-chunk-size=4096K --compress-threads=100 --parallel=100" "" "" "--log-bin=binlog" "" ""
+    echo "###################################################################################"
+
+    echo "Test: Zstd compression with --compress-chunk-size=4096K --compress-threads=100 --parallel=100 --compress-zstd-level=19"
+    incremental_backup "--compress=zstd --compress-chunk-size=4096K --compress-threads=100 --parallel=100 --compress-zstd-level=19" "" "" "--log-bin=binlog" "" ""
 }
 
 test_cloud_inc_backup() {
@@ -2334,6 +2399,10 @@ test_cloud_inc_backup() {
     incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
     echo "###################################################################################"
 
+    echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
+    echo "###################################################################################"
+
     echo "Test: Incremental Backup and Restore for MS/PS 8.0 with keyring_file encryption"
     rocksdb_status="${rocksdb}"
     rocksdb="disabled" # Rocksdb tables cannot be created when encryption is enabled
@@ -2354,6 +2423,12 @@ test_cloud_inc_backup() {
     echo "Test: Incremental Backup and Restore for MS/PS 8.0 with keyring_file encryption, lz4 compression, file encryption and streaming"
 
     incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
+
+    echo "###################################################################################"
+
+    echo "Test: Incremental Backup and Restore for MS/PS 8.0 with keyring_file encryption, zstd compression, file encryption and streaming"
+
+    incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "cloud" "--defaults-file=${cloud_config} --verbose"
 
     rocksdb="${rocksdb_status}"
 }
