@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>GCC Code Coverage Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="coverage.css">
+  </head>
+
+  <body>
+    <h1>GCC Code Coverage Report</h1>
+
+    <hr/>
+
+    <div class="summary">
+<div>
+  <table class="legend">
+    <tr>
+      <th scope="row">Directory:</th>
+      <td>./</td>
+    </tr>
+    <tr>
+      <th scope="row">File:</th>
+      <td>extra/rapidjson/include/rapidjson/internal/pow10.h</td>
+    </tr>
+    <tr>
+      <th scope="row">Date:</th>
+      <td>2022-11-26 14:12:44</td>
+    </tr>
+  </table>
+</div>
+<div>
+  <table class="coverage">
+    <tr>
+      <th></th>
+      <th scope="col">Exec</th>
+      <th scope="col">Total</th>
+      <th scope="col">Coverage</th>
+    </tr>
+    <tr>
+      <th scope="row">Lines:</th>
+      <td>3</td>
+      <td>3</td>
+      <td class="coverage-high">100.0%</td>
+    </tr>
+    <tr>
+      <th scope="row">Branches:</th>
+      <td>2</td>
+      <td>4</td>
+      <td class="coverage-low">50.0%</td>
+    </tr>
+  </table>
+</div>
+    </div>
+
+    <hr/>
+
+<div class="file-source">
+  <table>
+    <tr>
+      <th align="right">Line</th>
+      <th align="right">Branch</th>
+      <th align="right">Exec</th>
+      <th align="left">Source</th>
+    </tr>
+
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l1" href="#l1">1</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// Tencent is pleased to support the open source community by making RapidJSON available.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l2" href="#l2">2</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// </span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l3" href="#l3">3</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip. All rights reserved.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l4" href="#l4">4</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l5" href="#l5">5</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// Licensed under the MIT License (the &quot;License&quot;); you may not use this file except</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l6" href="#l6">6</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// in compliance with the License. You may obtain a copy of the License at</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l7" href="#l7">7</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l8" href="#l8">8</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// http://opensource.org/licenses/MIT</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l9" href="#l9">9</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l10" href="#l10">10</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// Unless required by applicable law or agreed to in writing, software distributed </span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l11" href="#l11">11</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// under the License is distributed on an &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR </span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l12" href="#l12">12</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// CONDITIONS OF ANY KIND, either express or implied. See the License for the </span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l13" href="#l13">13</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">// specific language governing permissions and limitations under the License.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l14" href="#l14">14</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l15" href="#l15">15</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifndef RAPIDJSON_POW10_</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l16" href="#l16">16</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define RAPIDJSON_POW10_</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l17" href="#l17">17</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l18" href="#l18">18</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;../rapidjson.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l19" href="#l19">19</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l20" href="#l20">20</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">RAPIDJSON_NAMESPACE_BEGIN</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l21" href="#l21">21</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">namespace</span><span class="w"> </span><span class="n">internal</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l22" href="#l22">22</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l23" href="#l23">23</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//! Computes integer powers of 10 in double (10.0^n).</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l24" href="#l24">24</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*! This function uses lookup table for fast and accurate results.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l25" href="#l25">25</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">    \param n non-negative exponent. Must &lt;= 308.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l26" href="#l26">26</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">    \return 10.0^n</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l27" href="#l27">27</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">*/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l28" href="#l28">28</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">43062</td>
+      <td class="src coveredLine"><span class="kr">inline</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="nf">Pow10</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l29" href="#l29">29</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">e</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 1e-0...1e308: 309 * 8 bytes = 2472 bytes</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l30" href="#l30">30</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+0</span><span class="p">,</span><span class="w">  </span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l31" href="#l31">31</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+1</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+2</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+3</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+4</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+5</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+6</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+7</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+8</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+9</span><span class="p">,</span><span class="w">  </span><span class="mf">1e+10</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+11</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+12</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+13</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+14</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+15</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+16</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+17</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+18</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+19</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+20</span><span class="p">,</span><span class="w"> </span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l32" href="#l32">32</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+21</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+22</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+23</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+24</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+25</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+26</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+27</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+28</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+29</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+30</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+31</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+32</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+33</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+34</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+35</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+36</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+37</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+38</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+39</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+40</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l33" href="#l33">33</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+41</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+42</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+43</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+44</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+45</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+46</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+47</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+48</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+49</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+50</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+51</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+52</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+53</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+54</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+55</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+56</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+57</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+58</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+59</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+60</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l34" href="#l34">34</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+61</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+62</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+63</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+64</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+65</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+66</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+67</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+68</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+69</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+70</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+71</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+72</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+73</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+74</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+75</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+76</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+77</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+78</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+79</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+80</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l35" href="#l35">35</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+81</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+82</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+83</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+84</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+85</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+86</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+87</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+88</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+89</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+90</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+91</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+92</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+93</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+94</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+95</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+96</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+97</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+98</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+99</span><span class="p">,</span><span class="w"> </span><span class="mf">1e+100</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l36" href="#l36">36</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+101</span><span class="p">,</span><span class="mf">1e+102</span><span class="p">,</span><span class="mf">1e+103</span><span class="p">,</span><span class="mf">1e+104</span><span class="p">,</span><span class="mf">1e+105</span><span class="p">,</span><span class="mf">1e+106</span><span class="p">,</span><span class="mf">1e+107</span><span class="p">,</span><span class="mf">1e+108</span><span class="p">,</span><span class="mf">1e+109</span><span class="p">,</span><span class="mf">1e+110</span><span class="p">,</span><span class="mf">1e+111</span><span class="p">,</span><span class="mf">1e+112</span><span class="p">,</span><span class="mf">1e+113</span><span class="p">,</span><span class="mf">1e+114</span><span class="p">,</span><span class="mf">1e+115</span><span class="p">,</span><span class="mf">1e+116</span><span class="p">,</span><span class="mf">1e+117</span><span class="p">,</span><span class="mf">1e+118</span><span class="p">,</span><span class="mf">1e+119</span><span class="p">,</span><span class="mf">1e+120</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l37" href="#l37">37</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+121</span><span class="p">,</span><span class="mf">1e+122</span><span class="p">,</span><span class="mf">1e+123</span><span class="p">,</span><span class="mf">1e+124</span><span class="p">,</span><span class="mf">1e+125</span><span class="p">,</span><span class="mf">1e+126</span><span class="p">,</span><span class="mf">1e+127</span><span class="p">,</span><span class="mf">1e+128</span><span class="p">,</span><span class="mf">1e+129</span><span class="p">,</span><span class="mf">1e+130</span><span class="p">,</span><span class="mf">1e+131</span><span class="p">,</span><span class="mf">1e+132</span><span class="p">,</span><span class="mf">1e+133</span><span class="p">,</span><span class="mf">1e+134</span><span class="p">,</span><span class="mf">1e+135</span><span class="p">,</span><span class="mf">1e+136</span><span class="p">,</span><span class="mf">1e+137</span><span class="p">,</span><span class="mf">1e+138</span><span class="p">,</span><span class="mf">1e+139</span><span class="p">,</span><span class="mf">1e+140</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l38" href="#l38">38</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+141</span><span class="p">,</span><span class="mf">1e+142</span><span class="p">,</span><span class="mf">1e+143</span><span class="p">,</span><span class="mf">1e+144</span><span class="p">,</span><span class="mf">1e+145</span><span class="p">,</span><span class="mf">1e+146</span><span class="p">,</span><span class="mf">1e+147</span><span class="p">,</span><span class="mf">1e+148</span><span class="p">,</span><span class="mf">1e+149</span><span class="p">,</span><span class="mf">1e+150</span><span class="p">,</span><span class="mf">1e+151</span><span class="p">,</span><span class="mf">1e+152</span><span class="p">,</span><span class="mf">1e+153</span><span class="p">,</span><span class="mf">1e+154</span><span class="p">,</span><span class="mf">1e+155</span><span class="p">,</span><span class="mf">1e+156</span><span class="p">,</span><span class="mf">1e+157</span><span class="p">,</span><span class="mf">1e+158</span><span class="p">,</span><span class="mf">1e+159</span><span class="p">,</span><span class="mf">1e+160</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l39" href="#l39">39</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+161</span><span class="p">,</span><span class="mf">1e+162</span><span class="p">,</span><span class="mf">1e+163</span><span class="p">,</span><span class="mf">1e+164</span><span class="p">,</span><span class="mf">1e+165</span><span class="p">,</span><span class="mf">1e+166</span><span class="p">,</span><span class="mf">1e+167</span><span class="p">,</span><span class="mf">1e+168</span><span class="p">,</span><span class="mf">1e+169</span><span class="p">,</span><span class="mf">1e+170</span><span class="p">,</span><span class="mf">1e+171</span><span class="p">,</span><span class="mf">1e+172</span><span class="p">,</span><span class="mf">1e+173</span><span class="p">,</span><span class="mf">1e+174</span><span class="p">,</span><span class="mf">1e+175</span><span class="p">,</span><span class="mf">1e+176</span><span class="p">,</span><span class="mf">1e+177</span><span class="p">,</span><span class="mf">1e+178</span><span class="p">,</span><span class="mf">1e+179</span><span class="p">,</span><span class="mf">1e+180</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l40" href="#l40">40</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+181</span><span class="p">,</span><span class="mf">1e+182</span><span class="p">,</span><span class="mf">1e+183</span><span class="p">,</span><span class="mf">1e+184</span><span class="p">,</span><span class="mf">1e+185</span><span class="p">,</span><span class="mf">1e+186</span><span class="p">,</span><span class="mf">1e+187</span><span class="p">,</span><span class="mf">1e+188</span><span class="p">,</span><span class="mf">1e+189</span><span class="p">,</span><span class="mf">1e+190</span><span class="p">,</span><span class="mf">1e+191</span><span class="p">,</span><span class="mf">1e+192</span><span class="p">,</span><span class="mf">1e+193</span><span class="p">,</span><span class="mf">1e+194</span><span class="p">,</span><span class="mf">1e+195</span><span class="p">,</span><span class="mf">1e+196</span><span class="p">,</span><span class="mf">1e+197</span><span class="p">,</span><span class="mf">1e+198</span><span class="p">,</span><span class="mf">1e+199</span><span class="p">,</span><span class="mf">1e+200</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l41" href="#l41">41</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+201</span><span class="p">,</span><span class="mf">1e+202</span><span class="p">,</span><span class="mf">1e+203</span><span class="p">,</span><span class="mf">1e+204</span><span class="p">,</span><span class="mf">1e+205</span><span class="p">,</span><span class="mf">1e+206</span><span class="p">,</span><span class="mf">1e+207</span><span class="p">,</span><span class="mf">1e+208</span><span class="p">,</span><span class="mf">1e+209</span><span class="p">,</span><span class="mf">1e+210</span><span class="p">,</span><span class="mf">1e+211</span><span class="p">,</span><span class="mf">1e+212</span><span class="p">,</span><span class="mf">1e+213</span><span class="p">,</span><span class="mf">1e+214</span><span class="p">,</span><span class="mf">1e+215</span><span class="p">,</span><span class="mf">1e+216</span><span class="p">,</span><span class="mf">1e+217</span><span class="p">,</span><span class="mf">1e+218</span><span class="p">,</span><span class="mf">1e+219</span><span class="p">,</span><span class="mf">1e+220</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l42" href="#l42">42</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+221</span><span class="p">,</span><span class="mf">1e+222</span><span class="p">,</span><span class="mf">1e+223</span><span class="p">,</span><span class="mf">1e+224</span><span class="p">,</span><span class="mf">1e+225</span><span class="p">,</span><span class="mf">1e+226</span><span class="p">,</span><span class="mf">1e+227</span><span class="p">,</span><span class="mf">1e+228</span><span class="p">,</span><span class="mf">1e+229</span><span class="p">,</span><span class="mf">1e+230</span><span class="p">,</span><span class="mf">1e+231</span><span class="p">,</span><span class="mf">1e+232</span><span class="p">,</span><span class="mf">1e+233</span><span class="p">,</span><span class="mf">1e+234</span><span class="p">,</span><span class="mf">1e+235</span><span class="p">,</span><span class="mf">1e+236</span><span class="p">,</span><span class="mf">1e+237</span><span class="p">,</span><span class="mf">1e+238</span><span class="p">,</span><span class="mf">1e+239</span><span class="p">,</span><span class="mf">1e+240</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l43" href="#l43">43</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+241</span><span class="p">,</span><span class="mf">1e+242</span><span class="p">,</span><span class="mf">1e+243</span><span class="p">,</span><span class="mf">1e+244</span><span class="p">,</span><span class="mf">1e+245</span><span class="p">,</span><span class="mf">1e+246</span><span class="p">,</span><span class="mf">1e+247</span><span class="p">,</span><span class="mf">1e+248</span><span class="p">,</span><span class="mf">1e+249</span><span class="p">,</span><span class="mf">1e+250</span><span class="p">,</span><span class="mf">1e+251</span><span class="p">,</span><span class="mf">1e+252</span><span class="p">,</span><span class="mf">1e+253</span><span class="p">,</span><span class="mf">1e+254</span><span class="p">,</span><span class="mf">1e+255</span><span class="p">,</span><span class="mf">1e+256</span><span class="p">,</span><span class="mf">1e+257</span><span class="p">,</span><span class="mf">1e+258</span><span class="p">,</span><span class="mf">1e+259</span><span class="p">,</span><span class="mf">1e+260</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l44" href="#l44">44</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+261</span><span class="p">,</span><span class="mf">1e+262</span><span class="p">,</span><span class="mf">1e+263</span><span class="p">,</span><span class="mf">1e+264</span><span class="p">,</span><span class="mf">1e+265</span><span class="p">,</span><span class="mf">1e+266</span><span class="p">,</span><span class="mf">1e+267</span><span class="p">,</span><span class="mf">1e+268</span><span class="p">,</span><span class="mf">1e+269</span><span class="p">,</span><span class="mf">1e+270</span><span class="p">,</span><span class="mf">1e+271</span><span class="p">,</span><span class="mf">1e+272</span><span class="p">,</span><span class="mf">1e+273</span><span class="p">,</span><span class="mf">1e+274</span><span class="p">,</span><span class="mf">1e+275</span><span class="p">,</span><span class="mf">1e+276</span><span class="p">,</span><span class="mf">1e+277</span><span class="p">,</span><span class="mf">1e+278</span><span class="p">,</span><span class="mf">1e+279</span><span class="p">,</span><span class="mf">1e+280</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l45" href="#l45">45</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+281</span><span class="p">,</span><span class="mf">1e+282</span><span class="p">,</span><span class="mf">1e+283</span><span class="p">,</span><span class="mf">1e+284</span><span class="p">,</span><span class="mf">1e+285</span><span class="p">,</span><span class="mf">1e+286</span><span class="p">,</span><span class="mf">1e+287</span><span class="p">,</span><span class="mf">1e+288</span><span class="p">,</span><span class="mf">1e+289</span><span class="p">,</span><span class="mf">1e+290</span><span class="p">,</span><span class="mf">1e+291</span><span class="p">,</span><span class="mf">1e+292</span><span class="p">,</span><span class="mf">1e+293</span><span class="p">,</span><span class="mf">1e+294</span><span class="p">,</span><span class="mf">1e+295</span><span class="p">,</span><span class="mf">1e+296</span><span class="p">,</span><span class="mf">1e+297</span><span class="p">,</span><span class="mf">1e+298</span><span class="p">,</span><span class="mf">1e+299</span><span class="p">,</span><span class="mf">1e+300</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l46" href="#l46">46</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">        </span><span class="mf">1e+301</span><span class="p">,</span><span class="mf">1e+302</span><span class="p">,</span><span class="mf">1e+303</span><span class="p">,</span><span class="mf">1e+304</span><span class="p">,</span><span class="mf">1e+305</span><span class="p">,</span><span class="mf">1e+306</span><span class="p">,</span><span class="mf">1e+307</span><span class="p">,</span><span class="mf">1e+308</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l47" href="#l47">47</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l48" href="#l48">48</a></td>
+      <td class="linebranch">
+        <details class="linebranchDetails">
+        <summary class="linebranchSummary">2/4</summary>
+        <div class="linebranchContents">
+          <div class="takenBranch">&check; Branch 0 taken 43062 times.</div>
+          <div class="notTakenBranch">&cross; Branch 1 not taken.</div>
+          <div class="takenBranch">&check; Branch 2 taken 43062 times.</div>
+          <div class="notTakenBranch">&cross; Branch 3 not taken.</div>
+        </div>
+        </details>
+      </td>
+      <td class="linecount coveredLine">43062</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="n">RAPIDJSON_ASSERT</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">308</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l49" href="#l49">49</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">43062</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">e</span><span class="p">[</span><span class="n">n</span><span class="p">];</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l50" href="#l50">50</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l51" href="#l51">51</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l52" href="#l52">52</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">}</span><span class="w"> </span><span class="c1">// namespace internal</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l53" href="#l53">53</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">RAPIDJSON_NAMESPACE_END</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l54" href="#l54">54</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l55" href="#l55">55</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif </span><span class="c1">// RAPIDJSON_POW10_</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l56" href="#l56">56</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+  </table>
+</div>
+
+    <hr/>
+
+    <footer>
+      Generated by: <a href="http://gcovr.com">GCOVR (Version 5.0)</a>
+    </footer>
+  </body>
+</html>
