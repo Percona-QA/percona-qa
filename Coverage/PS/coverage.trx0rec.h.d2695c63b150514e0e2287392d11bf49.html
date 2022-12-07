@@ -1,0 +1,3254 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>GCC Code Coverage Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="coverage.css">
+  </head>
+
+  <body>
+    <h1>GCC Code Coverage Report</h1>
+
+    <hr/>
+
+    <div class="summary">
+<div>
+  <table class="legend">
+    <tr>
+      <th scope="row">Directory:</th>
+      <td>./</td>
+    </tr>
+    <tr>
+      <th scope="row">File:</th>
+      <td>storage/innobase/include/trx0rec.h</td>
+    </tr>
+    <tr>
+      <th scope="row">Date:</th>
+      <td>2022-12-06 21:40:42</td>
+    </tr>
+  </table>
+</div>
+<div>
+  <table class="coverage">
+    <tr>
+      <th></th>
+      <th scope="col">Exec</th>
+      <th scope="col">Total</th>
+      <th scope="col">Coverage</th>
+    </tr>
+    <tr>
+      <th scope="row">Lines:</th>
+      <td>12</td>
+      <td>12</td>
+      <td class="coverage-high">100.0%</td>
+    </tr>
+    <tr>
+      <th scope="row">Branches:</th>
+      <td>0</td>
+      <td>0</td>
+      <td class="coverage-unknown">-%</td>
+    </tr>
+  </table>
+</div>
+    </div>
+
+    <hr/>
+
+<div class="file-source">
+  <table>
+    <tr>
+      <th align="right">Line</th>
+      <th align="right">Branch</th>
+      <th align="right">Exec</th>
+      <th align="left">Source</th>
+    </tr>
+
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l1" href="#l1">1</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*****************************************************************************</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l2" href="#l2">2</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l3" href="#l3">3</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Copyright (c) 1996, 2022, Oracle and/or its affiliates.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l4" href="#l4">4</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l5" href="#l5">5</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This program is free software; you can redistribute it and/or modify it under</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l6" href="#l6">6</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">the terms of the GNU General Public License, version 2.0, as published by the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l7" href="#l7">7</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Free Software Foundation.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l8" href="#l8">8</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l9" href="#l9">9</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This program is also distributed with certain software (including but not</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l10" href="#l10">10</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">limited to OpenSSL) that is licensed under separate terms, as designated in a</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l11" href="#l11">11</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">particular file or component or in included license documentation. The authors</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l12" href="#l12">12</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">of MySQL hereby grant you an additional permission to link the program and</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l13" href="#l13">13</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">your derivative works with the separately licensed software that they have</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l14" href="#l14">14</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">included with MySQL.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l15" href="#l15">15</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l16" href="#l16">16</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This program is distributed in the hope that it will be useful, but WITHOUT</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l17" href="#l17">17</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l18" href="#l18">18</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l19" href="#l19">19</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">for more details.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l20" href="#l20">20</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l21" href="#l21">21</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">You should have received a copy of the GNU General Public License along with</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l22" href="#l22">22</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">this program; if not, write to the Free Software Foundation, Inc.,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l23" href="#l23">23</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l24" href="#l24">24</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l25" href="#l25">25</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">*****************************************************************************/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l26" href="#l26">26</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l27" href="#l27">27</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** @file include/trx0rec.h</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l28" href="#l28">28</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> Transaction undo log record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l29" href="#l29">29</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l30" href="#l30">30</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> Created 3/26/1996 Heikki Tuuri</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l31" href="#l31">31</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> *******************************************************/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l32" href="#l32">32</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l33" href="#l33">33</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifndef trx0rec_h</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l34" href="#l34">34</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define trx0rec_h</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l35" href="#l35">35</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l36" href="#l36">36</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;univ.i&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l37" href="#l37">37</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l38" href="#l38">38</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;data0data.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l39" href="#l39">39</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;dict0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l40" href="#l40">40</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;lob0undo.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l41" href="#l41">41</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;mtr0mtr.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l42" href="#l42">42</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;page0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l43" href="#l43">43</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;rem0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l44" href="#l44">44</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;row0log.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l45" href="#l45">45</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;row0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l46" href="#l46">46</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;trx0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l47" href="#l47">47</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l48" href="#l48">48</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifndef UNIV_HOTBACKUP</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l49" href="#l49">49</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;que0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l50" href="#l50">50</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l51" href="#l51">51</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Copies the undo record to the heap.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l52" href="#l52">52</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      undo_page       Undo Page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l53" href="#l53">53</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      undo_offset     offset of the undo record in the page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l54" href="#l54">54</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      heap            heap where copied</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l55" href="#l55">55</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return copy of undo log record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l56" href="#l56">56</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_rec_copy</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">page_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_page</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l57" href="#l57">57</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                                </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">undo_offset</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l58" href="#l58">58</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                                </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l59" href="#l59">59</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l60" href="#l60">60</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Reads the undo log record type.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l61" href="#l61">61</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return record type */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l62" href="#l62">62</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="nf">trx_undo_rec_get_type</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l63" href="#l63">63</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">);</span><span class="w"> </span><span class="cm">/*!&lt; in: undo log record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l64" href="#l64">64</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Reads from an undo log record the record compiler info.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l65" href="#l65">65</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return compiler info */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l66" href="#l66">66</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="nf">trx_undo_rec_get_cmpl_info</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l67" href="#l67">67</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">);</span><span class="w"> </span><span class="cm">/*!&lt; in: undo log record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l68" href="#l68">68</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Returns true if an undo log record contains an extern storage field.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l69" href="#l69">69</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return true if extern */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l70" href="#l70">70</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="nf">trx_undo_rec_get_extern_storage</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l71" href="#l71">71</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">);</span><span class="w"> </span><span class="cm">/*!&lt; in: undo log record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l72" href="#l72">72</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Reads the undo log record number.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l73" href="#l73">73</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return undo no */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l74" href="#l74">74</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">static</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="n">undo_no_t</span><span class="w"> </span><span class="nf">trx_undo_rec_get_undo_no</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l75" href="#l75">75</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">);</span><span class="w"> </span><span class="cm">/*!&lt; in: undo log record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l76" href="#l76">76</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l77" href="#l77">77</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Reads from an undo log record the table ID</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l78" href="#l78">78</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      undo_rec        Undo log record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l79" href="#l79">79</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return the table ID */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l80" href="#l80">80</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">[[</span><span class="n">nodiscard</span><span class="p">]]</span><span class="w"> </span><span class="n">table_id_t</span><span class="w"> </span><span class="n">trx_undo_rec_get_table_id</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l81" href="#l81">81</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l82" href="#l82">82</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l83" href="#l83">83</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Builds a row reference from an undo log record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l84" href="#l84">84</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return pointer to remaining part of undo record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l85" href="#l85">85</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">trx_undo_rec_get_row_ref</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l86" href="#l86">86</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w">           </span><span class="cm">/*!&lt; in: remaining part of a copy of an undo log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l87" href="#l87">87</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         record, at the start of the row reference;</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l88" href="#l88">88</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         NOTE that this copy of the undo log record must</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l89" href="#l89">89</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         be preserved as long as the row reference is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l90" href="#l90">90</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         used, as we do NOT copy the data in the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l91" href="#l91">91</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         record! */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l92" href="#l92">92</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">dict_index_t</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; in: clustered index */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l93" href="#l93">93</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">dtuple_t</span><span class="w"> </span><span class="o">**</span><span class="n">ref</span><span class="p">,</span><span class="w">      </span><span class="cm">/*!&lt; out, own: row reference */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l94" href="#l94">94</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">);</span><span class="w">   </span><span class="cm">/*!&lt; in: memory heap from which the memory</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l95" href="#l95">95</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         needed is allocated */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l96" href="#l96">96</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Reads from an undo log update record the system field values of the old</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l97" href="#l97">97</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> version.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l98" href="#l98">98</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return remaining part of undo log record after reading these values */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l99" href="#l99">99</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_update_rec_get_sys_cols</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l100" href="#l100">100</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w">      </span><span class="cm">/*!&lt; in: remaining part of undo</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l101" href="#l101">101</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                          log record after reading</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l102" href="#l102">102</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                          general parameters */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l103" href="#l103">103</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">trx_id_t</span><span class="w"> </span><span class="o">*</span><span class="n">trx_id</span><span class="p">,</span><span class="w">     </span><span class="cm">/*!&lt; out: trx id */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l104" href="#l104">104</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">roll_ptr_t</span><span class="w"> </span><span class="o">*</span><span class="n">roll_ptr</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; out: roll ptr */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l105" href="#l105">105</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">info_bits</span><span class="p">);</span><span class="w">    </span><span class="cm">/*!&lt; out: info bits state */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l106" href="#l106">106</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l107" href="#l107">107</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">struct</span><span class="w"> </span><span class="nc">type_cmpl_t</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l108" href="#l108">108</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l109" href="#l109">109</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Builds an update vector based on a remaining part of an undo log record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l110" href="#l110">110</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] ptr Remaining part in update undo log record, after reading the row</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l111" href="#l111">111</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">reference. NOTE that this copy of the undo log record must be preserved as long</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l112" href="#l112">112</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">as the update vector is used, as we do NOT copy the data in the record!</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l113" href="#l113">113</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] index Clustered index.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l114" href="#l114">114</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] type TRX_UNDO_UPD_EXIST_REC, TRX_UNDO_UPD_DEL_REC, or</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l115" href="#l115">115</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">TRX_UNDO_DEL_MARK_REC; in the last case, only trx id and roll ptr fields are</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l116" href="#l116">116</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">added to the update vector.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l117" href="#l117">117</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] trx_id Transaction id from this undo record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l118" href="#l118">118</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] roll_ptr Roll pointer from this undo record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l119" href="#l119">119</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] info_bits Info bits from this undo record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l120" href="#l120">120</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] heap Memory heap from which the memory needed is allocated.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l121" href="#l121">121</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[out] upd Update vector.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l122" href="#l122">122</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[out] lob_undo LOB undo information.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l123" href="#l123">123</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[out] type_cmpl Type compilation info.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l124" href="#l124">124</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return remaining part of the record, NULL if an error detected, which</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l125" href="#l125">125</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">means that the record is corrupted. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l126" href="#l126">126</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_update_rec_get_update</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">dict_index_t</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l127" href="#l127">127</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                     </span><span class="n">ulint</span><span class="w"> </span><span class="n">type</span><span class="p">,</span><span class="w"> </span><span class="n">trx_id_t</span><span class="w"> </span><span class="n">trx_id</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l128" href="#l128">128</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                     </span><span class="n">roll_ptr_t</span><span class="w"> </span><span class="n">roll_ptr</span><span class="p">,</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="n">info_bits</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l129" href="#l129">129</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                     </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">,</span><span class="w"> </span><span class="n">upd_t</span><span class="w"> </span><span class="o">**</span><span class="n">upd</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l130" href="#l130">130</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                     </span><span class="n">lob</span><span class="o">::</span><span class="n">undo_vers_t</span><span class="w"> </span><span class="o">*</span><span class="n">lob_undo</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l131" href="#l131">131</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                     </span><span class="n">type_cmpl_t</span><span class="w"> </span><span class="o">&amp;</span><span class="n">type_cmpl</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l132" href="#l132">132</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l133" href="#l133">133</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Builds a partial row from an update undo log record, for purge.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l134" href="#l134">134</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> It contains the columns which occur as ordering in any index of the table.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l135" href="#l135">135</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> Any missing columns are indicated by col-&gt;mtype == DATA_MISSING.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l136" href="#l136">136</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return pointer to remaining part of undo record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l137" href="#l137">137</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">[[</span><span class="n">nodiscard</span><span class="p">]]</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">trx_undo_rec_get_partial_row</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l138" href="#l138">138</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w">     </span><span class="cm">/*!&lt; in: remaining part in update undo log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l139" href="#l139">139</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         record of a suitable type, at the start of</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l140" href="#l140">140</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         the stored index columns;</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l141" href="#l141">141</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         NOTE that this copy of the undo log record must</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l142" href="#l142">142</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         be preserved as long as the partial row is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l143" href="#l143">143</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         used, as we do NOT copy the data in the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l144" href="#l144">144</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                         record! */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l145" href="#l145">145</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">dict_index_t</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; in: clustered index */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l146" href="#l146">146</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">dtuple_t</span><span class="w"> </span><span class="o">**</span><span class="n">row</span><span class="p">,</span><span class="w">      </span><span class="cm">/*!&lt; out, own: partial row */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l147" href="#l147">147</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">ignore_prefix</span><span class="p">,</span><span class="w">  </span><span class="cm">/*!&lt; in: flag to indicate if we</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l148" href="#l148">148</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                   expect blob prefixes in undo. Used</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l149" href="#l149">149</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                   only in the assertion. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l150" href="#l150">150</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">);</span><span class="w">   </span><span class="cm">/*!&lt; in: memory heap from which the memory</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l151" href="#l151">151</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                        needed is allocated */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l152" href="#l152">152</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Writes information to an undo log about an insert, update, or a delete</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l153" href="#l153">153</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> marking of a clustered index record. This information is used in a rollback of</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l154" href="#l154">154</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> the transaction and in consistent reads that must look to the history of this</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l155" href="#l155">155</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> transaction.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l156" href="#l156">156</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return DB_SUCCESS or error code */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l157" href="#l157">157</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">[[</span><span class="n">nodiscard</span><span class="p">]]</span><span class="w"> </span><span class="n">dberr_t</span><span class="w"> </span><span class="n">trx_undo_report_row_operation</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l158" href="#l158">158</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">ulint</span><span class="w"> </span><span class="n">flags</span><span class="p">,</span><span class="w">                 </span><span class="cm">/*!&lt; in: if BTR_NO_UNDO_LOG_FLAG bit is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l159" href="#l159">159</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 set, does nothing */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l160" href="#l160">160</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">ulint</span><span class="w"> </span><span class="n">op_type</span><span class="p">,</span><span class="w">               </span><span class="cm">/*!&lt; in: TRX_UNDO_INSERT_OP or</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l161" href="#l161">161</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 TRX_UNDO_MODIFY_OP */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l162" href="#l162">162</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">que_thr_t</span><span class="w"> </span><span class="o">*</span><span class="n">thr</span><span class="p">,</span><span class="w">              </span><span class="cm">/*!&lt; in: query thread */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l163" href="#l163">163</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">dict_index_t</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span><span class="w">         </span><span class="cm">/*!&lt; in: clustered index */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l164" href="#l164">164</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">dtuple_t</span><span class="w"> </span><span class="o">*</span><span class="n">clust_entry</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; in: in the case of an insert,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l165" href="#l165">165</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 index entry to insert into the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l166" href="#l166">166</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 clustered index, otherwise NULL */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l167" href="#l167">167</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">upd_t</span><span class="w"> </span><span class="o">*</span><span class="n">update</span><span class="p">,</span><span class="w">         </span><span class="cm">/*!&lt; in: in the case of an update,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l168" href="#l168">168</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 the update vector, otherwise NULL */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l169" href="#l169">169</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">ulint</span><span class="w"> </span><span class="n">cmpl_info</span><span class="p">,</span><span class="w">             </span><span class="cm">/*!&lt; in: compiler info on secondary</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l170" href="#l170">170</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 index updates */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l171" href="#l171">171</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">rec</span><span class="p">,</span><span class="w">            </span><span class="cm">/*!&lt; in: case of an update or delete</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l172" href="#l172">172</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 marking, the record in the clustered</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l173" href="#l173">173</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                 index, otherwise NULL */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l174" href="#l174">174</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">offsets</span><span class="p">,</span><span class="w">        </span><span class="cm">/*!&lt; in: rec_get_offsets(rec) */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l175" href="#l175">175</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">roll_ptr_t</span><span class="w"> </span><span class="o">*</span><span class="n">roll_ptr</span><span class="p">);</span><span class="w">       </span><span class="cm">/*!&lt; out: rollback pointer to the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l176" href="#l176">176</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                inserted undo log record,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l177" href="#l177">177</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                0 if BTR_NO_UNDO_LOG</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l178" href="#l178">178</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                flag was specified */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l179" href="#l179">179</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l180" href="#l180">180</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** status bit used for trx_undo_prev_version_build() */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l181" href="#l181">181</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l182" href="#l182">182</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** TRX_UNDO_PREV_IN_PURGE tells trx_undo_prev_version_build() that it</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l183" href="#l183">183</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">is being called purge view and we would like to get the purge record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l184" href="#l184">184</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">even it is in the purge view (in normal case, it will return without</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l185" href="#l185">185</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">fetching the purge record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l186" href="#l186">186</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_PREV_IN_PURGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x1</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l187" href="#l187">187</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l188" href="#l188">188</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** This tells trx_undo_prev_version_build() to fetch the old value in</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l189" href="#l189">189</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">the undo log (which is the after image for an update) */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l190" href="#l190">190</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_GET_OLD_V_VALUE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0x2</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l191" href="#l191">191</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l192" href="#l192">192</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Build a previous version of a clustered index record. The caller must hold</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l193" href="#l193">193</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">a latch on the index page of the clustered index record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l194" href="#l194">194</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">If the vrow passed to this function is not null, then this function will store</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l195" href="#l195">195</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">information about virtual columns from the requested version in vrow, unless the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l196" href="#l196">196</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">change did not affect any secondary index nor ordering field of clustered index</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l197" href="#l197">197</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">(the change has UPD_NODE_NO_ORD_CHANGE flag) in which case the requested</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l198" href="#l198">198</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">information can not be reconstructed from undo log, and the caller may assume</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l199" href="#l199">199</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">that the (virtual) columns of secondary index have the same values they have in</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l200" href="#l200">200</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">the more recent version (the one `rec` comes from).</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l201" href="#l201">201</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Equivalently, if the vrow is not returned, it is either because it was not</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l202" href="#l202">202</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">requested, or not available due to UPD_NODE_NO_ORD_CHANGE.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l203" href="#l203">203</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Obviously vrow is also not set in case rec is the oldest version in history,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l204" href="#l204">204</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">in which case we also set old_vers to NULL.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l205" href="#l205">205</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      index_rec       clustered index record in the index tree</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l206" href="#l206">206</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      index_mtr       mtr which contains the latch to index_rec page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l207" href="#l207">207</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                and purge_view</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l208" href="#l208">208</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      rec             version of a clustered index record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l209" href="#l209">209</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      index           clustered index</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l210" href="#l210">210</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  offsets         rec_get_offsets(rec, index)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l211" href="#l211">211</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      heap            memory heap from which the memory needed is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l212" href="#l212">212</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                allocated</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l213" href="#l213">213</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[out]     old_vers        previous version, or NULL if rec is the first</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l214" href="#l214">214</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                inserted version, or if history data has been</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l215" href="#l215">215</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                deleted</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l216" href="#l216">216</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      v_heap          memory heap used to create vrow dtuple if it is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l217" href="#l217">217</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                not yet created. This heap diffs from &quot;heap&quot;</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l218" href="#l218">218</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                above in that it could be</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l219" href="#l219">219</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                prebuilt-&gt;old_vers_heap for selection</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l220" href="#l220">220</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[out]     vrow            virtual column info, if any</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l221" href="#l221">221</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      v_status        status determine if it is going into this</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l222" href="#l222">222</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                function by purge thread or not. And if we read</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l223" href="#l223">223</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                &quot;after image&quot; of undo log has been rebuilt</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l224" href="#l224">224</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      lob_undo        LOB undo information.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l225" href="#l225">225</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@retval true if previous version was built, or if it was an insert or the table</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l226" href="#l226">226</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">has been rebuilt</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l227" href="#l227">227</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@retval false if the previous version is earlier than purge_view, or being</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l228" href="#l228">228</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">purged, which means that it may have been removed */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l229" href="#l229">229</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">bool</span><span class="w"> </span><span class="nf">trx_undo_prev_version_build</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">index_rec</span><span class="p">,</span><span class="w"> </span><span class="n">mtr_t</span><span class="w"> </span><span class="o">*</span><span class="n">index_mtr</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l230" href="#l230">230</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                 </span><span class="k">const</span><span class="w"> </span><span class="n">rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">rec</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">dict_index_t</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l231" href="#l231">231</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                 </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">offsets</span><span class="p">,</span><span class="w"> </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l232" href="#l232">232</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                 </span><span class="n">rec_t</span><span class="w"> </span><span class="o">**</span><span class="n">old_vers</span><span class="p">,</span><span class="w"> </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">v_heap</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l233" href="#l233">233</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                 </span><span class="k">const</span><span class="w"> </span><span class="n">dtuple_t</span><span class="w"> </span><span class="o">**</span><span class="n">vrow</span><span class="p">,</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="n">v_status</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l234" href="#l234">234</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                 </span><span class="n">lob</span><span class="o">::</span><span class="n">undo_vers_t</span><span class="w"> </span><span class="o">*</span><span class="n">lob_undo</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l235" href="#l235">235</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l236" href="#l236">236</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif </span><span class="cm">/* !UNIV_HOTBACKUP */</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l237" href="#l237">237</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Parses a redo log record of adding an undo log record.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l238" href="#l238">238</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return end of log record or NULL */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l239" href="#l239">239</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_parse_add_undo_rec</span><span class="p">(</span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w">     </span><span class="cm">/*!&lt; in: buffer */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l240" href="#l240">240</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                  </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">end_ptr</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; in: buffer end */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l241" href="#l241">241</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                  </span><span class="n">page_t</span><span class="w"> </span><span class="o">*</span><span class="n">page</span><span class="p">);</span><span class="w"> </span><span class="cm">/*!&lt; in: page or NULL */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l242" href="#l242">242</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Parses a redo log record of erasing of an undo page end.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l243" href="#l243">243</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  ptr      Buffer.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l244" href="#l244">244</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  end_ptr  Buffer end.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l245" href="#l245">245</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  page     Page or nullptr.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l246" href="#l246">246</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  mtr      MTR or nullptr.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l247" href="#l247">247</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return end of log record or nullptr */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l248" href="#l248">248</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_parse_erase_page_end</span><span class="p">(</span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">end_ptr</span><span class="p">,</span><span class="w"> </span><span class="n">page_t</span><span class="w"> </span><span class="o">*</span><span class="n">page</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l249" href="#l249">249</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                    </span><span class="n">mtr_t</span><span class="w"> </span><span class="o">*</span><span class="n">mtr</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l250" href="#l250">250</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l251" href="#l251">251</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Read from an undo log record a non-virtual column value.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l252" href="#l252">252</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  ptr             pointer to remaining part of the undo record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l253" href="#l253">253</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  field           stored field</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l254" href="#l254">254</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  len             length of the field, or UNIV_SQL_NULL</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l255" href="#l255">255</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  orig_len        original length of the locally stored part</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l256" href="#l256">256</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">of an externally stored column, or 0</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l257" href="#l257">257</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return remaining part of undo log record after reading these values */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l258" href="#l258">258</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_rec_get_col_val</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">**</span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">len</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l259" href="#l259">259</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                               </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">orig_len</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l260" href="#l260">260</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l261" href="#l261">261</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Read virtual column value from undo log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l262" href="#l262">262</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      table           the table</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l263" href="#l263">263</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      ptr             undo log pointer</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l264" href="#l264">264</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  row             the dtuple to fill</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l265" href="#l265">265</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      in_purge        called by purge thread</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l266" href="#l266">266</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      online          true if this is from online DDL log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l267" href="#l267">267</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      col_map         online rebuild column map</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l268" href="#l268">268</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  heap            memory heap to keep value when necessary */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l269" href="#l269">269</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">void</span><span class="w"> </span><span class="nf">trx_undo_read_v_cols</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">dict_table_t</span><span class="w"> </span><span class="o">*</span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l270" href="#l270">270</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                          </span><span class="k">const</span><span class="w"> </span><span class="n">dtuple_t</span><span class="w"> </span><span class="o">*</span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">in_purge</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">online</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l271" href="#l271">271</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                          </span><span class="k">const</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">col_map</span><span class="p">,</span><span class="w"> </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l272" href="#l272">272</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l273" href="#l273">273</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Read virtual column index from undo log or online log if the log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l274" href="#l274">274</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">contains such info, and in the undo log case, verify the column is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l275" href="#l275">275</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">still indexed, and output its position</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l276" href="#l276">276</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      table           the table</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l277" href="#l277">277</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      ptr             undo log pointer</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l278" href="#l278">278</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      first_v_col     if this is the first virtual column, which</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l279" href="#l279">279</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                has the version marker</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l280" href="#l280">280</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  is_undo_log     this function is used to parse both undo log,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l281" href="#l281">281</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                and online log for virtual columns. So</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l282" href="#l282">282</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                check to see if this is undo log. When</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l283" href="#l283">283</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                first_v_col is true, is_undo_log is output,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l284" href="#l284">284</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                when first_v_col is false, is_undo_log is input</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l285" href="#l285">285</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  field_no        the column number</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l286" href="#l286">286</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return remaining part of undo log record after reading these values */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l287" href="#l287">287</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_read_v_idx</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">dict_table_t</span><span class="w"> </span><span class="o">*</span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l288" href="#l288">288</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                </span><span class="kt">bool</span><span class="w"> </span><span class="n">first_v_col</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="o">*</span><span class="n">is_undo_log</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l289" href="#l289">289</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">field_no</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l290" href="#l290">290</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l291" href="#l291">291</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifndef UNIV_HOTBACKUP</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l292" href="#l292">292</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l293" href="#l293">293</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* Types of an undo log record: these have to be smaller than 16, as the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l294" href="#l294">294</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">compilation info multiplied by 16 is ORed to this value in an undo log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l295" href="#l295">295</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l296" href="#l296">296</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l297" href="#l297">297</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** fresh insert into clustered index */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l298" href="#l298">298</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_INSERT_REC</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">11</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l299" href="#l299">299</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** update of a non-delete-marked  record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l300" href="#l300">300</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_UPD_EXIST_REC</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l301" href="#l301">301</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** update of a delete marked record to a not delete marked record; also the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l302" href="#l302">302</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">fields of the record can change */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l303" href="#l303">303</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_UPD_DEL_REC</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">13</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l304" href="#l304">304</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* delete marking of a record; fields do not change */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l305" href="#l305">305</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_DEL_MARK_REC</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">14</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l306" href="#l306">306</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** compilation info is multiplied by this and ORed to the type above */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l307" href="#l307">307</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_CMPL_INFO_MULT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l308" href="#l308">308</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** If this bit is set in type_cmpl,  then the undo log record has support for</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l309" href="#l309">309</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> partial update of BLOBs. Also to  make the undo log format extensible,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l310" href="#l310">310</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> introducing a new flag next to the  type_cmpl flag. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l311" href="#l311">311</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_MODIFY_BLOB</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">64</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l312" href="#l312">312</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* This bit can be ORed to type_cmpl to denote that we updated external storage</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l313" href="#l313">313</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> fields: used by purge to free the external storage */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l314" href="#l314">314</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_UPD_EXTERN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">128</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l315" href="#l315">315</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l316" href="#l316">316</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Operation type flags used in trx_undo_report_row_operation */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l317" href="#l317">317</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_INSERT_OP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l318" href="#l318">318</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">TRX_UNDO_MODIFY_OP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l319" href="#l319">319</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l320" href="#l320">320</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** The type and compilation info flag in the undo record for update.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l321" href="#l321">321</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">For easier understanding let the 8 bits be numbered as</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l322" href="#l322">322</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">7, 6, 5, 4, 3, 2, 1, 0. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l323" href="#l323">323</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">struct</span><span class="w"> </span><span class="nc">type_cmpl_t</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l324" href="#l324">324</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17493860</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="n">type_cmpl_t</span><span class="p">()</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">m_flag</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l325" href="#l325">325</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l326" href="#l326">326</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17491464</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">read</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l327" href="#l327">327</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17491464</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="n">m_flag</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mach_read_from_1</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l328" href="#l328">328</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17492475</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">ptr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l329" href="#l329">329</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l330" href="#l330">330</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l331" href="#l331">331</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17492871</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="n">ulint</span><span class="w"> </span><span class="n">type_info</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l332" href="#l332">332</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="cm">/* Get 0-3 */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l333" href="#l333">333</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17492871</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">m_flag</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x0F</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l334" href="#l334">334</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l335" href="#l335">335</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l336" href="#l336">336</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17492888</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="n">ulint</span><span class="w"> </span><span class="n">cmpl_info</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l337" href="#l337">337</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="cm">/* Get bits 5 and 4 */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l338" href="#l338">338</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17492888</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">((</span><span class="n">m_flag</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">4</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x03</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l339" href="#l339">339</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l340" href="#l340">340</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l341" href="#l341">341</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Is an LOB updated by this update operation.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l342" href="#l342">342</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">  @return true if LOB is updated, false otherwise. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l343" href="#l343">343</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17499140</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">is_lob_updated</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l344" href="#l344">344</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="cm">/* Check if bit 7 is set. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l345" href="#l345">345</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17499140</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">m_flag</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">TRX_UNDO_UPD_EXTERN</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l346" href="#l346">346</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l347" href="#l347">347</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l348" href="#l348">348</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Does the undo log record contains information about LOB partial</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l349" href="#l349">349</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">  update vector.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l350" href="#l350">350</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">  @return true if undo contains LOB update info. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l351" href="#l351">351</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17499302</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">is_lob_undo</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l352" href="#l352">352</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="cm">/* Check if bit 6 is set. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l353" href="#l353">353</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">17499302</td>
+      <td class="src coveredLine"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">m_flag</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">TRX_UNDO_MODIFY_BLOB</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l354" href="#l354">354</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l355" href="#l355">355</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l356" href="#l356">356</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w"> </span><span class="n">private</span><span class="o">:</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l357" href="#l357">357</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">m_flag</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l358" href="#l358">358</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l359" href="#l359">359</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l360" href="#l360">360</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Reads from an undo log record the general parameters.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l361" href="#l361">361</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> @return remaining part of undo log record after reading these values */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l362" href="#l362">362</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_rec_get_pars</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l363" href="#l363">363</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">trx_undo_rec_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; in: undo log record */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l364" href="#l364">364</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">type</span><span class="p">,</span><span class="w">              </span><span class="cm">/*!&lt; out: undo record type:</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l365" href="#l365">365</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                              TRX_UNDO_INSERT_REC, ... */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l366" href="#l366">366</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">cmpl_info</span><span class="p">,</span><span class="w">         </span><span class="cm">/*!&lt; out: compiler info, relevant only</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l367" href="#l367">367</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                              for update type records */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l368" href="#l368">368</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="o">*</span><span class="n">updated_extern</span><span class="p">,</span><span class="w">     </span><span class="cm">/*!&lt; out: true if we updated an</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l369" href="#l369">369</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                              externally stored fild */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l370" href="#l370">370</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">undo_no_t</span><span class="w"> </span><span class="o">*</span><span class="n">undo_no</span><span class="p">,</span><span class="w">       </span><span class="cm">/*!&lt; out: undo log record number */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l371" href="#l371">371</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">table_id_t</span><span class="w"> </span><span class="o">*</span><span class="n">table_id</span><span class="p">,</span><span class="w">     </span><span class="cm">/*!&lt; out: table id */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l372" href="#l372">372</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">type_cmpl_t</span><span class="w"> </span><span class="o">&amp;</span><span class="n">type_cmpl</span><span class="p">);</span><span class="w">  </span><span class="cm">/*!&lt; out: type compilation info. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l373" href="#l373">373</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l374" href="#l374">374</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Get the max free space of undo log by assuming it&#39;s a fresh new page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l375" href="#l375">375</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">and the free space doesn&#39;t count for the undo log header too. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l376" href="#l376">376</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">size_t</span><span class="w"> </span><span class="nf">trx_undo_max_free_space</span><span class="p">();</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l377" href="#l377">377</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l378" href="#l378">378</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Decide if the following undo log record is a multi-value virtual column</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l379" href="#l379">379</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]     undo_rec        undo log record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l380" href="#l380">380</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return true if this is a multi-value virtual column log, otherwise false */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l381" href="#l381">381</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">bool</span><span class="w"> </span><span class="nf">trx_undo_rec_is_multi_value</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">undo_rec</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l382" href="#l382">382</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l383" href="#l383">383</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Read from an undo log record of a multi-value virtual column.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l384" href="#l384">384</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      ptr     pointer to remaining part of the undo record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l385" href="#l385">385</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  field   stored field, nullptr if the col is no longer</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l386" href="#l386">386</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                        indexed or existing, in the latter case,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l387" href="#l387">387</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                        this function will only skip the log</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l388" href="#l388">388</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  heap    memory heap</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l389" href="#l389">389</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@return remaining part of undo log record after reading these values */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l390" href="#l390">390</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="nf">trx_undo_rec_get_multi_value</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="p">,</span><span class="w"> </span><span class="n">dfield_t</span><span class="w"> </span><span class="o">*</span><span class="n">field</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l391" href="#l391">391</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                                         </span><span class="n">mem_heap_t</span><span class="w"> </span><span class="o">*</span><span class="n">heap</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l392" href="#l392">392</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;trx0rec.ic&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l393" href="#l393">393</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l394" href="#l394">394</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif </span><span class="cm">/* !UNIV_HOTBACKUP */</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l395" href="#l395">395</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l396" href="#l396">396</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif </span><span class="cm">/* trx0rec_h */</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l397" href="#l397">397</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+  </table>
+</div>
+
+    <hr/>
+
+    <footer>
+      Generated by: <a href="http://gcovr.com">GCOVR (Version 5.0)</a>
+    </footer>
+  </body>
+</html>

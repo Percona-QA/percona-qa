@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>GCC Code Coverage Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="coverage.css">
+  </head>
+
+  <body>
+    <h1>GCC Code Coverage Report</h1>
+
+    <hr/>
+
+    <div class="summary">
+<div>
+  <table class="legend">
+    <tr>
+      <th scope="row">Directory:</th>
+      <td>./</td>
+    </tr>
+    <tr>
+      <th scope="row">File:</th>
+      <td>storage/rocksdb/rocksdb/table/cuckoo/cuckoo_table_builder.h</td>
+    </tr>
+    <tr>
+      <th scope="row">Date:</th>
+      <td>2022-12-06 21:40:42</td>
+    </tr>
+  </table>
+</div>
+<div>
+  <table class="coverage">
+    <tr>
+      <th></th>
+      <th scope="col">Exec</th>
+      <th scope="col">Total</th>
+      <th scope="col">Coverage</th>
+    </tr>
+    <tr>
+      <th scope="row">Lines:</th>
+      <td>0</td>
+      <td>6</td>
+      <td class="coverage-none">0.0%</td>
+    </tr>
+    <tr>
+      <th scope="row">Branches:</th>
+      <td>0</td>
+      <td>0</td>
+      <td class="coverage-unknown">-%</td>
+    </tr>
+  </table>
+</div>
+    </div>
+
+    <hr/>
+
+<div class="file-source">
+  <table>
+    <tr>
+      <th align="right">Line</th>
+      <th align="right">Branch</th>
+      <th align="right">Exec</th>
+      <th align="left">Source</th>
+    </tr>
+
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l1" href="#l1">1</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l2" href="#l2">2</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//  This source code is licensed under both the GPLv2 (found in the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l3" href="#l3">3</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//  COPYING file in the root directory) and Apache 2.0 License</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l4" href="#l4">4</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="c1">//  (found in the LICENSE.Apache file in the root directory).</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l5" href="#l5">5</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l6" href="#l6">6</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#pragma once</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l7" href="#l7">7</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifndef ROCKSDB_LITE</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l8" href="#l8">8</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdint.h&gt;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l9" href="#l9">9</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;limits&gt;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l10" href="#l10">10</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l11" href="#l11">11</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;utility&gt;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l12" href="#l12">12</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;vector&gt;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l13" href="#l13">13</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;db/version_edit.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l14" href="#l14">14</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;port/port.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l15" href="#l15">15</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;rocksdb/status.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l16" href="#l16">16</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;rocksdb/table.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l17" href="#l17">17</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;rocksdb/table_properties.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l18" href="#l18">18</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;table/table_builder.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l19" href="#l19">19</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;util/autovector.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l20" href="#l20">20</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l21" href="#l21">21</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">namespace</span><span class="w"> </span><span class="n">ROCKSDB_NAMESPACE</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l22" href="#l22">22</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l23" href="#l23">23</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">class</span><span class="w"> </span><span class="n">CuckooTableBuilder</span><span class="o">:</span><span class="w"> </span><span class="n">public</span><span class="w"> </span><span class="n">TableBuilder</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l24" href="#l24">24</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w"> </span><span class="n">public</span><span class="o">:</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l25" href="#l25">25</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">CuckooTableBuilder</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l26" href="#l26">26</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="n">WritableFileWriter</span><span class="o">*</span><span class="w"> </span><span class="n">file</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">max_hash_table_ratio</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l27" href="#l27">27</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">max_num_hash_func</span><span class="p">,</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">max_search_depth</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l28" href="#l28">28</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="n">Comparator</span><span class="o">*</span><span class="w"> </span><span class="n">user_comparator</span><span class="p">,</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">cuckoo_block_size</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l29" href="#l29">29</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="kt">bool</span><span class="w"> </span><span class="n">use_module_hash</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">identity_as_first_hash</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l30" href="#l30">30</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="kt">uint64_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">get_slice_hash</span><span class="p">)(</span><span class="k">const</span><span class="w"> </span><span class="n">Slice</span><span class="o">&amp;</span><span class="p">,</span><span class="w"> </span><span class="kt">uint32_t</span><span class="p">,</span><span class="w"> </span><span class="kt">uint64_t</span><span class="p">),</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l31" href="#l31">31</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">column_family_id</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">column_family_name</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l32" href="#l32">32</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">db_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">db_session_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l33" href="#l33">33</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">      </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">file_number</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l34" href="#l34">34</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// No copying allowed</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l35" href="#l35">35</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">CuckooTableBuilder</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">CuckooTableBuilder</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">delete</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l36" href="#l36">36</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="n">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">CuckooTableBuilder</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">delete</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l37" href="#l37">37</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l38" href="#l38">38</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// REQUIRES: Either Finish() or Abandon() has been called.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l39" href="#l39">39</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount uncoveredLine">&cross;</td>
+      <td class="src uncoveredLine"><span class="w">  </span><span class="o">~</span><span class="n">CuckooTableBuilder</span><span class="p">()</span><span class="w"> </span><span class="p">{}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l40" href="#l40">40</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l41" href="#l41">41</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Add key,value to the table being constructed.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l42" href="#l42">42</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// REQUIRES: key is after any previously added key according to comparator.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l43" href="#l43">43</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// REQUIRES: Finish(), Abandon() have not been called</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l44" href="#l44">44</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="n">Add</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Slice</span><span class="o">&amp;</span><span class="w"> </span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">Slice</span><span class="o">&amp;</span><span class="w"> </span><span class="n">value</span><span class="p">)</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l45" href="#l45">45</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l46" href="#l46">46</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Return non-ok iff some error has been detected.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l47" href="#l47">47</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount uncoveredLine">&cross;</td>
+      <td class="src uncoveredLine"><span class="w">  </span><span class="n">Status</span><span class="w"> </span><span class="nf">status</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">status_</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l48" href="#l48">48</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l49" href="#l49">49</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Return non-ok iff some error happens during IO.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l50" href="#l50">50</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount uncoveredLine">&cross;</td>
+      <td class="src uncoveredLine"><span class="w">  </span><span class="n">IOStatus</span><span class="w"> </span><span class="nf">io_status</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">io_status_</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l51" href="#l51">51</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l52" href="#l52">52</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Finish building the table.  Stops using the file passed to the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l53" href="#l53">53</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// constructor after this function returns.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l54" href="#l54">54</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// REQUIRES: Finish(), Abandon() have not been called</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l55" href="#l55">55</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">Status</span><span class="w"> </span><span class="nf">Finish</span><span class="p">()</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l56" href="#l56">56</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l57" href="#l57">57</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Indicate that the contents of this builder should be abandoned.  Stops</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l58" href="#l58">58</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// using the file passed to the constructor after this function returns.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l59" href="#l59">59</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// If the caller is not going to call Finish(), it must call Abandon()</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l60" href="#l60">60</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// before destroying this builder.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l61" href="#l61">61</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// REQUIRES: Finish(), Abandon() have not been called</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l62" href="#l62">62</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">Abandon</span><span class="p">()</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l63" href="#l63">63</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l64" href="#l64">64</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Number of calls to Add() so far.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l65" href="#l65">65</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="nf">NumEntries</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l66" href="#l66">66</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l67" href="#l67">67</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Size of the file generated so far.  If invoked after a successful</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l68" href="#l68">68</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Finish() call, returns the size of the final generated file.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l69" href="#l69">69</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="nf">FileSize</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l70" href="#l70">70</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l71" href="#l71">71</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount uncoveredLine">&cross;</td>
+      <td class="src uncoveredLine"><span class="w">  </span><span class="n">TableProperties</span><span class="w"> </span><span class="nf">GetTableProperties</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">properties_</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l72" href="#l72">72</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l73" href="#l73">73</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Get file checksum</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l74" href="#l74">74</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="nf">GetFileChecksum</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l75" href="#l75">75</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l76" href="#l76">76</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Get file checksum function name</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l77" href="#l77">77</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">GetFileChecksumFuncName</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">override</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l78" href="#l78">78</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l79" href="#l79">79</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w"> </span><span class="n">private</span><span class="o">:</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l80" href="#l80">80</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">CuckooBucket</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l81" href="#l81">81</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount uncoveredLine">&cross;</td>
+      <td class="src uncoveredLine"><span class="w">    </span><span class="n">CuckooBucket</span><span class="p">()</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l82" href="#l82">82</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount uncoveredLine">&cross;</td>
+      <td class="src uncoveredLine"><span class="w">      </span><span class="o">:</span><span class="w"> </span><span class="n">vector_idx</span><span class="p">(</span><span class="n">kMaxVectorIdx</span><span class="p">),</span><span class="w"> </span><span class="n">make_space_for_key_call_id</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l83" href="#l83">83</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">vector_idx</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l84" href="#l84">84</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="c1">// This number will not exceed kvs_.size() + max_num_hash_func_.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l85" href="#l85">85</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="c1">// We assume number of items is &lt;= 2^32.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l86" href="#l86">86</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">make_space_for_key_call_id</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l87" href="#l87">87</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l88" href="#l88">88</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">kMaxVectorIdx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">port</span><span class="o">::</span><span class="n">kMaxInt32</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l89" href="#l89">89</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l90" href="#l90">90</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="nf">MakeSpaceForKey</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">autovector</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">hash_vals</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l91" href="#l91">91</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                       </span><span class="k">const</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">call_id</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l92" href="#l92">92</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                       </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">CuckooBucket</span><span class="o">&gt;*</span><span class="w"> </span><span class="n">buckets</span><span class="p">,</span><span class="w"> </span><span class="kt">uint64_t</span><span class="o">*</span><span class="w"> </span><span class="n">bucket_id</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l93" href="#l93">93</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">Status</span><span class="w"> </span><span class="nf">MakeHashTable</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">CuckooBucket</span><span class="o">&gt;*</span><span class="w"> </span><span class="n">buckets</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l94" href="#l94">94</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l95" href="#l95">95</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kr">inline</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="nf">IsDeletedKey</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l96" href="#l96">96</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kr">inline</span><span class="w"> </span><span class="n">Slice</span><span class="w"> </span><span class="nf">GetKey</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l97" href="#l97">97</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kr">inline</span><span class="w"> </span><span class="n">Slice</span><span class="w"> </span><span class="nf">GetUserKey</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l98" href="#l98">98</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kr">inline</span><span class="w"> </span><span class="n">Slice</span><span class="w"> </span><span class="nf">GetValue</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l99" href="#l99">99</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l100" href="#l100">100</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">num_hash_func_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l101" href="#l101">101</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">WritableFileWriter</span><span class="o">*</span><span class="w"> </span><span class="n">file_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l102" href="#l102">102</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">max_hash_table_ratio_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l103" href="#l103">103</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">max_num_hash_func_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l104" href="#l104">104</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">max_search_depth_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l105" href="#l105">105</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">cuckoo_block_size_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l106" href="#l106">106</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">hash_table_size_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l107" href="#l107">107</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">is_last_level_file_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l108" href="#l108">108</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_seen_first_key_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l109" href="#l109">109</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">has_seen_first_value_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l110" href="#l110">110</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">key_size_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l111" href="#l111">111</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">value_size_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l112" href="#l112">112</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// A list of fixed-size key-value pairs concatenating into a string.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l113" href="#l113">113</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Use GetKey(), GetUserKey(), and GetValue() to retrieve a specific</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l114" href="#l114">114</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// key / value given an index</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l115" href="#l115">115</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">kvs_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l116" href="#l116">116</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">deleted_keys_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l117" href="#l117">117</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Number of key-value pairs stored in kvs_ + number of deleted keys</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l118" href="#l118">118</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">num_entries_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l119" href="#l119">119</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="c1">// Number of keys that contain value (non-deletion op)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l120" href="#l120">120</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">num_values_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l121" href="#l121">121</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">Status</span><span class="w"> </span><span class="n">status_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l122" href="#l122">122</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">IOStatus</span><span class="w"> </span><span class="n">io_status_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l123" href="#l123">123</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">TableProperties</span><span class="w"> </span><span class="n">properties_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l124" href="#l124">124</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">Comparator</span><span class="o">*</span><span class="w"> </span><span class="n">ucomp_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l125" href="#l125">125</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">use_module_hash_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l126" href="#l126">126</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">identity_as_first_hash_</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l127" href="#l127">127</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint64_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">get_slice_hash_</span><span class="p">)(</span><span class="k">const</span><span class="w"> </span><span class="n">Slice</span><span class="o">&amp;</span><span class="w"> </span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">index</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l128" href="#l128">128</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">max_num_buckets</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l129" href="#l129">129</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">largest_user_key_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l130" href="#l130">130</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">smallest_user_key_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l131" href="#l131">131</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l132" href="#l132">132</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">closed_</span><span class="p">;</span><span class="w">  </span><span class="c1">// Either Finish() or Abandon() has been called.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l133" href="#l133">133</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l134" href="#l134">134</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l135" href="#l135">135</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">}</span><span class="w">  </span><span class="c1">// namespace ROCKSDB_NAMESPACE</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l136" href="#l136">136</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l137" href="#l137">137</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif  </span><span class="c1">// ROCKSDB_LITE</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l138" href="#l138">138</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+  </table>
+</div>
+
+    <hr/>
+
+    <footer>
+      Generated by: <a href="http://gcovr.com">GCOVR (Version 5.0)</a>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,2390 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>GCC Code Coverage Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="coverage.css">
+  </head>
+
+  <body>
+    <h1>GCC Code Coverage Report</h1>
+
+    <hr/>
+
+    <div class="summary">
+<div>
+  <table class="legend">
+    <tr>
+      <th scope="row">Directory:</th>
+      <td>./</td>
+    </tr>
+    <tr>
+      <th scope="row">File:</th>
+      <td>storage/innobase/include/page0types.h</td>
+    </tr>
+    <tr>
+      <th scope="row">Date:</th>
+      <td>2022-12-06 21:40:42</td>
+    </tr>
+  </table>
+</div>
+<div>
+  <table class="coverage">
+    <tr>
+      <th></th>
+      <th scope="col">Exec</th>
+      <th scope="col">Total</th>
+      <th scope="col">Coverage</th>
+    </tr>
+    <tr>
+      <th scope="row">Lines:</th>
+      <td>7</td>
+      <td>7</td>
+      <td class="coverage-high">100.0%</td>
+    </tr>
+    <tr>
+      <th scope="row">Branches:</th>
+      <td>0</td>
+      <td>0</td>
+      <td class="coverage-unknown">-%</td>
+    </tr>
+  </table>
+</div>
+    </div>
+
+    <hr/>
+
+<div class="file-source">
+  <table>
+    <tr>
+      <th align="right">Line</th>
+      <th align="right">Branch</th>
+      <th align="right">Exec</th>
+      <th align="left">Source</th>
+    </tr>
+
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l1" href="#l1">1</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*****************************************************************************</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l2" href="#l2">2</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l3" href="#l3">3</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Copyright (c) 1994, 2022, Oracle and/or its affiliates.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l4" href="#l4">4</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l5" href="#l5">5</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This program is free software; you can redistribute it and/or modify it under</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l6" href="#l6">6</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">the terms of the GNU General Public License, version 2.0, as published by the</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l7" href="#l7">7</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Free Software Foundation.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l8" href="#l8">8</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l9" href="#l9">9</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This program is also distributed with certain software (including but not</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l10" href="#l10">10</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">limited to OpenSSL) that is licensed under separate terms, as designated in a</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l11" href="#l11">11</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">particular file or component or in included license documentation. The authors</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l12" href="#l12">12</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">of MySQL hereby grant you an additional permission to link the program and</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l13" href="#l13">13</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">your derivative works with the separately licensed software that they have</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l14" href="#l14">14</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">included with MySQL.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l15" href="#l15">15</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l16" href="#l16">16</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This program is distributed in the hope that it will be useful, but WITHOUT</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l17" href="#l17">17</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l18" href="#l18">18</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l19" href="#l19">19</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">for more details.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l20" href="#l20">20</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l21" href="#l21">21</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">You should have received a copy of the GNU General Public License along with</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l22" href="#l22">22</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">this program; if not, write to the Free Software Foundation, Inc.,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l23" href="#l23">23</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l24" href="#l24">24</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l25" href="#l25">25</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">*****************************************************************************/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l26" href="#l26">26</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l27" href="#l27">27</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** @file include/page0types.h</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l28" href="#l28">28</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> Index page routines</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l29" href="#l29">29</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l30" href="#l30">30</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> Created 2/2/1994 Heikki Tuuri</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l31" href="#l31">31</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> *******************************************************/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l32" href="#l32">32</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l33" href="#l33">33</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifndef page0types_h</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l34" href="#l34">34</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define page0types_h</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l35" href="#l35">35</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l36" href="#l36">36</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;dict0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l37" href="#l37">37</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;fsp0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l38" href="#l38">38</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;mtr0types.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l39" href="#l39">39</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;univ.i&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l40" href="#l40">40</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ut0new.h&quot;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l41" href="#l41">41</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l42" href="#l42">42</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;map&gt;</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l43" href="#l43">43</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l44" href="#l44">44</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*                      PAGE HEADER</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l45" href="#l45">45</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                        ===========</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l46" href="#l46">46</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l47" href="#l47">47</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">Index page header starts at the first offset left free by the FIL-module */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l48" href="#l48">48</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l49" href="#l49">49</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">typedef</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="n">page_header_t</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l50" href="#l50">50</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l51" href="#l51">51</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** index page header starts at this offset */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l52" href="#l52">52</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">FSEG_PAGE_DATA</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l53" href="#l53">53</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l54" href="#l54">54</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*-----------------------------*/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l55" href="#l55">55</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** number of slots in page directory */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l56" href="#l56">56</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_N_DIR_SLOTS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l57" href="#l57">57</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** pointer to record heap top */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l58" href="#l58">58</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_HEAP_TOP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l59" href="#l59">59</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** number of records in the heap, bit 15=flag: new-style compact page format */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l60" href="#l60">60</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_N_HEAP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l61" href="#l61">61</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** pointer to start of page free record list */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l62" href="#l62">62</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_FREE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">6</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l63" href="#l63">63</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** number of bytes in deleted records */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l64" href="#l64">64</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_GARBAGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l65" href="#l65">65</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** pointer to the last inserted record, or NULL if this info has been reset by</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l66" href="#l66">66</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> a delete, for example */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l67" href="#l67">67</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_LAST_INSERT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l68" href="#l68">68</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** last insert direction: PAGE_LEFT, ... */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l69" href="#l69">69</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_DIRECTION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l70" href="#l70">70</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** number of consecutive inserts to the same direction */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l71" href="#l71">71</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_N_DIRECTION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">14</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l72" href="#l72">72</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** number of user records on the page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l73" href="#l73">73</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_N_RECS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l74" href="#l74">74</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** highest id of a trx which may have modified a record on the page; trx_id_t;</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l75" href="#l75">75</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">defined only in secondary indexes and in the insert buffer tree */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l76" href="#l76">76</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_MAX_TRX_ID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">18</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l77" href="#l77">77</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** end of private data structure of the page header which are set in a page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l78" href="#l78">78</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">create */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l79" href="#l79">79</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_HEADER_PRIV_END</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">26</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l80" href="#l80">80</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*----*/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l81" href="#l81">81</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** level of the node in an index tree; the leaf level is the level 0.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l82" href="#l82">82</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">This field should not be written to after page creation. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l83" href="#l83">83</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_LEVEL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">26</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l84" href="#l84">84</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** index id where the page belongs. This field should not be written to after</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l85" href="#l85">85</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> page creation. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l86" href="#l86">86</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_INDEX_ID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">28</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l87" href="#l87">87</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** file segment header for the leaf pages in a B-tree: defined only on the root</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l88" href="#l88">88</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> page of a B-tree, but not in the root of an ibuf tree */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l89" href="#l89">89</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_BTR_SEG_LEAF</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">36</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l90" href="#l90">90</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_BTR_IBUF_FREE_LIST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PAGE_BTR_SEG_LEAF</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l91" href="#l91">91</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_BTR_IBUF_FREE_LIST_NODE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PAGE_BTR_SEG_LEAF</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l92" href="#l92">92</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* in the place of PAGE_BTR_SEG_LEAF and _TOP</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l93" href="#l93">93</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">there is a free list base node if the page is</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l94" href="#l94">94</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">the root page of an ibuf tree, and at the same</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l95" href="#l95">95</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">place is the free list node if the page is in</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l96" href="#l96">96</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">a free list */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l97" href="#l97">97</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_BTR_SEG_TOP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">36</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">FSEG_HEADER_SIZE</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l98" href="#l98">98</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* file segment header for the non-leaf pages</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l99" href="#l99">99</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">in a B-tree: defined only on the root page of</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l100" href="#l100">100</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">a B-tree, but not in the root of an ibuf</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l101" href="#l101">101</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">tree */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l102" href="#l102">102</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*----*/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l103" href="#l103">103</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** start of data on the page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l104" href="#l104">104</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_DATA</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PAGE_HEADER</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">36</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">FSEG_HEADER_SIZE</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l105" href="#l105">105</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l106" href="#l106">106</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** offset of the page infimum record on an</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l107" href="#l107">107</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">old-style page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l108" href="#l108">108</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define PAGE_OLD_INFIMUM (PAGE_DATA + 1 + REC_N_OLD_EXTRA_BYTES)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l109" href="#l109">109</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l110" href="#l110">110</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** offset of the page supremum record on an</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l111" href="#l111">111</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">old-style page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l112" href="#l112">112</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define PAGE_OLD_SUPREMUM (PAGE_DATA + 2 + 2 * REC_N_OLD_EXTRA_BYTES + 8)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l113" href="#l113">113</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l114" href="#l114">114</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** offset of the page supremum record end on an old-style page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l115" href="#l115">115</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define PAGE_OLD_SUPREMUM_END (PAGE_OLD_SUPREMUM + 9)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l116" href="#l116">116</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l117" href="#l117">117</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** offset of the page infimum record on a new-style compact page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l118" href="#l118">118</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define PAGE_NEW_INFIMUM (PAGE_DATA + REC_N_NEW_EXTRA_BYTES)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l119" href="#l119">119</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l120" href="#l120">120</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** offset of the page supremum record on a new-style compact page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l121" href="#l121">121</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define PAGE_NEW_SUPREMUM (PAGE_DATA + 2 * REC_N_NEW_EXTRA_BYTES + 8)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l122" href="#l122">122</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l123" href="#l123">123</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** offset of the page supremum record end on a new-style compact page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l124" href="#l124">124</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define PAGE_NEW_SUPREMUM_END (PAGE_NEW_SUPREMUM + 8)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l125" href="#l125">125</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l126" href="#l126">126</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/*-----------------------------*/</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l127" href="#l127">127</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l128" href="#l128">128</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* Heap numbers */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l129" href="#l129">129</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Page infimum */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l130" href="#l130">130</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="n">PAGE_HEAP_NO_INFIMUM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l131" href="#l131">131</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Page supremum */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l132" href="#l132">132</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="n">PAGE_HEAP_NO_SUPREMUM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l133" href="#l133">133</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l134" href="#l134">134</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** First user record in creation (insertion) order, not necessarily collation</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l135" href="#l135">135</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">order; this record may have been deleted */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l136" href="#l136">136</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="n">PAGE_HEAP_NO_USER_LOW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l137" href="#l137">137</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l138" href="#l138">138</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* Directions of cursor movement */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l139" href="#l139">139</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l140" href="#l140">140</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">enum</span><span class="w"> </span><span class="n">cursor_direction_t</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kt">uint8_t</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l141" href="#l141">141</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_LEFT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l142" href="#l142">142</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_RIGHT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l143" href="#l143">143</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_SAME_REC</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l144" href="#l144">144</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_SAME_PAGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l145" href="#l145">145</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_NO_DIRECTION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l146" href="#l146">146</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l147" href="#l147">147</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l148" href="#l148">148</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Eliminates a name collision on HP-UX */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l149" href="#l149">149</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#define page_t ib_page_t</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l150" href="#l150">150</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Type of the index page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l151" href="#l151">151</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">typedef</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="n">page_t</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l152" href="#l152">152</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Index page cursor */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l153" href="#l153">153</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">struct</span><span class="w"> </span><span class="nc">page_cur_t</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l154" href="#l154">154</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l155" href="#l155">155</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Compressed index page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l156" href="#l156">156</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">typedef</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="n">page_zip_t</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l157" href="#l157">157</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l158" href="#l158">158</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* The following definitions would better belong to page0zip.h,</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l159" href="#l159">159</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">but we cannot include page0zip.h from rem0rec.ic, because</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l160" href="#l160">160</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">page0*.h includes rem0rec.h and may include rem0rec.ic. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l161" href="#l161">161</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l162" href="#l162">162</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Number of bits needed for representing different compressed page sizes */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l163" href="#l163">163</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">PAGE_ZIP_SSIZE_BITS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l164" href="#l164">164</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l165" href="#l165">165</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Maximum compressed page shift size */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l166" href="#l166">166</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="n">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">PAGE_ZIP_SSIZE_MAX</span><span class="w"> </span><span class="o">=</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l167" href="#l167">167</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">UNIV_ZIP_SIZE_SHIFT_MAX</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">UNIV_ZIP_SIZE_SHIFT_MIN</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l168" href="#l168">168</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l169" href="#l169">169</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* Make sure there are enough bits available to store the maximum zip</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l170" href="#l170">170</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">ssize, which is the number of shifts from 512. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l171" href="#l171">171</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">static_assert</span><span class="p">(</span><span class="n">PAGE_ZIP_SSIZE_MAX</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">PAGE_ZIP_SSIZE_BITS</span><span class="p">),</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l172" href="#l172">172</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">              </span><span class="s">&quot;PAGE_ZIP_SSIZE_MAX &gt;= (1 &lt;&lt; PAGE_ZIP_SSIZE_BITS)&quot;</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l173" href="#l173">173</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l174" href="#l174">174</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/* Page cursor search modes; the values must be in this order! */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l175" href="#l175">175</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">enum</span><span class="w"> </span><span class="n">page_cur_mode_t</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l176" href="#l176">176</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_UNSUPP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l177" href="#l177">177</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_G</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l178" href="#l178">178</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_GE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l179" href="#l179">179</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_L</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l180" href="#l180">180</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_LE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l181" href="#l181">181</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l182" href="#l182">182</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/*      PAGE_CUR_LE_OR_EXTENDS = 5,*/</span><span class="w"> </span><span class="cm">/* This is a search mode used in</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l183" href="#l183">183</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                   &quot;column LIKE &#39;abc%&#39; ORDER BY column DESC&quot;;</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l184" href="#l184">184</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                   we have to find strings which are &lt;= &#39;abc&#39; or</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l185" href="#l185">185</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">                                   which extend it */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l186" href="#l186">186</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l187" href="#l187">187</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/* These search mode is for search R-tree index. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l188" href="#l188">188</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_CONTAIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l189" href="#l189">189</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_INTERSECT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l190" href="#l190">190</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_WITHIN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">9</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l191" href="#l191">191</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_DISJOINT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l192" href="#l192">192</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_MBR_EQUAL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">11</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l193" href="#l193">193</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_RTREE_INSERT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l194" href="#l194">194</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_RTREE_LOCATE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">13</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l195" href="#l195">195</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">PAGE_CUR_RTREE_GET_FATHER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">14</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l196" href="#l196">196</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l197" href="#l197">197</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l198" href="#l198">198</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Compressed page descriptor */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l199" href="#l199">199</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">struct</span><span class="w"> </span><span class="nc">page_zip_des_t</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l200" href="#l200">200</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Compressed page data */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l201" href="#l201">201</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">page_zip_t</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l202" href="#l202">202</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l203" href="#l203">203</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#ifdef UNIV_DEBUG</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l204" href="#l204">204</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Start offset of modification log */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l205" href="#l205">205</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">m_start</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l206" href="#l206">206</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Allocated externally, not from the buffer pool */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l207" href="#l207">207</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">m_external</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l208" href="#l208">208</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif </span><span class="cm">/* UNIV_DEBUG */</span><span class="cp"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l209" href="#l209">209</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l210" href="#l210">210</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** End offset of modification log */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l211" href="#l211">211</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">m_end</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l212" href="#l212">212</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l213" href="#l213">213</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Number of externally stored columns on the page; the maximum is 744</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l214" href="#l214">214</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">  on a 16 KiB page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l215" href="#l215">215</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">n_blobs</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l216" href="#l216">216</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l217" href="#l217">217</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** true if the modification log is not empty.  */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l218" href="#l218">218</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="n">m_nonempty</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l219" href="#l219">219</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l220" href="#l220">220</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** 0 or compressed page shift size; the size in bytes is:</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l221" href="#l221">221</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">  (UNIV_ZIP_SIZE_MIN * &gt;&gt; 1) &lt;&lt; ssize. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l222" href="#l222">222</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">ssize</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l223" href="#l223">223</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l224" href="#l224">224</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l225" href="#l225">225</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Compression statistics for a given page size */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l226" href="#l226">226</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">struct</span><span class="w"> </span><span class="nc">page_zip_stat_t</span><span class="w"> </span><span class="p">{</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l227" href="#l227">227</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Number of page compressions */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l228" href="#l228">228</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">ulint</span><span class="w"> </span><span class="n">compressed</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l229" href="#l229">229</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Number of successful page compressions */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l230" href="#l230">230</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">ulint</span><span class="w"> </span><span class="n">compressed_ok</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l231" href="#l231">231</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Number of page decompressions */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l232" href="#l232">232</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">ulint</span><span class="w"> </span><span class="n">decompressed</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l233" href="#l233">233</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Duration of page compressions */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l234" href="#l234">234</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">microseconds</span><span class="w"> </span><span class="n">compress_time</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l235" href="#l235">235</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="cm">/** Duration of page decompressions */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l236" href="#l236">236</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">microseconds</span><span class="w"> </span><span class="n">decompress_time</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l237" href="#l237">237</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">  </span><span class="n">page_zip_stat_t</span><span class="p">()</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l238" href="#l238">238</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">      </span><span class="o">:</span><span class="w"> </span><span class="cm">/* Initialize members to 0 so that when we do</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l239" href="#l239">239</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">        stlmap[key].compressed++ and element with &quot;key&quot; does not</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l240" href="#l240">240</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">        exist it gets inserted with zeroed members. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l241" href="#l241">241</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">        </span><span class="n">compressed</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l242" href="#l242">242</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">        </span><span class="n">compressed_ok</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l243" href="#l243">243</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">        </span><span class="n">decompressed</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l244" href="#l244">244</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">        </span><span class="n">compress_time</span><span class="p">{},</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l245" href="#l245">245</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount coveredLine">61152</td>
+      <td class="src coveredLine"><span class="w">        </span><span class="n">decompress_time</span><span class="p">{}</span><span class="w"> </span><span class="p">{}</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l246" href="#l246">246</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="p">};</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l247" href="#l247">247</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l248" href="#l248">248</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Compression statistics types */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l249" href="#l249">249</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">typedef</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">index_id_t</span><span class="p">,</span><span class="w"> </span><span class="n">page_zip_stat_t</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">less</span><span class="o">&lt;</span><span class="n">index_id_t</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l250" href="#l250">250</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                 </span><span class="n">ut</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">index_id_t</span><span class="p">,</span><span class="w"> </span><span class="n">page_zip_stat_t</span><span class="o">&gt;&gt;&gt;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l251" href="#l251">251</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">page_zip_stat_per_index_t</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l252" href="#l252">252</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l253" href="#l253">253</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Statistics on compression, indexed by page_zip_des_t::ssize - 1 */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l254" href="#l254">254</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">extern</span><span class="w"> </span><span class="n">page_zip_stat_t</span><span class="w"> </span><span class="n">page_zip_stat</span><span class="p">[</span><span class="n">PAGE_ZIP_SSIZE_MAX</span><span class="p">];</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l255" href="#l255">255</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Statistics on compression, indexed by dict_index_t::id */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l256" href="#l256">256</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="k">extern</span><span class="w"> </span><span class="n">page_zip_stat_per_index_t</span><span class="w"> </span><span class="n">page_zip_stat_per_index</span><span class="p">;</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l257" href="#l257">257</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l258" href="#l258">258</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Write the &quot;deleted&quot; flag of a record on a compressed page.  The flag must</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l259" href="#l259">259</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> already have been written on the uncompressed page. */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l260" href="#l260">260</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">void</span><span class="w"> </span><span class="nf">page_zip_rec_set_deleted</span><span class="p">(</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l261" href="#l261">261</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="n">page_zip_des_t</span><span class="w"> </span><span class="o">*</span><span class="n">page_zip</span><span class="p">,</span><span class="w"> </span><span class="cm">/*!&lt; in/out: compressed page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l262" href="#l262">262</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">rec</span><span class="p">,</span><span class="w">          </span><span class="cm">/*!&lt; in: record on the uncompressed page */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l263" href="#l263">263</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">flag</span><span class="p">);</span><span class="w">               </span><span class="cm">/*!&lt; in: the deleted flag (nonzero=true) */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l264" href="#l264">264</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l265" href="#l265">265</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Write the &quot;owned&quot; flag of a record on a compressed page.  The n_owned field</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l266" href="#l266">266</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm"> must already have been written on the uncompressed page.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l267" href="#l267">267</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out] page_zip Compressed page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l268" href="#l268">268</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] rec Record on the uncompressed page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l269" href="#l269">269</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in] flag The owned flag (nonzero=true) */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l270" href="#l270">270</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">void</span><span class="w"> </span><span class="nf">page_zip_rec_set_owned</span><span class="p">(</span><span class="n">page_zip_des_t</span><span class="w"> </span><span class="o">*</span><span class="n">page_zip</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">rec</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l271" href="#l271">271</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                            </span><span class="n">ulint</span><span class="w"> </span><span class="n">flag</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l272" href="#l272">272</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l273" href="#l273">273</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Shift the dense page directory when a record is deleted.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l274" href="#l274">274</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  page_zip        compressed page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l275" href="#l275">275</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      rec             deleted record</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l276" href="#l276">276</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      index           index of rec</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l277" href="#l277">277</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      offsets         rec_get_offsets(rec)</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l278" href="#l278">278</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      free            previous start of the free list */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l279" href="#l279">279</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">void</span><span class="w"> </span><span class="nf">page_zip_dir_delete</span><span class="p">(</span><span class="n">page_zip_des_t</span><span class="w"> </span><span class="o">*</span><span class="n">page_zip</span><span class="p">,</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">rec</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l280" href="#l280">280</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                         </span><span class="n">dict_index_t</span><span class="w"> </span><span class="o">*</span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">ulint</span><span class="w"> </span><span class="o">*</span><span class="n">offsets</span><span class="p">,</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l281" href="#l281">281</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="w">                         </span><span class="k">const</span><span class="w"> </span><span class="n">byte</span><span class="w"> </span><span class="o">*</span><span class="n">free</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l282" href="#l282">282</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l283" href="#l283">283</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">/** Add a slot to the dense page directory.</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l284" href="#l284">284</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in,out]  page_zip      Compressed page</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l285" href="#l285">285</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cm">@param[in]      is_clustered  Nonzero for clustered index, zero for others */</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l286" href="#l286">286</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="kt">void</span><span class="w"> </span><span class="nf">page_zip_dir_add_slot</span><span class="p">(</span><span class="n">page_zip_des_t</span><span class="w"> </span><span class="o">*</span><span class="n">page_zip</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">is_clustered</span><span class="p">);</span><span class="w"></span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l287" href="#l287">287</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l288" href="#l288">288</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "><span class="cp">#endif</span></td>
+    </tr>
+
+    <tr class="source-line">
+      <td class="lineno"><a id="l289" href="#l289">289</a></td>
+      <td class="linebranch">
+      </td>
+      <td class="linecount "></td>
+      <td class="src "></td>
+    </tr>
+
+  </table>
+</div>
+
+    <hr/>
+
+    <footer>
+      Generated by: <a href="http://gcovr.com">GCOVR (Version 5.0)</a>
+    </footer>
+  </body>
+</html>
