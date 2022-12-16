@@ -13,17 +13,17 @@
 @test "check ps for centos" {
   run ./get_download_link.sh --product ps --distribution centos
   [ "$status" -eq 0 ]
-  [ "$(echo $output | grep -c 'ssl101')" -eq 1 ]
+  [ "$(echo $output | grep -c 'glibc2.17')" -eq 1 ]
 }
 @test "check ps for ubuntu bionic" {
   run ./get_download_link.sh --product ps --distribution ubuntu-bionic
   [ "$status" -eq 0 ]
-  [ "$(echo $output | grep -c 'ssl102')" -eq 1 ]
+  [ "$(echo $output | grep -c 'glibc2.17')" -eq 1 ]
 }
-@test "check ps for debian stretch" {
-  run ./get_download_link.sh --product ps --distribution debian-stretch
+@test "check ps for ubuntu jammy" {
+  run ./get_download_link.sh --product ps --distribution ubuntu-jammy
   [ "$status" -eq 0 ]
-  [ "$(echo $output | grep -c 'ssl102')" -eq 1 ]
+  [ "$(echo $output | grep -c 'glibc2.35')" -eq 1 ]
 }
 
 @test "check ps 5.6 source" {
