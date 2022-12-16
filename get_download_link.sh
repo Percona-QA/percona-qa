@@ -156,19 +156,15 @@ get_link(){
 
   elif [[ "${PRODUCT}" = "pxc" ]]; then
     DL_VERSION="${VERSION//./}"
-    if [[ "${VERSION}" = "5.5" || "${VERSION}" = "5.6" ]]; then
-      OPT="\.[0-9]+"
-    fi
-    if [[ "${VERSION}" == "5.6" ]]; then OPT2=".${SSL_VER}"; fi
     if [[ "${VERSION}" == "5.7" ]]; then OPT2=".glibc2.12"; fi
     if [[ "${VERSION}" == "8.0" ]]; then OPT2=".glibc2.17"; fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/|grep -oE "Percona-XtraDB-Cluster[-_]${VERSION}\.[0-9]+(-rel[0-9]+)?${OPT}-[0-9]+\.[0-9]+(\.[0-9]+)?[\._]Linux\.${BUILD_ARCH}${OPT2}\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/tarball/${LINK}"; fi
+        LINK=$(wget -qO- https://downloads.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/|grep -oE "Percona-XtraDB-Cluster[-_]${VERSION}\.[0-9]+(-rel[0-9]+)?${OPT}-[0-9]+\.[0-9]+(\.[0-9]+)?[\._]Linux\.${BUILD_ARCH}${OPT2}\.tar\.gz"|head -n1)
+        if [[ ! -z ${LINK} ]]; then LINK="https://downloads.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/binary/tarball/${LINK}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/|grep -oE "Percona-XtraDB-Cluster-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/tarball/${LINK}"; fi
+        LINK=$(wget -qO- https://downloads.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/|grep -oE "Percona-XtraDB-Cluster-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
+        if [[ ! -z ${LINK} ]]; then LINK="https://downloads.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
       VERSION_UPSTREAM=$(echo "${VERSION_FULL}" | awk -F '-' '{print $1}')
@@ -177,9 +173,9 @@ get_link(){
       VERSION_WSREP_TMP=$(echo "${VERSION_WSREP}" | sed 's/\(.*\)\./\1-/')
       if [[ "${VERSION}" = "5.7" ]]; then VERSION_WSREP_TMP="${VERSION_WSREP_TMP%-*}"; fi
       if [[ ${SOURCE} = 0 ]]; then
-        LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-${VERSION_WSREP}/binary/tarball/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-rel${VERSION_PERCONA}-${VERSION_WSREP}.Linux.${BUILD_ARCH}${OPT2}.tar.gz"
+        LINK="https://downloads.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-${VERSION_WSREP}/binary/tarball/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-rel${VERSION_PERCONA}-${VERSION_WSREP}.Linux.${BUILD_ARCH}${OPT2}.tar.gz"
       else
-        LINK="https://www.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-${VERSION_WSREP}/source/tarball/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-${VERSION_WSREP}.tar.gz"
+        LINK="https://downloads.percona.com/downloads/Percona-XtraDB-Cluster-${DL_VERSION}/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-${VERSION_WSREP}/source/tarball/Percona-XtraDB-Cluster-${VERSION_UPSTREAM}-${VERSION_WSREP}.tar.gz"
       fi
     fi
 

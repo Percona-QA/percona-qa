@@ -36,12 +36,6 @@
   ./get_download_link.sh --product ps --version 8.0 --source
 }
 
-@test "check pxc 5.5" {
-  ./get_download_link.sh --product pxc --version 5.5
-}
-@test "check pxc 5.6" {
-  ./get_download_link.sh --product pxc --version 5.6
-}
 @test "check pxc 5.7" {
   ./get_download_link.sh --product pxc --version 5.7
 }
@@ -49,12 +43,6 @@
   ./get_download_link.sh --product pxc --version 8.0
 }
 
-@test "check pxc 5.5 source" {
-  ./get_download_link.sh --product pxc --version 5.5 --source
-}
-@test "check pxc 5.6 source" {
-  ./get_download_link.sh --product pxc --version 5.6 --source
-}
 @test "check pxc 5.7 source" {
   ./get_download_link.sh --product pxc --version 5.7 --source
 }
