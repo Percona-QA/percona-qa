@@ -14,8 +14,8 @@
 ########################################################################
 
 # Set mysql and backup variables
-export xtrabackup_dir="$HOME/percona-xtrabackup-8.0.27-19-Linux-x86_64.glibc2.17/bin"
-export mysqldir="$HOME/Percona-Server-8.0.27-18-Linux.x86_64.glibc2.17-debug"
+export xtrabackup_dir="$HOME/percona-xtrabackup-8.0.30-23-Linux-x86_64.glibc2.17/bin"
+export mysqldir="$HOME/MS_8_0_30"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -25,12 +25,12 @@ export logdir="$HOME/backuplogs"
 # Set replication variables
 replication_dir1="$HOME/replica1_dir"
 replication_dir2="$HOME/replica2_dir"
-mysql_tarball="$HOME/Percona-Server-8.0.27-18-Linux.x86_64.glibc2.17-debug.tar.gz"
-
+mysql_tarball="$HOME/mysql-8.0.30-linux-glibc2.12-x86_64.tar.xz"
 GTID_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 NO_GTID_OPTIONS="--log-bin=binlog --log-slave-updates"
-ENCRYPT_OPTIONS_8="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
-ENCRYPT_OPTIONS_57="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring"
+ENCRYPT_OPTIONS_8="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+ENCRYPT_OPTIONS_57_MS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring"
+ENCRYPT_OPTIONS_57="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-temp-tablespace-encrypt --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
 # Set sysbench variables
 num_tables=10
@@ -151,10 +151,13 @@ replicate_primary() {
 
     if [[ "${MYSQLD_OPTIONS}" = *"keyring_file"* ]]; then
         cp "${mysqldir}"/keyring "${replication_dir1}"
+        rep_mysqld_options=${MYSQLD_OPTIONS//--keyring_file_data=${mysqldir}/--keyring_file_data=${replication_dir1}}
+    else
+        rep_mysqld_options="${MYSQLD_OPTIONS}"
     fi
 
     echo "Start the replica server"
-    "${replication_dir1}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir1} --tmpdir=${replication_dir1}/data --datadir=${replication_dir1}/data --socket=${replication_dir1}/socket.sock --port=18615 --log-error=${replication_dir1}/master.err --server-id=102 --report-host=127.0.0.1 --report-port=18615 ${MYSQLD_OPTIONS} 2>&1 &
+    "${replication_dir1}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir1} --tmpdir=${replication_dir1}/data --datadir=${replication_dir1}/data --socket=${replication_dir1}/socket.sock --port=18615 --log-error=${replication_dir1}/master.err --server-id=102 --report-host=127.0.0.1 --report-port=18615 ${rep_mysqld_options} 2>&1 &
     for ((i=1; i<=30; i++)); do
         if ! "${replication_dir1}"/bin/mysqladmin ping --user=root --socket="${replication_dir1}"/socket.sock >/dev/null 2>&1; then
             sleep 1
@@ -233,10 +236,16 @@ replicate_primary() {
     tar -xf "${mysql_tarball}" -C /tmp/mysql
     mv /tmp/mysql/* "${replication_dir2}"
 
+    if [[ "${MYSQLD_OPTIONS}" = *"keyring_file"* ]]; then
+        BACKUP_PARAMS=${BACKUP_PARAMS//--keyring_file_data=${mysqldir}/--keyring_file_data=${replication_dir1}}
+        PREPARE_PARAMS=${PREPARE_PARAMS//--keyring_file_data=${mysqldir}/--keyring_file_data=${replication_dir1}}
+    fi
     echo "Run a load on primary"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=20 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=20 run >/dev/null 2>&1 &
 
-    if [[ "${MYSQLD_OPTIONS}" != *"gtid-mode=ON"* ]]; then
+    slave_parallel_workers=$("${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "select @@slave_parallel_workers;")
+
+    if [[ "${MYSQLD_OPTIONS}" != *"gtid-mode=ON"* ]] && [[ "${slave_parallel_workers}" -ge 2 ]]; then
         echo "Taking full backup with --slave-info --safe-slave-backup"
         "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket.sock --datadir="${replication_dir1}"/data --slave-info --safe-slave-backup ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
     else
@@ -272,10 +281,13 @@ replicate_primary() {
 
     if [[ "${MYSQLD_OPTIONS}" = *"keyring_file"* ]]; then
         cp "${replication_dir1}"/keyring "${replication_dir2}"
+        rep_mysqld_options=${MYSQLD_OPTIONS//--keyring_file_data=${mysqldir}/--keyring_file_data=${replication_dir2}}
+    else
+        rep_mysqld_options="${MYSQLD_OPTIONS}"
     fi
 
     echo "Start the replica server --skip-slave-start --server-id=103"
-    "${replication_dir2}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir2} --tmpdir=${replication_dir2}/data --datadir=${replication_dir2}/data --socket=${replication_dir2}/socket.sock --port=18620 --log-error=${replication_dir2}/master.err --skip-slave-start --server-id=103 --report-host=127.0.0.1 --report-port=18620 ${MYSQLD_OPTIONS} 2>&1 &
+    "${replication_dir2}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir2} --tmpdir=${replication_dir2}/data --datadir=${replication_dir2}/data --socket=${replication_dir2}/socket.sock --port=18620 --log-error=${replication_dir2}/master.err --skip-slave-start --server-id=103 --report-host=127.0.0.1 --report-port=18620 ${rep_mysqld_options} 2>&1 &
     for ((j=1; j<=30; j++)); do
         if ! "${replication_dir2}"/bin/mysqladmin ping --user=root --socket="${replication_dir2}"/socket.sock >/dev/null 2>&1; then
             sleep 1
@@ -417,14 +429,34 @@ check_tables() {
 
 echo "################################## Running Test ##################################"
 check_dependencies
-echo "Test: Replication with gtid options"
-initialize_db "${GTID_OPTIONS}"
-replicate_primary "" "" "" "${GTID_OPTIONS}"
+echo "Test: Replication with gtid options and multithreaded replica"
+initialize_db "${GTID_OPTIONS} --slave-parallel-workers=4"
+replicate_primary "" "" "" "${GTID_OPTIONS} --slave-parallel-workers=4"
 echo "###################################################################################"
 
-echo "Test: Replication without gtid options"
-initialize_db "${NO_GTID_OPTIONS}"
-replicate_primary "" "" "" "${NO_GTID_OPTIONS}"
+echo "Test: Replication with gtid options and single threaded replica"
+if "${xtrabackup_dir}"/xtrabackup --version 2>&1 | grep "8.0" >/dev/null 2>&1 ; then
+    initialize_db "${GTID_OPTIONS} --slave-parallel-workers=1"
+    replicate_primary "" "" "" "${GTID_OPTIONS} --slave-parallel-workers=1"
+else
+    initialize_db "${GTID_OPTIONS} --slave-parallel-workers=0"
+    replicate_primary "" "" "" "${GTID_OPTIONS} --slave-parallel-workers=0"
+fi
+echo "###################################################################################"
+
+echo "Test: Replication without gtid options and multithreaded replica"
+initialize_db "${NO_GTID_OPTIONS} --slave-parallel-workers=4"
+replicate_primary "" "" "" "${NO_GTID_OPTIONS} --slave-parallel-workers=4"
+echo "###################################################################################"
+
+echo "Test: Replication without gtid options and single threaded replica"
+if "${xtrabackup_dir}"/xtrabackup --version 2>&1 | grep "8.0" >/dev/null 2>&1 ; then
+    initialize_db "${NO_GTID_OPTIONS} --slave-parallel-workers=0"
+    replicate_primary "" "" "" "${NO_GTID_OPTIONS} --slave-parallel-workers=0"
+else
+    initialize_db "${NO_GTID_OPTIONS} --slave-parallel-workers=0"
+    replicate_primary "" "" "" "${NO_GTID_OPTIONS} --slave-parallel-workers=0"
+fi
 echo "###################################################################################"
 
 if "${xtrabackup_dir}"/xtrabackup --version 2>&1 | grep "8.0" >/dev/null 2>&1 ; then
