@@ -3,13 +3,15 @@
 ########################################################################
 # Created By Manish Chawla, Percona LLC                                #
 # This script tests backup for innodb and myrocks tables               #
-# Assumption: PS8.0 and PXB8.0 are already installed                   #
+# Assumption: PS and PXB are already installed as tarballs             #
 # Usage:                                                               #
 # 1. Set paths in this script:                                         #
 #    xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir, # 
 #    vault_config, cloud_config                                        #
-# 2. Run the script as: ./innodb_myrocks_backup_tests.sh               #
-# 3. Logs are available in: logdir                                     #
+# 2. Set config variables in the script for                            #
+#    sysbench, stream, encryption key, kmip, kms                       #
+# 3. For usage run the script as: ./innodb_myrocks_backup_tests.sh     #
+# 4. Logs are available in: logdir                                     #
 ########################################################################
 
 # Set script variables
@@ -2644,18 +2646,31 @@ test_blob_column() {
 }
 
 if [ "$#" -lt 1 ]; then
-    echo "Usage: Please run the script with the following testsuites"
-    echo "Various_ddl_tests"
-    echo "File_encrypt_compress_stream_tests"
-    echo "Encryption_PXB2_4_PS5_7_tests"
-    echo "Encryption_PXB2_4_MS5_7_tests"
-    echo "Encryption_PXB8_0_PS8_0_tests"
-    echo "Encryption_PXB8_0_PS8_0_KMIP_tests"
-    echo "Encryption_PXB8_0_PS8_0_KMS_tests"
-    echo "Encryption_PXB8_0_MS8_0_tests"
-    echo "Cloud_backup_tests"
-    echo "Innodb_params_redo_archive_tests"
-    echo "SSL_tests"
+    echo "This script tests backup for innodb and myrocks tables"
+    echo "Assumption: PS and PXB are already installed as tarballs"
+    echo "Usage: "
+    echo "1. Set paths in this script for"
+    echo "   xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir, vault_config, cloud_config"
+    echo "2. Set config variables in the script for"
+    echo "   sysbench, stream, encryption key, kmip, kms"
+    echo "3. Run the script as: $0 <Test Suites>"
+    echo "   Test Suites: "
+    echo "   Various_ddl_tests"
+    echo "   File_encrypt_compress_stream_tests"
+    echo "   Encryption_PXB2_4_PS5_7_tests"
+    echo "   Encryption_PXB2_4_MS5_7_tests"
+    echo "   Encryption_PXB8_0_PS8_0_tests"
+    echo "   Encryption_PXB8_0_PS8_0_KMIP_tests"
+    echo "   Encryption_PXB8_0_PS8_0_KMS_tests"
+    echo "   Encryption_PXB8_0_MS8_0_tests"
+    echo "   Cloud_backup_tests"
+    echo "   Innodb_params_redo_archive_tests"
+    echo "   SSL_tests"
+    echo " "
+    echo "   Example:"
+    echo "   $0 Various_ddl_tests File_encrypt_compress_stream_tests Encryption_PXB8_0_PS8_0_tests"
+    echo " "
+    echo "4. Logs are available at: $logdir"
     exit 1
 fi
 
