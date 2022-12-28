@@ -3,7 +3,7 @@
 ########################################################################
 # Created By Manish Chawla, Percona LLC                                #
 # This script tests backup for tablespaces in different paths          #
-# Assumption: PS8.0 and PXB8.0 are already installed                   #
+# Assumption: PS8.0 and PXB8.0 are already installed as tarballs       #
 # Usage:                                                               #
 # 1. Set paths in this script:                                         #
 #    xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir  #

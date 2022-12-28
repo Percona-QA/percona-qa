@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#############################################################################
-# Created By Manish Chawla, Percona LLC                                     #
-# This script tests backup during upgrade from previous to current version  #
-# Assumption: PS8.0 and PXB8.0 are already installed                        #
-# Usage:                                                                    #
-# 1. Set paths in this script:                                              #
-#    xtrabackup_dir, previous_xtrabackup_dir, backup_dir, mysqldir,         #
-#    datadir, qascripts, logdir                                             #
-# 2. Run the script as: ./upgrade_backup_tests.sh                           #
-# 3. Logs are available in: logdir                                          #
-#############################################################################
+#################################################################################
+# Created By Manish Chawla, Percona LLC                                         #
+# This script tests backup during upgrade from previous to current pxb version  #
+# Assumption: PS8.0 and PXB8.0 are already installed as tarballs                #
+# Usage:                                                                        #
+# 1. Set paths in this script:                                                  #
+#    xtrabackup_dir, previous_xtrabackup_dir, backup_dir, mysqldir,             #
+#    datadir, qascripts, logdir                                                 #
+# 2. Run the script as: ./upgrade_backup_tests.sh                               #
+# 3. Logs are available in: logdir                                              #
+#################################################################################
 
 # Set script variables
 export xtrabackup_dir="$HOME/pxb_8_0_25_debug/bin"

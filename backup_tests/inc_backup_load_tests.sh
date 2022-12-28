@@ -1,17 +1,17 @@
 #!/bin/bash
 
-########################################################################
-# Created By Manish Chawla, Percona LLC                                #
-# This script tests backup with a load tool as pquery/pstress/sysbench #
-# Assumption: PS8.0 and PXB8.0 are already installed as tarballs       #
-# Usage:                                                               #
-# 1. Compile pquery/pstress with mysql                                 #
-# 2. Set variables in this script:                                     #
-#    xtrabackup_dir, mysqldir, datadir, backup_dir, qascripts, logdir, #
-#    load_tool, tool_dir, num_tables, table_size, kmip configuration   #
-# 3. Run the script as: ./inc_backup_load_tests.sh <Test Suite>        #
-# 4. Logs are available in: logdir                                     #
-########################################################################
+#############################################################################
+# Created By Manish Chawla, Percona LLC                                     #
+# This script tests backup with a load tool as pquery/pstress/sysbench      #
+# Assumption: PS and PXB are already installed as tarballs                  #
+# Usage:                                                                    #
+# 1. Compile pquery/pstress with mysql                                      #
+# 2. Set variables in this script:                                          #
+#    xtrabackup_dir, mysqldir, datadir, backup_dir, qascripts, logdir,      #
+#    load_tool, tool_dir, num_tables, table_size, kmip, kms configuration   #
+# 3. For usage run the script as: ./inc_backup_load_tests.sh                #
+# 4. Logs are available in: logdir                                          #
+#############################################################################
 
 # Set script variables
 export xtrabackup_dir="$HOME/pxb_8_0_30_debug/bin"
@@ -866,12 +866,25 @@ run_crash_tests_pstress() {
 }
 
 if [ "$#" -lt 1 ]; then
-    echo "Usage: Please run the script with the following testsuites"
-    echo "Normal_and_Encryption_tests"
-    echo "Kmip_Encryption_tests"
-    echo "Kms_Encryption_tests"
-    echo "Rocksdb_tests"
-    echo "Page_Tracking_tests"
+    echo "This script tests backup with a load tool as pquery/pstress/sysbench"
+    echo "Assumption: PS and PXB are already installed as tarballs"
+    echo "Usage: "
+    echo "1. Compile pquery/pstress with mysql"             
+    echo "2. Set variables in this script:"  
+    echo "   xtrabackup_dir, mysqldir, datadir, backup_dir, qascripts, logdir,"
+    echo "   load_tool, tool_dir, num_tables, table_size, kmip, kms configuration"
+    echo "3. Run the script as: $0 <Test Suites>"
+    echo "   Test Suites: "
+    echo "   Normal_and_Encryption_tests"
+    echo "   Kmip_Encryption_tests"
+    echo "   Kms_Encryption_tests"
+    echo "   Rocksdb_tests"
+    echo "   Page_Tracking_tests"
+    echo " "
+    echo "   Example:"
+    echo "   $0 Normal_and_Encryption_tests Page_Tracking_tests"
+    echo " "
+    echo "4. Logs are available at: $logdir"
     exit 1
 fi
 
