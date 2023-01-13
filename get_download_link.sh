@@ -180,26 +180,26 @@ get_link(){
     fi
 
   elif [[ "${PRODUCT}" = "psmdb" && "${BUILD_ARCH}" = "x86_64" ]]; then
-    if [[ "${VERSION}" = "3.4" ]]; then
-      if [[ "${DISTRIBUTION}" = "ubuntu" ]]; then OPT="-xenial";
-      elif [[ "${DISTRIBUTION}" = "centos" ]]; then OPT="-centos6";
-      else OPT="-${DISTRIBUTION}"; fi
-    else OPT=""; fi
+     if [[ "${DISTRIBUTION}" = "jammy" ]]; then
+       GLIBC_VERSION="glibc2.35"
+     else
+       GLIBC_VERSION="glibc2.17"
+     fi
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?${OPT}-${BUILD_ARCH}(\.glibc\d\.\d+)?\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/tarball/${LINK}"; fi
+	LINK=$(wget -qO- https://downloads.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?-${BUILD_ARCH}.${GLIBC_VERSION}.tar.gz"|head -n1)
+        if [[ ! -z ${LINK} ]]; then LINK="https://downloads.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/binary/tarball/${LINK}"; fi
       else
-        LINK=$(wget -qO- https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
-        if [[ ! -z ${LINK} ]]; then LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/tarball/${LINK}"; fi
+        LINK=$(wget -qO- https://downloads.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/|grep -oE "percona-server-mongodb-${VERSION}\.[0-9]+-[0-9]+(\.[0-9]+)?\.tar\.gz"|head -n1)
+        if [[ ! -z ${LINK} ]]; then LINK="https://downloads.percona.com/downloads/percona-server-mongodb-${VERSION}/LATEST/source/tarball/${LINK}"; fi
       fi
     else
       VERSION_UPSTREAM=$(echo "${VERSION_FULL}" | awk -F '-' '{print $1}')
       VERSION_PERCONA=$(echo "${VERSION_FULL}" | awk -F '-' '{print $2}')
       if [[ ${SOURCE} = 0 ]]; then
-        LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}/binary/tarball/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}-${OPT}-${BUILD_ARCH}.tar.gz"
+        LINK="https://downloads.percona.com/downloads/percona-server-mongodb-${VERSION}/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}/binary/tarball/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}-${OPT}-${BUILD_ARCH}.tar.gz"
       else
-        LINK="https://www.percona.com/downloads/percona-server-mongodb-${VERSION}/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}/source/tarball/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}.tar.gz"
+        LINK="https://downloads.percona.com/downloads/percona-server-mongodb-${VERSION}/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}/source/tarball/percona-server-mongodb-${VERSION_UPSTREAM}-${VERSION_PERCONA}.tar.gz"
       fi
     fi
 
@@ -341,26 +341,17 @@ get_link(){
 
   elif [[ "${PRODUCT}" = "mongodb" ]]; then
     if [[ ${SOURCE} = 0 ]]; then
-      BASE_LINK="http://downloads.mongodb.org/linux/"
+      BASE_LINK="http://fastdl.mongodb.org/linux/"
     else
-      BASE_LINK="http://downloads.mongodb.org/src/"
+      BASE_LINK="http://fastdl.mongodb.org/src/"
     fi
-    if [[ "${VERSION}" == "4.2" ]]; then
-      if [[ "${DISTRIBUTION}" == "ubuntu" ]]; then
-        DISTRIBUTION="-ubuntu1804"
-      else
-        DISTRIBUTION="-${DISTRIBUTION}";
-      fi
-    else
-      DISTRIBUTION=""
-    fi
-
+    DISTRIBUTION="-${DISTRIBUTION}";
     if [[ -z ${VERSION_FULL} ]]; then
       if [[ ${SOURCE} = 0 ]]; then
-        TARBALL=$(wget -qO- https://www.mongodb.org/dl/linux/x86_64 | grep -o -E "mongodb-linux-x86_64${DISTRIBUTION}-${VERSION}\..{1,6}\.tgz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
+	TARBALL=$(wget -qO- https://www.mongodb.com/try/download/community | grep -o -E "mongodb-linux-x86_64${DISTRIBUTION}-${VERSION}\..{1,6}\.tgz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       else
-        TARBALL=$(wget -qO- https://www.mongodb.org/dl/src | grep -o -E "mongodb-src-r${VERSION}\..{1,6}\.tar.gz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
+        TARBALL=$(wget -qO- https://www.mongodb.com/try/download/community | grep -o -E "mongodb-src-r${VERSION}\..{1,6}\.tar.gz" | grep -viE "(\-rc|\-beta|\-alpha)+" | head -n1)
         LINK="${BASE_LINK}${TARBALL}"
       fi
     else
