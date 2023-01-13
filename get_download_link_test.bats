@@ -51,36 +51,36 @@
 }
 
 
-@test "check psmdb 3.4" {
-  ./get_download_link.sh --product psmdb --version 3.4
-}
-@test "check psmdb 3.6" {
-  ./get_download_link.sh --product psmdb --version 3.6
-}
-@test "check psmdb 4.0" {
-  ./get_download_link.sh --product psmdb --version 4.0
-}
 @test "check psmdb 4.2" {
   ./get_download_link.sh --product psmdb --version 4.2
 }
+@test "check psmdb 4.4" {
+  ./get_download_link.sh --product psmdb --version 4.4
+}
+@test "check psmdb 5.0" {
+  ./get_download_link.sh --product psmdb --version 5.0
+}
+@test "check psmdb 6.0" {
+  ./get_download_link.sh --product psmdb --version 6.0
+}
 
-@test "check psmdb 3.4 source" {
-  ./get_download_link.sh --product psmdb --version 3.4 --source
-}
-@test "check psmdb 3.6 source" {
-  ./get_download_link.sh --product psmdb --version 3.6 --source
-}
-@test "check psmdb 4.0 source" {
-  ./get_download_link.sh --product psmdb --version 4.0 --source
-}
 @test "check psmdb 4.2 source" {
   ./get_download_link.sh --product psmdb --version 4.2 --source
 }
+@test "check psmdb 4.4 source" {
+  ./get_download_link.sh --product psmdb --version 4.4 --source
+}
+@test "check psmdb 5.0 source" {
+  ./get_download_link.sh --product psmdb --version 5.0 --source
+}
+@test "check psmdb 6.0 source" {
+  ./get_download_link.sh --product psmdb --version 6.0 --source
+}
 
-@test "check psmdb 3.4 for centos" {
-  run ./get_download_link.sh --product psmdb --version 3.4 --distribution centos
+@test "check psmdb 6.0 for jammy" {
+  run ./get_download_link.sh --product psmdb --version 6.0 --distribution jammy
   [ "$status" -eq 0 ]
-  [ "$(echo $output | grep -c 'centos6')" -eq 1 ]
+  [ "$(echo $output | grep -c 'glibc2.35')" -eq 1 ]
 }
 
 @test "check pt" {
@@ -108,12 +108,12 @@
 @test "check pxb 2.4 for centos" {
   run ./get_download_link.sh --product pxb --version 2.4 --distribution centos
   [ "$status" -eq 0 ]
-  [ "$(echo $output | grep -c 'libgcrypt145')" -eq 1 ]
+  [ "$(echo $output | grep -c 'glibc2.12')" -eq 1 ]
 }
 @test "check pxb 8.0 for centos" {
   run ./get_download_link.sh --product pxb --version 8.0 --distribution centos
   [ "$status" -eq 0 ]
-  [ "$(echo $output | grep -c 'glibc2.12')" -eq 1 ]
+  [ "$(echo $output | grep -c 'glibc2.17')" -eq 1 ]
 }
 
 @test "check pmm-client" {
@@ -156,7 +156,6 @@
 @test "check mariadb 10.4" {
   ./get_download_link.sh --product mariadb --version 10.4
 }
-
 @test "check mariadb 10.2 source" {
   ./get_download_link.sh --product mariadb --version 10.2 --source
 }
@@ -167,17 +166,30 @@
   ./get_download_link.sh --product mariadb --version 10.4 --source
 }
 
-@test "check mongodb 3.4" {
-  ./get_download_link.sh --product mongodb --version 3.4
-}
-@test "check mongodb 3.6" {
-  ./get_download_link.sh --product mongodb --version 3.6
-}
-@test "check mongodb 4.0" {
-  ./get_download_link.sh --product mongodb --version 4.0
-}
 @test "check mongodb 4.2" {
-  ./get_download_link.sh --product mongodb --version 4.2
+  ./get_download_link.sh --product mongodb --version 4.2 --distribution rhel70
+}
+@test "check mongodb 4.4" {
+  ./get_download_link.sh --product mongodb --version 4.4 --distribution debian10
+}
+@test "check mongodb 5.0" {
+  ./get_download_link.sh --product mongodb --version 5.0 --distribution ubuntu2004
+}
+@test "check mongodb 6.0" {
+  ./get_download_link.sh --product mongodb --version 6.0  --distribution amazon2
+}
+
+@test "check mongodb 4.2 source" {
+  ./get_download_link.sh --product mongodb --version 4.2 --source
+}
+@test "check mongodb 4.4 source" {
+  ./get_download_link.sh --product mongodb --version 4.4 --source
+}
+@test "check mongodb 5.0 source" {
+  ./get_download_link.sh --product mongodb --version 5.0 --source
+}
+@test "check mongodb 6.0 source" {
+  ./get_download_link.sh --product mongodb --version 6.0 --source
 }
 
 @test "check proxysql" {
