@@ -268,43 +268,43 @@ function  check_file(){
 }
 
 @test "check mongodb 4.2" {
-  ./get_download_link.sh --product mongodb --version 4.2 --distribution rhel70
+  run ./get_download_link.sh --product mongodb --version 4.2 --distribution rhel70
   [ "$status" -eq 0 ]
   check_file
 }
 @test "check mongodb 4.4" {
-  ./get_download_link.sh --product mongodb --version 4.4 --distribution debian10
+  run ./get_download_link.sh --product mongodb --version 4.4 --distribution debian10
   [ "$status" -eq 0 ]
   check_file
 }
 @test "check mongodb 5.0" {
-  ./get_download_link.sh --product mongodb --version 5.0 --distribution ubuntu2004
+  run ./get_download_link.sh --product mongodb --version 5.0 --distribution ubuntu2004
   [ "$status" -eq 0 ]
   check_file
 }
 @test "check mongodb 6.0" {
-  ./get_download_link.sh --product mongodb --version 6.0  --distribution amazon2
+  run ./get_download_link.sh --product mongodb --version 6.0  --distribution amazon2
   [ "$status" -eq 0 ]
   check_file
 }
 
 @test "check mongodb 4.2 source" {
-  ./get_download_link.sh --product mongodb --version 4.2 --source
+  run ./get_download_link.sh --product mongodb --version 4.2 --source
   [ "$status" -eq 0 ]
   check_file
 }
 @test "check mongodb 4.4 source" {
-  ./get_download_link.sh --product mongodb --version 4.4 --source
+  run ./get_download_link.sh --product mongodb --version 4.4 --source
   [ "$status" -eq 0 ]
   check_file
 }
 @test "check mongodb 5.0 source" {
-  ./get_download_link.sh --product mongodb --version 5.0 --source
+  run ./get_download_link.sh --product mongodb --version 5.0 --source
   [ "$status" -eq 0 ]
   check_file
 }
 @test "check mongodb 6.0 source" {
-  ./get_download_link.sh --product mongodb --version 6.0 --source
+  run ./get_download_link.sh --product mongodb --version 6.0 --source
   [ "$status" -eq 0 ]
   check_file
 }
