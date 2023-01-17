@@ -210,7 +210,7 @@ Usage: dgcov --help
 Options:
 
 --help        This help.
---verbose     Increase verbosity with 1 (default is 1)
+--verbose     Verbosity, detailed output (default is 1)
 --uncommitted Changes only in staging area that are not being committed.
 
 The dgcov program runs on gcov files for Code Coverage Analysis, and reports 
