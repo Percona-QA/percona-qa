@@ -36,6 +36,8 @@ my $nosource = {};
 my $uncommitt_filemap = {};
 my $filemap = {};
 my %missing_files;
+my $uncovered = 0;
+my $instrumented = 0;
 
 my @revisions = @ARGV;
 
@@ -57,7 +59,7 @@ for my $file (sort keys %$filemap) {
   if $uncommitt_filemap->{$file};
 
   next unless @$lines; 
-  my $gcov_file = findGcovFile($file);
+  my $gcov_file = findGcov($file);
   if (defined $gcov_file) {
       print "Using $gcov_file for $file\n";
       my $gcov_dir = dirname($gcov_file);
@@ -68,23 +70,47 @@ for my $file (sort keys %$filemap) {
           $missing_files{$gcov_file}=1;
           next;
       }
+
+      my ($cov, $lineno, $code, $full);
+      my $header = undef;
+      my $last_lineno = undef;
+
+      my $printer = sub {
+          unless($header) {
+              print("\nFile: $file\n", '-' x 79, "\n");
+              $header = 1;
+          }
+          print($_[0]);
+      };
+
+      while(<FH>) {
+          next if /^function /;       # Skip function summaries.
+	  next if (/^-------/) or (/^_ZN*/); # TODO :: Handle embedded constructor calls.
+          croak "Unexpected line '$_'\n in $gcov_file"
+               unless /^([^:]+):[ \t]*(\d+):(.*)$/;
+          ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
+
+	  foreach (@$lines) {
+	  if ($lineno eq $_ and $cov =~/#####/)
+	  { 
+	       $uncovered++;
+	       $instrumented++;
+	       $printer->("|$full");
+	  } elsif ($lineno eq $_ and $cov =~ /^[ \t]*\d+$/ ) {
+	       $instrumented++;
+  	  }
+          }
   }
    close FH;
-}  
+ }  
+}
 
 print("----- End of report ----- \n");
 exit 0;
 
 #Subroutines
 
-sub ignoreDir {
-    my ($dir) = @_;
-    return 1 if $dir =~ m/embedded.dir/;
-    return 1 if $dir =~ m/innochecksum.dir/;
-    return 0;
-}
-
-sub findGcovFile {
+sub findGcov{
     my ($fname) = @_;
     # Seperate dir and filename.
     my $dir = dirname($fname);
@@ -94,23 +120,16 @@ sub findGcovFile {
     
     my @found;
     print "Looking for gcov files for $fname\n" if $verbose;
-    find({wanted => sub {
-        ## Ignore embedded files
-        if ($_ eq "$file.gcno") {
-            if (ignoreDir($File::Find::dir)) {
-                print "Ignoring $File::Find::name\n" if $verbose;
-            } else {
-                push @found, $File::Find::dir."/".$file.".gcov";
-            }
-        }
-          }
-         },
-         ".");
-
-    my $gcf;
+    find(sub {
+	if ($_ eq "$file.gcda") {
+	       push @found, $File::Find::dir."/".$file.".gcov";
+	}
+        },
+        ".");
+	
+    my $gcf = undef;
     if ($#found < 0) {
         # None found
-        $gcf = undef;
     } elsif ($#found == 0) {
         # If just one, we pick it
         $gcf = $found[0];
@@ -130,18 +149,19 @@ sub findGcovFile {
          }
 	}
         # If we cant find based on clue, we'll just pick the first one
-        if (not defined $gcf) {
+        if (not defined $gcf && ($#found >= 0)) {
             $gcf = $found[0];
             print "Unable to detect which gcov files to use for $fname. Choosing $gcf\n" if $verbose ;
         }
     }
-    if (defined $gcf) {
+    if (defined $gcf && -e $gcf) {
         print "Found gcov file $gcf\n" if $verbose ;
+  	return $gcf;
     } else {
         print "Found no gcov file for $fname\n" if $verbose;
 	$missing_files{$fname}=1;
+  	return;
     }
-    return $gcf;
 }
 
 
