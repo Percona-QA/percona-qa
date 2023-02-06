@@ -9,20 +9,20 @@ use Carp;
 use Data::Dumper;
 
 my $help;
-my $verbose = undef;
-my $sandbox = undef;
+my $verbose;
+my $sandbox;
 my $uncommitted;
 
-#Main
+# Main
 
-my $options= GetOptions
+my $options = GetOptions
   (
    "verbose"    => \$verbose,
    "help"       => \$help,
-   "sandbox=s"  => \$sandbox,
    "uncommitted" => \$uncommitted,
   );
 
+   
 if (not $options) {
     print "Use --help for usage\n";
     exit 1;
@@ -31,15 +31,13 @@ if (not $options) {
 usage() if $help;
 
 my $file_regexp= qr/\.(c|cc|cpp|h|hpp|i|ic)$/;
-my $git = "git";
-my $nosource = {};
-my $uncommitt_filemap = {};
 my $filemap = {};
+my $uncommitt_filemap = {};
+my $nosource = {};
 my %missing_files;
 my $uncovered = 0;
 my $instrumented = 0;
-
-my @revisions = @ARGV;
+my $git = "git";
 
 print("----- Start of report ----- \n");
 
@@ -54,14 +52,12 @@ if($uncommitted) {
 for my $file (sort keys %$filemap) {
 
   my $lines = [ ];
-
-  $lines = get_cov_lines($uncommitt_filemap->{$file}, $lines)
+  $lines = get_cov_lines($uncommitt_filemap->{$file})
   if $uncommitt_filemap->{$file};
-
   next unless @$lines; 
   my $gcov_file = findGcov($file);
   if (defined $gcov_file) {
-      print "Using $gcov_file for $file\n";
+      print "Using Gcov file $gcov_file for $file\n";
       my $gcov_dir = dirname($gcov_file);
 
       my $res = open FH, '<', $gcov_file;
@@ -73,7 +69,6 @@ for my $file (sort keys %$filemap) {
 
       my ($cov, $lineno, $code, $full);
       my $header = undef;
-      my $last_lineno = undef;
 
       my $printer = sub {
           unless($header) {
@@ -84,15 +79,14 @@ for my $file (sort keys %$filemap) {
       };
 
       while(<FH>) {
-          next if /^function /;       # Skip function summaries.
+          next if /^function /; # Skip function summaries.
 	  next if (/^-------/) or (/^_ZN*/); # TODO :: Handle embedded constructor calls.
           croak "Unexpected line '$_'\n in $gcov_file"
                unless /^([^:]+):[ \t]*(\d+):(.*)$/;
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
 
 	  foreach (@$lines) {
-	  if ($lineno eq $_ and $cov =~/#####/)
-	  { 
+	  if ($lineno eq $_ and $cov =~/#####/) {
 	       $uncovered++;
 	       $instrumented++;
 	       $printer->("|$full");
@@ -101,32 +95,40 @@ for my $file (sort keys %$filemap) {
   	  }
           }
   }
-   close FH;
+  close FH;
  }  
 }
 
+print('-' x 79, "\n\n");
+print("$instrumented modified line(s) instrumented.\n");
+if ($instrumented != 0) {
+    print("$uncovered modified and instrumented line(s) not covered by tests.\n");
+    printf("Line Coverage is %.2f%% of modified code.\n\n", (($instrumented-$uncovered)/$instrumented * 100));
+}
 print("----- End of report ----- \n");
+
 exit 0;
 
-#Subroutines
+# Subroutines
 
-sub findGcov{
+sub findGcov {
     my ($fname) = @_;
     # Seperate dir and filename.
     my $dir = dirname($fname);
     my @dir = split('/', $dir);
     @dir = reverse @dir;
     my $file = basename($fname);
-    
+ 
     my @found;
     print "Looking for gcov files for $fname\n" if $verbose;
+    my $gcov_file = "$file.gcda";
     find(sub {
-	if ($_ eq "$file.gcda") {
-	       push @found, $File::Find::dir."/".$file.".gcov";
+	if ($_ eq $gcov_file && -e $gcov_file) {
+	   push @found, $File::Find::dir."/".$file.".gcov";
 	}
         },
         ".");
-	
+
     my $gcf = undef;
     if ($#found < 0) {
         # None found
@@ -151,7 +153,7 @@ sub findGcov{
         # If we cant find based on clue, we'll just pick the first one
         if (not defined $gcf && ($#found >= 0)) {
             $gcf = $found[0];
-            print "Unable to detect which gcov files to use for $fname. Choosing $gcf\n" if $verbose ;
+	    print "Unable to detect which gcov files to use for $fname. Choosing $gcf\n" if $verbose ;
         }
     }
     if (defined $gcf && -e $gcf) {
@@ -164,13 +166,12 @@ sub findGcov{
     }
 }
 
-
 sub findSource {
     my ($Sandbox) = @_;
     if (defined $Sandbox) {
-        my $root= "$Sandbox\/.git";
+        my $root = "$Sandbox\/.git";
         if (!-d $root) {
-            croak "Failed to find git root ,this tool must be run within a git working tree";
+            croak "Failed to find git root, this tool must be run within a git working tree";
         } else {
             return $Sandbox;
         }
@@ -180,9 +181,7 @@ sub findSource {
             while (<CACHE>){
                 if (m/^MySQL_SOURCE_DIR:STATIC=(.*)$/) {
                     my $dir = $1;
-                    if ($verbose) {
-                        print "Found source directory at ".$dir."\n";
-                    }
+                    print "Found source directory at ".$dir."\n" if $verbose;
                     return $dir;
                 }
             }
@@ -196,7 +195,7 @@ sub findSource {
 sub find_uncommitted_changes {
   my $cmd;
   $cmd = "$git status -s -uno $sandbox";
-    print "Running: $cmd\n"
+  print "Running: $cmd\n"
     if $verbose;
   open GIT_STAT, "$cmd |"
       or croak "Failed to spawn '$cmd': $!: $?\n";
@@ -206,15 +205,15 @@ sub find_uncommitted_changes {
     next if ($file =~ /unittest/);
     if ($file =~ $file_regexp)
     {
-      printf "Added file %s in revision(s) list\n", $file 
+      printf "File %s added in revision(s) list\n", $file 
              if $verbose;
       $filemap->{$file} = 1;
     }
     else
     {
       printf "Skipping non source file %s\n", $file
-      if $verbose;
-         $nosource->{$file}= 1;
+           if $verbose;
+     $nosource->{$file}= 1;
     }
   }
   close GIT_STAT
@@ -228,7 +227,7 @@ sub find_uncommitted_changes {
 }
 
 sub get_diff_changes {
-      my ($file)=@_;
+      my ($file) = @_;
       my $modified = [ ];
       my $cmd = "$git diff -U0 $sandbox\/$file";	
       print "Running: $cmd\n"
@@ -260,35 +259,33 @@ sub get_diff_changes {
            }
      }
      close GIT_DIFF
-          or croak "command '$cmd' failed: $!: $?\n";
+          or croak "Command '$cmd' failed: $!: $?\n";
      return $modified;
 }
 
 sub get_cov_lines {
-  my ($c, $l) = @_;
-  my $l_new = [ ];
-  # Copy over line numbers, applying the diffs on the way.
-  for my $d (@$c) {
-    my $t = shift @$d;
-     if($t eq 'm') {
-      my ($from, $to) = @$d;
-      push @$l_new, ($from .. $to);
+  my ($content) = @_;
+  my $new_lines = [ ];
+  for my $elements (@$content) {
+    my $type = shift @$elements;
+     if($type eq 'm') {
+      my ($from, $to) = @$elements;
+      push @$new_lines, ($from .. $to);
     } else {
-      croak "Internal?!?";
+      croak "Unable to get coverage info lines";
     }
   }
-  return $l_new;
+  return $new_lines;
 }
 
 sub usage {
   print <<'END';
 Usage: dgcov --help
        dgcov [options]
-
 Options:
 
---help        This help.
---verbose     Increase verbosity with 1 (default is 1)
+--help        Display script usage information.
+--verbose     Show command outputs by setting verbosity with 1.
 --uncommitted Changes only in staging area that are not being committed.
 
 The dgcov program runs on gcov files for Code Coverage Analysis, and reports 
@@ -301,4 +298,3 @@ modified in the specified commits.
 END
 exit 1;
 }
-
