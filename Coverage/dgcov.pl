@@ -6,7 +6,6 @@ use Getopt::Long;
 use File::Find;
 use File::Basename;
 use Carp;
-use Data::Dumper;
 
 my $help;
 my $verbose;
@@ -67,9 +66,7 @@ for my $file (sort keys %$filemap) {
           next;
       }
 
-      my ($cov, $lineno, $code, $full);
       my $header = undef;
-
       my $printer = sub {
           unless($header) {
               print("\nFile: $file\n", '-' x 79, "\n");
@@ -78,6 +75,7 @@ for my $file (sort keys %$filemap) {
           print($_[0]);
       };
 
+      my ($cov, $lineno, $code, $full);
       while(<FH>) {
           next if /^function /; # Skip function summaries.
 	  next if (/^-------/) or (/^_ZN*/); # TODO :: Handle embedded constructor calls.
