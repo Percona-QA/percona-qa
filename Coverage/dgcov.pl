@@ -82,7 +82,7 @@ if($local) {
 }
 
 if ($merges) {
-    print("Including merges\n") unless $verbose < 1;
+    print("Including merges\n") unless $verbose;
 }
 
 # Find all files and their revisions included in the list of revisions.
@@ -91,7 +91,7 @@ for my $cs (@revisions) {
   my $cmd= "$git log ";
   $cmd.= "$cs -n1 ";
   $cmd.= "--no-merges "
-     if ($merges);
+     if (not defined $merges);
   $cmd.= "--oneline --pretty=\"%H\"";
   print "Running $cmd\n"
      if $verbose;
@@ -104,7 +104,7 @@ for my $cs (@revisions) {
   $cmd = "$git log ";
   $cmd.= "$revid -n1 ";
   $cmd.= "--no-merges "
-     if ($merges);
+     if (not defined $merges);
   $cmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\"";
 
   find_changes($cmd);
