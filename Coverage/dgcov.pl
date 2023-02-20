@@ -4,13 +4,14 @@ use strict;
 use warnings;
 use Getopt::Long;
 use File::Find;
+use Cwd 'realpath';
 use File::Basename;
 use Carp;
 
 # Args
 my $help;
 my $verbose;
-my $sandbox;
+my $source;
 my $uncommitted;
 my $local;
 my $merges;
@@ -18,11 +19,12 @@ my $changedlines = 0;
 
 my $options = GetOptions
   (
-   "verbose"    => \$verbose,
-   "help"       => \$help,
    "uncommitted" => \$uncommitted,
    "local"       => \$local,
-   "merges!" => \$merges,
+   "merges!"     => \$merges,
+   "verbose"     => \$verbose,
+   "help"        => \$help,
+   "source=s"    => \$source,
   );
 
 if (not $options) {
@@ -51,11 +53,11 @@ my $git = "git";
 print("----- Start of report ----- \n");
 
 # Find source location to run the scrip from.
-$sandbox = findSource($sandbox);
+$source = findSource($source);
 
 # Staged/Working changes only.
 if($uncommitted) {
-  my $cmd = "$git status -s -uno $sandbox";
+  my $cmd = "$git status -s -uno $source";
   find_changes($cmd);
   foreach my $file (keys %$filemap) {
     $uncommitt_filemap->{$file} = get_diff_lines($file);
@@ -75,7 +77,7 @@ if($local) {
             if $verbose;
     }
     if ($#revisions < 0) {
-        print("No local revisions in $sandbox\n");
+        print("No local revisions in $source\n");
         print("----- End of dgcov.pl report ----- \n");
         exit 0;
     }
@@ -83,6 +85,8 @@ if($local) {
 
 if ($merges) {
     print("Including merges\n") unless $verbose;
+} else {
+    print("Skipping merges\n") unless $verbose;
 }
 
 # Find all files and their revisions included in the list of revisions.
@@ -105,7 +109,7 @@ for my $cs (@revisions) {
   $cmd.= "$revid -n1 ";
   $cmd.= "--no-merges "
      if (not defined $merges);
-  $cmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\"";
+  $cmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\" $source";
 
   find_changes($cmd);
 }
@@ -126,7 +130,6 @@ for my $file (sort keys %$filemap) {
 
   # All lines in revision(s) changed.
   $changedlines = $changedlines + scalar @$lines;
-  
   next unless @$lines; 
   my $gcov_file = findGcov($file);
 
@@ -186,9 +189,12 @@ exit 0;
 
 sub findGcov {
     my ($fname) = @_;
-    # Seperate dir and filename.
+    # Seperate dir and filename
     my $dir = dirname($fname);
     my @dir = split('/', $dir);
+    # Special case
+    my @cmake_dir = ("sql_main","sql_dd","sql_gis");
+    @dir = (@dir, @cmake_dir) if ( grep(/^sql$/, @dir) );
     @dir = reverse @dir;
     my $file = basename($fname);
  
@@ -213,15 +219,18 @@ sub findGcov {
 	foreach my $clue (@dir) {
         $clue = "$clue.dir";
         foreach my $file (@found) {
-            my $parent = dirname($file);
-            my $gparent = dirname($parent);
-	    if ($gparent =~ m/$clue/) {
+            my $fpath = dirname($file);
+	    my @parents = split('/',$fpath);
+	    foreach my $parent (@parents) {
+	    if ($parent =~ m/^$clue$/) {
                 $gcf = $file;
 		last;
             }
+   	    }
 	    # Skip searching once our clue is usefull 
 	    last if defined $gcf;
          }
+	last if defined $gcf;
 	}
         # If we cant find based on clue, we'll just pick the first one
         if (not defined $gcf && ($#found >= 0)) {
@@ -240,13 +249,13 @@ sub findGcov {
 }
 
 sub findSource {
-    my ($Sandbox) = @_;
-    if (defined $Sandbox) {
-        my $root = "$Sandbox\/.git";
+    my ($Source) = @_;
+    if (defined $Source) {
+        my $root = "$Source\/.git";
         if (!-d $root) {
             croak "Failed to find git root, this tool must be run within a git working tree";
         } else {
-            return $Sandbox;
+            return $Source;
         }
     } else {
         if (-e "CMakeCache.txt") {
@@ -274,6 +283,8 @@ sub find_changes {
   while(<GIT_CMD>) {
     next unless /(A|M)\s+(.*)$/;
     my $file = $2;
+    $file = realpath($file) if $uncommitted;
+    $file = $source."/".$file if $local;
     next if ($file =~ /unittest/);
     if ($file =~ $file_regexp)
     {
@@ -298,7 +309,7 @@ sub get_diff_lines {
       my $cmd = "$git diff -U0 ";
       $cmd .= "origin...HEAD "
          if $local;
-      $cmd .= "$sandbox\/$file";
+      $cmd .= $file;
       print "Running: $cmd\n"
          if $verbose;
       open GIT_DIFF, "$cmd |"
@@ -359,6 +370,7 @@ Options:
 --uncommitted Changes only in working area that havent being committed.
 --local       Changes committed local tree, but not pushed to origin.
 --merges      Show merge committs as well, default is no-merges.
+--source      Git Soruce/Root directory location.
 
 The dgcov program runs on gcov files for Code Coverage Analysis, and reports 
 missing coverage only for those lines that are changed by the specified revision(s).
