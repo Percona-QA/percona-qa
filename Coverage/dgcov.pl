@@ -11,19 +11,15 @@ use Carp;
 # Args
 my $help;
 my $verbose;
-my $source;
+my $source=undef;
 my $uncommitted;
-my $local;
-my $merges;
 my $changedlines = 0;
 
 my $options = GetOptions
   (
-   "uncommitted" => \$uncommitted,
-   "local"       => \$local,
-   "merges!"     => \$merges,
    "verbose"     => \$verbose,
    "help"        => \$help,
+   "uncommitted" => \$uncommitted,
    "source=s"    => \$source,
   );
 
@@ -46,6 +42,7 @@ my %missing_files;
 my $uncovered = 0;
 my $instrumented = 0;
 my @revisions;
+my ($revid1, $revid2);
 my $git = "git";
 
 # Main
@@ -62,59 +59,29 @@ if($uncommitted) {
   foreach my $file (keys %$filemap) {
     $uncommitt_filemap->{$file} = get_diff_lines($file);
   }
-}
-
-if($local) {
-    # Add revisions present in this snapshot only.
-    # Note: Default is no-merges
-    my $cmd = "$git log --oneline --pretty=\"%H\" origin..HEAD";
-    print "Running: $cmd\n"
-        if $verbose;
-    for $_ (`$cmd`) {
-        chomp($_);
-        push @revisions, $_;
-        print("Added revision $_\n")
-            if $verbose;
+} else {
+# Add revisions present in this snapshot only.
+my $cmd = "$git rev-list HEAD ^origin --first-parent --topo-order";
+print "Running: $cmd\n"
+   if $verbose;
+for $_ (`$cmd`) {
+    chomp($_);
+    push @revisions, $_;
+    print("Added revision $_\n")
+      if $verbose;
     }
     if ($#revisions < 0) {
         print("No local revisions in $source\n");
         print("----- End of dgcov.pl report ----- \n");
         exit 0;
     }
-}
-
-if ($merges) {
-    print("Including merges\n") unless $verbose;
-} else {
-    print("Skipping merges\n") unless $verbose;
-}
-
-# Find all files and their revisions included in the list of revisions.
-for my $cs (@revisions) {
-  my $revid= undef;
-  my $cmd= "$git log ";
-  $cmd.= "$cs -n1 ";
-  $cmd.= "--no-merges "
-     if (not defined $merges);
-  $cmd.= "--oneline --pretty=\"%H\"";
-  print "Running $cmd\n"
-     if $verbose;
-  $cs = `$cmd`;
-  croak "Invalid revision '$cs'.\n"
-     unless $cs =~ /^(\w+)$/;
-  $revid= $1;
-  print("Adding revid $revid\n")
-     if $verbose;
-  $cmd = "$git log ";
-  $cmd.= "$revid -n1 ";
-  $cmd.= "--no-merges "
-     if (not defined $merges);
-  $cmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\" $source";
-
-  find_changes($cmd);
-}
-
-if ($local) {
+# Find revisions included in the list of revisions.
+$revid1= $revisions[0];
+$revid2= $revisions[$#revisions];
+my $ncmd = "$git diff ";
+$ncmd.= "$revid2~..$revid1 ";
+$ncmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\" ";
+find_changes($ncmd);
 foreach my $file (keys %$filemap) {
     $committ_filemap->{$file} = get_diff_lines($file);
 }
@@ -126,7 +93,7 @@ for my $file (sort keys %$filemap) {
   $lines = get_cov_lines($uncommitt_filemap->{$file})
   if (exists $uncommitt_filemap->{$file} and $uncommitted);
   $lines = get_cov_lines($committ_filemap->{$file})
-  if (exists $committ_filemap->{$file} and $local);
+  if (exists $committ_filemap->{$file} and (not $uncommitted) );
 
   # All lines in revision(s) changed.
   $changedlines = $changedlines + scalar @$lines;
@@ -284,7 +251,7 @@ sub find_changes {
     next unless /(A|M)\s+(.*)$/;
     my $file = $2;
     $file = realpath($file) if $uncommitted;
-    $file = $source."/".$file if $local;
+    $file = $source."/".$file if not $uncommitted;
     next if ($file =~ /unittest/);
     if ($file =~ $file_regexp)
     {
@@ -307,9 +274,10 @@ sub get_diff_lines {
       my ($file) = @_;
       my $modified = [ ];
       my $cmd = "$git diff -U0 ";
-      $cmd .= "origin...HEAD "
-         if $local;
-      $cmd .= $file;
+      if (not $uncommitted) {
+         $cmd .= "$revid2~..$revid1 ";
+      }
+      $cmd .= "$file";
       print "Running: $cmd\n"
          if $verbose;
       open GIT_DIFF, "$cmd |"
@@ -368,8 +336,6 @@ Options:
 --help        Display script usage information.
 --verbose     Show command outputs by setting verbosity with 1.
 --uncommitted Changes only in working area that havent being committed.
---local       Changes committed local tree, but not pushed to origin.
---merges      Show merge committs as well, default is no-merges.
 --source      Git Soruce/Root directory location.
 
 The dgcov program runs on gcov files for Code Coverage Analysis, and reports 
