@@ -334,9 +334,9 @@ Usage: dgcov --help
 Options:
 
 --help        Display script usage information.
---verbose     Show command outputs by setting verbosity with 1.
+--verbose     Show execution command outputs by setting verbosity.
 --uncommitted Changes only in working area that havent being committed.
---source      Git Soruce/Root directory location.
+--source      Git Source/Root directory location.
 
 The dgcov program runs on gcov files for Code Coverage Analysis, and reports 
 missing coverage only for those lines that are changed by the specified revision(s).
