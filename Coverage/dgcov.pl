@@ -128,6 +128,7 @@ for my $file (sort keys %$filemap) {
           croak "Unexpected line '$_'\n in $gcov_file"
                unless /^([^:]+):[ \t]*(\d+):(.*)$/;
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
+          check_purecov($code, $gcov_file, $lineno);
 
 	  foreach (@$lines) {
 	  if ($lineno eq $_ and $cov =~/#####/) {
@@ -325,6 +326,28 @@ sub get_cov_lines {
     }
   }
   return $new_lines;
+}
+
+sub check_purecov
+{
+  my $code = $_[0];
+  my $fname = $_[1];
+  my $lineno = $_[2];
+  # Check for source annotation are in line/block for inspected/dead/tested code.
+  if($code =~ m{/\*[\s\t]+purecov[\s\t]*:[\s\t]*(inspected|tested|deadcode)[\s\t]+\*/})
+  {
+    $annotation = 'LINE';
+  } elsif($code =~ m{/\*[\s\t]+purecov[\s\t]*:[\s\t]*begin[\s\t]+(inspected|tested|deadcode)[\s\t]+\*/}) {
+    $annotation = 'BLOCK';
+  } elsif($code =~ m{/\*[\s\t]+purecov[\s\t]*:[ \t]*end[\s\t]+\*/}) {
+    carp "Warning: Found /* purecov: end */ annotation ".
+         "not matched by any begin.\n".
+         " at line $lineno in '$fname'.\n"
+      unless defined($annotation) && $annotation eq 'BLOCK';
+    $annotation= undef;
+  } else {
+    $annotation = undef if defined($annotation) && $annotation eq 'LINE';
+  }
 }
 
 sub usage {
