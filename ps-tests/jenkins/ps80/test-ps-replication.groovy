@@ -10,8 +10,10 @@ pipeline {
     choice(name: 'TEST_CASE', choices: ['all','master_slave_test','master_multi_slave_test','master_master_test','msr_test','mtr_test','mgr_test','xb_master_slave_test'], description: 'Test case to run.')
     string(name: 'GIT_REPO', defaultValue: 'https://github.com/percona/percona-server.git', description: 'PS repo for build.')
     string(name: 'BRANCH', defaultValue: '8.0', description: 'Target branch')
-    string(name: 'PT_BIN', defaultValue: '', description: 'PT binary tarball (leave empty for auto selection)')
-    string(name: 'PXB_BIN', defaultValue: '', description: 'PXB binary tarball (leave empty for auto selection)')
+    //Use 3.5.0 PT_BIN till PT-2183 is fixed. Update to empty once fixed.
+    string(name: 'PT_BIN', defaultValue: 'https://downloads.percona.com/downloads/percona-toolkit/3.5.0/binary/tarball/percona-toolkit-3.5.0_x86_64.tar.gz', description: 'PT binary tarball (leave empty for auto selection)')
+    //Use static PXB_BIN value till get_downloads_link.sh (PS-8632) is fixed.
+    string(name: 'PXB_BIN', defaultValue: 'https://downloads.percona.com/downloads/Percona-XtraBackup-8.0/Percona-XtraBackup-8.0.32-25/binary/tarball/percona-xtrabackup-8.0.32-25-Linux-x86_64.glibc2.17.tar.gz', description: 'PXB binary tarball (leave empty for auto selection)')
   }
   environment {
     DOCKER_OS = "ubuntu:bionic"
