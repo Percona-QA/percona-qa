@@ -8,7 +8,7 @@ use Cwd 'realpath';
 use File::Basename;
 use Carp;
 
-# Args
+# Arguments
 my $help;
 my $verbose;
 my $source=undef;
