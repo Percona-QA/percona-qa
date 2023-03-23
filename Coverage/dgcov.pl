@@ -8,7 +8,7 @@ use Cwd 'realpath';
 use File::Basename;
 use Carp;
 
-# Args
+# Arguments
 my $help;
 my $verbose;
 my $source=undef;
@@ -42,6 +42,7 @@ my %missing_files;
 my $uncovered = 0;
 my $instrumented = 0;
 my @revisions;
+my $annotation; 
 my ($revid1, $revid2);
 my $git = "git";
 
