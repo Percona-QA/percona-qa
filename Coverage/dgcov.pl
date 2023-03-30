@@ -55,7 +55,7 @@ my $dumpfile="./dumper.txt";
 print("----- Start of report ----- \n");
 
 # Find source location to run the scrip from.
-$source = findSource($source);
+$source = findSource($source) if not defined $split;
 
 # Staged/Working changes only.
 if($uncommitted && ($split && !-e $dumpfile) ) {
