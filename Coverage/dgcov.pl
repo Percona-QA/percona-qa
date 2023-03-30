@@ -7,6 +7,7 @@ use File::Find;
 use Cwd 'realpath';
 use File::Basename;
 use Carp;
+use Data::Dumper;
 
 # Arguments
 my $help;
@@ -14,13 +15,15 @@ my $verbose;
 my $source=undef;
 my $uncommitted;
 my $changedlines = 0;
+my $split = undef;
 
 my $options = GetOptions
   (
    "verbose"     => \$verbose,
    "help"        => \$help,
    "uncommitted" => \$uncommitted,
-   "source=s"    => \$source,
+   "split" => \$split,
+   "source=s"    => \$source
   );
 
 if (not $options) {
@@ -45,6 +48,7 @@ my @revisions;
 my $annotation; 
 my ($revid1, $revid2);
 my $git = "git";
+my $dumpfile="./dumper.txt";
 
 # Main
 
@@ -54,13 +58,13 @@ print("----- Start of report ----- \n");
 $source = findSource($source);
 
 # Staged/Working changes only.
-if($uncommitted) {
+if($uncommitted && ($split && !-e $dumpfile) ) {
   my $cmd = "$git status -s -uno $source";
   find_changes($cmd);
   foreach my $file (keys %$filemap) {
     $uncommitt_filemap->{$file} = get_diff_lines($file);
   }
-} else {
+} elsif ($split && !-e $dumpfile) {
 # Add revisions present in this snapshot only.
 my $cmd = "$git rev-list HEAD ^origin --first-parent --topo-order";
 print "Running: $cmd\n"
@@ -88,17 +92,40 @@ foreach my $file (keys %$filemap) {
 }
 }
 
+my $data = {};
 for my $file (sort keys %$filemap) {
   my $lines = [ ];
 
   $lines = get_cov_lines($uncommitt_filemap->{$file})
   if (exists $uncommitt_filemap->{$file} and $uncommitted);
   $lines = get_cov_lines($committ_filemap->{$file})
-  if (exists $committ_filemap->{$file} and (not $uncommitted) );
+  if (exists $committ_filemap->{$file} and (not $uncommitted));
+
+  next unless @$lines; 
+  $data->{$file}=$lines;
+    
+}
+
+# For split
+if (defined $split) {
+if ( !-e $dumpfile && !-s $dumpfile ) { 
+    open my $fh, '>', $dumpfile or die $!;
+    print $fh Data::Dumper->Dump([$data], ['data']);
+    close $fh;
+    print "Saving to file...$dumpfile" if $verbose;
+    exit 0;
+} else {
+   print "Using Dump file...$dumpfile" if $verbose;
+   $data = do $dumpfile;
+  }
+}
+
+for my $file (sort keys %$data) {
 
   # All lines in revision(s) changed.
-  $changedlines = $changedlines + scalar @$lines;
-  next unless @$lines; 
+  $changedlines = $changedlines + scalar @{$data->{$file}}; 
+  next unless @{$data->{$file}}; 
+
   my $gcov_file = findGcov($file);
 
   if (defined $gcov_file) {
@@ -131,7 +158,7 @@ for my $file (sort keys %$filemap) {
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
           check_purecov($code, $gcov_file, $lineno);
 
-	  foreach (@$lines) {
+	  foreach (@{$data->{$file}}) {
 	  if ($lineno eq $_ and $cov =~/#####/) {
 	       $uncovered++;
 	       $instrumented++;
