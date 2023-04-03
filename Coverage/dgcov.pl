@@ -15,14 +15,14 @@ my $verbose;
 my $source=undef;
 my $uncommitted;
 my $changedlines = 0;
-my $split = undef;
+my $dump = undef;
 
 my $options = GetOptions
   (
    "verbose"     => \$verbose,
    "help"        => \$help,
    "uncommitted" => \$uncommitted,
-   "split" => \$split,
+   "dump" => \$dump,
    "source=s"    => \$source
   );
 
@@ -55,16 +55,16 @@ my $dumpfile="./dumper.txt";
 print("----- Start of report ----- \n");
 
 # Find source location to run the scrip from.
-$source = findSource($source) if not defined $split;
+$source = findSource($source) if (!-e $dumpfile);
 
 # Staged/Working changes only.
-if($uncommitted && ($split && !-e $dumpfile) ) {
+if($uncommitted && ($dump && !-e $dumpfile) ) {
   my $cmd = "$git status -s -uno $source";
   find_changes($cmd);
   foreach my $file (keys %$filemap) {
     $uncommitt_filemap->{$file} = get_diff_lines($file);
   }
-} elsif ($split && !-e $dumpfile) {
+} elsif ($dump && !-e $dumpfile) {
 # Add revisions present in this snapshot only.
 my $cmd = "$git rev-list HEAD ^origin --first-parent --topo-order";
 print "Running: $cmd\n"
@@ -106,8 +106,8 @@ for my $file (sort keys %$filemap) {
     
 }
 
-# For split
-if (defined $split) {
+# For Dump
+if (defined $dump) {
 if ( !-e $dumpfile && !-s $dumpfile ) { 
     open my $fh, '>', $dumpfile or die $!;
     print $fh Data::Dumper->Dump([$data], ['data']);
