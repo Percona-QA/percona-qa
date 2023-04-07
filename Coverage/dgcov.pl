@@ -20,10 +20,10 @@ my $dump = undef;
 my $options = GetOptions
   (
    "verbose"     => \$verbose,
-   "source=s"    => \$source
+   "source=s"    => \$source,
    "dump"        => \$dump,
    "uncommitted" => \$uncommitted,
-   "help"        => \$help,
+   "help"        => \$help
   );
 
 if (not $options) {
