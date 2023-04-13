@@ -7,6 +7,7 @@ use File::Find;
 use Cwd 'realpath';
 use File::Basename;
 use Carp;
+use Data::Dumper;
 
 # Arguments
 my $help;
@@ -14,13 +15,15 @@ my $verbose;
 my $source=undef;
 my $uncommitted;
 my $changedlines = 0;
+my $dump = undef;
 
 my $options = GetOptions
   (
    "verbose"     => \$verbose,
-   "help"        => \$help,
-   "uncommitted" => \$uncommitted,
    "source=s"    => \$source,
+   "dump"        => \$dump,
+   "uncommitted" => \$uncommitted,
+   "help"        => \$help
   );
 
 if (not $options) {
@@ -45,60 +48,81 @@ my @revisions;
 my $annotation; 
 my ($revid1, $revid2);
 my $git = "git";
+my $dumpfile="./dumper.txt";
 
 # Main
 
 print("----- Start of report ----- \n");
 
-# Find source location to run the scrip from.
-$source = findSource($source);
+# Find source location to run the script from.
+$source = findSource($source) if (!-e $dumpfile);
 
 # Staged/Working changes only.
-if($uncommitted) {
+if($uncommitted && !$dump) {
   my $cmd = "$git status -s -uno $source";
   find_changes($cmd);
   foreach my $file (keys %$filemap) {
     $uncommitt_filemap->{$file} = get_diff_lines($file);
   }
-} else {
+} elsif (!-e $dumpfile) {
 # Add revisions present in this snapshot only.
-my $cmd = "$git rev-list HEAD ^origin --first-parent --topo-order";
-print "Running: $cmd\n"
-   if $verbose;
-for $_ (`$cmd`) {
-    chomp($_);
-    push @revisions, $_;
-    print("Added revision $_\n")
-      if $verbose;
+   my $cmd = "$git rev-list HEAD ^origin --first-parent --topo-order";
+   print "Running: $cmd\n" if $verbose;
+   for $_ (`$cmd`) {
+      chomp($_);
+      push @revisions, $_;
+      print("Added revision $_\n") if $verbose;
     }
     if ($#revisions < 0) {
         print("No local revisions in $source\n");
         print("----- End of dgcov.pl report ----- \n");
         exit 0;
     }
-# Find revisions included in the list of revisions.
-$revid1= $revisions[0];
-$revid2= $revisions[$#revisions];
-my $ncmd = "$git diff ";
-$ncmd.= "$revid2~..$revid1 ";
-$ncmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\" ";
-find_changes($ncmd);
-foreach my $file (keys %$filemap) {
-    $committ_filemap->{$file} = get_diff_lines($file);
-}
+   # Find revisions included in the list of revisions.
+   $revid1= $revisions[0];
+   $revid2= $revisions[$#revisions];
+   my $ncmd = "$git diff ";
+   $ncmd.= "$revid2~..$revid1 ";
+   $ncmd.= "--name-status --oneline --diff-filter=\"AM\" --pretty=\"%H\" ";
+   find_changes($ncmd);
+   foreach my $file (keys %$filemap) {
+      $committ_filemap->{$file} = get_diff_lines($file);
+   }
 }
 
+my $data = {};
 for my $file (sort keys %$filemap) {
   my $lines = [ ];
 
   $lines = get_cov_lines($uncommitt_filemap->{$file})
   if (exists $uncommitt_filemap->{$file} and $uncommitted);
   $lines = get_cov_lines($committ_filemap->{$file})
-  if (exists $committ_filemap->{$file} and (not $uncommitted) );
+  if (exists $committ_filemap->{$file} and (not $uncommitted));
 
-  # All lines in revision(s) changed.
-  $changedlines = $changedlines + scalar @$lines;
   next unless @$lines; 
+  $data->{$file}=$lines;
+}
+
+# For Dump
+if (defined $dump) {
+if ( !-e $dumpfile && !-s $dumpfile ) { 
+    open my $fh, '>', $dumpfile or die $!;
+    print $fh Data::Dumper->Dump([$data], ['data']);
+    close $fh;
+    print "Saving to Dump file... $dumpfile\n";
+    print("----- End of report ----- \n");
+    exit 0;
+} else {
+   print "Using Dump file... $dumpfile\n";
+   $data = do $dumpfile;
+  }
+}
+
+for my $file (sort keys %$data) {
+  # All lines in revision(s) changed.
+  $changedlines = $changedlines + scalar @{$data->{$file}}; 
+  next unless @{$data->{$file}}; 
+
   my $gcov_file = findGcov($file);
 
   if (defined $gcov_file) {
@@ -131,7 +155,7 @@ for my $file (sort keys %$filemap) {
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
           check_purecov($code, $gcov_file, $lineno);
 
-	  foreach (@$lines) {
+	  foreach (@{$data->{$file}}) {
 	  if ($lineno eq $_ and $cov =~/#####/) {
 	       $uncovered++;
 	       $instrumented++;
@@ -155,7 +179,6 @@ print("----- End of report ----- \n");
 exit 0;
 
 # Subroutines
-
 sub findGcov {
     my ($fname) = @_;
     # Seperate dir and filename
@@ -361,6 +384,7 @@ Options:
 --verbose     Show execution command outputs by setting verbosity.
 --uncommitted Changes only in working area that havent being committed.
 --source      Git Source/Root directory location.
+--dump        Dump source details in dumper.txt, for cross profiling.
 
 The dgcov program runs on gcov files for Code Coverage Analysis, and reports 
 missing coverage only for those lines that are changed by the specified revision(s).
