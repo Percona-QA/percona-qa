@@ -156,7 +156,7 @@ for my $file (sort keys %$data) {
 	  next if (not defined $cov || not defined $lineno || not defined $code || not defined $full);
           check_purecov($code, $gcov_file, $lineno);
           
-          if (defined $data->{$file}->[0] && $lineno eq $data->{$file}->[0]){ 
+    if (defined $data->{$file}->[0] && $lineno eq $data->{$file}->[0]){ 
 	  shift @{$data->{$file}};
 	  if ($cov =~/#####/ and (!defined $annotation)) {
 	       $uncovered++;
