@@ -153,6 +153,7 @@ for my $file (sort keys %$data) {
           carp "Unexpected line '$_'\n in $gcov_file"
                unless /^([^:]+):[ \t]*(\d+):(.*)$/;
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
+	  next if (not defined $cov || not defined $lineno || not defined $code || not defined $full);
           check_purecov($code, $gcov_file, $lineno);
           
 if (defined $data->{$file}->[0] && $lineno eq $data->{$file}->[0]){ 
