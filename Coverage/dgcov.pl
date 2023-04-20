@@ -154,10 +154,9 @@ for my $file (sort keys %$data) {
                unless /^([^:]+):[ \t]*(\d+):(.*)$/;
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
           check_purecov($code, $gcov_file, $lineno);
-
-	  if (defined $data->{$file}->[0] && $lineno eq $data->{$file}->[0]){ 
+          
+if (defined $data->{$file}->[0] && $lineno eq $data->{$file}->[0]){ 
 	  shift @{$data->{$file}};
-	  #foreach (@{$data->{$file}}) {
 	  if ($cov =~/#####/ and (!defined $annotation)) {
 	       $uncovered++;
 	       $instrumented++;
