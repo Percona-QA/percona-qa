@@ -149,18 +149,20 @@ for my $file (sort keys %$data) {
 
       while(<FH>) {
           next if /^function /; # Skip function summaries.
-	  next if (/^-------/) or (/^_ZN*/); # TODO :: Handle embedded constructor calls.
-          croak "Unexpected line '$_'\n in $gcov_file"
+	  next if (/^-------/) or (/^_Z*/); # TODO :: Handle embedded constructor calls.
+          carp "Unexpected line '$_'\n in $gcov_file"
                unless /^([^:]+):[ \t]*(\d+):(.*)$/;
           ($cov, $lineno, $code, $full) = ($1, $2, $3, $_);
           check_purecov($code, $gcov_file, $lineno);
 
-	  foreach (@{$data->{$file}}) {
-	  if ($lineno eq $_ and $cov =~/#####/) {
+	  if (defined $data->{$file}->[0] && $lineno eq $data->{$file}->[0]){ 
+	  shift @{$data->{$file}};
+	  #foreach (@{$data->{$file}}) {
+	  if ($cov =~/#####/ and (!defined $annotation)) {
 	       $uncovered++;
 	       $instrumented++;
 	       $printer->("|$full");
-	  } elsif ($lineno eq $_ and $cov =~ /^[ \t]*[0-9]+$/ ) {
+	  } elsif ($cov =~ /^[ \t]*[0-9]+$/ ) {
 	       $instrumented++;
   	  }
           }
@@ -316,6 +318,8 @@ sub get_diff_lines {
              push @$modified, [m => $3, $3];
            } elsif(/^@@\s[+-](\d+)\s[+-](\d+)\s@@$/) {
              push @$modified, [m => $2, $2];
+	   } elsif(/^new file mode.*/) {
+	     # Ingnore new file mode, we handle for now as modified.
 	   } elsif(/^@@\s/) {
 	     # Ignore diffs with 0 lines changed.
            } elsif(/^[ +-]|^$/) {
