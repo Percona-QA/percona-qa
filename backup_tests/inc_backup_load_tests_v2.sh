@@ -15,8 +15,8 @@
 #############################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_11jul2023/install/bin"
-export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.30-22-Linux.x86_64.glibc2.28/"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.33-28/install/bin"
+export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.31-23-Linux.x86_64.glibc2.28/"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"

@@ -15,9 +15,9 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_8_0_32_debug/bin" # Set this to /usr/bin for install_type as package
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.33-28/install/bin"
+export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.31-23-Linux.x86_64.glibc2.28/"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/MS_8_0_32"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
@@ -218,7 +218,7 @@ incremental_backup() {
 
         *)
             echo "Taking full backup"
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/full_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/full_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -287,7 +287,7 @@ incremental_backup() {
 
         *)
             echo "Taking incremental backup"
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc_backup_${log_date}_log
+            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/inc_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
