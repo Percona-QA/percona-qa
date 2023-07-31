@@ -15,8 +15,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.33-28/install/bin"
-export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.31-23-Linux.x86_64.glibc2.28/"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.34/install/bin"
+export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.33-25-Linux.x86_64.glibc2.35/"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
@@ -1537,16 +1537,6 @@ test_inc_backup_encryption_8_0() {
 
         echo "###################################################################################"
 
-        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-
-        initialize_db "${server_options}"
-
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
-
-        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
-
-        echo "###################################################################################"
-
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
@@ -1609,16 +1599,6 @@ test_inc_backup_encryption_8_0() {
         echo "Test: Incremental Backup and Restore for PS8.0 using generate-transition-key and generate-new-master-key"
 
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
-
-        echo "###################################################################################"
-
-        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-
-        initialize_db "${server_options}"
-
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
-
-        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
@@ -1711,16 +1691,6 @@ EOF
 
         echo "###################################################################################"
 
-        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-
-        initialize_db "${server_options}"
-
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
-
-        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
-
-        echo "###################################################################################"
-
         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
 
         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
@@ -1803,16 +1773,6 @@ EOF
         echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
 
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
-
-        echo "###################################################################################"
-
-        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-
-        initialize_db "${server_options}"
-
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
-
-        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
@@ -1920,16 +1880,6 @@ EOF
         echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
 
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
-
-        echo "###################################################################################"
-
-        echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-
-        initialize_db "${server_options}"
-
-        ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER INSTANCE ROTATE INNODB MASTER KEY;"
-
-        incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
 
         echo "###################################################################################"
 
@@ -2252,10 +2202,6 @@ test_streaming_backup() {
 test_compress_stream_backup() {
     # This test suite tests incremental backup when it is compressed and streamed
 
-    echo "Test: Incremental Backup and Restore with quicklz compression and streaming"
-
-    incremental_backup "--compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
-
     echo "###################################################################################"
 
     # Skip lz4 and zstd compression tests in PXB2.4 and PS/MS 5.7
@@ -2276,10 +2222,6 @@ test_compress_stream_backup() {
 
 test_encrypt_compress_stream_backup() {
     # This test suite tests incremental backup when it is encrypted, compressed and streamed
-
-    echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-
-    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "--log-bin=binlog" "stream" ""
 
     echo "###################################################################################"
 
@@ -2303,18 +2245,6 @@ test_compress_backup() {
     # This test suite tests incremental backup when it is compressed
 
     echo "Test Suite: Incremental Backup and Restore with compression"
-
-    echo "Test: Quicklz compression"
-    incremental_backup "--compress=quicklz" "" "" "--log-bin=binlog" "" ""
-    echo "###################################################################################"
-
-    echo "Test: Quicklz compression with --compress-threads=10 --parallel=10"
-    incremental_backup "--compress=quicklz --compress-threads=10 --parallel=10" "" "" "--log-bin=binlog" "" ""
-    echo "###################################################################################"
-
-    echo "Test: Quicklz compression with --compress-chunk-size=64K --compress-threads=10 --parallel=10"
-    incremental_backup "--compress=quicklz --compress-threads=10 --parallel=10 --compress-chunk-size=64K" "" "" "--log-bin=binlog" "" ""
-    echo "###################################################################################"
 
     # Skip lz4 and zstd compression tests in PXB2.4 and PS/MS 5.7
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
@@ -2363,14 +2293,6 @@ test_cloud_inc_backup() {
     incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
     echo "###################################################################################"
                 
-    echo "Test: Incremental Backup and Restore with quicklz compression and streaming"
-    incremental_backup "--compress --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
-    echo "###################################################################################"
-
-    echo "Test: Incremental Backup and Restore with quicklz compression, encryption and streaming"
-    incremental_backup "--encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress --compress-threads=10" "" "" "" "cloud" "--defaults-file=${cloud_config} --verbose"
-    echo "###################################################################################"
-
     # Run encryption tests for MS/PS 5.7
 
     if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
