@@ -15,8 +15,8 @@
 #############################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.33-28/install/bin"
-export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.31-23-Linux.x86_64.glibc2.28/"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.34/install/bin"
+export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.33-25-Linux.x86_64.glibc2.35"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -754,7 +754,7 @@ run_crash_tests_pstress() {
     for inc_num in $(seq 1 4); do
       echo "Taking incremental backup: $inc_num"
       if [ ${inc_num} -eq 1 ]; then
-        ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_${i}_backup_${log_date}_log
+        ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
       else
         ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/inc$((inc_num - 1)) -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
       fi
