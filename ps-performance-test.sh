@@ -13,7 +13,7 @@ export BIG_DIR=${WORKSPACE}
 export SCRIPT_DIR=$(cd $(dirname $0) && pwd)
 export PS_START_TIMEOUT=100
 export MYSQL_DATABASE=test
-export MYSQL_NAME=PXC
+export MYSQL_NAME=PS
 export NODES=1
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
@@ -78,7 +78,7 @@ sysbench_run(){
     elif [ "$TEST_TYPE" == "oltp_read" ];then
       SYSBENCH_OPTIONS="--test=/usr/share/doc/sysbench/tests/db/oltp.lua --rand-init=on --oltp-table-size=$NUM_ROWS --oltp-read-only --oltp_tables_count=$NUM_TABLES --max-time=$SDURATION --report-interval=10 --max-requests=1870000000 --mysql-db=$DB  --mysql-user=$SUSER --num-threads=$num_threads --db-driver=mysql --db-ps-mode=disable"
     fi
-  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.0" ]; then
+  elif [ "$(sysbench --version | cut -d ' ' -f2 | grep -oe '[0-9]\.[0-9]')" == "1.1" ]; then
     if [ "$TEST_TYPE" == "load_data" ];then
       SYSBENCH_OPTIONS="/usr/share/sysbench/oltp_insert.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$NUM_TABLES --db-driver=mysql"
     elif [ "$TEST_TYPE" == "oltp" ];then
@@ -102,7 +102,10 @@ if [ ! -f $BIG_DIR/my.cnf ]; then
 fi
 
 # Setting seeddb creation configuration
-if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
+if [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '8\.[01]' | head -n1)" == "8.0" ]; then
+  MID="${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR}"
+  WS_DATADIR="${BIG_DIR}/80_sysbench_data_template"
+elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.7" ]; then
   MID="${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR}"
   WS_DATADIR="${BIG_DIR}/57_sysbench_data_template"
 elif [ "$(${DB_DIR}/bin/mysqld --version | grep -oe '5\.[567]' | head -n1)" == "5.6" ]; then
