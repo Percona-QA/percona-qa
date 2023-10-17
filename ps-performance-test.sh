@@ -16,6 +16,7 @@ export PS_START_TIMEOUT=100
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PS
 SYSBENCH_DIR=${SYSBENCH_DIR:-/usr/share}
+MYEXTRA=${MYEXTRA:=--disable-log-bin}
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
 if [ -z ${BIG_DIR} ]; then
@@ -80,13 +81,6 @@ else
   SCP_TARGET=${BIG_DIR}/backups
 fi
 
-#Check if MYEXTRA was set by Jenkins, otherwise this is presumably a local run
-if [ ! -z ${MYEXTRA} ]; then
-  export MYEXTRA=${MYEXTRA}
-else
-  export MYEXTRA=""
-fi
-
 if [ -z $WORKSPACE ]; then
   echo "Assuming this is a local (i.e. non-Jenkins initiated) run."
   export WORKSPACE=$BIG_DIR/backups
@@ -112,7 +106,7 @@ WS_DATADIR="${BIG_DIR}/80_sysbench_data_template"
 function start_ps_node(){
   ps -ef | grep 'ps_socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
-  MYEXTRA="--innodb-buffer-pool-size=$INNODB_CACHE"
+  MYEXTRA+=" --innodb-buffer-pool-size=$INNODB_CACHE"
   RBASE="$(( RBASE + 100 ))"
   if [ "$1" == "startup" ];then
     node="${WS_DATADIR}/psdata_${DATASIZE}"
@@ -124,11 +118,9 @@ function start_ps_node(){
     node="${DATA_DIR}"
   fi
 
-  ${DB_DIR}/bin/mysqld --defaults-file=${CONFIG_FILE} \
-    --datadir=$node $MYEXTRA \
-    --basedir=${DB_DIR} \
-    --log-error=$LOGS/master.err  \
-    --socket=$LOGS/ps_socket.sock --port=$RBASE > $LOGS/master.err 2>&1 &
+  MYSQLD_OPTIONS="--defaults-file=${CONFIG_FILE} --datadir=$node --basedir=${DB_DIR} $MYEXTRA --log-error=$LOGS/master.err --socket=$LOGS/ps_socket.sock --port=$RBASE"
+  echo "Starting Percona Server with options $MYSQLD_OPTIONS"
+  ${DB_DIR}/bin/mysqld $MYSQLD_OPTIONS > $LOGS/master.err 2>&1 &
 
   for X in $(seq 0 ${PS_START_TIMEOUT}); do
     sleep 1
