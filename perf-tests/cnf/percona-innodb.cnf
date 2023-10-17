@@ -1,0 +1,34 @@
+[mysqld]
+# binary log
+binlog_row_image=minimal
+binlog_space_limit=4G
+sync_binlog=1K
+# skip-log-bin
+
+# connections
+ssl=0
+connect_timeout=120
+back_log=4K
+max_connections=4K
+max_prepared_stmt_count=4M
+
+default-tmp-storage-engine=MyISAM
+
+# character-set-server=latin1
+# collation-server=latin1_bin
+
+# general
+table_open_cache=256K
+table_open_cache_instances=64
+
+# InnoDB
+innodb_flush_method=O_DIRECT
+innodb_open_files=4K
+innodb_page_cleaners=2
+innodb_io_capacity=2000
+innodb_io_capacity_max=4000
+innodb_buffer_pool_instances=16
+innodb_log_file_size=8G
+
+# transaction-isolation=READ-COMMITTED
+# innodb_flush_log_at_trx_commit=2
