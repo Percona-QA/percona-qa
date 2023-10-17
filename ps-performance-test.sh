@@ -15,7 +15,6 @@ export SCRIPT_DIR=$(cd $(dirname $0) && pwd)
 export PS_START_TIMEOUT=100
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PS
-export NODES=1
 SYSBENCH_DIR=${SYSBENCH_DIR:-/usr/share}
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
@@ -31,16 +30,16 @@ if [ -z $2 ]; then
   echo "This would lead to $BIG_DIR/100 being created, in which testing takes place and"
   echo "$BIG_DIR/$1/Percona-Server-8.0.34-26-Linux.x86_64.glibc2.35 would be used to test."
   exit 1
-else
-  mkdir -p $BIG_DIR/$1
-  cd $BIG_DIR
-  cp -r $BIG_DIR/$2 $BIG_DIR/$1
-  export BUILD_NUMBER=$1
-  export DB_DIR=$BIG_DIR/$1/$2
-  export DATA_DIR=$BIG_DIR/$1/datadir
-  mkdir -p $BIG_DIR/$1/logs
-  export LOGS=$BIG_DIR/$1/logs
 fi
+
+mkdir -p $BIG_DIR/$1
+cd $BIG_DIR
+cp -r $BIG_DIR/$2 $BIG_DIR/$1
+export BUILD_NUMBER=$1
+export DB_DIR=$BIG_DIR/$1/$2
+export DATA_DIR=$BIG_DIR/$1/datadir
+mkdir -p $BIG_DIR/$1/logs
+export LOGS=$BIG_DIR/$1/logs
 
 export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
@@ -148,6 +147,12 @@ function check_memory(){
   done
 }
 
+function drop_caches(){
+  echo "Dropping caches"
+  sync
+  sudo sh -c 'sysctl -q -w vm.drop_caches=3'
+  sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+}
 
 function start_ps(){
   timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/ps_socket.sock shutdown > /dev/null 2>&1
@@ -155,6 +160,7 @@ function start_ps(){
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   NUM_ROWS=$(numfmt --from=si $DATASIZE)
 
+  drop_caches
   if [ ! -d ${WS_DATADIR}/psdata_${DATASIZE} ]; then
     mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_ps_node startup
