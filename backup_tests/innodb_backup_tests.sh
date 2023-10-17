@@ -12,11 +12,10 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb_rocksdb_8_0_5_debug/bin"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
+export mysqldir="$HOME/mysql-8.0/bld_8.1.0r/install"
+export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
-export mysqldir="$HOME/PS180319_rocksdb_8_0_15_4_debug"
-export datadir="$HOME/PS180319_rocksdb_8_0_15_4_debug/data"
-#export socket="$HOME/PS180319_rocksdb_8_0_15_4_debug/socket.sock"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 

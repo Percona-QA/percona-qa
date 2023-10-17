@@ -15,8 +15,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.34/install/bin"
-export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.33-25-Linux.x86_64.glibc2.35/"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
+export mysqldir="$HOME/mysql-8.0/bld_8.1.0/install"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
@@ -287,7 +287,7 @@ incremental_backup() {
 
         *)
             echo "Taking incremental backup"
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/inc_backup_${log_date}_log
+            rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/inc_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -341,7 +341,7 @@ incremental_backup() {
     cp -r ${backup_dir} $HOME/dbbackup_save
 
     echo "Preparing full backup"
-    ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
+    rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
         exit 1
@@ -350,7 +350,7 @@ incremental_backup() {
     fi
 
     echo "Preparing incremental backup"
-    ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_${log_date}_log
+    rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc_backup_${log_date}_log"
         exit 1
@@ -1618,6 +1618,93 @@ test_inc_backup_encryption_8_0() {
 
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
 
+    elif [ "${encrypt_type}" = "keyring_vault_component" ]; then
+        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+            server_type="MS"
+            server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        else
+            server_type="PS"
+            server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        fi
+
+        echo "Test Suite: Incremental Backup and Restore for ${server_type}8.0 using PXB8.0 with keyring_vault component encryption"
+
+        echo "Create global manifest file"
+        cat <<EOF >"${mysqldir}"/bin/mysqld.my
+{
+    "components": "file://component_keyring_vault"
+}
+EOF
+        if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
+            echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
+            exit 1
+        fi
+
+        echo "Create global configuration file"
+        cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_vault.cnf
+{
+"vault_url": "http://127.0.0.1:8200",
+"secret_mount_point": "secret",
+"token": "12048852-f64b-d0b2-c49b-ae7e8fb54e96"
+}
+EOF
+        if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_vault.cnf ]]; then
+            echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_vault.cnf"
+            exit 1
+        fi
+
+        echo "Test: Incremental Backup and Restore with basic keyring_vault component encryption options"
+        if [ "${install_type}" = "package" ]; then
+            pxb_encrypt_options=""
+        else
+            pxb_encrypt_options="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
+        fi
+
+        pxb_component_config="--component-keyring-config=${mysqldir}/lib/plugin/component_keyring_vault.cnf"
+
+        initialize_db "--default-table-encryption=ON"
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "--default-table-encryption=ON"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} running with all encryption options enabled"
+
+        initialize_db "${server_options} --binlog-encryption"
+
+        # The --keyring_file_data option is not required to backup/prepare/restore in component by default, but it can be included if it is different than the mysql config
+        incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options} --binlog-encryption"
+
+        echo "###################################################################################"
+
+        echo "Test: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
+
+        incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} ${pxb_component_config}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key ${pxb_component_config}" "${server_options} --binlog-encryption"
+
+
+         echo "###################################################################################"
+
+         echo "Test: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
+
+         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
+
+         echo "###################################################################################"
+
+         echo "Test: Incremental Backup and Restore with lz4 compression, encryption and streaming"
+
+         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=lz4 --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+         echo "###################################################################################"
+
+         echo "Test: Incremental Backup and Restore with zstd compression, encryption and streaming"
+
+         incremental_backup "${pxb_encrypt_options} --encrypt=AES256 --encrypt-key=${encrypt_key} --encrypt-threads=10 --encrypt-chunk-size=128K --compress=zstd --compress-threads=10" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}" "stream" ""
+
+         echo "###################################################################################"
+
+         echo "Various test suites: binlog-encryption is not included so that binlog can be applied"
+
+         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}"'
+
     elif [ "${encrypt_type}" = "keyring_component" ]; then
         if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
             server_type="MS"
@@ -2413,25 +2500,25 @@ test_inc_backup_archive_log() {
     incremental_backup "" "" "" "--innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
     echo "###################################################################################"
 
-    echo "Test: Incremental Backup and Restore with --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
+    echo "Test: Incremental Backup and Restore with --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
 
-    initialize_db "--innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+    initialize_db "--innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
 
-    incremental_backup "" "--innodb-log-file-size=4MB" "" "--innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    incremental_backup "" "--innodb-log-file-size=536870912" "" "--innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
     echo "###################################################################################"
 
-    echo "Test: Incremental Backup and Restore with --innodb-log-file-size=2GB --innodb-log-files-in-group=5 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
+    echo "Test: Incremental Backup and Restore with --innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs"
 
-    initialize_db "--innodb-log-file-size=2GB --innodb-log-files-in-group=5 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+    initialize_db "--innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
 
-    incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=5" "--innodb-log-file-size=2G --innodb-log-files-in-group=5" "--innodb-log-file-size=2G --innodb-log-files-in-group=5" "--innodb-log-file-size=2G --innodb-log-files-in-group=5 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    incremental_backup "--innodb-log-file-size=2147483648" "--innodb-log-file-size=2147483648" "--innodb-redo-log-capacity=2147483648" "--innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
     echo "###################################################################################"
 
-    echo "Test: Incremental Backup and Restore with --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs and encryption options"
+    echo "Test: Incremental Backup and Restore with --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs and encryption options"
 
     server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-extend-and-initialize=OFF"
 
-    initialize_db "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
+    initialize_db "${server_options} --binlog-encryption --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
 
     if [ "${install_type}" = "package" ]; then
         pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring"
@@ -2439,7 +2526,7 @@ test_inc_backup_archive_log() {
         pxb_encrypt_options="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin"
     fi
 
-    incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options} --innodb-log-file-size=4MB" "${pxb_encrypt_options}" "${server_options} --binlog-encryption --innodb-log-file-size=4MB --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options} --innodb-log-file-size=536870912" "${pxb_encrypt_options}" "${server_options} --binlog-encryption --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
 }
 
 test_grant_tables() {
@@ -2463,35 +2550,35 @@ test_grant_tables() {
 test_inc_backup_innodb_params() {
     # This test suite takes a full backup, incremental backup with different innodb parameter values
 
-    echo "Test: Backup and Restore with --innodb-log-file-size=4194304 --innodb-log-files-in-group=10"
+    echo "Test: Backup and Restore with --innodb-redo-log-capacity=209715200"
 
-    initialize_db "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10"
+    initialize_db "--innodb-redo-log-capacity=209715200"
 
-    incremental_backup "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10" "" ""
-
-    echo "###################################################################################"
-
-    echo "Test: Backup and Restore with --innodb-log-file-size=2G --innodb-log-files-in-group=10"
-
-    initialize_db "--innodb-log-file-size=2G --innodb-log-files-in-group=10"
-
-    incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "--innodb-log-file-size=2G --innodb-log-files-in-group=10" "" ""
+    incremental_backup "--innodb-log-file-size=209715200" "--innodb-log-file-size=209715200" "--innodb-redo-log-capacity=209715200" "--innodb-redo-log-capacity=209715200" "" ""
 
     echo "###################################################################################"
 
-    echo "Test: Backup and Restore with --innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+    echo "Test: Backup and Restore with --innodb-redo-log-capacity=2147483648 "
 
-    initialize_db "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+    initialize_db "--innodb-redo-log-capacity=2147483648"
 
-    incremental_backup "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=4194304 --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "" ""
+    incremental_backup "--innodb-log-file-size=2147483648" "--innodb-log-file-size=2147483648" "--innodb-redo-log-capacity=2147483648" "--innodb-redo-log-capacity=2147483648" "" ""
 
     echo "###################################################################################"
 
-    echo "Test: Backup and Restore with --innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+    echo "Test: Backup and Restore with --innodb-redo-log-capacity=8388608 --innodb-buffer-pool-size=2G"
 
-    initialize_db "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G"
+    initialize_db "--innodb-redo-log-capacity=8388608 --innodb-buffer-pool-size=2G"
 
-    incremental_backup "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2G --innodb-log-files-in-group=10 --innodb-buffer-pool-size=2G" "" ""
+    incremental_backup "--innodb-log-file-size=8388608 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=8388608 --innodb-buffer-pool-size=2G" "--innodb-redo-log-capacity=8388608 --innodb-buffer-pool-size=2G" "--innodb-redo-log-capacity=8388608 --innodb-buffer-pool-size=2G" "" ""
+
+    echo "###################################################################################"
+
+    echo "Test: Backup and Restore with --innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G"
+
+    initialize_db "--innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G"
+
+    incremental_backup "--innodb-log-file-size=2147483648 --innodb-buffer-pool-size=2G" "--innodb-log-file-size=2147483648 --innodb-buffer-pool-size=2G" "--innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G" "--innodb-redo-log-capacity=2147483648 --innodb-buffer-pool-size=2G" "" ""
 
     echo "###################################################################################"
 
@@ -2601,8 +2688,8 @@ for tsuitelist in $*; do
     case "${tsuitelist}" in
         Various_ddl_tests)
             echo "Various test suites"
-
-            for testsuite in test_inc_backup test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_grant_tables test_invisible_column test_blob_column test_add_drop_column_instant test_add_drop_column_algorithms test_run_all_statements; do
+            # Disabled test test_grant_tables because of Bug https://jira.percona.com/browse/PS-8950
+            for testsuite in test_inc_backup test_add_drop_index test_rename_index test_add_drop_full_text_index test_change_index_type test_spatial_data_index test_add_drop_tablespace test_change_compression test_change_row_format test_copy_data_across_engine test_add_data_across_engine test_update_truncate_table test_create_drop_database test_partitioned_tables test_compressed_column test_compression_dictionary test_invisible_column test_blob_column test_add_drop_column_instant test_add_drop_column_algorithms test_run_all_statements; do
                 $testsuite
                 echo "###################################################################################"
             done
@@ -2634,7 +2721,8 @@ for tsuitelist in $*; do
 
         Encryption_PXB8_0_PS8_0_tests)
             echo "Encryption test suites for PXB8.0 and PS8.0"
-            for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault" "test_inc_backup_encryption_8_0 keyring_component"; do
+            #for testsuite in "test_inc_backup_encryption_8_0 keyring_file" "test_inc_backup_encryption_8_0 keyring_vault" "test_inc_backup_encryption_8_0 keyring_component"; do
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_vault_component"; do
                 $testsuite
                 echo "###################################################################################"
             done

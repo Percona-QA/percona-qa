@@ -14,8 +14,8 @@
 ########################################################################
 
 # Set mysql and backup variables
-export xtrabackup_dir="$HOME/percona-xtrabackup-8.0.30-23-Linux-x86_64.glibc2.17/bin"
-export mysqldir="$HOME/MS_8_0_30"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
+export mysqldir="$HOME/mysql-8.0/bld_8.1.0r/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -25,7 +25,7 @@ export logdir="$HOME/backuplogs"
 # Set replication variables
 replication_dir1="$HOME/replica1_dir"
 replication_dir2="$HOME/replica2_dir"
-mysql_tarball="$HOME/mysql-8.0.30-linux-glibc2.12-x86_64.tar.xz"
+mysql_tarball="$HOME/Percona-Server-8.0.34-26-Linux.x86_64.glibc2.17-minimal.tar.gz"
 GTID_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 NO_GTID_OPTIONS="--log-bin=binlog --log-slave-updates"
 ENCRYPT_OPTIONS_8="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
@@ -107,15 +107,10 @@ replicate_primary() {
     fi
     mkdir -p "${backup_dir}"/full
 
-    if [[ -d /tmp/mysql ]]; then
-        rm -r /tmp/mysql
-    fi
-    mkdir /tmp/mysql
-
     echo "Test: Create a replica from backup of primary"
-    echo "Extract the mysql tarball in replication directory"
-    tar -xf "${mysql_tarball}" -C /tmp/mysql
-    mv /tmp/mysql/* "${replication_dir1}"
+    mkdir ${replication_dir1}
+    cp -R $HOME/mysql-8.0/bld_8.1.0r/install/* "${replication_dir1}"
+    rm -rf ${replication_dir1}/data
 
     echo "Run a load on primary"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=20 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=30 run >/dev/null 2>&1 &
@@ -155,11 +150,11 @@ replicate_primary() {
     else
         rep_mysqld_options="${MYSQLD_OPTIONS}"
     fi
-
     echo "Start the replica server"
-    "${replication_dir1}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir1} --tmpdir=${replication_dir1}/data --datadir=${replication_dir1}/data --socket=${replication_dir1}/socket.sock --port=18615 --log-error=${replication_dir1}/master.err --server-id=102 --report-host=127.0.0.1 --report-port=18615 ${rep_mysqld_options} 2>&1 &
+    echo "${replication_dir1}/bin/mysqld --no-defaults --core-file --basedir=${replication_dir1} --tmpdir=${replication_dir1}/data --datadir=${replication_dir1}/data --socket=${replication_dir1}/socket_rep1.sock --port=18615 --log-error=${replication_dir1}/master.err --server-id=102 --report-host=127.0.0.1 --report-port=18615 ${rep_mysqld_options}"
+    "${replication_dir1}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir1} --tmpdir=${replication_dir1}/data --datadir=${replication_dir1}/data --socket=${replication_dir1}/socket_rep1.sock --port=18615 --log-error=${replication_dir1}/master.err --server-id=102 --report-host=127.0.0.1 --report-port=18615 ${rep_mysqld_options} 2>&1 &
     for ((i=1; i<=30; i++)); do
-        if ! "${replication_dir1}"/bin/mysqladmin ping --user=root --socket="${replication_dir1}"/socket.sock >/dev/null 2>&1; then
+        if ! "${replication_dir1}"/bin/mysqladmin ping --user=root --socket="${replication_dir1}"/socket_rep1.sock >/dev/null 2>&1; then
             sleep 1
         else
             break
@@ -173,36 +168,36 @@ replicate_primary() {
 
     echo "Configure and start the replication"
     #xtrabackup_bin_pos=$(awk '{print $3}' "${backup_dir}"/full/xtrabackup_binlog_info)
-    mysql_maj_version=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -Bse "select @@version;"|cut -f1 -d.)
-    mysql_min_version=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -Bse "select @@version;"|cut -f3 -d.|cut -f1 -d-)
+    mysql_maj_version=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -Bse "select @@version;"|cut -f1 -d.)
+    mysql_min_version=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -Bse "select @@version;"|cut -f3 -d.|cut -f1 -d-)
 
-    gtid_execute=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -Bse "select @@GLOBAL.GTID_EXECUTED;")
+    gtid_execute=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -Bse "select @@GLOBAL.GTID_EXECUTED;")
     if [[ "${mysql_maj_version}" -eq 5 ]] && [[ -n "${gtid_execute}" ]]; then
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "RESET MASTER;"
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "RESET MASTER;"
     fi
 
     master_port_no=$("${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -Bse "select @@port;")
 
     if [[ "${MYSQLD_OPTIONS}" = *"gtid-mode=ON"* ]]; then
         xtrabackup_bin_pos=$(awk '{print $3}' "${backup_dir}"/full/xtrabackup_binlog_info)
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "SET GLOBAL gtid_purged='$xtrabackup_bin_pos';"
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no}, MASTER_AUTO_POSITION=1;"
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "SET GLOBAL gtid_purged='$xtrabackup_bin_pos';"
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no}, MASTER_AUTO_POSITION=1;"
     else
         xtrabackup_bin_log=$(awk '{print $1}' "${backup_dir}"/full/xtrabackup_binlog_info)
         xtrabackup_bin_pos=$(awk '{print $2}' "${backup_dir}"/full/xtrabackup_binlog_info)
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no}, MASTER_LOG_FILE='$xtrabackup_bin_log', MASTER_LOG_POS=$xtrabackup_bin_pos;"
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no}, MASTER_LOG_FILE='$xtrabackup_bin_log', MASTER_LOG_POS=$xtrabackup_bin_pos;"
     fi
 
     echo "Replication status:"
     if [[ "${mysql_maj_version}" -eq 8 ]] && [[ "${mysql_min_version}" -ge 22 ]]; then
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "START REPLICA;"
-        replication_status=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "SHOW REPLICA STATUS \G")
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "START REPLICA;"
+        replication_status=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "SHOW REPLICA STATUS \G")
         echo "${replication_status}"
         io_status=$(echo "${replication_status}" | grep "Replica_IO_Running" | awk '{print $2}')
         sql_running=$(echo "${replication_status}" | grep -m 1 "Replica_SQL_Running" | awk '{print $2}')
     else
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "START SLAVE;"
-        replication_status=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "SHOW SLAVE STATUS \G")
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "START SLAVE;"
+        replication_status=$("${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "SHOW SLAVE STATUS \G")
         echo "${replication_status}"
         io_status=$(echo "${replication_status}" | grep "Slave_IO_Running" | awk '{print $2}')
         sql_running=$(echo "${replication_status}" | grep -m 1 "Slave_SQL_Running" | awk '{print $2}')
@@ -220,7 +215,6 @@ replicate_primary() {
     echo "Run pt-table-checksum on primary"
     pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null
 
-    rm -r /tmp/mysql
     if [ -d ${backup_dir} ]; then
         rm -r ${backup_dir}
     fi
@@ -232,9 +226,9 @@ replicate_primary() {
     echo "Extract the mysql tarball in replication directory"
 
     log_date=$(date +"%d_%m_%Y_%M")
-    mkdir /tmp/mysql
-    tar -xf "${mysql_tarball}" -C /tmp/mysql
-    mv /tmp/mysql/* "${replication_dir2}"
+    mkdir $replication_dir2
+    cp -R $HOME/mysql-8.0/bld_8.1.0r/install/* "${replication_dir2}"
+    rm -rf ${replication_dir2}/data
 
     if [[ "${MYSQLD_OPTIONS}" = *"keyring_file"* ]]; then
         BACKUP_PARAMS=${BACKUP_PARAMS//--keyring_file_data=${mysqldir}/--keyring_file_data=${replication_dir1}}
@@ -247,10 +241,10 @@ replicate_primary() {
 
     if [[ "${MYSQLD_OPTIONS}" != *"gtid-mode=ON"* ]] && [[ "${slave_parallel_workers}" -ge 2 ]]; then
         echo "Taking full backup with --slave-info --safe-slave-backup"
-        "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket.sock --datadir="${replication_dir1}"/data --slave-info --safe-slave-backup ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+        "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket_rep1.sock --datadir="${replication_dir1}"/data --slave-info --safe-slave-backup ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
     else
         echo "Taking full backup with --slave-info"
-        "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket.sock --datadir="${replication_dir1}"/data --slave-info ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+        "${xtrabackup_dir}"/xtrabackup --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${replication_dir1}"/socket_rep1.sock --datadir="${replication_dir1}"/data --slave-info ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
     fi
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
@@ -287,9 +281,10 @@ replicate_primary() {
     fi
 
     echo "Start the replica server --skip-slave-start --server-id=103"
-    "${replication_dir2}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir2} --tmpdir=${replication_dir2}/data --datadir=${replication_dir2}/data --socket=${replication_dir2}/socket.sock --port=18620 --log-error=${replication_dir2}/master.err --skip-slave-start --server-id=103 --report-host=127.0.0.1 --report-port=18620 ${rep_mysqld_options} 2>&1 &
+    echo "${replication_dir2}/bin/mysqld --no-defaults --core-file --basedir=${replication_dir2} --tmpdir=${replication_dir2}/data --datadir=${replication_dir2}/data --socket=${replication_dir2}/socket_rep2.sock --port=18620 --log-error=${replication_dir2}/master.err --skip-slave-start --server-id=103 --report-host=127.0.0.1 --report-port=18620 ${rep_mysqld_options}"
+    "${replication_dir2}"/bin/mysqld --no-defaults --core-file --basedir=${replication_dir2} --tmpdir=${replication_dir2}/data --datadir=${replication_dir2}/data --socket=${replication_dir2}/socket_rep2.sock --port=18620 --log-error=${replication_dir2}/master.err --skip-slave-start --server-id=103 --report-host=127.0.0.1 --report-port=18620 ${rep_mysqld_options} 2>&1 &
     for ((j=1; j<=30; j++)); do
-        if ! "${replication_dir2}"/bin/mysqladmin ping --user=root --socket="${replication_dir2}"/socket.sock >/dev/null 2>&1; then
+        if ! "${replication_dir2}"/bin/mysqladmin ping --user=root --socket="${replication_dir2}"/socket_rep2.sock >/dev/null 2>&1; then
             sleep 1
         else
             break
@@ -301,22 +296,22 @@ replicate_primary() {
         fi
     done
 
-    "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
+    "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
 
     echo "Configure and start the replication"
-    mysql_maj_version=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -Bse "select @@version;"|cut -f1 -d.)
-    mysql_min_version=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -Bse "select @@version;"|cut -f3 -d.|cut -f1 -d-)
+    mysql_maj_version=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -Bse "select @@version;"|cut -f1 -d.)
+    mysql_min_version=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -Bse "select @@version;"|cut -f3 -d.|cut -f1 -d-)
 
-    gtid_execute=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -Bse "select @@GLOBAL.GTID_EXECUTED;")
+    gtid_execute=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -Bse "select @@GLOBAL.GTID_EXECUTED;")
     if [[ "${mysql_maj_version}" -eq 5 ]] && [[ -n "${gtid_execute}" ]]; then
         echo "RESET MASTER in 5.7"
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "RESET MASTER;"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "RESET MASTER;"
     elif [[ "${mysql_maj_version}" -eq 8 ]] && [[ "${mysql_min_version}" -ge 22 ]]; then
         echo "RESET REPLICA in ${mysql_maj_version}.0.${mysql_min_version}"
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "RESET REPLICA;"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "RESET REPLICA;"
     elif [[ "${mysql_maj_version}" -eq 8 ]] && [[ "${mysql_min_version}" -lt 22 ]]; then
         echo "RESET SLAVE in ${mysql_maj_version}.0.${mysql_min_version}"
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "RESET SLAVE;"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "RESET SLAVE;"
     fi
 
     sleep 2
@@ -324,15 +319,15 @@ replicate_primary() {
 
     if [[ "${MYSQLD_OPTIONS}" != *"gtid-mode=ON"* ]]; then
         xtrabackup_replica_info=$(grep "CHANGE MASTER TO" "${backup_dir}"/full/xtrabackup_slave_info|sed 's/;//g')
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "$xtrabackup_replica_info, MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no};"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "$xtrabackup_replica_info, MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no};"
         if [ "$?" -ne 0 ]; then
             echo "ERR: The primary information could not be set in the replica2. Please check the log at: ${replication_dir2}/master.err"
             exit 1
         fi
     elif [[ "${mysql_maj_version}" -eq 5 ]]; then
         gtid_purged_sql=$(head -1 "${backup_dir}"/full/xtrabackup_slave_info)
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "$gtid_purged_sql"
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no}, MASTER_AUTO_POSITION=1;"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "$gtid_purged_sql"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "CHANGE MASTER TO MASTER_HOST='localhost', MASTER_USER='root', MASTER_PORT=${master_port_no}, MASTER_AUTO_POSITION=1;"
         if [ "$?" -ne 0 ]; then
             echo "ERR: The primary information could not be set in the replica2. Please check the log at: ${replication_dir2}/master.err"
             exit 1
@@ -341,16 +336,16 @@ replicate_primary() {
 
     echo "Replication status:"
     if [[ "${mysql_maj_version}" -eq 8 ]] && [[ "${mysql_min_version}" -ge 22 ]]; then
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "START REPLICA;"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "START REPLICA;"
         sleep 2
-        replication_status=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "SHOW REPLICA STATUS \G")
+        replication_status=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "SHOW REPLICA STATUS \G")
         echo "${replication_status}"
         io_status=$(echo "${replication_status}" | grep "Replica_IO_Running" | awk '{print $2}')
         sql_running=$(echo "${replication_status}" | grep -m 1 "Replica_SQL_Running" | awk '{print $2}')
     else
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "START SLAVE;"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "START SLAVE;"
         sleep 2
-        replication_status=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "SHOW SLAVE STATUS \G")
+        replication_status=$("${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "SHOW SLAVE STATUS \G")
         echo "${replication_status}"
         io_status=$(echo "${replication_status}" | grep "Slave_IO_Running" | awk '{print $2}')
         sql_running=$(echo "${replication_status}" | grep -m 1 "Slave_SQL_Running" | awk '{print $2}')
@@ -368,8 +363,6 @@ replicate_primary() {
     echo "Run pt-table-checksum on primary"
     pt-table-checksum S="${mysqldir}"/socket.sock,u=root -d test --recursion-method hosts --no-check-binlog-format --no-version-check 2>/dev/null
 
-    # Cleanup
-    rm -r /tmp/mysql
 }
 
 cleanup() {
@@ -377,14 +370,14 @@ cleanup() {
 
     if [[ -d "${replication_dir1}" ]]; then
         echo "Removing ${replication_dir1}"
-        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket.sock -e "SHUTDOWN"
+        "${replication_dir1}"/bin/mysql -uroot -S "${replication_dir1}"/socket_rep1.sock -e "SHUTDOWN" > /dev/null 2>&1
         sleep 1
         rm -r "${replication_dir1}"
     fi
 
     if [[ -d "${replication_dir2}" ]]; then
         echo "Removing ${replication_dir2}"
-        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket.sock -e "SHUTDOWN"
+        "${replication_dir2}"/bin/mysql -uroot -S "${replication_dir2}"/socket_rep2.sock -e "SHUTDOWN" > /dev/null 2>&1
         sleep 1
         rm -r "${replication_dir2}"
     fi
@@ -393,16 +386,23 @@ cleanup() {
 check_tables() {
     # This function checks all the tables in the test database
     local mysql_dir="$1"
+    if [ "$mysql_dir" == "$replication_dir1" ]; then
+        socket=$mysql_dir/socket_rep1.sock
+     elif [ "$mysql_dir" == "$replication_dir2" ]; then
+         socket=$mysql_dir/socket_rep2.sock
+     else
+         socket=$mysql_dir/socket.sock
+     fi
 
     echo "Check the table status"
     check_err=0
 
     while read table; do
         echo "Checking table $table ..."
-        if ! table_status=$("${mysql_dir}"/bin/mysql -uroot -S"${mysql_dir}"/socket.sock -Bse "CHECK TABLE test.$table"|cut -f4-); then
+        if ! table_status=$("${mysql_dir}"/bin/mysql -uroot -S$socket -Bse "CHECK TABLE test.$table"|cut -f4-); then
             echo "ERR: CHECK TABLE test.$table query failed"
             # Check if database went down
-            if ! "${mysql_dir}"/bin/mysqladmin ping --user=root --socket="${mysql_dir}"/socket.sock >/dev/null 2>&1; then
+            if ! "${mysql_dir}"/bin/mysqladmin ping --user=root --socket=$socket >/dev/null 2>&1; then
                 echo "ERR: The database has gone down due to corruption in table test.$table"
                 exit 1
             fi
@@ -412,10 +412,10 @@ check_tables() {
             echo "ERR: CHECK TABLE test.$table query displayed the table status as '$table_status'"
             check_err=1
         fi
-    done < <("${mysql_dir}"/bin/mysql -uroot -S"${mysql_dir}"/socket.sock -Bse "SHOW TABLES FROM test;")
+    done < <("${mysql_dir}"/bin/mysql -uroot -S$socket -Bse "SHOW TABLES FROM test;")
 
     # Check if database went down
-    if ! "${mysql_dir}"/bin/mysqladmin ping --user=root --socket="${mysql_dir}"/socket.sock >/dev/null 2>&1; then
+    if ! "${mysql_dir}"/bin/mysqladmin ping --user=root --socket=$socket >/dev/null 2>&1; then
         echo "ERR: The database has gone down due to corruption, the restore was unsuccessful"
         exit 1
     fi

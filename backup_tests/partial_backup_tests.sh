@@ -11,8 +11,8 @@
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.33-28/install/bin"
-export mysqldir="$HOME/PS_RELEASES/Percona-Server-8.0.31-23-Linux.x86_64.glibc2.28/"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
+export mysqldir="$HOME/mysql-8.0/bld_8.1.0r/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
