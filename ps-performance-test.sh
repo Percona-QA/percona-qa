@@ -22,24 +22,47 @@ if [ -z ${BIG_DIR} ]; then
   export BIG_DIR=${PWD}
 fi
 
-# make sure we have passed basedir parameter for this benchmark run
-if [ -z $2 ]; then
-  echo "No valid parameter passed.  Need relative workdir (1st option) and relative basedir (2nd option) settings. Retry."
+function usage(){
+  echo $1
   echo "Usage example:"
-  echo "$./ps.performance-test.sh 100 Percona-Server-8.0.34-26-Linux.x86_64.glibc2.35"
+  echo "$./ps.performance-test.sh 100 Percona-Server-8.0.34-26-Linux.x86_64.glibc2.35 [mysql_config_file]"
   echo "This would lead to $BIG_DIR/100 being created, in which testing takes place and"
   echo "$BIG_DIR/$1/Percona-Server-8.0.34-26-Linux.x86_64.glibc2.35 would be used to test."
   exit 1
-fi
+}
+
+function create_mysql_cnf_file(){
+  # Creating default my.cnf file
+  if [ ! -f $CONFIG_FILE ]; then
+    echo "[mysqld]" > $CONFIG_FILE
+    echo "sync_binlog=0" >> $CONFIG_FILE
+    echo "core-file" >> $CONFIG_FILE
+    echo "max-connections=1048" >> $CONFIG_FILE
+  fi
+}
+
+# make sure we have passed basedir parameter for this benchmark run
+if [ -z $2 ]; then usage "ERROR: No valid parameter passed.  Need relative workdir (1st option) and relative basedir (2nd option) settings. Retry."; fi
 
 mkdir -p $BIG_DIR/$1
 cd $BIG_DIR
-cp -r $BIG_DIR/$2 $BIG_DIR/$1
 export BUILD_NUMBER=$1
 export DB_DIR=$BIG_DIR/$1/$2
 export DATA_DIR=$BIG_DIR/$1/datadir
 mkdir -p $BIG_DIR/$1/logs
 export LOGS=$BIG_DIR/$1/logs
+if [ -z $3 ]; then
+  export CONFIG_FILE=$LOGS/my.cnf
+  rm -rf $CONFIG_FILE
+  create_mysql_cnf_file
+else
+  if [ ! -f $3 ]; then usage "ERROR: Config file $3 not found."; fi
+  export CONFIG_FILE=$LOGS/$(basename $3)
+  cp $3 $CONFIG_FILE
+fi
+echo "Using $CONFIG_FILE as mysqld config file"
+echo "Copying server binaries from $BIG_DIR/$2 to $BIG_DIR/$1"
+cp -r $BIG_DIR/$2 $BIG_DIR/$1
 
 export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
@@ -82,18 +105,6 @@ sysbench_run(){
   fi
 }
 
-# Default my.cnf creation
-# Creating default my.cnf file
-rm -rf $BIG_DIR/my.cnf
-if [ ! -f $BIG_DIR/my.cnf ]; then
-  echo "[mysqld]" > $BIG_DIR/my.cnf
-  echo "basedir=${DB_DIR}" >> $BIG_DIR/my.cnf
-  echo "binlog_format=ROW" >> $BIG_DIR/my.cnf
-  echo "sync_binlog=0" >> $BIG_DIR/my.cnf
-  echo "core-file" >> $BIG_DIR/my.cnf
-  echo "max-connections=1048" >> $BIG_DIR/my.cnf
-fi
-
 # Setting seeddb creation configuration
 MID="${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR}"
 WS_DATADIR="${BIG_DIR}/80_sysbench_data_template"
@@ -113,8 +124,9 @@ function start_ps_node(){
     node="${DATA_DIR}"
   fi
 
-  ${DB_DIR}/bin/mysqld --defaults-file=${BIG_DIR}/my.cnf \
+  ${DB_DIR}/bin/mysqld --defaults-file=${CONFIG_FILE} \
     --datadir=$node $MYEXTRA \
+    --basedir=${DB_DIR} \
     --log-error=$LOGS/master.err  \
     --socket=$LOGS/ps_socket.sock --port=$RBASE > $LOGS/master.err 2>&1 &
 
