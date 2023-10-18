@@ -194,6 +194,7 @@ function sysbench_rw_run(){
     LOG_NAME_IOSTAT=${LOG_NAME}.iostat
     LOG_NAME_DSTAT=${LOG_NAME}.dstat
     LOG_NAME_DSTAT_CSV=${LOG_NAME}.dstat.csv
+    LOG_NAME_INXI=${LOG_NAME}.inxi
 
     if [ ${BENCHMARK_LOGGING} == "Y" ]; then
         # verbose logging
@@ -202,6 +203,8 @@ function sysbench_rw_run(){
         MEM_PID+=("$!")
         iostat -dxm $IOSTAT_INTERVAL $IOSTAT_ROUNDS  > $LOG_NAME_IOSTAT &
         dstat -t -v --nocolor --output $LOG_NAME_DSTAT_CSV $DSTAT_INTERVAL $DSTAT_ROUNDS > $LOG_NAME_DSTAT &
+        rm -f $LOG_NAME_INXI
+        (x=1; while [ $x -le $DSTAT_ROUNDS ]; do inxi -C -c 0 >> $LOG_NAME_INXI; sleep $DSTAT_INTERVAL; x=$(( $x + 1 )); done) &
     fi
     sysbench_run oltp $MYSQL_DATABASE $RUN_TIME_SECONDS
     sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$LOGS/ps_socket.sock --percentile=99 run | tee $LOG_NAME
