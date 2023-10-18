@@ -69,7 +69,7 @@ export MYSQL_SOCKET=${DB_DIR}/node1/socket.sock
 export MYSQL_VERSION=`$DB_DIR/bin/mysqld --version | awk '{ print $3}'`
 
 archives() {
-  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS}  true
+  tar czf ${BIG_DIR}/results-${BUILD_NUMBER}.tar.gz ${LOGS}
 }
 
 trap archives EXIT KILL
@@ -106,19 +106,20 @@ WS_DATADIR="${BIG_DIR}/80_sysbench_data_template"
 function start_ps_node(){
   ps -ef | grep 'ps_socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
-  MYEXTRA+=" --innodb-buffer-pool-size=$INNODB_CACHE"
+  EXTRA_PARAMS=$MYEXTRA
+  EXTRA_PARAMS+=" --innodb-buffer-pool-size=$INNODB_CACHE"
   RBASE="$(( RBASE + 100 ))"
   if [ "$1" == "startup" ];then
     node="${WS_DATADIR}/psdata_${DATASIZE}"
     if [ ! -d $node ]; then
       ${MID} --datadir=$node  > $LOGS/startup.err 2>&1
     fi
-    MYEXTRA+=" --disable-log-bin"
+    EXTRA_PARAMS+=" --disable-log-bin"
   else
     node="${DATA_DIR}"
   fi
 
-  MYSQLD_OPTIONS="--defaults-file=${CONFIG_FILE} --datadir=$node --basedir=${DB_DIR} $MYEXTRA --log-error=$LOGS/master.err --socket=$LOGS/ps_socket.sock --port=$RBASE"
+  MYSQLD_OPTIONS="--defaults-file=${CONFIG_FILE} --datadir=$node --basedir=${DB_DIR} $EXTRA_PARAMS --log-error=$LOGS/master.err --socket=$LOGS/ps_socket.sock --port=$RBASE"
   echo "Starting Percona Server with options $MYSQLD_OPTIONS"
   ${DB_DIR}/bin/mysqld $MYSQLD_OPTIONS > $LOGS/master.err 2>&1 &
 
@@ -188,7 +189,7 @@ function sysbench_rw_run(){
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
   for num_threads in ${threadCountList}; do
-    LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$NUM_ROWS-$num_threads.txt
+    LOG_NAME=${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$num_threads.txt
     LOG_NAME_MEMORY=${LOG_NAME}.memory
     LOG_NAME_IOSTAT=${LOG_NAME}.iostat
     LOG_NAME_DSTAT=${LOG_NAME}.dstat
@@ -217,14 +218,13 @@ function sysbench_rw_run(){
   echo "[ '${BUILD_NUMBER}', ${result_set[*]} ]," >> ${LOGS}/sysbench_${BENCH_ID}_perf_result_set.txt
   unset result_set
   DATE=`date +"%Y%m%d%H%M%S"`
-  tarFileName="sysbench_${BENCH_ID}_perf_result_set_${DATE}.tar.gz"
+  tarFileName="sysbench_${BENCH_ID}_perf_result_set_${BUILD_NUMBER}_${DATE}.tar.gz"
   tar czvf ${tarFileName} ${MYSQL_NAME}* ${LOGS}/master.err
   mkdir -p ${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}
   BACKUP_FILES="${SCP_TARGET}/${BUILD_NUMBER}/${BENCH_SUITE}/${BENCH_ID}"
   cp ${tarFileName} ${BACKUP_FILES}
   rm -rf ${MYSQL_NAME}*
-  rm -rf ${DATA_DIR}*
-
+  rm -rf ${DATA_DIR}
 }
 
 # **********************************************************************************************
@@ -233,8 +233,8 @@ function sysbench_rw_run(){
 export threadCountList="0001 0004 0016 0064 0128 0256 0512 1024"
 export WARMUP=Y
 export BENCHMARK_LOGGING=Y
-WARMUP_TIME_SECONDS=600
-export RUN_TIME_SECONDS=300
+WARMUP_TIME_SECONDS=${WARMUP_TIME_SECONDS:-600}
+export RUN_TIME_SECONDS=${RUN_TIME_SECONDS:-300}
 export REPORT_INTERVAL=10
 export IOSTAT_INTERVAL=10
 export IOSTAT_ROUNDS=$[RUN_TIME_SECONDS/IOSTAT_INTERVAL+1]
@@ -247,7 +247,7 @@ export DATASIZE=5M
 export INNODB_CACHE=25G
 export NUM_TABLES=16
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-cpubound
+export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
 
 start_ps
 sysbench_rw_run
@@ -257,7 +257,7 @@ export DATASIZE=5M
 export INNODB_CACHE=15G
 export NUM_TABLES=16
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-iobound
+export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
 
 start_ps
 sysbench_rw_run
@@ -266,7 +266,7 @@ sysbench_rw_run
 export DATASIZE=1M
 export INNODB_CACHE=5G
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-cpubound
+export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
 
 start_ps
 sysbench_rw_run
@@ -275,7 +275,7 @@ sysbench_rw_run
 export DATASIZE=1M
 export INNODB_CACHE=1G
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-iobound
+export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
 
 start_ps
 sysbench_rw_run
@@ -286,11 +286,17 @@ UPTIME_HOUR=`uptime -p`
 SYSTEM_LOAD=`uptime | sed 's|  | |g' | sed -e 's|.*user*.,|System|'`
 MEM=`free -g | grep "Mem:" | awk '{print "Total:"$2"GB  Used:"$3"GB  Free:"$4"GB" }'`
 if [ ! -f $LOGS/hw.info ];then
-  RELEASE=`cat /etc/redhat-release`
+  if [ -f /etc/redhat-release ]; then
+    RELEASE=`cat /etc/redhat-release`
+  else
+    RELEASE=`cat /etc/issue`
+  fi
   KERNEL=`uname -r`
   echo "HW info | $RELEASE $KERNEL"  > $LOGS/hw.info
 fi
 echo "Build #$BUILD_NUMBER | `date +'%d-%m-%Y | %H:%M'` | $VERSION_INFO | $UPTIME_HOUR | $SYSTEM_LOAD | Memory: $MEM " >> $LOGS/build_info.log
 $SCRIPT_DIR/multibench_html_gen.sh $LOGS
+cat ${LOGS}/sysbench_*_perf_result_set.txt > ${LOGS}/sysbench_${BUILD_NUMBER}_full_result_set.txt
+cat ${LOGS}/sysbench_*_perf_result_set.txt
 
 exit 0
