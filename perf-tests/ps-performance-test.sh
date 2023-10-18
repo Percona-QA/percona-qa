@@ -240,14 +240,14 @@ export IOSTAT_INTERVAL=10
 export IOSTAT_ROUNDS=$[RUN_TIME_SECONDS/IOSTAT_INTERVAL+1]
 export DSTAT_INTERVAL=10
 export DSTAT_ROUNDS=$[RUN_TIME_SECONDS/DSTAT_INTERVAL+1]
+export BENCH_SUITE=sysbench
 
 # CPU bound performance run
 export DATASIZE=5M
-export BENCH_SUITE=sysbench
 export INNODB_CACHE=25G
 export NUM_TABLES=16
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-5mm-${RAND_TYPE}-cpubound
+export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-cpubound
 
 start_ps
 sysbench_rw_run
@@ -257,7 +257,7 @@ export DATASIZE=5M
 export INNODB_CACHE=15G
 export NUM_TABLES=16
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-5mm-${RAND_TYPE}-iobound
+export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-iobound
 
 start_ps
 sysbench_rw_run
@@ -266,7 +266,7 @@ sysbench_rw_run
 export DATASIZE=1M
 export INNODB_CACHE=5G
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-1mm-${RAND_TYPE}-cpubound
+export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-cpubound
 
 start_ps
 sysbench_rw_run
@@ -275,7 +275,7 @@ sysbench_rw_run
 export DATASIZE=1M
 export INNODB_CACHE=1G
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-1mm-${RAND_TYPE}-iobound
+export BENCH_ID=innodb-${DATASIZE}-${RAND_TYPE}-iobound
 
 start_ps
 sysbench_rw_run
