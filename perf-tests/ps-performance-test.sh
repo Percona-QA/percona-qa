@@ -237,7 +237,7 @@ export threadCountList="0001 0004 0016 0064 0128 0256 0512 1024"
 export WARMUP=Y
 export BENCHMARK_LOGGING=Y
 WARMUP_TIME_SECONDS=${WARMUP_TIME_SECONDS:-600}
-export RUN_TIME_SECONDS=${RUN_TIME_SECONDS:-300}
+export RUN_TIME_SECONDS=${RUN_TIME_SECONDS:-600}
 export REPORT_INTERVAL=10
 export IOSTAT_INTERVAL=10
 export IOSTAT_ROUNDS=$[RUN_TIME_SECONDS/IOSTAT_INTERVAL+1]
@@ -245,43 +245,54 @@ export DSTAT_INTERVAL=10
 export DSTAT_ROUNDS=$[RUN_TIME_SECONDS/DSTAT_INTERVAL+1]
 export BENCH_SUITE=sysbench
 
-# CPU bound performance run
-export DATASIZE=5M
-export INNODB_CACHE=25G
-export NUM_TABLES=16
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
+# One big run
 
-start_ps
-sysbench_rw_run
-
-# IO bound performance run
-export DATASIZE=5M
-export INNODB_CACHE=15G
+export INNODB_CACHE=32G
 export NUM_TABLES=16
+export DATASIZE=10M
 export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
+export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}
 
 start_ps
 sysbench_rw_run
 
 # CPU bound performance run
-export DATASIZE=1M
-export INNODB_CACHE=5G
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
+#export DATASIZE=5M
+#export INNODB_CACHE=25G
+#export NUM_TABLES=16
+#export RAND_TYPE=uniform
+#export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
 
-start_ps
-sysbench_rw_run
+#start_ps
+#sysbench_rw_run
 
 # IO bound performance run
-export DATASIZE=1M
-export INNODB_CACHE=1G
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
+#export DATASIZE=5M
+#export INNODB_CACHE=15G
+#export NUM_TABLES=16
+#export RAND_TYPE=uniform
+#export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
 
-start_ps
-sysbench_rw_run
+#start_ps
+#sysbench_rw_run
+
+# CPU bound performance run
+#export DATASIZE=1M
+#export INNODB_CACHE=5G
+#export RAND_TYPE=uniform
+#export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
+
+#start_ps
+#sysbench_rw_run
+
+# IO bound performance run
+#export DATASIZE=1M
+#export INNODB_CACHE=1G
+#export RAND_TYPE=uniform
+#export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
+
+#start_ps
+#sysbench_rw_run
 
 #Generate graph
 VERSION_INFO=`$DB_DIR/bin/mysqld --version | cut -d' ' -f2-`
