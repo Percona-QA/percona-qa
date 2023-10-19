@@ -19,7 +19,8 @@ data_file = sys.argv[1]
 def parse_line(line):
     # Remove leading and trailing spaces and the trailing comma
     values = line.strip().strip(', []')
-    print(values)
+    if not values:
+        return False
     # Split the line by comma and convert numeric values to floats
     values = [val.strip() for val in values.split(',')]
     values = [values[0]] + [float(val.strip()) for val in values[1:]]
@@ -29,7 +30,10 @@ def parse_line(line):
 data = []
 with open(data_file, "r") as file:
     for line in file:
-        data.append(parse_line(line))
+        values=parse_line(line)
+        if values:
+            print(values)
+            data.append(values)
 
 # Iterate through the data and compare each line with the line n+4
 for i in range(len(data) - 4):
