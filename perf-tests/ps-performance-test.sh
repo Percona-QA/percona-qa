@@ -1,7 +1,7 @@
 #!/bin/bash
 # set -x
 # PS performance benchmark scripts
-# Sysbench suite will run CPUBOUND and IOBOUND performance tests
+# Sysbench suite will run performance tests
 # **********************************************************************************************
 # generic variables
 # **********************************************************************************************
@@ -86,7 +86,7 @@ if [ -z $WORKSPACE ]; then
   export WORKSPACE=$BIG_DIR/backups
 fi
 
-sysbench_run(){
+function sysbench_run(){
   TEST_TYPE="$1"
   DB="$2"
   SDURATION="$3"
@@ -99,10 +99,6 @@ sysbench_run(){
   fi
 }
 
-# Setting seeddb creation configuration
-MID="${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR}"
-WS_DATADIR="${BIG_DIR}/80_sysbench_data_template"
-
 function start_ps_node(){
   ps -ef | grep 'ps_socket.sock' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
@@ -110,9 +106,9 @@ function start_ps_node(){
   EXTRA_PARAMS+=" --innodb-buffer-pool-size=$INNODB_CACHE"
   RBASE="$(( RBASE + 100 ))"
   if [ "$1" == "startup" ];then
-    node="${WS_DATADIR}/psdata_${DATASIZE}"
+    node="${WS_DATADIR}/datadir_${NUM_TABLES}x${DATASIZE}"
     if [ ! -d $node ]; then
-      ${MID} --datadir=$node  > $LOGS/startup.err 2>&1
+      ${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR} --datadir=$node  > $LOGS/startup.err 2>&1
     fi
     EXTRA_PARAMS+=" --disable-log-bin"
   else
@@ -130,6 +126,7 @@ function start_ps_node(){
       break
     fi
   done
+  ${DB_DIR}/bin/mysqladmin -uroot -S$LOGS/ps_socket.sock ping > /dev/null 2>&1 || { echo “Couldn\'t connect $LOGS/ps_socket.sock” && exit 0; }
 
   if [ "$1" == "startup" ];then
     echo "Creating data directory in $node"
@@ -164,19 +161,21 @@ function start_ps(){
   ps -ef | grep 'ps_socket' | grep ${BUILD_NUMBER} | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1 || true
   BIN=`find ${DB_DIR} -maxdepth 2 -name mysqld -type f -o -name mysqld-debug -type f | head -1`;if [ -z $BIN ]; then echo "Assert! mysqld binary '$BIN' could not be read";exit 1;fi
   NUM_ROWS=$(numfmt --from=si $DATASIZE)
+  WS_DATADIR="${BIG_DIR}/80_sysbench_data_template"
 
   drop_caches
-  if [ ! -d ${WS_DATADIR}/psdata_${DATASIZE} ]; then
+  if [ ! -d ${WS_DATADIR}/datadir_${NUM_TABLES}x${DATASIZE} ]; then
     mkdir ${WS_DATADIR} > /dev/null 2>&1
     start_ps_node startup
   fi
-  echo "Copying data directory from ${WS_DATADIR}/psdata_${DATASIZE} to ${DATA_DIR}"
+  echo "Copying data directory from ${WS_DATADIR}/datadir_${NUM_TABLES}x${DATASIZE} to ${DATA_DIR}"
   rm -rf ${DATA_DIR}
-  cp -r ${WS_DATADIR}/psdata_${DATASIZE} ${DATA_DIR}
+  cp -r ${WS_DATADIR}/datadir_${NUM_TABLES}x${DATASIZE} ${DATA_DIR}
   start_ps_node
 }
 
 function sysbench_rw_run(){
+  BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}
   MEM_PID=()
   if [ ${WARMUP} == "Y" ]; then
     #warmup the cache, 64 threads for 10 minutes, don't bother logging
@@ -237,7 +236,7 @@ export threadCountList="0001 0004 0016 0064 0128 0256 0512 1024"
 export WARMUP=Y
 export BENCHMARK_LOGGING=Y
 WARMUP_TIME_SECONDS=${WARMUP_TIME_SECONDS:-600}
-export RUN_TIME_SECONDS=${RUN_TIME_SECONDS:-300}
+export RUN_TIME_SECONDS=${RUN_TIME_SECONDS:-600}
 export REPORT_INTERVAL=10
 export IOSTAT_INTERVAL=10
 export IOSTAT_ROUNDS=$[RUN_TIME_SECONDS/IOSTAT_INTERVAL+1]
@@ -245,40 +244,10 @@ export DSTAT_INTERVAL=10
 export DSTAT_ROUNDS=$[RUN_TIME_SECONDS/DSTAT_INTERVAL+1]
 export BENCH_SUITE=sysbench
 
-# CPU bound performance run
-export DATASIZE=5M
-export INNODB_CACHE=25G
-export NUM_TABLES=16
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
-
-start_ps
-sysbench_rw_run
-
-# IO bound performance run
-export DATASIZE=5M
-export INNODB_CACHE=15G
-export NUM_TABLES=16
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
-
-start_ps
-sysbench_rw_run
-
-# CPU bound performance run
-export DATASIZE=1M
-export INNODB_CACHE=5G
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-cpubound
-
-start_ps
-sysbench_rw_run
-
-# IO bound performance run
-export DATASIZE=1M
-export INNODB_CACHE=1G
-export RAND_TYPE=uniform
-export BENCH_ID=innodb-${NUM_TABLES}x${DATASIZE}-${RAND_TYPE}-iobound
+export INNODB_CACHE=${INNODB_CACHE:-32G}
+export NUM_TABLES=${NUM_TABLES:-16}
+export DATASIZE=${DATASIZE:-10M}
+export RAND_TYPE=${RAND_TYPE:-uniform}
 
 start_ps
 sysbench_rw_run
