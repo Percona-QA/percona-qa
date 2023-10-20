@@ -1,5 +1,9 @@
+https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
 innodb_write_io_threads=4
 innodb_read_io_threads=4
 innodb_page_size=16384
 innodb_page_cleaners=4
 innodb_doublewrite=1
+innodb_io_capacity=200
+innodb_max_dirty_pages_pct=90
+innodb_max_dirty_pages_pct_lwm=10

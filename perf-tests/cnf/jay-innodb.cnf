@@ -17,8 +17,6 @@ wait_timeout=120
 table_open_cache=8000
 
 # InnoDB
-#innodb_force_recovery=3
-#innodb_purge_threads=0
 innodb_io_capacity_max=8000
 innodb_io_capacity=3000
 
@@ -28,7 +26,6 @@ innodb_write_io_threads=32
 innodb_page_cleaners=8
 innodb_max_dirty_pages_pct=90
 innodb_max_dirty_pages_pct_lwm=0
-innodb_flush_neighbors=0
 innodb_open_files=300
 innodb_redo_log_capacity=16G
 innodb_adaptive_flushing_lwm=30
