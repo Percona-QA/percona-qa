@@ -1,0 +1,5 @@
+innodb_write_io_threads=4
+innodb_read_io_threads=4
+innodb_page_size=16384
+innodb_page_cleaners=4
+innodb_doublewrite=1

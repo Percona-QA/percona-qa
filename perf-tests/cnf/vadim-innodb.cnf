@@ -33,8 +33,7 @@ symbolic-links=0
 
 # files
   innodb_file_per_table
-  innodb_log_file_size=15G
-  innodb_log_files_in_group=2
+  innodb_redo_log_capacity=16G
   innodb_open_files=4000
 
 # buffers
@@ -43,7 +42,6 @@ symbolic-links=0
   innodb_log_buffer_size=64M
 
 # tune
-  innodb_doublewrite= 1 
 # innodb_support_xa=0
   innodb_thread_concurrency=0 
   innodb_flush_log_at_trx_commit= 1
@@ -70,11 +68,3 @@ symbolic-links=0
   innodb_adaptive_hash_index=1
 
 #innodb_change_buffering=none
-
-# Monitoring
-#innodb_monitor_enable = '%'
-#performance_schema=OFF
-#performance_schema=ON
-#performance-schema-instrument='wait/synch/%=ON'
-#innodb_monitor_enable=all
-#log-error=mysqld.log
