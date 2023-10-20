@@ -132,8 +132,9 @@ function start_ps_node(){
     echo "Creating data directory in $node"
     ${DB_DIR}/bin/mysql -uroot -S$LOGS/ps_socket.sock -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
     sysbench_run load_data $MYSQL_DATABASE
-    sysbench $SYSBENCH_OPTIONS --mysql-socket=$LOGS/ps_socket.sock prepare > $LOGS/sysbench_prepare.log 2>&1
-    timeout --signal=9 20s ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/ps_socket.sock shutdown > /dev/null 2>&1
+    time sysbench $SYSBENCH_OPTIONS --mysql-socket=$LOGS/ps_socket.sock prepare 2>&1 | tee $LOGS/sysbench_prepare.log
+    echo -e "Data directory in $node created\nShutting mysqld down"
+    time ${DB_DIR}/bin/mysqladmin -uroot --socket=$LOGS/ps_socket.sock shutdown > /dev/null 2>&1
   fi
 }
 
@@ -154,6 +155,7 @@ function drop_caches(){
   sync
   sudo sh -c 'sysctl -q -w vm.drop_caches=3'
   sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+  ulimit -n 1000000
 }
 
 function start_ps(){
