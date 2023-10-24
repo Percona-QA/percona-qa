@@ -37,19 +37,14 @@ symbolic-links=0
   innodb_open_files=4000
 
 # buffers
-#  innodb_buffer_pool_size= 200G
   innodb_buffer_pool_instances=8
   innodb_log_buffer_size=64M
 
 # tune
 # innodb_support_xa=0
   innodb_thread_concurrency=0 
-  innodb_flush_log_at_trx_commit= 1
-  innodb_flush_method=O_DIRECT_NO_FSYNC
-  innodb_max_dirty_pages_pct=90
-  innodb_max_dirty_pages_pct_lwm=10
+  innodb_flush_method=O_DIRECT
   innodb_lru_scan_depth=1024
-#  innodb_page_cleaners=4
   join_buffer_size=256K
   sort_buffer_size=256K
   innodb_use_native_aio=1
@@ -57,14 +52,10 @@ symbolic-links=0
   #innodb_spin_wait_delay=96
 
 # perf special
-  innodb_adaptive_flushing = 1
-  innodb_flush_neighbors = 0
   innodb_read_io_threads = 4
   innodb_write_io_threads = 2
   innodb_io_capacity=2000 
   innodb_io_capacity_max=4000
   innodb_purge_threads=4
-
-  innodb_adaptive_hash_index=1
 
 #innodb_change_buffering=none

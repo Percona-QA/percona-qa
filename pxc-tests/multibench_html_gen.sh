@@ -30,6 +30,7 @@ for file in "${RS_ARRAY[@]}"; do
     echo "           ['Build',  '20M' , '40M' , '60M ' , '80M' , '100M' , 'Avg IPS' ]," >> ${BIG_DIR}/multibench_perf_result.html
   else
     echo "     <script type=\"text/javascript\">"  >>  ${BIG_DIR}/multibench_perf_result.html
+    echo "       google.load(\"visualization\", \"1\", {packages:[\"corechart\"]});" >> ${BIG_DIR}/multibench_perf_result.html
     echo "       google.setOnLoadCallback(drawChart$count);"  >>  ${BIG_DIR}/multibench_perf_result.html
     echo "       function drawChart$count() {"  >>  ${BIG_DIR}/multibench_perf_result.html
     echo "         var data = google.visualization.arrayToDataTable(["  >>  ${BIG_DIR}/multibench_perf_result.html

@@ -29,5 +29,4 @@ innodb_max_dirty_pages_pct_lwm=0
 innodb_open_files=300
 innodb_redo_log_capacity=16G
 innodb_adaptive_flushing_lwm=30
-innodb_flush_log_at_trx_commit=2
 innodb_log_compressed_pages=0
