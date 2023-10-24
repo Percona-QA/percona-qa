@@ -17,6 +17,8 @@ export MYSQL_DATABASE=test
 export MYSQL_NAME=PS
 SYSBENCH_DIR=${SYSBENCH_DIR:-/usr/share}
 MYEXTRA=${MYEXTRA:=--disable-log-bin}
+TASKSET_MYSQLD=${TASKSET_MYSQLD:=taskset -c 0}
+TASKSET_SYSBENCH=${TASKSET_SYSBENCH:=taskset -c 1}
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
 if [ -z ${BIG_DIR} ]; then
@@ -106,7 +108,7 @@ function start_ps_node(){
   if [ "$1" == "startup" ];then
     node="${WS_DATADIR}/datadir_${NUM_TABLES}x${DATASIZE}"
     if [ ! -d $node ]; then
-      ${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR} --datadir=$node  > $LOGS/startup.err 2>&1
+      ${TASKSET_MYSQLD} ${DB_DIR}/bin/mysqld --no-defaults --initialize-insecure --basedir=${DB_DIR} --datadir=$node  > $LOGS/startup.err 2>&1
     fi
     EXTRA_PARAMS+=" --disable-log-bin"
   else
@@ -115,7 +117,7 @@ function start_ps_node(){
 
   MYSQLD_OPTIONS="--defaults-file=${CONFIG_FILE} --datadir=$node --basedir=${DB_DIR} $EXTRA_PARAMS --log-error=${LOGS_CONFIG}/master.err --socket=$MYSQL_SOCKET --port=$RBASE"
   echo "Starting Percona Server with options $MYSQLD_OPTIONS"
-  ${DB_DIR}/bin/mysqld $MYSQLD_OPTIONS > ${LOGS_CONFIG}/master.err 2>&1 &
+  ${TASKSET_MYSQLD} ${DB_DIR}/bin/mysqld $MYSQLD_OPTIONS > ${LOGS_CONFIG}/master.err 2>&1 &
 
   for X in $(seq 0 ${PS_START_TIMEOUT}); do
     sleep 1
@@ -130,7 +132,7 @@ function start_ps_node(){
     echo "Creating data directory in $node"
     ${DB_DIR}/bin/mysql -uroot -S$MYSQL_SOCKET -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE" 2>&1
     sysbench_run load_data $MYSQL_DATABASE
-    time sysbench $SYSBENCH_OPTIONS --mysql-socket=$MYSQL_SOCKET prepare 2>&1 | tee $LOGS/sysbench_prepare.log
+    time ${TASKSET_SYSBENCH} sysbench $SYSBENCH_OPTIONS --mysql-socket=$MYSQL_SOCKET prepare 2>&1 | tee $LOGS/sysbench_prepare.log
     echo -e "Data directory in $node created\nShutting mysqld down"
     time ${DB_DIR}/bin/mysqladmin -uroot --socket=$MYSQL_SOCKET shutdown > /dev/null 2>&1
   fi
@@ -250,7 +252,7 @@ function sysbench_rw_run(){
     num_threads=64
     echo "Warming up for $WARMUP_TIME_SECONDS seconds"
     sysbench_run oltp_read $MYSQL_DATABASE $WARMUP_TIME_SECONDS
-    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$MYSQL_SOCKET --percentile=99 run > ${LOGS_CONFIG}/sysbench_warmup.log 2>&1
+    ${TASKSET_SYSBENCH} sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$MYSQL_SOCKET --percentile=99 run > ${LOGS_CONFIG}/sysbench_warmup.log 2>&1
     sleep $[WARMUP_TIME_SECONDS/10]
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
@@ -274,7 +276,7 @@ function sysbench_rw_run(){
         (x=1; while [ $x -le $DSTAT_ROUNDS ]; do inxi -C -c 0 >> $LOG_NAME_INXI; sleep $DSTAT_INTERVAL; x=$(( $x + 1 )); done) &
     fi
     sysbench_run oltp $MYSQL_DATABASE $RUN_TIME_SECONDS
-    sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$MYSQL_SOCKET --percentile=99 run | tee $LOG_NAME
+    ${TASKSET_SYSBENCH} sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$MYSQL_SOCKET --percentile=99 run | tee $LOG_NAME
     sleep 6
     result_set+=(`grep  "queries:" $LOG_NAME | cut -d'(' -f2 | awk '{print $1 ","}'`)
   done
