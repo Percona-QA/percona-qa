@@ -149,6 +149,18 @@ function check_memory(){
   done
 }
 
+function restore_address_randomization(){
+    CURRENT_ASLR=`cat /proc/sys/kernel/randomize_va_space`
+    sudo sh -c "echo $PREVIOUS_ASLR > /proc/sys/kernel/randomize_va_space"
+    echo "Resoring /proc/sys/kernel/randomize_va_space from $CURRENT_ASLR to `cat /proc/sys/kernel/randomize_va_space`"
+}
+
+function disable_address_randomization(){
+    PREVIOUS_ASLR=`cat /proc/sys/kernel/randomize_va_space`
+    sudo sh -c "echo 0 > /proc/sys/kernel/randomize_va_space"
+    echo "Setting /proc/sys/kernel/randomize_va_space from $PREVIOUS_ASLR to `cat /proc/sys/kernel/randomize_va_space`"
+}
+
 function restore_turbo_boost(){
   echo "Restore turbo boost with $SCALING_DRIVER scaling driver"
 
@@ -317,6 +329,7 @@ LOGS_CPU=$LOGS/cpu-states.txt
 disable_turbo_boost > ${LOGS_CPU}
 change_scaling_governor powersave >> ${LOGS_CPU}
 disable_idle_states >> ${LOGS_CPU}
+disable_address_randomization >> ${LOGS_CPU}
 
 for file in $CONFIG_FILES; do
   if [ ! -f $file ]; then usage "ERROR: Config file $file not found."; fi
@@ -334,6 +347,7 @@ done
 restore_turbo_boost >> ${LOGS_CPU}
 restore_scaling_governor >> ${LOGS_CPU}
 enable_idle_states >> ${LOGS_CPU}
+restore_address_randomization >> ${LOGS_CPU}
 archive_logs
 
 #Generate graph
