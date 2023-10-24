@@ -23,6 +23,8 @@ if [ -z ${BIG_DIR} ]; then
   export BIG_DIR=${PWD}
 fi
 
+command -v cpupower >/dev/null 2>&1 || { echo >&2 "cpupower is not installed. Aborting."; exit 1; }
+
 function usage(){
   echo $1
   echo "Usage example:"
@@ -147,6 +149,59 @@ function check_memory(){
   done
 }
 
+function restore_turbo_boost(){
+  echo "Restore turbo boost with $SCALING_DRIVER scaling driver"
+
+  if [ ${SCALING_DRIVER} == "intel_pstate" ]; then
+    CURRENT_TURBO=`cat /sys/devices/system/cpu/intel_pstate/no_turbo`
+    sudo sh -c "echo $PREVIOUS_TURBO > /sys/devices/system/cpu/intel_pstate/no_turbo"
+    echo "Setting /sys/devices/system/cpu/intel_pstate/no_turbo from $CURRENT_TURBO to $PREVIOUS_TURBO"
+  else
+    CURRENT_TURBO=`cat /sys/devices/system/cpu/cpufreq/boost`
+    sudo sh -c "echo $PREVIOUS_TURBO > /sys/devices/system/cpu/cpufreq/boost"
+    echo "Setting /sys/devices/system/cpu/cpufreq/boost from $CURRENT_TURBO to $PREVIOUS_TURBO"
+  fi
+}
+
+function disable_turbo_boost(){
+  SCALING_DRIVER=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver`
+  echo "Using $SCALING_DRIVER scaling driver"
+
+  if [ ${SCALING_DRIVER} == "intel_pstate" ]; then
+    PREVIOUS_TURBO=`cat /sys/devices/system/cpu/intel_pstate/no_turbo`
+    sudo sh -c "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo"
+    echo "Setting /sys/devices/system/cpu/intel_pstate/no_turbo from $PREVIOUS_TURBO to `cat /sys/devices/system/cpu/intel_pstate/no_turbo`"
+  else
+    PREVIOUS_TURBO=`cat /sys/devices/system/cpu/cpufreq/boost`
+    sudo sh -c "echo 0 > /sys/devices/system/cpu/cpufreq/boost"
+    echo "Setting /sys/devices/system/cpu/cpufreq/boost from $PREVIOUS_TURBO to `cat /sys/devices/system/cpu/cpufreq/boost`"
+  fi
+}
+
+function restore_scaling_governor(){
+  CURRENT_GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+  sudo cpupower frequency-set -g $PREVIOUS_GOVERNOR
+  echo "Changed scaling governor from $CURRENT_GOVERNOR to `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`"
+  sudo cpupower frequency-info
+}
+
+function change_scaling_governor(){
+  PREVIOUS_GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+  sudo cpupower frequency-set -g $1
+  echo "Changed scaling governor from $PREVIOUS_GOVERNOR to `cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`"
+  sudo cpupower frequency-info
+}
+
+function enable_idle_states(){
+  sudo cpupower idle-set --enable-all
+  sudo cpupower idle-info
+}
+
+function disable_idle_states(){
+  sudo cpupower idle-set --disable-by-latency 0
+  sudo cpupower idle-info
+}
+
 function drop_caches(){
   echo "Dropping caches"
   sync
@@ -256,6 +311,13 @@ export DATASIZE=${DATASIZE:-10M}
 export RAND_TYPE=${RAND_TYPE:-uniform}
 
 rm -rf ${LOGS}
+mkdir -p ${LOGS}
+LOGS_CPU=$LOGS/cpu-states.txt
+
+disable_turbo_boost > ${LOGS_CPU}
+change_scaling_governor powersave >> ${LOGS_CPU}
+disable_idle_states >> ${LOGS_CPU}
+
 for file in $CONFIG_FILES; do
   if [ ! -f $file ]; then usage "ERROR: Config file $file not found."; fi
   CONFIG_BASE=$(basename ${file%.*})
@@ -268,6 +330,10 @@ for file in $CONFIG_FILES; do
   start_ps
   sysbench_rw_run
 done
+
+restore_turbo_boost >> ${LOGS_CPU}
+restore_scaling_governor >> ${LOGS_CPU}
+enable_idle_states >> ${LOGS_CPU}
 archive_logs
 
 #Generate graph
