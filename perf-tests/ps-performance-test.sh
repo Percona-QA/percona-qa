@@ -93,7 +93,7 @@ function sysbench_run(){
   if [ "$TEST_TYPE" == "load_data" ];then
     SYSBENCH_OPTIONS="$SYSBENCH_DIR/sysbench/oltp_insert.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$NUM_TABLES --db-driver=mysql"
   elif [ "$TEST_TYPE" == "oltp" ];then
-    SYSBENCH_OPTIONS="$SYSBENCH_DIR/sysbench/oltp_read_write.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$num_threads --time=$SDURATION --warmup-time=$WARMUP_TIME --report-interval=10 --events=1870000000 --db-driver=mysql --non_index_updates=1 --db-ps-mode=disable"
+    SYSBENCH_OPTIONS="$SYSBENCH_DIR/sysbench/oltp_read_write.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER  --threads=$num_threads --time=$SDURATION --warmup-time=$WARMUP_TIME_SECONDS --report-interval=10 --events=1870000000 --db-driver=mysql --non_index_updates=1 --db-ps-mode=disable"
   elif [ "$TEST_TYPE" == "oltp_read" ];then
     SYSBENCH_OPTIONS="$SYSBENCH_DIR/sysbench/oltp_read_only.lua --table-size=$NUM_ROWS --tables=$NUM_TABLES --mysql-db=$DB --mysql-user=$SUSER --threads=$num_threads --time=$SDURATION --report-interval=10 --events=1870000000 --db-driver=mysql --db-ps-mode=disable"
   fi
@@ -141,7 +141,7 @@ function start_ps_node(){
 function check_memory(){
   CHECK_PID=`ps -ef | grep ps_socket | grep -v grep | awk '{ print $2}'`
   WAIT_TIME_SECONDS=10
-  RUN_TIME_SECONDS=$(($RUN_TIME_SECONDS + $WARMUP_TIME))
+  RUN_TIME_SECONDS=$(($RUN_TIME_SECONDS + $WARMUP_TIME_SECONDS))
   while [ ${RUN_TIME_SECONDS} -gt 0 ]; do
     DATE=`date +"%Y%m%d%H%M%S"`
     CURRENT_INFO=`ps -o rss,vsz,pcpu ${CHECK_PID} | tail -n 1`
@@ -250,13 +250,13 @@ function sysbench_rw_run(){
     #warmup the cache, 64 threads for 10 minutes, don't bother logging
     # *** REMEMBER *** warmmup is READ ONLY!
     num_threads=64
-    echo "Warming up for $WARMUP_TIME_SECONDS seconds"
-    sysbench_run oltp_read $MYSQL_DATABASE $WARMUP_TIME_SECONDS
+    echo "Warming up for $WARMUP_TIME_AT_START seconds"
+    sysbench_run oltp_read $MYSQL_DATABASE $WARMUP_TIME_AT_START
     ${TASKSET_SYSBENCH} sysbench $SYSBENCH_OPTIONS --rand-type=$RAND_TYPE --mysql-socket=$MYSQL_SOCKET --percentile=99 run > ${LOGS_CONFIG}/sysbench_warmup.log 2>&1
-    sleep $[WARMUP_TIME_SECONDS/10]
+    sleep $[WARMUP_TIME_AT_START/10]
   fi
   echo "Storing Sysbench results in ${WORKSPACE}"
-  for num_threads in ${threadCountList}; do
+  for num_threads in ${THREADS_LIST}; do
     LOG_NAME_RESULTS=${LOGS_CONFIG}/results-QPS-${BENCH_ID}.txt
     LOG_NAME=${LOGS_CONFIG}/${MYSQL_NAME}-${MYSQL_VERSION}-${BENCH_ID}-$num_threads.txt
     LOG_NAME_MEMORY=${LOG_NAME}.memory
@@ -306,17 +306,17 @@ function archive_logs(){
 # **********************************************************************************************
 # sysbench
 # **********************************************************************************************
-export threadCountList="0001 0004 0016 0064 0128 0256 0512 1024"
+export THREADS_LIST=${THREADS_LIST:="0001 0004 0016 0064 0128 0256 0512 1024"}
 export WARMUP=Y
 export BENCHMARK_LOGGING=Y
-WARMUP_TIME_SECONDS=${WARMUP_TIME_SECONDS:-600}
-export WARMUP_TIME=30
+WARMUP_TIME_AT_START=${WARMUP_TIME_AT_START:-600}
+export WARMUP_TIME_SECONDS=${WARMUP_TIME_SECONDS:=30}
 export RUN_TIME_SECONDS=${RUN_TIME_SECONDS:-600}
 export REPORT_INTERVAL=10
 export IOSTAT_INTERVAL=10
-export IOSTAT_ROUNDS=$[(RUN_TIME_SECONDS+WARMUP_TIME)/IOSTAT_INTERVAL+1]
+export IOSTAT_ROUNDS=$[(RUN_TIME_SECONDS+WARMUP_TIME_SECONDS)/IOSTAT_INTERVAL+1]
 export DSTAT_INTERVAL=10
-export DSTAT_ROUNDS=$[(RUN_TIME_SECONDS+WARMUP_TIME)/DSTAT_INTERVAL+1]
+export DSTAT_ROUNDS=$[(RUN_TIME_SECONDS+WARMUP_TIME_SECONDS)/DSTAT_INTERVAL+1]
 export BENCH_SUITE=sysbench
 
 export INNODB_CACHE=${INNODB_CACHE:-32G}
