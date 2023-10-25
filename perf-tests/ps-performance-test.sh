@@ -17,8 +17,8 @@ export MYSQL_DATABASE=test
 export MYSQL_NAME=PS
 SYSBENCH_DIR=${SYSBENCH_DIR:-/usr/share}
 MYEXTRA=${MYEXTRA:=--disable-log-bin}
-TASKSET_MYSQLD=${TASKSET_MYSQLD:=taskset -c 0}
-TASKSET_SYSBENCH=${TASKSET_SYSBENCH:=taskset -c 1}
+#TASKSET_MYSQLD=${TASKSET_MYSQLD:=taskset -c 0}
+#TASKSET_SYSBENCH=${TASKSET_SYSBENCH:=taskset -c 1}
 
 # Check if workdir was set by Jenkins, otherwise this is presumably a local run
 if [ -z ${BIG_DIR} ]; then
