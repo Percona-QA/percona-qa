@@ -166,7 +166,7 @@ function disable_address_randomization(){
 function restore_turbo_boost(){
   echo "Restore turbo boost with $SCALING_DRIVER scaling driver"
 
-  if [ ${SCALING_DRIVER} == "intel_pstate" ]; then
+  if [[ ${SCALING_DRIVER} == "intel_pstate" || ${SCALING_DRIVER} == "intel_cpufreq" ]]; then
     CURRENT_TURBO=`cat /sys/devices/system/cpu/intel_pstate/no_turbo`
     sudo sh -c "echo $PREVIOUS_TURBO > /sys/devices/system/cpu/intel_pstate/no_turbo"
     echo "Setting /sys/devices/system/cpu/intel_pstate/no_turbo from $CURRENT_TURBO to $PREVIOUS_TURBO"
@@ -181,7 +181,7 @@ function disable_turbo_boost(){
   SCALING_DRIVER=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver`
   echo "Using $SCALING_DRIVER scaling driver"
 
-  if [ ${SCALING_DRIVER} == "intel_pstate" ]; then
+  if [[ ${SCALING_DRIVER} == "intel_pstate" || ${SCALING_DRIVER} == "intel_cpufreq" ]]; then
     PREVIOUS_TURBO=`cat /sys/devices/system/cpu/intel_pstate/no_turbo`
     sudo sh -c "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo"
     echo "Setting /sys/devices/system/cpu/intel_pstate/no_turbo from $PREVIOUS_TURBO to `cat /sys/devices/system/cpu/intel_pstate/no_turbo`"
