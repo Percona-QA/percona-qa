@@ -19,10 +19,11 @@ long_query_time=5
 
 # InnoDB
 innodb_flush_method=O_DIRECT
-innodb_max_dirty_pages_pct=75
-
+innodb_adaptive_hash_index=OFF
 innodb_io_capacity=10000
 innodb_io_capacity_max=20000
+
+innodb_max_dirty_pages_pct=75
 innodb_lru_scan_depth=5000
 #innodb_data_file_path=ibdata1:512M:autoextend
 

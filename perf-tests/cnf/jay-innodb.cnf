@@ -17,10 +17,11 @@ wait_timeout=120
 table_open_cache=8000
 
 # InnoDB
-innodb_io_capacity_max=8000
-innodb_io_capacity=3000
-
 innodb_flush_method=O_DIRECT
+innodb_adaptive_hash_index=OFF
+innodb_io_capacity=3000
+innodb_io_capacity_max=8000
+
 innodb_buffer_pool_instances=16
 innodb_write_io_threads=32
 innodb_page_cleaners=8

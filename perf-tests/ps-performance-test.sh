@@ -16,7 +16,7 @@ export PS_START_TIMEOUT=100
 export MYSQL_DATABASE=test
 export MYSQL_NAME=PS
 SYSBENCH_DIR=${SYSBENCH_DIR:-/usr/share}
-MYEXTRA=${MYEXTRA:=--disable-log-bin}
+#MYEXTRA=${MYEXTRA:=--disable-log-bin}
 #TASKSET_MYSQLD=${TASKSET_MYSQLD:=taskset -c 0}
 #TASKSET_SYSBENCH=${TASKSET_SYSBENCH:=taskset -c 1}
 

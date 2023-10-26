@@ -19,11 +19,13 @@ table_open_cache_instances=64
 
 # InnoDB
 innodb_flush_method=O_DIRECT
+innodb_adaptive_hash_index=OFF
+innodb_io_capacity=2000
+innodb_io_capacity_max=4000
+
 innodb_open_files=4K
 #innodb_page_cleaners=8
 innodb_write_io_threads=8
-innodb_io_capacity=2000
-innodb_io_capacity_max=4000
 innodb_buffer_pool_instances=16
 innodb_redo_log_capacity=8G
 

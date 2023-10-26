@@ -43,6 +43,8 @@ for i in range(len(data) - nth_line):
 
     print(f"{line1[0]} vs {line2[0]}, ", end='')
     for j in range(1, len(line1)):
-        res=line1[j]/line2[j]*100
+        res=0
+        if line2[j] != 0:
+            res=line1[j]/line2[j]*100
         print(f"{res:.2f}, ", end='')
     print()
