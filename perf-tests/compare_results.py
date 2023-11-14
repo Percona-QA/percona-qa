@@ -10,16 +10,18 @@
 
 import sys
 
-if len(sys.argv) != 2:
-    print("Usage: python script.py <data_file>")
+if len(sys.argv) < 3:
+    print(f"Usage: python {sys.argv[0]} <data_file> <nth_line>")
     sys.exit(1)
 
 data_file = sys.argv[1]
+nth_line = int(sys.argv[2])
 
 def parse_line(line):
     # Remove leading and trailing spaces and the trailing comma
     values = line.strip().strip(', []')
-    print(values)
+    if not values:
+        return False
     # Split the line by comma and convert numeric values to floats
     values = [val.strip() for val in values.split(',')]
     values = [values[0]] + [float(val.strip()) for val in values[1:]]
@@ -29,15 +31,20 @@ def parse_line(line):
 data = []
 with open(data_file, "r") as file:
     for line in file:
-        data.append(parse_line(line))
+        values=parse_line(line)
+        if values:
+            print(values)
+            data.append(values)
 
-# Iterate through the data and compare each line with the line n+4
-for i in range(len(data) - 4):
+# Iterate through the data and compare each line with the line n+nth_line
+for i in range(len(data) - nth_line):
     line1 = data[i]
-    line2 = data[i + 4]
+    line2 = data[i + nth_line]
 
     print(f"{line1[0]} vs {line2[0]}, ", end='')
     for j in range(1, len(line1)):
-        res=line1[j]/line2[j]*100
+        res=0
+        if line2[j] != 0:
+            res=line1[j]/line2[j]*100
         print(f"{res:.2f}, ", end='')
     print()

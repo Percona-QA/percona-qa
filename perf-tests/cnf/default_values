@@ -1,0 +1,26 @@
+https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
+innodb_write_io_threads=4
+innodb_read_io_threads=4
+innodb_page_size=16384
+innodb_page_cleaners=4
+innodb_doublewrite=1
+innodb_io_capacity=200
+innodb_max_dirty_pages_pct=90
+innodb_max_dirty_pages_pct_lwm=10
+innodb_flush_method=fsync (Unix)
+innodb_adaptive_flushing=ON
+innodb_adaptive_flushing_lwm=10
+innodb_idle_flush_pct=100 (8.0.18+)
+innodb_flush_neighbors=0
+innodb_io_capacity=200
+innodb_io_capacity_max=100
+innodb_buffer_pool_instances=8 (or 1 if innodb_buffer_pool_size < 1GB)
+innodb_open_files=-1 (signifies autosizing; do not assign this literal value)
+innodb_redo_log_capacity=104857600
+innodb_file_per_table=1
+innodb_lru_scan_depth=1024
+innodb_log_buffer_size=16777216
+innodb_flush_log_at_trx_commit=1
+innodb_adaptive_hash_index=ON
+
+table_open_cache=4000
