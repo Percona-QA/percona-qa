@@ -77,7 +77,7 @@ clean_setup() {
     sudo docker volume prune -f >>backup_log
 }
 
-test_pxb8_docker() {
+test_pxb_docker() {
     # This function runs tests for pxb 8.0 and ms 8.0 docker image
     start_mysql_container="sudo docker run --name $server $mount_dir -p 3306:3306 -p 3060:3060 -e MYSQL_ROOT_HOST=% -e MYSQL_ROOT_PASSWORD=mysql -d $mysql_docker_image"
 
@@ -179,115 +179,9 @@ test_pxb8_docker() {
     sudo docker rm $server >>backup_log 2>&1
 }
 
-test_pxb24_docker() {
-    # This function runs tests for pxb 2.4 and ms 5.7 docker image
-
-    mkdir /tmp/mysql_data
-
-    echo "Run $server docker container"
-    if ! sudo docker run --name $server $mount_dir -p 3306:3306 -p 3060:3060 -e MYSQL_ROOT_HOST='%' -e MYSQL_ROOT_PASSWORD='mysql' -d mysql/mysql-server:5.7 >>backup_log 2>&1; then
-        echo "ERR: The docker command to start mysql 5.7 failed"
-        exit 1
-    fi
-
-    echo "Waiting for mysql to start..."
-    for ((i=1; i<=180; i++)); do
-        if ! sudo docker ps -a|grep $server >/dev/null 2>&1; then
-            sleep 1
-        else
-            break
-        fi
-
-        if [[ $i -eq 180 ]]; then
-            echo "ERR: The mysql server failed to start in docker container"
-            exit 1
-        fi
-    done
-
-    # Sleep for sometime for the server to fully come up
-    sleep 20
-
-    echo -n "Mysql started with version: "
-    sudo docker exec -it $server mysql -uroot -pmysql -Bse "SELECT @@version;" |grep -v "Using a password"
-
-    echo "Add data in the database"
-    sudo docker exec -it $server mysql -uroot -pmysql -e "CREATE DATABASE IF NOT EXISTS test;" >/dev/null 2>&1
-    sudo docker exec -it $server mysql -uroot -pmysql -e "CREATE TABLE test.t1(i INT);" >/dev/null 2>&1
-    sudo docker exec -it $server mysql -uroot -pmysql -e "INSERT INTO test.t1 VALUES (1), (2), (3), (4), (5);" >/dev/null 2>&1
-    
-    echo "Run pxb 2.4 docker container, take backup and prepare it"
-    echo "Using $repo repo docker image"
-    sudo docker run --volumes-from $server -v $pxb_backup_dir -it --rm $pxb_docker_image /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=$target_backup_dir --user=root --password=mysql ; xtrabackup --prepare --target-dir=$target_backup_dir" >>backup_log 2>&1
-
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: The docker command to run pxb 5.7 failed"
-        exit 1
-    else
-        echo "The backup and prepare was successful. Log available at: $HOME/backup_log"
-    fi
-
-    echo "Stop the $server docker container"
-    sudo docker stop $server >>backup_log 2>&1
-
-    sudo rm -r /tmp/mysql_data
-    mkdir /tmp/mysql_data
-
-    echo "Run pxb docker container to restore the backup"
-    echo "Using $repo repo docker image"
-    sudo docker run --volumes-from $server -v $pxb_backup_dir -it --rm $pxb_docker_image /bin/bash -c "xtrabackup --copy-back --datadir=/var/lib/mysql/ --target-dir=$target_backup_dir" >>backup_log 2>&1
-
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: The docker command to restore the data failed"
-        exit 1
-    else
-        echo "The restore command was successful"
-    fi
-
-    sudo chmod -R 777 /tmp/mysql_data
-
-    echo "Start the $server container with the restored data"
-    if ! sudo docker start $server >>backup_log 2>&1; then
-        echo "ERR: The docker command to start mysql 5.7 with the restored data failed"
-        exit 1
-    fi
-
-    echo "Waiting for mysql to start..."
-    for ((i=1; i<=180; i++)); do
-        if ! sudo docker ps -a | grep $server >/dev/null 2>&1; then
-            sleep 1
-        else
-            break
-        fi
-
-        if [[ $i -eq 180 ]]; then
-            echo "ERR: The mysql server failed to start with the restored data in the docker container"
-            exit 1
-        fi
-    done
-
-    sleep 20
-    if [ "$(sudo docker exec -it $server mysql -uroot -pmysql -Bse 'SELECT * FROM test.t1;' | grep -v password | wc -l)" != "5" ]; then
-        echo "ERR: Data could not be checked in the mysql container"
-    else
-        echo "Data was restored successfully"
-    fi
-
-    # Cleanup
-    echo "Stopping and removing $server docker container"
-    sudo docker stop $server >>backup_log 2>&1
-    sudo docker rm $server >>backup_log 2>&1
-}
-
->backup_log
-
 # Check and clean existing installation
 clean_setup
-
-if [ "$version" = "pxb81" -o "$version" = "pxb80" ]; then
-    test_pxb8_docker | tee -a backup_log
-elif [ "$version" = "pxb24" ]; then
-    test_pxb24_docker | tee -a backup_log
-fi
+test_pxb_docker | tee -a backup_log
 
 # Clean up
 clean_setup
