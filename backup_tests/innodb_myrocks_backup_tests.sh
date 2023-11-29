@@ -15,16 +15,12 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
-export mysqldir="$HOME/mysql-8.0/bld_8.1.0/install"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35/install/bin"
+export mysqldir="$HOME/mysql-8.0/bld_8.0.35/install"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
-export vault_config="$HOME/vault/keyring_vault_ps.cnf"  # Only required for keyring_vault encryption
-export vault_url=`awk -F'vault_url = ' '{print $2}' $vault_config | tr -d '\n'`
-export secret_mount_point=`awk -F'secret_mount_point = ' '{print $2}' $vault_config | tr -d '\n'`
-export token=`awk -F'token = ' '{print $2}' $vault_config | tr -d '\n'`
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
 rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
@@ -55,6 +51,23 @@ kms_region="${KMS_REGION:-us-east-1}"  # Set KMS_REGION to change default value 
 kms_id="${KMS_KEYID:-}"
 kms_auth_key="${KMS_AUTH_KEY:-}"
 kms_secret_key="${KMS_SECRET_KEY:-}"
+
+# Start vault server
+start_vault_server(){
+  echoit "Setting up vault server"
+  if [ ! -d $HOME/vault ]; then
+    mkdir $HOME/vault
+  fi
+  rm -rf $HOME/vault/*
+  # Kill any previously running vault server
+  killall vault > /dev/null 2>&1
+  $qascripts/vault_test_setup.sh --workdir=$HOME/vault --use-ssl > /dev/null 2>&1
+  vault_config="$HOME/vault/keyring_vault_ps.cnf"
+  vault_url=$(grep 'vault_url' "$vault_config" | awk -F '=' '{print $2}' | tr -d '[:space:]')
+  secret_mount_point=$(grep 'secret_mount_point' "$vault_config" | awk -F '=' '{print $2}' | tr -d '[:space:]')
+  token=$(grep 'token' "$vault_config" | awk -F '=' '{print $2}' | tr -d '[:space:]')
+  vault_ca=$(grep 'vault_ca' "$vault_config" | awk -F '=' '{print $2}' | tr -d '[:space:]')
+}
 
 normalize_version(){
   local major=0
@@ -1583,6 +1596,8 @@ test_inc_backup_encryption_8_0() {
         if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
             echo "[SKIPPED] Test Suite$suite: MS 8.0 does not support $encrypt_type for encryption"
             return
+        else
+            start_vault_server
         fi
 
         if [ $VERSION -ge 080100 ]; then
@@ -1652,6 +1667,7 @@ test_inc_backup_encryption_8_0() {
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_vault_component" ]; then
+
         if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
             server_type="MS"
             server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
@@ -1662,6 +1678,8 @@ test_inc_backup_encryption_8_0() {
         if [ $VERSION -lt 080100 ]; then
             echo "[SKIPPED] Test Suite3: $encrypt_type is not supported in ${server_type}-${VER}"
             return
+        else
+            start_vault_server
         fi
 
         echo "####################################################################################################################"
@@ -2205,9 +2223,12 @@ test_inc_backup_encryption_2_4() {
         fi
 
     elif [ "${encrypt_type}" = "keyring_vault_plugin" ]; then
+
         if [ "${server_type}" = "MS" ]; then
             echo "MS 5.7 does not support keyring vault for encryption, skipping keyring vault tests"
             return
+        else
+            start_vault_server
         fi
 
         echo "Test Suite1: Incremental Backup and Restore for PS-${VER} using PXB-${PXB_VER} with $encrypt_type encryption"
