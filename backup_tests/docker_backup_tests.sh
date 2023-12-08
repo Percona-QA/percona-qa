@@ -9,25 +9,49 @@
 # 3. Logs are available in: $PWD/backup_log                                           #
 #######################################################################################
 
+help() {
+  echo "Please run the script with parameters: ./docker_backup_tests.sh <version as pxb24/pxb80/pxb81/pxb-8x-innovation> <repo as main/testing> <product as ps/ms>"
+  echo "Main repo is the percona docker image and testing repo is the perconalab docker image"
+  echo "eg. ./docker_backup_tests.sh pxb-8x-innovation testing ps"
+  exit 1
+}
+
 if [ "$#" -ne 3 ]; then
-    echo "Please run the script with parameters: <version as pxb24/pxb80/pxb81> <repo as main/testing> <product as ps/ms>"
-    echo "Main repo is the percona docker image and testing repo is the perconalab docker image"
-    exit 1
+    help
 fi
 
 version=$1
 repo=$2
 product=$3
-if [ "$version" = "pxb81" ]; then
+if [ "$version" = "pxb-8x-innovation" ]; then
     if [ "$product" = "ms" ]; then
-      server="mysql-8.1"
-      mysql_docker_image="mysql:8.1.0"
+        server="mysql-8.2"
+        mysql_docker_image="mysql:8.2.0"
     elif [ "$product" = "ps" ]; then
-      server="percona-server-8.1"
-      mysql_docker_image="percona/percona-server:8.1.0"
+        server="percona-server-8.2"
+        mysql_docker_image="percona/percona-server:8.2.0"
     else
-      echo "Invalid product!"
-      exit 1
+        echo "Invalid product!"
+        help
+    fi
+    if [ "$repo" = "main" ]; then
+        pxb_docker_image="percona/percona-xtrabackup:8.2"
+    elif [ "$repo" = "testing" ]; then
+        pxb_docker_image="perconalab/percona-xtrabackup:8.2"
+    fi
+    pxb_backup_dir="pxb_backup_data:/backup_8x"
+    target_backup_dir="/backup_8x"
+    mount_dir="-v /tmp/mysql_data:/var/lib/mysql -v /var/run/mysqld:/var/run/mysqld"
+elif [ "$version" = "pxb81" ]; then
+    if [ "$product" = "ms" ]; then
+        server="mysql-8.1"
+        mysql_docker_image="mysql:8.1.0"
+    elif [ "$product" = "ps" ]; then
+        server="percona-server-8.1"
+        mysql_docker_image="percona/percona-server:8.1.0"
+    else
+        echo "Invalid product!"
+        help
     fi
     if [ "$repo" = "main" ]; then
         pxb_docker_image="percona/percona-xtrabackup:8.1"
@@ -39,14 +63,14 @@ if [ "$version" = "pxb81" ]; then
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql -v /var/run/mysqld:/var/run/mysqld"
 elif [ "$version" = "pxb80" ]; then
     if [ "$product" = "ms" ]; then
-      server="mysql-8.0"
-      mysql_docker_image="mysql/mysql-server:latest"
+        server="mysql-8.0"
+        mysql_docker_image="mysql/mysql-server:latest"
     elif [ "$product" = "ps" ]; then
-      server="percona-server-8.0"
-      mysql_docker_image="percona/percona-server:8.0"
+        server="percona-server-8.0"
+        mysql_docker_image="percona/percona-server:8.0"
     else
-      echo "Invalid product!"
-      exit 1
+        echo "Invalid product!"
+        help
     fi
     if [ "$repo" = "main" ]; then
         pxb_docker_image="percona/percona-xtrabackup:8.0"
@@ -58,14 +82,14 @@ elif [ "$version" = "pxb80" ]; then
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql"
 elif [ "$version" = "pxb24" ]; then
     if [ "$product" = "ms" ]; then
-      server="mysql-5.7"
-      mysql_docker_image="mysql/mysql-server:5.7"
+        server="mysql-5.7"
+        mysql_docker_image="mysql/mysql-server:5.7"
     elif [ "$product" = "ps" ]; then
-      server="percona-server-5.7"
-      mysql_docker_image="percona/percona-server:5.7"
+        server="percona-server-5.7"
+        mysql_docker_image="percona/percona-server:5.7"
     else
-      echo "Invalid product!"
-      exit 1
+        echo "Invalid product!"
+        help
     fi
     if [ "$repo" = "main" ]; then
         pxb_docker_image="percona/percona-xtrabackup:2.4"
@@ -77,7 +101,7 @@ elif [ "$version" = "pxb24" ]; then
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql"
 else
     echo "Invalid version parameter. Exiting"
-    exit 1
+    help
 fi
 
 
