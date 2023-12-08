@@ -28,11 +28,14 @@ if [ -f /usr/bin/yum ]; then
     remove_cmd="sudo yum remove -y"
     list_cmd="sudo yum list installed"
     if [ "$pxb_version" = "pxb24" ]; then
-        pxb_packages="percona-xtrabackup-24 percona-xtrabackup-test-24 percona-xtrabackup-24-debuginfo"
+        pxb_package="percona-xtrabackup-24"
+        pxb_addon_packages="percona-xtrabackup-test-24 percona-xtrabackup-24-debuginfo"
     elif [ "$pxb_version" = "pxb80" ]; then
-        pxb_packages="percona-xtrabackup-80 percona-xtrabackup-test-80 percona-xtrabackup-80-debuginfo"
+        pxb_package="percona-xtrabackup-80"
+        pxb_addon_packages="percona-xtrabackup-test-80 percona-xtrabackup-80-debuginfo"
     elif [ "$pxb_version" = "pxb8x-innovation" ]; then
-        pxb_packages="percona-xtrabackup-81 percona-xtrabackup-test-81 percona-xtrabackup-81-debuginfo"
+        pxb_package="percona-xtrabackup-81"
+        pxb_addon_packages="percona-xtrabackup-test-81 percona-xtrabackup-81-debuginfo"
     else
         echo "Invalid pxb version $pxb_version"
         help
@@ -49,7 +52,7 @@ else
         pxb_addon_packages="percona-xtrabackup-test-80 percona-xtrabackup-dbg-80"
     elif [ "$pxb_version" = "pxb8x-innovation" ]; then
         pxb_package="percona-xtrabackup-81"
-        pxb_packages="percona-xtrabackup-test-81 percona-xtrabackup-dbg-81"
+        pxb_addon_packages="percona-xtrabackup-test-81 percona-xtrabackup-dbg-81"
     else
         echo "Invalid pxb version $pxb_version"
         help
