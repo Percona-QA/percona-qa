@@ -15,8 +15,8 @@
 #############################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35/install/bin"
-export mysqldir="$HOME/mysql-8.0/bld_8.0.35/install"
+export xtrabackup_dir="$HOME/pxb-8.3/bld_8.3/install/bin"
+export mysqldir="$HOME/upstream-8.2/bld_8.3/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -28,13 +28,42 @@ export mysql_start_timeout=60
 load_tool="pstress" # Set value as pquery/pstress/sysbench
 num_tables=10 # Used for Sysbench
 table_size=1000 # Used for Sysbench
-tool_dir="$HOME/pstress/src" # Pquery/pstress dir
+tool_dir="$HOME/pstress_8.2/src" # Pquery/pstress dir
 
-if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" > /dev/null 2>&1 ; then
-  MS=1
-else
-  MS=0
-fi
+# Below function is a hack-ish way to find out if the server type is PS or MS
+find_server_type() {
+    # Run mysqld --version and capture the output
+    version_output=$($mysqldir/bin/mysqld --version)
+    # Use awk to extract the version
+    version=$(echo "$version_output" | awk '{print $3}')
+    # Split the version into major and minor parts using "-" as delimiter
+    IFS='-' read -ra parts <<< "$version"
+    MAJOR_VER=$(echo "${parts[0]}")
+    MINOR_VER=$(echo "${parts[1]}")
+
+    if [ "$MINOR_VER" == "" ]; then
+        server_type="MS"
+    else
+        server_type="PS"
+    fi
+}
+
+normalize_version() {
+    local major=0
+    local minor=0
+    local patch=0
+    # Everything after the first three values are ignored
+    if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+        major=${BASH_REMATCH[1]}
+        minor=${BASH_REMATCH[2]}
+        patch=${BASH_REMATCH[3]}
+    fi
+    printf %02d%02d%02d $major $minor $patch
+  }
+
+VER=$($mysqldir/bin/mysqld --version | awk -F 'Ver ' '{print $2}' | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
+VERSION=$(normalize_version $VER)
+
 # Set Kmip configuration
 setup_kmip() {
   # Kill and existing kmip server
@@ -96,29 +125,18 @@ initialize_db() {
 }
 
 run_load() {
-  # This function runs a load using pquery/sysbench
-  local tool_options="$1"
-  if [[ "${load_tool}" = "pquery" ]]; then
-    echo "Run pquery"
-    pushd "$tool_dir" >/dev/null 2>&1 || exit
-    if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
-      ./pquery2-ps --tables 10 --logdir="$HOME"/backuplogs --records 200 --threads 10 --seconds 30 --socket "${mysqldir}"/socket.sock -k --no-encryption --undo-tbs-sql 0 >"${logdir}"/pquery.log &
+    # This function runs a load using pstress/sysbench
+    local tool_options="$1"
+    if [[ "${load_tool}" = "pstress" ]]; then
+        echo "Run pstress with options: ${tool_options}"
+        pushd "$tool_dir" >/dev/null 2>&1 || exit
+        ./$PSTRESS_BINARY ${tool_options} --logdir=${logdir}/pstress --socket ${mysqldir}/socket.sock  > $logdir/pstress/pstress.log &
+        popd >/dev/null 2>&1 || exit
+        sleep 2
     else
-      # Encryption enabled
-      ./pquery2-ps --tables 10 --logdir="$HOME"/backuplogs --records 200 --threads 10 --seconds 30 --socket "${mysqldir}"/socket.sock -k --undo-tbs-sql 0 >"${logdir}"/pquery.log &
+        echo "Run sysbench"
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=200 run >>${logdir}/sysbench.log &
     fi
-    popd >/dev/null 2>&1 || exit
-    sleep 2
-  elif [[ "${load_tool}" = "pstress" ]]; then
-    echo "Run pstress with options: ${tool_options}"
-    pushd "$tool_dir" >/dev/null 2>&1 || exit
-    ./pstress-ps ${tool_options} --logdir=${logdir}/pstress --socket ${mysqldir}/socket.sock  > $logdir/pstress/pstress.log &
-    popd >/dev/null 2>&1 || exit
-    sleep 2
-  else
-    echo "Run sysbench"
-    sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket="${mysqldir}"/socket.sock --time=200 run >>"${logdir}"/sysbench.log &
-  fi
 }
 
 take_backup() {
@@ -130,7 +148,7 @@ take_backup() {
   log_date=$(date +"%d_%m_%Y_%M")
 
   echo "=>Taking full backup"
-  ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/full_backup_${log_date}_log
+  rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/full_backup_${log_date}_log
   if [ "$?" -ne 0 ]; then
     echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
     exit 1
@@ -355,7 +373,7 @@ run_load_tests() {
     else
         echo "Test: Incremental Backup and Restore with ${load_tool}"
         tool_options="--tables 10 --records 200 --threads 10 --seconds 30 --no-encryption --undo-tbs-sql 0"
-	if [ $MS -eq 1 ]; then
+	if [ "$server_type" == "MS" ]; then
 	  tool_options="$tool_options --no-column-compression"
 	fi
     fi
@@ -387,8 +405,8 @@ run_load_keyring_plugin_tests() {
 
   tool_options_encrypt_no_alter="--tables 10 --records 200 --threads 10 --seconds 30 --undo-tbs-sql 0 --alt-tbs-enc 0 --alter-table-encrypt 0 --no-tbs 0 --no-temp-tables 1"
 
-  if "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
-      if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+  if [ $VERSION -ge 080000 ]; then
+      if [ "$server_type" == "MS" ]; then
         # Server is MS 8.0
         MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
         tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 150 --undo-tbs-sql 0 --no-column-compression" # Used for pstress
@@ -397,19 +415,18 @@ run_load_keyring_plugin_tests() {
         MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
         tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 30 --undo-tbs-sql 0" # Used for pstress
       fi
-  else
-    # Server is MS/PS 5.7
-    if "${mysqldir}"/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-      # Server is MS 5.7
-      MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-      # Run pstress without ddl
-      tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 150 --undo-tbs-sql 0 --no-ddl --no-column-compression"
-    else
-      # Server is PS 5.7 --innodb-temp-tablespace-encrypt is not GA and is deprecated
-      MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-      # Run pstress without temp tables encryption - existing issue PXB-2534
-      tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 150 --undo-tbs-sql 0 --no-temp-tables"
-    fi
+  elif [ $VERSION -lt 080000 ]; then
+      if [ "$server_type" == "MS" ]; then
+          # Server is MS 5.7
+          MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+          # Run pstress without ddl
+          tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 150 --undo-tbs-sql 0 --no-ddl --no-column-compression"
+      else
+          # Server is PS 5.7 --innodb-temp-tablespace-encrypt is not GA and is deprecated
+          MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+          # Run pstress without temp tables encryption - existing issue PXB-2534
+          tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 150 --undo-tbs-sql 0 --no-temp-tables"
+      fi
   fi
 
   echo "Test: Incremental Backup and Restore for keyring_file plugin with ${load_tool}"
@@ -434,14 +451,14 @@ run_load_keyring_component_tests() {
     PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf"
     RESTORE_PARAMS="${BACKUP_PARAMS}"
 
-    if "${mysqldir}"/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+    if [ $VERSION -ge 080000 ]; then
+        if [ "$server_type" == "MS" ]; then
         # Server is MS 8.0
         MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
-
-    elif "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
-        # Server is PS 8.0
-        MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
-
+        elif [ "$server_type" == "PS" ]; then
+            # Server is PS 8.0
+            MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
+        fi
     else
         # Server is MS/PS 5.7
         echo "Component is not supported in MS/PS 5.7, skipping tests"
@@ -474,7 +491,7 @@ EOF
         exit 1
     fi
 
-    if [ $MS -eq 1 ]; then
+    if [ "$server_type" == "MS" ]; then
       tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-column-compression"
     else
       tool_options_encrypt="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
@@ -490,7 +507,6 @@ EOF
     run_load "${tool_options_encrypt}"
     take_backup
     check_tables
-
 }
 
 run_load_kmip_component_tests() {
@@ -499,18 +515,21 @@ run_load_kmip_component_tests() {
   PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_kmip.cnf"
   RESTORE_PARAMS="${BACKUP_PARAMS}"
 
-  if "${mysqldir}"/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-    # Server is MS 8.0
-    echo "MS 8.0 does not support keyring kmip for encryption, skipping keyring kmip tests"
-    return
-  elif "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
-    # Server is PS 8.0
-    MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
+  if [ $VERSION -ge 080000 ]; then
+      if [ "$server_type" == "MS" ]; then
+          # Server is MS 8.0
+          echo "MS 8.0 does not support keyring kmip for encryption, skipping keyring kmip tests"
+          return
+      else
+          # Server is PS 8.0
+          MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
+      fi
   else
-    # Server is MS/PS 5.7
-    echo "Kmip Component is not supported in MS/PS 5.7, skipping tests"
-    return
+      # Server is MS/PS 5.7
+      echo "Kmip Component is not supported in MS/PS 5.7, skipping tests"
+      return
   fi
+
   echo "Test: Incremental Backup and Restore for keyring_kmip component with ${load_tool}"
   cleanup
   setup_kmip
@@ -565,15 +584,15 @@ run_load_kms_component_tests() {
     PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_kms.cnf"
     RESTORE_PARAMS="${BACKUP_PARAMS}"
 
-    if "${mysqldir}"/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        # Server is MS 8.0
-        echo "MS 8.0 does not support keyring kms for encryption, skipping keyring kms tests"
-        return
-
-    elif "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
-        # Server is PS 8.0
-        MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
-
+    if [ $VERSION -ge 080000 ]; then
+        if [ "$server_type" == "MS" ]; then
+            # Server is MS 8.0
+            echo "MS 8.0 does not support keyring kms for encryption, skipping keyring kms tests"
+            return
+        else
+            # Server is PS 8.0
+            MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
+        fi
     else
         # Server is MS/PS 5.7
         echo "Kms Component is not supported in MS/PS 5.7, skipping tests"
@@ -650,55 +669,55 @@ EOF
 }
 
 run_crash_tests_pstress() {
+
     # This function crashes the server during load and then runs backup
     local test_type="$1"
 
     if [[ "${test_type}" = "encryption" ]]; then
-      echo "Running crash tests with ${load_tool} and mysql running with encryption"
-      if "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
-        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-          # Server is MS 8.0
-          MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-column-compression" # MS does not support column compression
+        echo "Running crash tests with ${load_tool} and mysql running with encryption"
+        if [ $VERSION -ge 080000 ]; then
+            if [ "$server_type" == "MS" ]; then
+                # Server is MS 8.0
+                MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-column-compression" # MS does not support column compression
+            else
+                # Server is PS 8.0
+                MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
+            fi
         else
-          # Server is PS 8.0
-          MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_parallel_dblwr_encrypt --table-encryption-privilege-check=ON --max-connections=5000"
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
+            if [ "$server_type" == "MS" ]; then
+                # Server is MS 5.7
+                MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+                # Run pstress without ddl
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-ddl --no-column-compression"
+            else
+                # Server is PS 5.7 --innodb-temp-tablespace-encrypt is not GA and is deprecated
+                MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+                # Run pstress
+                load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0"
+            fi
         fi
-      else
-        # Server is MS/PS 5.7
-        if "${mysqldir}"/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-          # Server is MS 5.7
-          MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-          # Run pstress without ddl
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-ddl --no-column-compression"
-        else
-          # Server is PS 5.7 --innodb-temp-tablespace-encrypt is not GA and is deprecated
-          MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-          # Run pstress
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0"
-        fi
-      fi
-      BACKUP_PARAMS="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
-      PREPARE_PARAMS="${BACKUP_PARAMS}"
-      RESTORE_PARAMS="${BACKUP_PARAMS}"
+        BACKUP_PARAMS="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
+        PREPARE_PARAMS="${BACKUP_PARAMS}"
+        RESTORE_PARAMS="${BACKUP_PARAMS}"
     elif [[ "${test_type}" = "rocksdb" ]]; then
-      echo "Running crash tests with ${load_tool} for rocksdb"
-      MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-      BACKUP_PARAMS="--core-file --lock-ddl"
-      PREPARE_PARAMS="--core-file"
-      RESTORE_PARAMS=""
-      load_options="--tables 10 --records 1000 --threads 10 --seconds 150 --no-encryption --engine=rocksdb"
+        echo "Running crash tests with ${load_tool} for rocksdb"
+        MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+        BACKUP_PARAMS="--core-file --lock-ddl"
+        PREPARE_PARAMS="--core-file"
+        RESTORE_PARAMS=""
+        load_options="--tables 10 --records 1000 --threads 10 --seconds 150 --no-encryption --engine=rocksdb"
     else
-      echo "Running crash tests with ${load_tool}"
-      MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-      BACKUP_PARAMS="--core-file --lock-ddl"
-      PREPARE_PARAMS="--core-file"
-      RESTORE_PARAMS=""
-      if [ $MS -eq 1 ]; then
-        load_options="--tables 10 --records 200 --threads 5 --no-encryption --undo-tbs-sql 0 --no-column-compression"
+        echo "Running crash tests with ${load_tool}"
+        MYSQLD_OPTIONS="--log-bin=binlog --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
+        BACKUP_PARAMS="--core-file --lock-ddl"
+        PREPARE_PARAMS="--core-file"
+        RESTORE_PARAMS=""
+      if [ "$server_type" == "MS" ]; then
+          load_options="--tables 10 --records 200 --threads 5 --no-encryption --undo-tbs-sql 0 --no-column-compression"
       else
-        load_options="--tables 10 --records 200 --threads 5 --no-encryption --undo-tbs-sql 0"
+          load_options="--tables 10 --records 200 --threads 5 --no-encryption --undo-tbs-sql 0"
       fi
     fi
 
@@ -722,7 +741,7 @@ run_crash_tests_pstress() {
 
     echo "=>Run pstress to prepare metadata: ${load_options}"
     pushd "$tool_dir" >/dev/null 2>&1 || exit
-    ./pstress-ps ${load_options} --prepare --exact-initial-records --logdir=${logdir}/pstress --socket ${mysqldir}/socket.sock >"${logdir}"/pstress/pstress_prepare.log
+    ./$PSTRESS_BINARY ${load_options} --prepare --exact-initial-records --logdir=${logdir}/pstress --socket ${mysqldir}/socket.sock >"${logdir}"/pstress/pstress_prepare.log
     popd >/dev/null 2>&1 || exit
     echo "..Metadata created"
     run_load "${load_options} --step 2"
@@ -935,6 +954,21 @@ else
 fi
 
 echo "################################## Running Tests ##################################"
+find_server_type
+if [ "$server_type" == "MS" ]; then
+    PSTRESS_BINARY="pstress-ms"
+    if [ ! -f $tool_dir/pstress-ms ]; then
+        echo "pstress-ms not found. Please compile pstress with MySQL Server!"
+        exit 1
+    fi
+elif [ "$server_type" == "PS" ]; then
+    PSTRESS_BINARY="pstress-ps"
+    if [ ! -f $tool_dir/pstress-ps ]; then
+        echo "pstress-ps not found. Please compile pstress with Percona Server!"
+        exit 1
+    fi
+fi
+
 for tsuitelist in $*; do
   case "${tsuitelist}" in
     Normal_and_Encryption_tests)

@@ -15,8 +15,9 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35/install/bin"
-export mysqldir="$HOME/mysql-8.0/bld_8.0.35/install"
+#export xtrabackup_dir="$HOME/pxb-8.2/bld_PXB_3034/install/bin"
+export xtrabackup_dir="$HOME/pxb-8.3/bld_8.3/install/bin"
+export mysqldir="/home/mohit.joshi/upstream-8.2/bld_8.3/install"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
@@ -24,6 +25,7 @@ export logdir="$HOME/backuplogs"
 export cloud_config="$HOME/aws.cnf"  # Only required for cloud backup tests
 export PATH="$PATH:$xtrabackup_dir"
 rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
+server_type="PS" # Default server PS
 install_type="tarball" # Set value to tarball/package
 
 # Set sysbench variables
@@ -69,6 +71,25 @@ start_vault_server(){
   vault_ca=$(grep 'vault_ca' "$vault_config" | awk -F '=' '{print $2}' | tr -d '[:space:]')
 }
 
+# Below function is a hack-ish way to find out if the server type is PS or MS
+find_server_type() {
+  # Run mysqld --version and capture the output
+  version_output=$($mysqldir/bin/mysqld --version)
+
+  # Use awk to extract the version
+  version=$(echo "$version_output" | awk '{print $3}')
+
+  # Split the version into major and minor parts using "-" as delimiter
+  IFS='-' read -ra parts <<< "$version"
+  MAJOR_VER=$(echo "${parts[0]}")
+  MINOR_VER=$(echo "${parts[1]}")
+
+  if [ "$MINOR_VER" == "" ]; then
+    server_type="MS"
+  else
+    server_type="PS"
+  fi
+}
 normalize_version(){
   local major=0
   local minor=0
@@ -1229,10 +1250,12 @@ test_add_drop_index() {
 
     add_drop_index
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+      if [ "$server_type" == "MS" ]; then
+          incremental_backup "--lock-ddl-per-table"
+      else
+          incremental_backup "--lock-ddl"
+      fi
     fi
 }
 
@@ -1253,10 +1276,12 @@ test_add_drop_full_text_index() {
 
     add_drop_full_text_index
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -1294,10 +1319,12 @@ test_add_drop_tablespace() {
 
     add_drop_tablespace
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -1332,10 +1359,12 @@ test_change_row_format() {
 
     change_row_format
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -1407,10 +1436,12 @@ test_update_truncate_table() {
 
     update_truncate_table
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -1458,10 +1489,12 @@ test_partitioned_tables() {
 
     partitioned_tables
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -1509,10 +1542,12 @@ test_run_all_statements() {
 
     update_truncate_table
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -1524,11 +1559,9 @@ test_inc_backup_encryption_8_0() {
     # Note: Binlog cannot be applied to backup if it is encrypted
 
     if [ "${encrypt_type}" = "keyring_file_plugin" ]; then
-        if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-            server_type="MS"
+        if [ "$server_type" == "MS" ]; then
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         else
-            server_type="PS"
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         fi
 
@@ -1593,7 +1626,7 @@ test_inc_backup_encryption_8_0() {
 
     elif [ "${encrypt_type}" = "keyring_vault_plugin" ]; then
 
-        if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
             echo "[SKIPPED] Test Suite$suite: MS 8.0 does not support $encrypt_type for encryption"
             return
         else
@@ -1668,11 +1701,9 @@ test_inc_backup_encryption_8_0() {
 
     elif [ "${encrypt_type}" = "keyring_vault_component" ]; then
 
-        if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-            server_type="MS"
+        if [ "$server_type" == "MS" ]; then
             server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         else
-            server_type="PS"
             server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         fi
         if [ $VERSION -lt 080100 ]; then
@@ -1764,11 +1795,9 @@ EOF
 
     elif [ "${encrypt_type}" = "keyring_file_component" ]; then
         if [ $VERSION -ge 080000 ]; then
-          if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-             server_type="MS"
+          if [ "$server_type" == "MS" ]; then
              server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
           else
-             server_type="PS"
              server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
           fi
         else
@@ -1858,13 +1887,12 @@ EOF
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_kmip_component" ]; then
-        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
             echo "MS 8.0 does not support keyring kmip for encryption, skipping keyring kmip tests"
             return
         fi
 
         # Run keyring_kmip tests for PS8.0
-        server_type="PS"
         server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 
         echo "Test Suite5: Incremental Backup and Restore for ${server_type}-${VER} using PXB-${PXB_VER} with $encrypt_type encryption"
@@ -1944,13 +1972,12 @@ EOF
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_kms_component" ]; then
-        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
             echo "MS 8.0 does not support keyring kms for encryption, skipping keyring kms tests"
             return
         fi
 
         # Run keyring_kms tests for PS8.0
-        server_type="PS"
         server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 
         echo "Test Suite6: Incremental Backup and Restore for ${server_type}-${VER} using PXB-${PXB_VER} with $encrypt_type encryption"
@@ -2727,10 +2754,12 @@ test_blob_column() {
 
     add_drop_blob_column
 
-    if ${mysqldir}/bin/mysqld --version | grep "5.7" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        incremental_backup "--lock-ddl-per-table"
-    else
-        incremental_backup "--lock-ddl"
+    if ${mysqldir}/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
+        if [ "$server_type" == "MS" ]; then
+            incremental_backup "--lock-ddl-per-table"
+        else
+            incremental_backup "--lock-ddl"
+        fi
     fi
 }
 
@@ -2764,6 +2793,8 @@ if [ "$#" -lt 1 ]; then
 fi
 
 echo "Running Tests"
+find_server_type
+
 for tsuitelist in $*; do
     case "${tsuitelist}" in
         Various_ddl_tests)
