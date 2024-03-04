@@ -11,8 +11,8 @@
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
-export mysqldir="$HOME/mysql-8.0/bld_8.1.0r/install"
+export xtrabackup_dir="$HOME/pxb-8.3/bld_8.3/install/bin"
+export mysqldir="$HOME/mysql-8.3/bld_8.3/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -45,6 +45,37 @@ check_dependencies() {
     fi
 }
 
+# Below function is a hack-ish way to find out if the server type is PS or MS
+find_server_type() {
+    # Run mysqld --version and capture the output
+    version_output=$($mysqldir/bin/mysqld --version)
+    # Use awk to extract the version
+    version=$(echo "$version_output" | awk '{print $3}')
+    # Split the version into major and minor parts using "-" as delimiter
+    IFS='-' read -ra parts <<< "$version"
+    MAJOR_VER=$(echo "${parts[0]}")
+    MINOR_VER=$(echo "${parts[1]}")
+
+    if [ "$MINOR_VER" == "" ]; then
+       server_type="MS"
+    else
+       server_type="PS"
+    fi
+}
+
+normalize_version() {
+    local major=0
+    local minor=0
+    local patch=0
+    # Everything after the first three values are ignored
+    if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
+       major=${BASH_REMATCH[1]}
+       minor=${BASH_REMATCH[2]}
+       patch=${BASH_REMATCH[3]}
+    fi
+    printf %02d%02d%02d $major $minor $patch
+}
+
 initialize_db() {
     # This function initializes and starts mysql database
     local MYSQLD_OPTIONS="$1"
@@ -72,7 +103,7 @@ initialize_db() {
         # Encryption enabled
         for ((i=1; i<=num_tables; i++)); do
             echo "Creating the table sbtest$i..."
-            "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "CREATE TABLE test.sbtest$i (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y';"
+            ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE TABLE test.sbtest$i (id int(11) NOT NULL AUTO_INCREMENT, k int(11) NOT NULL DEFAULT '0', c char(120) NOT NULL DEFAULT '', pad char(60) NOT NULL DEFAULT '', PRIMARY KEY (id), KEY k_1 (k)) ENGINE=InnoDB DEFAULT CHARSET=latin1 ENCRYPTION='Y';"
         done
 
         echo "Adding data in tables..."
@@ -250,12 +281,10 @@ test_partial_table_backup_encrypt() {
     check_dependencies
 
     echo "Test: Full backup and partial table restore"
-    if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        server_type="MS"
+    if [ "$server_type" == "MS" ]; then
         server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
-    else
-        server_type="PS"
-        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --innodb_parallel_dblwr_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+    elif [ "$server_type" == "PS" ]; then
+        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
     fi
 
     initialize_db "${server_options} --binlog-encryption"
@@ -302,6 +331,7 @@ test_partial_table_backup_encrypt() {
     take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 }
 
+find_server_type
 echo "################################## Running Tests ##################################"
 test_partial_table_backup
 echo "###################################################################################"

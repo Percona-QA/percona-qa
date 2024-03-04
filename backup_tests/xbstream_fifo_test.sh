@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Internal Script variables
-XTRABACKUP_DIR=$HOME/pxb-8.0/bld_8.1.0/install/
-PS_DIR=$HOME/mysql-8.0/bld_8.1.0r/install
+XTRABACKUP_DIR=$HOME/pxb-8.3/bld_8.3/install/
+PS_DIR=$HOME/mysql-8.3/bld_8.3/install
 DATADIR=$PS_DIR/data_80
 SOCKET=/tmp/mysql_22000.sock
 BACKUP_DIR=/tmp/backup
