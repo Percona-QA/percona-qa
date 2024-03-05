@@ -56,7 +56,7 @@ kms_secret_key="${KMS_SECRET_KEY:-}"
 
 # Start vault server
 start_vault_server(){
-  echoit "Setting up vault server"
+  echo "Setting up vault server"
   if [ ! -d $HOME/vault ]; then
     mkdir $HOME/vault
   fi
@@ -1625,18 +1625,15 @@ test_inc_backup_encryption_8_0() {
         lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_vault_plugin" ]; then
-
         if [ "$server_type" == "MS" ]; then
             echo "[SKIPPED] Test Suite$suite: MS 8.0 does not support $encrypt_type for encryption"
+            return
+        elif [ $VERSION -ge 080100 ]; then
+            echo "[SKIPPED] Test Suite2: $encrypt_type is not supported in PS-${VER}"
             return
         else
             start_vault_server
         fi
-
-        if [ $VERSION -ge 080100 ]; then
-            echo "[SKIPPED] Test Suite2: $encrypt_type is not supported in PS/MS-${VER}"
-            return
-         fi
 
         # Run keyring_vault tests for PS8.0
         server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
@@ -1734,7 +1731,8 @@ EOF
 {
 "vault_url": "$vault_url",
 "secret_mount_point": "$secret_mount_point",
-"token": "$token"
+"token": "$token",
+"vault_ca": "$vault_ca"
 }
 EOF
         if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_vault.cnf ]]; then
