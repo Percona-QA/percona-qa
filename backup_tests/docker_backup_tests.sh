@@ -221,7 +221,9 @@ test_pxb_docker() {
 }
 
 # Check and clean existing installation
-rm backup_log
+if [ -f backup_log ]; then
+    rm backup_log
+fi
 clean_setup
 test_pxb_docker | tee -a backup_log
 
