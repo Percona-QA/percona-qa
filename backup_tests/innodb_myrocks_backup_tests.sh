@@ -16,8 +16,8 @@
 
 # Set script variables
 #export xtrabackup_dir="$HOME/pxb-8.2/bld_PXB_3034/install/bin"
-export xtrabackup_dir="$HOME/pxb-8.3/bld_8.3/install/bin"
-export mysqldir="$HOME/mysql-8.3/bld_8.3/install"
+export xtrabackup_dir="$HOME/pxb-3034-repo/bld_debug/install/bin"
+export mysqldir="$HOME/Percona-Server-8.2.0-1-Linux.x86_64.glibc2.31"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
@@ -27,6 +27,7 @@ export PATH="$PATH:$xtrabackup_dir"
 rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
 server_type="PS" # Default server PS
 install_type="tarball" # Set value to tarball/package
+LOCK_DDL=on # LOCK_DDL Accepted values: on, reduced
 
 # Set sysbench variables
 num_tables=10
@@ -238,7 +239,7 @@ restart_db() {
 
 incremental_backup() {
     # This function takes the incremental backup
-    local BACKUP_PARAMS="$1"
+    local BACKUP_PARAMS="$1 --lock-ddl=$LOCK_DDL"
     local PREPARE_PARAMS="$2"
     local RESTORE_PARAMS="$3"
     local MYSQLD_OPTIONS="$4"
@@ -1254,7 +1255,7 @@ test_add_drop_index() {
       if [ "$server_type" == "MS" ]; then
           incremental_backup "--lock-ddl-per-table"
       else
-          incremental_backup "--lock-ddl"
+          incremental_backup ""
       fi
     fi
 }
@@ -1280,7 +1281,7 @@ test_add_drop_full_text_index() {
         if [ "$server_type" == "MS" ]; then
             incremental_backup "--lock-ddl-per-table"
         else
-            incremental_backup "--lock-ddl"
+            incremental_backup ""
         fi
     fi
 }
@@ -1457,7 +1458,7 @@ test_create_drop_database() {
 
     create_drop_database
 
-    incremental_backup "--lock-ddl"
+    incremental_backup ""
 }
 
 test_compressed_column() {
@@ -1594,18 +1595,26 @@ test_inc_backup_encryption_8_0() {
 
         echo "Test1.3: Incremental Backup and Restore for ${server_type}-${VER} using transition-key and generate-new-master-key"
 
+        # LOCK_DDL cannot be REDUCED in this case, hence changing it to ON
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
+
         if [ "${install_type}" = "package" ]; then
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
         else
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
         fi
 
+        LOCK_DDL=$LOCK_DDL_ORIG
+
         echo "====================================================================================="
 
         echo "Test1.4: Incremental Backup and Restore for ${server_type}-${VER} using generate-transition-key and generate-new-master-key"
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
 
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options} --binlog-encryption"
-
+        LOCK_DDL=$LOCK_DDL_ORIG
         echo "====================================================================================="
 
         echo "Test1.5: Incremental Backup and Restore with lz4 compression, encryption and streaming"
@@ -1622,7 +1631,7 @@ test_inc_backup_encryption_8_0() {
 
         echo "Test1.7: Various test suites: binlog-encryption is not included so that binlog can be applied"
 
-        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options} --lock-ddl" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
+        lock_ddl_cmd='incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${pxb_encrypt_options}" "${server_options}"'
 
     elif [ "${encrypt_type}" = "keyring_vault_plugin" ]; then
         if [ "$server_type" == "MS" ]; then
@@ -1666,18 +1675,23 @@ test_inc_backup_encryption_8_0() {
 
         echo "Test2.3: Incremental Backup and Restore for PS-${VER} using transition-key and generate-new-master-key"
 
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
+
         if [ "${install_type}" = "package" ]; then
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
         else
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
         fi
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "====================================================================================="
 
         echo "Test2.4: Incremental Backup and Restore for PS-${VER} using generate-transition-key and generate-new-master-key"
-
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options}" "${pxb_encrypt_options} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --binlog-encryption"
-
+        LOCK_DDL=$LOCK_DDL_ORIG
         echo "====================================================================================="
 
         echo "Test2.5: Incremental Backup and Restore with lz4 compression, encryption and streaming"
@@ -1765,14 +1779,19 @@ EOF
 
         echo "Test3.3: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
         incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} ${pxb_component_config}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key ${pxb_component_config}" "${server_options} --binlog-encryption"
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "====================================================================================="
 
          echo "Test3.4: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
+         LOCK_DDL_ORIG=$LOCK_DDL
+         LOCK_DDL=on
 
          incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
-
+         LOCK_DDL=$LOCK_DDL_ORIG
         echo "====================================================================================="
 
          echo "Test3.5: Incremental Backup and Restore with lz4 compression, encryption and streaming"
@@ -1857,14 +1876,20 @@ EOF
         echo "###################################################################################"
 
         echo "Test4.3: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
 
         incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} ${pxb_component_config}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key ${pxb_component_config}" "${server_options} --binlog-encryption"
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 
         echo "Test4.4: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
 
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 
@@ -1943,13 +1968,20 @@ EOF
 
         echo "Test5.3: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
+
         incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} ${pxb_component_config} --transition-key=${encrypt_key}" "${pxb_encrypt_options} ${pxb_component_config} --transition-key=${encrypt_key} --generate-new-master-key" "${server_options} --binlog-encryption"
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 
         echo "Test5.4: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
 
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 
@@ -2053,14 +2085,19 @@ EOF
 
         echo "Test6.3: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
+
         incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "${pxb_encrypt_options} ${pxb_component_config} --transition-key=${encrypt_key}" "${pxb_encrypt_options} ${pxb_component_config} --transition-key=${encrypt_key} --generate-new-master-key" "${server_options} --binlog-encryption"
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 
         echo "Test6.4: Incremental Backup and Restore for ${server_type} using generate-transition-key and generate-new-master-key"
-
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
         incremental_backup "${pxb_encrypt_options} --generate-transition-key" "${pxb_encrypt_options} ${pxb_component_config}" "${pxb_encrypt_options} ${pxb_component_config} --generate-new-master-key" "${server_options} --binlog-encryption"
-
+        LOCK_DDL=$LOCK_DDL_ORIG
         echo "###################################################################################"
 
         echo "Test6.5: Incremental Backup and Restore with lz4 compression, encryption and streaming"
@@ -2217,11 +2254,15 @@ test_inc_backup_encryption_2_4() {
 
         echo "Test1.1: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
+
         if [ "${install_type}" = "package" ]; then
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
         else
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_file.so" "${server_options}"
         fi
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 
@@ -2277,11 +2318,15 @@ test_inc_backup_encryption_2_4() {
 
         echo "Test1.2: Incremental Backup and Restore for ${server_type} using transition-key and generate-new-master-key"
 
+        LOCK_DDL_ORIG=$LOCK_DDL
+        LOCK_DDL=on
+
         if [ "${install_type}" = "package" ]; then
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
         else
             incremental_backup "${pxb_encrypt_options} --transition-key=${encrypt_key}" "--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --transition-key=${encrypt_key}" "${pxb_encrypt_options} --transition-key=${encrypt_key} --generate-new-master-key --early-plugin-load=keyring_vault.so" "${server_options} --encrypt-binlog"
         fi
+        LOCK_DDL=$LOCK_DDL_ORIG
 
         echo "###################################################################################"
 

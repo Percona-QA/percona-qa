@@ -12,8 +12,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.3/bld_8.3/install/bin"
-export mysqldir="$HOME/mysql-8.3/bld_8.3/install"
+export xtrabackup_dir="$HOME/pxb-3034-repo/bld_debug/install/bin"
+export mysqldir="$HOME/Percona-Server-8.2.0-1-Linux.x86_64.glibc2.31"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export qascripts="$HOME/percona-qa"
@@ -22,6 +22,7 @@ export logdir="$HOME/backuplogs"
 # Set sysbench variables
 num_tables=10
 table_size=1000
+LOCK_DDL=on # Accepted values reduced, on
 
 initialize_db() {
     # This function initializes, starts and creates the mysql database
@@ -69,7 +70,7 @@ initialize_db() {
 }
 
 incremental_backup() {
-    local BACKUP_PARAMS="$1"
+    local BACKUP_PARAMS="$1 --lock-ddl=$LOCK_DDL"
     local PREPARE_PARAMS="$2"
     local RESTORE_PARAMS="$3"
     local MYSQLD_OPTIONS="$4"
@@ -405,7 +406,7 @@ test_add_drop_index() {
 
     add_drop_index
 
-    incremental_backup "--lock-ddl"
+    incremental_backup
 }
 
 test_add_drop_tablespace() {
@@ -415,7 +416,7 @@ test_add_drop_tablespace() {
 
     add_drop_tablespace
 
-    incremental_backup "--lock-ddl"
+    incremental_backup
 }
 
 test_change_compression() {
@@ -435,7 +436,7 @@ test_change_row_format() {
 
     change_row_format
 
-    incremental_backup "--lock-ddl"
+    incremental_backup
 }
 
 test_update_truncate_table() {
@@ -445,7 +446,7 @@ test_update_truncate_table() {
 
     update_truncate_table
 
-    incremental_backup "--lock-ddl"
+    incremental_backup
 }
 
 test_run_all_statements() {
@@ -463,7 +464,7 @@ test_run_all_statements() {
 
     update_truncate_table
 
-    incremental_backup "--lock-ddl"
+    incremental_backup
 }
 
 test_inc_backup_encryption() {
@@ -477,9 +478,9 @@ test_inc_backup_encryption() {
     #initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_tables=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files"
 
     # For PS debug build
-    initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_online_alter_logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+    initialize_db "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 
-    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --innodb_encrypt_online_alter_logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
+    incremental_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32"
 }
 
 #for testsuite in test_inc_backup test_chg_storage_eng test_add_drop_index test_add_drop_tablespace test_change_compression test_change_row_format test_update_truncate_table test_run_all_statements; do

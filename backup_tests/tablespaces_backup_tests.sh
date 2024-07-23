@@ -11,8 +11,8 @@
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.1.0/install/bin"
-export mysqldir="$HOME/mysql-8.0/bld_8.1.0r/install"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35_r/install/bin"
+export mysqldir="$HOME/mysql-8.0/bld_8.0.37/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -34,6 +34,23 @@ check_dependencies() {
     if ! pt-table-checksum --version >/dev/null 2>&1 ; then
         exit 1
         echo "ERR: The percona toolkit is not installed. It is required to check the data."
+    fi
+}
+
+# Below function is a hack-ish way to find out if the server type is PS or MS
+find_server_type() {
+    # Run mysqld --version and capture the output
+    version_output=$($mysqldir/bin/mysqld --version)
+    # Use awk to extract the version
+    version=$(echo "$version_output" | awk '{print $3}')
+    # Split the version into major and minor parts using "-" as delimiter
+    IFS='-' read -ra parts <<< "$version"
+    MAJOR_VER=$(echo "${parts[0]}")
+    MINOR_VER=$(echo "${parts[1]}")
+    if [ "$MINOR_VER" == "" ]; then
+        server_type="MS"
+    else
+        server_type="PS"
     fi
 }
 
@@ -343,11 +360,9 @@ test_tablespaces_encrypt() {
         mkdir "${dir}"
     done
 
-    if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-        server_type="MS"
+    if [ "$server_type"="MS" ]; then
         server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --table-encryption-privilege-check=ON"
-    else
-        server_type="PS"
+    elif [ "$server_type"="PS" ]; then
         server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --table-encryption-privilege-check=ON"
     fi
 
@@ -378,6 +393,7 @@ test_tablespaces_encrypt() {
 }
 
 echo "################################## Running Tests ##################################"
+find_server_type
 test_tablespaces
 echo "###################################################################################"
 test_tablespaces_encrypt
