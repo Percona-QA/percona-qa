@@ -11,8 +11,8 @@
 # 3. Logs are available in: logdir                                     #
 ########################################################################
 
-export xtrabackup_dir="$HOME/pxb-8.3/bld_8.3/install/bin"
-export mysqldir="$HOME/mysql-8.3/bld_8.3/install"
+export xtrabackup_dir="$HOME/pxb-8.4/bld_8.4_debug/install/bin"
+export mysqldir="$HOME/mysql-8.4/bld_8.4/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -219,6 +219,29 @@ check_tables() {
     fi
 }
 
+create_keyring_component_files() {
+    echo "Create global manifest file"
+    cat <<-EOF >"${mysqldir}"/bin/mysqld.my
+    {
+ "components": "file://component_keyring_file"
+    }
+EOF
+    if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
+        echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
+        exit 1
+    fi
+    echo "Create global configuration file"
+    cat <<-EOF >"${mysqldir}"/lib/plugin/component_keyring_file.cnf
+    {
+      "path": "$mysqldir/lib/plugin/component_keyring_file",                                                                                                                               "read_only": false           }
+EOF
+    if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
+      echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_file.cnf"
+      exit 1
+    fi
+
+}
+
 test_partial_table_backup() {
     # Test suite for partial table backup tests
 
@@ -282,11 +305,11 @@ test_partial_table_backup_encrypt() {
 
     echo "Test: Full backup and partial table restore"
     if [ "$server_type" == "MS" ]; then
-        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
     elif [ "$server_type" == "PS" ]; then
-        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
     fi
-
+    create_keyring_component_files
     initialize_db "${server_options} --binlog-encryption"
 
     echo "Create a table with all data types"
@@ -298,11 +321,11 @@ test_partial_table_backup_encrypt() {
     ${mysql_random_data_load_tool} test alltypes 10 --user root --password '' --host=127.0.0.1 --port=${port_no} >"${logdir}"/data_load_log 2>&1
     "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "UPDATE alltypes SET k = 'a', af = POINT(1,2), ag = '{\"key1\": \"value1\", \"key2\": \"value2\"}';" test
 
-    take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 alltypes"
+    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf  --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 alltypes"
     echo "###################################################################################"
 
     echo "Test: Partial backup and restore of tables using a pattern and excluding some tables"
-    take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest[1-5] --tables-exclude=sbtest10,sbtest5,sbtest4" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
+    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest[1-5] --tables-exclude=sbtest10,sbtest5,sbtest4" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 
     for table in sbtest10 sbtest5 sbtest4; do
         if [[ -f "${backup_dir}"/full/test/"${table}".ibd ]]; then
@@ -315,7 +338,7 @@ test_partial_table_backup_encrypt() {
     echo "Test: Partial backup and restore of tables using a text file"
     echo "test.sbtest3">"${logdir}"/tables.txt
     echo "test.sbtest5">>"${logdir}"/tables.txt
-    take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables-file=${logdir}/tables.txt" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest3 sbtest5"
+    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables-file=${logdir}/tables.txt" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest3 sbtest5"
     echo "###################################################################################"
 
     echo "Test: Partial backup and restore of partitioned tables"
@@ -328,7 +351,7 @@ test_partial_table_backup_encrypt() {
     echo "Add data for innodb partitioned tables"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
 
-    take_partial_backup "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
+    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 }
 
 find_server_type
