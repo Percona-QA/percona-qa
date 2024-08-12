@@ -2,8 +2,8 @@
 
 ########################################################################
 # Created By Manish Chawla, Percona LLC                                #
+# Modified By Mohit Joshi, Percona LLC                                 #
 # This script tests backup for individual tables                       #
-# Assumption: PS8.0 and PXB8.0 are already installed as tarballs       #
 # Usage:                                                               #
 # 1. Set paths in this script:                                         #
 #    xtrabackup_dir, backup_dir, mysqldir, datadir, qascripts, logdir  #
@@ -23,6 +23,10 @@ export mysql_random_data_load_tool="$HOME/mysql_random_data_load"
 # Set sysbench variables
 num_tables=10
 table_size=1000
+mysql_start_timeout=60
+# Setting default server_type to Percona Server
+server_type=PS
+server_version=$($mysqldir/bin/mysqld --version | awk -F 'Ver ' '{print $2}' | grep -oe '[0-9]\.[0-9][\.0-9]*' | head -n1)
 
 check_dependencies() {
     # This function checks if the required dependencies are installed
@@ -45,59 +49,65 @@ check_dependencies() {
     fi
 }
 
-# Below function is a hack-ish way to find out if the server type is PS or MS
-find_server_type() {
-    # Run mysqld --version and capture the output
-    version_output=$($mysqldir/bin/mysqld --version)
-    # Use awk to extract the version
-    version=$(echo "$version_output" | awk '{print $3}')
-    # Split the version into major and minor parts using "-" as delimiter
-    IFS='-' read -ra parts <<< "$version"
-    MAJOR_VER=$(echo "${parts[0]}")
-    MINOR_VER=$(echo "${parts[1]}")
+start_server() {
+  # This function starts the server
+  pkill -9 mysqld
 
-    if [ "$MINOR_VER" == "" ]; then
-       server_type="MS"
-    else
-       server_type="PS"
-    fi
-}
+  echo "=>Starting MySQL server"
+  $mysqldir/bin/mysqld --no-defaults --basedir=$mysqldir --datadir=$datadir $MYSQLD_OPTIONS --port=21000 --socket=$mysqldir/socket.sock --plugin-dir=$mysqldir/lib/plugin --max-connections=1024 --log-error=$datadir/error.log  --general-log --log-error-verbosity=3 --core-file > /dev/null 2>&1 &
+  MPID="$!"
 
-normalize_version() {
-    local major=0
-    local minor=0
-    local patch=0
-    # Everything after the first three values are ignored
-    if [[ $1 =~ ^([0-9]+)\.([0-9]+)\.?([0-9]*)([\.0-9])*$ ]]; then
-       major=${BASH_REMATCH[1]}
-       minor=${BASH_REMATCH[2]}
-       patch=${BASH_REMATCH[3]}
-    fi
-    printf %02d%02d%02d $major $minor $patch
+  for X in $(seq 0 ${mysql_start_timeout}); do
+      sleep 1
+      if ${mysqldir}/bin/mysqladmin -uroot -S${mysqldir}/socket.sock ping > /dev/null 2>&1; then
+          echo "..Server started successfully"
+          break
+      fi
+      if [ $X -eq ${mysql_start_timeout} ]; then
+          echo "ERR: Database could not be started. Please check error logs: ${mysqldir}/data/error.log"
+          exit 1
+      fi
+  done
 }
 
 initialize_db() {
-    # This function initializes and starts mysql database
-    local MYSQLD_OPTIONS="$1"
 
-    echo "Starting mysql database"
-    pushd "$mysqldir" >/dev/null 2>&1 || exit
-    if [ ! -f "$mysqldir"/all_no_cl ]; then
-        "$qascripts"/startup.sh
+    local MYSQLD_OPTIONS=$1
+    # This function initializes and starts mysql database
+    if [ ! -d "${logdir}" ]; then
+        mkdir "${logdir}"
     fi
 
-    ./all_no_cl "${MYSQLD_OPTIONS}" >/dev/null 2>&1 
-    "${mysqldir}"/bin/mysqladmin ping --user=root --socket="${mysqldir}"/socket.sock >/dev/null 2>&1
+    if [ -d $datadir ]; then
+        rm -rf $datadir
+    fi
+
+    echo "=>Creating data directory"
+    $mysqldir/bin/mysqld --no-defaults $MYSQLD_OPTIONS --datadir=$datadir --initialize-insecure > $mysqldir/mysql_install_db.log 2>&1
+    echo "..Data directory created"
+    start_server
+
+    $mysqldir/bin/mysqladmin ping --user=root --socket=$mysqldir/socket.sock >/dev/null 2>&1
     if [ "$?" -ne 0 ]; then
         echo "ERR: Database could not be started in location ${mysqldir}. Please check the directory"
-        popd >/dev/null 2>&1 || exit
         exit 1
     fi
-    popd >/dev/null 2>&1 || exit
 
-    "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
+    output=$($mysqldir/bin/mysql -uroot -S$mysqldir/socket.sock -Ne "SELECT COUNT(*) FROM information_schema.engines WHERE engine='InnoDB' AND comment LIKE 'Percona%';")
+    if [ "$output" -eq 1 ]; then
+        server_type="PS"
+        echo "Test is running against: $server_type-$server_version"
+    elif [ "$output" -eq 0 ]; then
+        server_type="MS"
+        echo "Test is running against: $server_type-$server_version"
+    else
+        echo "Invalid server version!"
+        exit 1
+    fi
+
+    $mysqldir/bin/mysql -uroot -S$mysqldir/socket.sock -e"CREATE DATABASE test;"
     echo "Create data using sysbench"
-    if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
+    if [[ "${MYSQLD_OPTIONS}" != *"encrypt"* ]]; then
         sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket="${mysqldir}"/socket.sock prepare >"${logdir}"/sysbench.log
     else
         # Encryption enabled
@@ -354,7 +364,6 @@ test_partial_table_backup_encrypt() {
     take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 }
 
-find_server_type
 echo "################################## Running Tests ##################################"
 test_partial_table_backup
 echo "###################################################################################"
