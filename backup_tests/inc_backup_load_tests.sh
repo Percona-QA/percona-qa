@@ -16,7 +16,7 @@
 
 # Set script variables
 export xtrabackup_dir="$HOME/pxb-8.4/bld_8.4_debug/install/bin"
-export mysqldir="$HOME/mysql-8.4/bld_8.4_release/install"
+export mysqldir="$HOME/upstream-8.4/bld_8.4.1/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -26,32 +26,14 @@ export mysql_start_timeout=60
 
 # Set tool variables
 load_tool="pstress" # Set value as pstress/sysbench
-num_tables=100
-table_size=1000
-seconds=120
-threads=10
-tool_dir="$HOME/pstress_8.2/src" # Pquery/pstress dir
+num_tables=25 # This will make 50 tables on the database tt_1, tt_1_p, .. tt_25, tt_25_p
+table_size=100
+seconds=60
+threads=5
+tool_dir="$HOME/pstress_8.4/src" # pstress dir
 
 # PXB Lock option
 LOCK_DDL=on # lock_ddl accepted values (on, reduced)
-
-# Below function is a hack-ish way to find out if the server type is PS or MS
-find_server_type() {
-    # Run mysqld --version and capture the output
-    version_output=$($mysqldir/bin/mysqld --version)
-    # Use awk to extract the version
-    version=$(echo "$version_output" | awk '{print $3}')
-    # Split the version into major and minor parts using "-" as delimiter
-    IFS='-' read -ra parts <<< "$version"
-    MAJOR_VER=$(echo "${parts[0]}")
-    MINOR_VER=$(echo "${parts[1]}")
-
-    if [ "$MINOR_VER" == "" ]; then
-        server_type="MS"
-    else
-        server_type="PS"
-    fi
-}
 
 normalize_version() {
     local major=0
@@ -114,6 +96,31 @@ initialize_db() {
   start_server
   $mysqldir/bin/mysql -uroot -S$mysqldir/socket.sock -e "DROP DATABASE IF EXISTS test"
   $mysqldir/bin/mysql -uroot -S$mysqldir/socket.sock -e "CREATE DATABASE IF NOT EXISTS test"
+  output=$($mysqldir/bin/mysql -uroot -S$mysqldir/socket.sock -Ne "SELECT COUNT(*) FROM information_schema.engines WHERE engine='InnoDB' AND comment LIKE 'Percona%';")
+  if [ "$output" -eq 1 ]; then
+      server_type="PS"
+      echo "Test is running against: $server_type-$VER"
+      if [ $load_tool == "pstress" ]; then
+          PSTRESS_BINARY=pstress-ps
+          if [ ! -f $tool_dir/pstress-ps ]; then
+              echo "pstress-ps not found. Please compile pstress with Percona Server!"
+              exit 1
+          fi
+      fi
+  elif [ "$output" -eq 0 ]; then
+      server_type="MS"
+      echo "Test is running against: $server_type-$VER"
+      if [ $load_tool == "pstress" ]; then
+          PSTRESS_BINARY=pstress-ms
+          if [ ! -f $tool_dir/pstress-ms ]; then
+              echo "pstress-ms not found. Please compile pstress with Percona Server!"
+              exit 1
+          fi
+      fi
+  else
+      echo "Invalid server version!"
+      exit 1
+  fi
 
   # Create data using sysbench
   if [[ "${load_tool}" = "sysbench" ]]; then
@@ -198,8 +205,8 @@ take_backup() {
       echo "..Inc backup was successfully created at: ${backup_dir}/inc${inc_num}. Logs available at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
     fi
     let inc_num++
-    echo "Sleeping for 5 seconds before taking next inc backup"
-    sleep 5
+    # Sleeping for 10 seconds before taking next inc backup. This is done because while backup is taken DDLs are blocked and pstress cannot proceed
+    sleep 10
   done
 
   echo "=>Preparing full backup"
@@ -969,21 +976,6 @@ else
 fi
 
 echo "################################## Running Tests ##################################"
-find_server_type
-if [ "$server_type" == "MS" ]; then
-    PSTRESS_BINARY="pstress-ms"
-    if [ ! -f $tool_dir/pstress-ms ]; then
-        echo "pstress-ms not found. Please compile pstress with MySQL Server!"
-        exit 1
-    fi
-elif [ "$server_type" == "PS" ]; then
-    PSTRESS_BINARY="pstress-ps"
-    if [ ! -f $tool_dir/pstress-ps ]; then
-        echo "pstress-ps not found. Please compile pstress with Percona Server!"
-        exit 1
-    fi
-fi
-
 for tsuitelist in $*; do
   case "${tsuitelist}" in
     Normal_and_Encryption_tests)
