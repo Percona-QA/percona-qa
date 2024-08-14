@@ -16,7 +16,7 @@
 
 # Set script variables
 export xtrabackup_dir="$HOME/pxb-8.4/bld_8.4_debug/install/bin"
-export mysqldir="$HOME/upstream-8.4/bld_8.4.1/install"
+export mysqldir="$HOME/upstream-8.4/bld_8.4.0/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -125,7 +125,7 @@ initialize_db() {
   # Create data using sysbench
   if [[ "${load_tool}" = "sysbench" ]]; then
     if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
-      sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket="${mysqldir}"/socket.sock prepare >"${logdir}"/sysbench.log
+      sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket="${mysqldir}"/socket.sock prepare >"${logdir}"/sysbench.log
     else
       # Encryption enabled
       for ((i=1; i<=num_tables; i++)); do
@@ -152,7 +152,7 @@ run_load() {
         sleep 2
     else
         echo "Run sysbench"
-        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=200 run >>${logdir}/sysbench.log &
+        sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=$seconds run >>${logdir}/sysbench.log &
     fi
 }
 
@@ -989,10 +989,12 @@ for tsuitelist in $*; do
       echo "###################################################################################"
       run_load_tests "memory_estimation"
       echo "###################################################################################"
-      run_crash_tests_pstress "normal"
-      echo "###################################################################################"
-      run_crash_tests_pstress "encryption"
-      echo "###################################################################################"
+      if [ $load_tool == "pstress" ]; then
+          run_crash_tests_pstress "normal"
+          echo "###################################################################################"
+          run_crash_tests_pstress "encryption"
+          echo "###################################################################################"
+      fi
       ;;
     Kmip_Encryption_tests)
       run_load_kmip_component_tests
@@ -1018,7 +1020,9 @@ for tsuitelist in $*; do
       echo "Rocksdb Tests"
       run_load_tests "rocksdb"
       echo "###################################################################################"
-      run_crash_tests_pstress "rocksdb"
+      if [ $load_tool == "pstress" ]; then
+          run_crash_tests_pstress "rocksdb"
+      fi
       echo "###################################################################################"
       ;;
     Page_Tracking_tests)
@@ -1035,12 +1039,14 @@ for tsuitelist in $*; do
       echo "###################################################################################"
       run_load_keyring_component_tests "pagetracking"
       echo "###################################################################################"
-      run_crash_tests_pstress "normal" "pagetracking"
-      echo "###################################################################################"
-      run_crash_tests_pstress "encryption" "pagetracking"
-      echo "###################################################################################"
-      run_crash_tests_pstress "rocksdb" "pagetracking"
-      echo "###################################################################################"
+      if [ $load_tool == "pstress" ]; then
+          run_crash_tests_pstress "normal" "pagetracking"
+          echo "###################################################################################"
+          run_crash_tests_pstress "encryption" "pagetracking"
+          echo "###################################################################################"
+          run_crash_tests_pstress "rocksdb" "pagetracking"
+          echo "###################################################################################"
+      fi
       ;;
   esac
 done
