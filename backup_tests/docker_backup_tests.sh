@@ -7,12 +7,12 @@
 ###################################################################################################
 
 help() {
-    echo "Usage: $0 pxb_version repo server [innovation]"
-    echo "Accepted values of version: pxb24, pxb80, pxb-8x-innovation"
-    echo "Accepted values of repo: main, testing"
+    echo "Usage: $0 repo_name repo_type server [innovation]"
+    echo "Accepted values of repo_name: pxb24, pxb80, pxb-8x-innovation, pxb-84-lts"
+    echo "Accepted values of repo_type: release, testing, experimental"
     echo "Accepted value of server: ps, ms"
-    echo "Accepted value of innovation: 8.1, 8.2"
-    echo "Main repo is the percona docker image and testing repo is the perconalab docker image"
+    echo "Accepted value of innovation: 8.1, 8.2, 8.3"
+    echo "Release repo is the percona docker image and testing repo is the perconalab docker image"
     exit 1
 }
 
@@ -20,11 +20,11 @@ if [ "$#" -lt 3 ] || [ "$#" -gt 4 ]; then
     help
 fi
 
-pxb_version=$1
-repo=$2
+repo_name=$1
+repo_type=$2
 server=$3
 
-if [ "$pxb_version" == "pxb-8x-innovation" ]; then
+if [ "$repo_name" == "pxb-8x-innovation" ]; then
     # Check if the number of arguments is 3
     if [ "$#" -ne 4 ]; then
         echo "ERR: 'innovation' argument is required for pxb-8x-innovation. Accepted values: 8.1, 8.2"
@@ -36,7 +36,7 @@ else
 fi
 
 
-if [ "$pxb_version" = "pxb-8x-innovation" ]; then
+if [ "$repo_name" = "pxb-8x-innovation" ]; then
     if [ "$server" = "ms" ]; then
         container_name="mysql-$innovation"
         mysql_docker_image="mysql:$innovation"
@@ -47,18 +47,18 @@ if [ "$pxb_version" = "pxb-8x-innovation" ]; then
         echo "Invalid product!"
         help
     fi
-    if [ "$repo" = "main" ]; then
+    if [ "$repo_type" = "release" ]; then
         pxb_docker_image="percona/percona-xtrabackup:$innovation"
-    elif [ "$repo" = "testing" ]; then
+    elif [ "$repo_type" = "testing" ]; then
         pxb_docker_image="perconalab/percona-xtrabackup:$innovation"
     fi
     pxb_backup_dir="pxb_backup_data:/backup_$innovation"
     target_backup_dir="/backup_$innovation"
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql -v /var/run/mysqld:/var/run/mysqld"
-elif [ "$pxb_version" = "pxb80" ]; then
+elif [ "$repo_name" = "pxb80" ]; then
     if [ "$server" = "ms" ]; then
         container_name="mysql-8.0"
-        mysql_docker_image="mysql/mysql-server:latest"
+        mysql_docker_image="mysql/mysql-server:8.0"
     elif [ "$server" = "ps" ]; then
         container_name="percona-server-8.0"
         mysql_docker_image="percona/percona-server:8.0"
@@ -66,15 +66,15 @@ elif [ "$pxb_version" = "pxb80" ]; then
         echo "Invalid product!"
         help
     fi
-    if [ "$repo" = "main" ]; then
+    if [ "$repo_type" = "release" ]; then
         pxb_docker_image="percona/percona-xtrabackup:8.0"
-    elif [ "$repo" = "testing" ]; then
+    elif [ "$repo_type" = "testing" ]; then
         pxb_docker_image="perconalab/percona-xtrabackup:8.0"
     fi
     pxb_backup_dir="pxb_backup_data:/backup_80"
     target_backup_dir="/backup_80"
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql"
-elif [ "$pxb_version" = "pxb24" ]; then
+elif [ "$repo_name" = "pxb24" ]; then
     if [ "$server" = "ms" ]; then
         container_name="mysql-5.7"
         mysql_docker_image="mysql/mysql-server:5.7"
@@ -85,14 +85,33 @@ elif [ "$pxb_version" = "pxb24" ]; then
         echo "Invalid product!"
         help
     fi
-    if [ "$repo" = "main" ]; then
+    if [ "$repo_type" = "release" ]; then
         pxb_docker_image="percona/percona-xtrabackup:2.4"
-    elif [ "$repo" = "testing" ]; then
+    elif [ "$repo_type" = "testing" ]; then
         pxb_docker_image="perconalab/percona-xtrabackup:2.4"
     fi
     pxb_backup_dir="pxb_backup_data:/backup"
     target_backup_dir="/backup"
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql"
+elif [ "$repo_name" = "pxb-84-lts" ]; then
+    if [ "$server" = "ms" ]; then
+        container_name="mysql-8.4"
+        mysql_docker_image="mysql:8.4.2"
+    elif [ "$server" = "ps" ]; then
+        container_name="percona-server-8.4"
+        mysql_docker_image="percona/percona-server:8.4"
+    else
+         echo "Invalid product!"
+         help
+    fi
+    if [ "$repo_type" = "release" ]; then
+        pxb_docker_image="percona/percona-xtrabackup:8.4.0-1"
+    elif [ "$repo_type" = "testing" ]; then
+        pxb_docker_image="perconalab/percona-xtrabackup:8.4.0-1"
+    fi
+    pxb_backup_dir="pxb_backup_data:/backup_84"
+    target_backup_dir="/backup_84"
+    mount_dir="-v /tmp/mysql_data:/var/lib/mysql -v /var/run/mysqld:/var/run/mysqld"
 else
     echo "Invalid version parameter. Exiting"
     help
@@ -123,6 +142,7 @@ test_pxb_docker() {
     mkdir /tmp/mysql_data
     sudo chmod -R 777 /tmp/mysql_data
     sudo chmod -R 777 /var/run/mysqld
+    echo $start_mysql_container
 
     echo "Run $container_name docker container"
     if ! $start_mysql_container >>backup_log 2>&1; then
@@ -156,11 +176,12 @@ test_pxb_docker() {
     sudo docker exec -it $container_name mysql -uroot -pmysql -e "INSERT INTO test.t1 VALUES (1), (2), (3), (4), (5);" >/dev/null 2>&1
 
     echo "Run pxb docker container, take backup and prepare it"
-    echo "Using $repo repo docker image"
-    sudo docker run --volumes-from $container_name -v $pxb_backup_dir -it --rm --user root $pxb_docker_image /bin/bash -c "xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=$target_backup_dir --user=root --password=mysql ; xtrabackup --prepare --target-dir=$target_backup_dir" >>backup_log 2>&1
+    echo "Using $repo_type repo docker image"
+    sudo docker run --volumes-from $container_name -v $pxb_backup_dir -it --rm --user root $pxb_docker_image /bin/bash -c "rm -rf $target_backup_dir/* ; xtrabackup --backup --datadir=/var/lib/mysql/ --target-dir=$target_backup_dir --user=root --password=mysql ; xtrabackup --prepare --target-dir=$target_backup_dir" >>backup_log 2>&1
+
 
     if [ "$?" -ne 0 ]; then
-        echo "ERR: The docker command to run $pxb_version-$innovation failed"
+        echo "ERR: The docker command to run PXB failed"
         exit 1
     else
         echo "The backup and prepare was successful. Log available at: ${PWD}/backup_log"
