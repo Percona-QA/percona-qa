@@ -1,0 +1,43 @@
+1/* Generated private key */
+openssl genrsa -out rsa.private 1024
+
+2/*Generated public key*/
+openssl rsa -in rsa.private -out rsa.public -pubout -outform PEM
+
+3/* Created a table to store the generated keys */
+create table key_holder(priv varchar(2000), pub varchar(2000));
+
+4/* Inserted the keys */
+insert into key_holder values (LOAD_FILE('/home/mohit.joshi/PS-7044/bld_01apr_2022/install/rsa.private'), LOAD_FILE('/home/mohit.joshi/PS-7044/bld_01apr_2022/install/rsa.public'));
+
+5/* Saving the private key in a session variable */
+SELECT priv from key_holder into @priv;
+
+6/* Saving the public key in a session variable */
+SELECT pub from key_holder into @pub
+
+7/* Generate public key  from UDF */
+select create_asymmetric_pub_key('RSA',@priv);
+
+
+
+1/* Generate DSA private key */
+openssl dsaparam -out dsaparam.pem 1024
+openssl gendsa -out dsaprivkey.pem dsaparam.pem
+
+2/* Generate DSA public key */
+openssl dsa -in dsaprivkey.pem -outform PEM -pubout -out dsapubkey.pem
+
+
+3/* Create a table to load the content from the generated key files */
+CREATE TABLE key_holder(priv varchar(2000), pub varchar(2000));
+INSERT INTO key_holder VALUES (LOAD_FILE('/home/mohit.joshi/PS-7044/bld_01apr_2022/install/dsaprivkey.pem'), LOAD_FILE('/home/mohit.joshi/PS-7044/bld_01apr_2022/install/dsapubkey.pem'));
+
+4/* Store the values of generated private/public keys in local variables */
+SELECT priv from key_holder into @priv;
+SELECT pub from key_holder into @pub;
+
+5/* Generate public key from UDF using external Private key */
+SELECT create_asymmetric_pub_key('DSA',@priv);
+
+DSA public key generated from Step 4 must match Step 5
