@@ -15,9 +15,8 @@
 ########################################################################
 
 # Set script variables
-#export xtrabackup_dir="$HOME/pxb-8.2/bld_PXB_3034/install/bin"
-export xtrabackup_dir="$HOME/pxb-3034-repo/bld_debug/install/bin"
-export mysqldir="$HOME/Percona-Server-8.2.0-1-Linux.x86_64.glibc2.31"
+export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35/install/bin"
+export mysqldir="$HOME/ps-8.0/bld_8.0.40/install"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
@@ -74,23 +73,17 @@ start_vault_server(){
 
 # Below function is a hack-ish way to find out if the server type is PS or MS
 find_server_type() {
-  # Run mysqld --version and capture the output
-  version_output=$($mysqldir/bin/mysqld --version)
 
-  # Use awk to extract the version
-  version=$(echo "$version_output" | awk '{print $3}')
+  # Grep for the server variable --innodb-sys-tablespace-encrypt which is available only in Percona Server
+  $mysqldir/bin/mysqld --help --verbose | grep -q "innodb-sys-tablespace-encrypt"
 
-  # Split the version into major and minor parts using "-" as delimiter
-  IFS='-' read -ra parts <<< "$version"
-  MAJOR_VER=$(echo "${parts[0]}")
-  MINOR_VER=$(echo "${parts[1]}")
-
-  if [ "$MINOR_VER" == "" ]; then
-    server_type="MS"
-  else
+  if [ $? -eq 0 ]; then
     server_type="PS"
+  else
+    server_type="MS"
   fi
 }
+
 normalize_version(){
   local major=0
   local minor=0
