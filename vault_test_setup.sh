@@ -165,7 +165,7 @@ if [[ ${DL_VAULT} -eq 1 ]]; then
     echo -e "\n===== Vault binary already present, skipping download ====="
   else
     echo -e "\n===== Downloading vault binary ====="
-    VAULT_URL=$(${SCRIPT_PWD}/get_download_link.sh --product=vault)
+    VAULT_URL=$(${SCRIPT_PWD}/get_download_link.sh --product=vault --arch=aarch64)
     wget "${VAULT_URL}" > /dev/null 2>&1
     VAULT_ZIP=$(echo "${VAULT_URL}"|grep -oP "vault_.*linux.*.zip")
     unzip "${VAULT_ZIP}" > /dev/null
