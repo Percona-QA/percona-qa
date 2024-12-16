@@ -164,8 +164,20 @@ if [[ ${DL_VAULT} -eq 1 ]]; then
   if [[ -x "${WORKDIR}/vault" ]]; then
     echo -e "\n===== Vault binary already present, skipping download ====="
   else
+    echo -e "\n===== Detecting system architecture ====="
+    ARCH=$(uname -m)  # Dynamically detect architecture
+    if [[ "${ARCH}" == "aarch64" ]]; then
+      BUILD_ARCH="aarch64"
+    elif [[ "${ARCH}" == "x86_64" ]]; then
+      BUILD_ARCH="x86_64"
+    else
+      echo "Unsupported architecture: ${ARCH}"
+      exit 1
+    fi
+
+    echo -e "Detected architecture: ${BUILD_ARCH}\n"
     echo -e "\n===== Downloading vault binary ====="
-    VAULT_URL=$(${SCRIPT_PWD}/get_download_link.sh --product=vault --arch=aarch64)
+    VAULT_URL=$(${SCRIPT_PWD}/get_download_link.sh --product=vault --arch=${BUILD_ARCH})
     wget "${VAULT_URL}" > /dev/null 2>&1
     VAULT_ZIP=$(echo "${VAULT_URL}"|grep -oP "vault_.*linux.*.zip")
     unzip "${VAULT_ZIP}" > /dev/null
