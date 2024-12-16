@@ -342,7 +342,7 @@ get_link(){
     if [ ${BUILD_ARCH} = "x86_64" ]; then
       BUILD_ARCH="amd64"
     elif [[ "${BUILD_ARCH}" = "aarch64" ]]; then
-      BUILD_ARCH="arm"
+      BUILD_ARCH="arm64"
     fi
 
     if [[ -z ${VERSION_FULL} ]]; then
