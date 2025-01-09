@@ -3,7 +3,7 @@
 ############################################################################################
 # Created By Manish Chawla, Percona LLC                                                    #
 # Modified By Mohit Joshi, Percona LLC                                                     #
-# This script installs pxb24/pxb80/pxb8x-innovation from the main/testing repo             #
+# This script installs pxb-24/pxb-80/pxb8x-innovation from the release/testing repo        #
 ############################################################################################
 
 log="$HOME/install_log"
@@ -11,11 +11,11 @@ log="$HOME/install_log"
 help() {
     echo "Usage: $0 repo_name repo_type [version]"
     echo "Accepted values for repo_name: pxb-24 , pxb-80 , pxb-8x-innovation, pxb-84-lts"
-    echo "Accepted values for repo_type: main, testing, experimental"
+    echo "Accepted values for repo_type: release, testing, experimental"
     echo "Accepted value for version: 81, 82, 83 [Required only when repo_name=pxb-8x-innovation]"
     echo "eg. pkg_install_tests.sh pxb-8x-innovation main 81"
-    echo "eg. pkg_install_tests.sh pxb80 testing"
-    echo "eg. pkg_install_tests.sh pxb24 main"
+    echo "eg. pkg_install_tests.sh pxb-80 testing"
+    echo "eg. pkg_install_tests.sh pxb-24 release"
     echo "eg. pkg_install_test.sh pxb-84-lts testing"
     exit 1
 }

@@ -8,7 +8,7 @@
 
 help() {
     echo "Usage: $0 repo_name repo_type server [innovation]"
-    echo "Accepted values of repo_name: pxb24, pxb80, pxb-8x-innovation, pxb-84-lts"
+    echo "Accepted values of repo_name: pxb-24, pxb-80, pxb-8x-innovation, pxb-84-lts"
     echo "Accepted values of repo_type: release, testing, experimental"
     echo "Accepted value of server: ps, ms"
     echo "Accepted value of innovation: 8.1, 8.2, 8.3"
@@ -55,7 +55,7 @@ if [ "$repo_name" = "pxb-8x-innovation" ]; then
     pxb_backup_dir="pxb_backup_data:/backup_$innovation"
     target_backup_dir="/backup_$innovation"
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql -v /var/run/mysqld:/var/run/mysqld"
-elif [ "$repo_name" = "pxb80" ]; then
+elif [ "$repo_name" = "pxb-80" ]; then
     if [ "$server" = "ms" ]; then
         container_name="mysql-8.0"
         mysql_docker_image="mysql/mysql-server:8.0"
@@ -74,7 +74,7 @@ elif [ "$repo_name" = "pxb80" ]; then
     pxb_backup_dir="pxb_backup_data:/backup_80"
     target_backup_dir="/backup_80"
     mount_dir="-v /tmp/mysql_data:/var/lib/mysql"
-elif [ "$repo_name" = "pxb24" ]; then
+elif [ "$repo_name" = "pxb-24" ]; then
     if [ "$server" = "ms" ]; then
         container_name="mysql-5.7"
         mysql_docker_image="mysql/mysql-server:5.7"
