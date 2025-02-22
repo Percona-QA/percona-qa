@@ -8,10 +8,10 @@
 
 help() {
     echo "Usage: $0 repo_name repo_type server [innovation]"
-    echo "Accepted values of repo_name: pxb-24, pxb-80, pxb-8x-innovation, pxb-84-lts"
+    echo "Accepted values of repo_name: pxb-24, pxb-80, pxb-8x-innovation, pxb-84-lts, pxb-9x-innovation"
     echo "Accepted values of repo_type: release, testing, experimental"
     echo "Accepted value of server: ps, ms"
-    echo "Accepted value of innovation: 8.1, 8.2, 8.3"
+    echo "Accepted value of innovation: 8.1, 8.2, 8.3, 8.4, 9.1"
     echo "Release repo is the percona docker image and testing repo is the perconalab docker image"
     exit 1
 }
@@ -36,7 +36,26 @@ else
 fi
 
 
-if [ "$repo_name" = "pxb-8x-innovation" ]; then
+if [ "$repo_name" = "pxb-9x-innovation" ]; then
+    if [ "$server" = "ms" ]; then
+        container_name="mysql-$innovation"
+        mysql_docker_image="mysql:$innovation"
+    elif [ "$server" = "ps" ]; then
+        container_name="percona-server-$innovation"
+        mysql_docker_image="percona/percona-server:$innovation"
+    else
+        echo "Invalid product!"
+        help
+    fi
+    if [ "$repo_type" = "release" ]; then
+        pxb_docker_image="percona/percona-xtrabackup:$innovation"
+    elif [ "$repo_type" = "testing" ]; then
+        pxb_docker_image="perconalab/percona-xtrabackup:$innovation"
+    fi
+    pxb_backup_dir="pxb_backup_data:/backup_$innovation"
+    target_backup_dir="/backup_$innovation"
+    mount_dir="-v /tmp/mysql_data:/var/lib/mysql -v /var/run/mysqld:/var/run/mysqld"
+elif [ "$repo_name" = "pxb-8x-innovation" ]; then
     if [ "$server" = "ms" ]; then
         container_name="mysql-$innovation"
         mysql_docker_image="mysql:$innovation"

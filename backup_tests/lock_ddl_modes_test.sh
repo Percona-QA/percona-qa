@@ -7,8 +7,8 @@
 #####################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-3034/bld_debug/install/bin"
-export mysqldir="$HOME/Percona-Server-8.4.0-1-Linux.x86_64.glibc2.35"
+export xtrabackup_dir="$HOME/pxb-9.1/bld_9.1_pro/install/bin"
+export mysqldir="$HOME/mysql-9.1/bld_9.1/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -19,7 +19,7 @@ export mysql_start_timeout=60
 load_tool="pstress" # Set value as pstress/sysbench
 num_tables=20 # Used for Sysbench
 table_size=1000 # Used for Sysbench
-tool_dir="$HOME/pstress/src" # pstress dir
+tool_dir="$HOME/pstress_9.1/src" # pstress dir
 
 if [ "$#" -lt 1 ]; then
     echo "This script tests different lock_ddl modes while PXB takes backup"

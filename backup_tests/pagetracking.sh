@@ -15,8 +15,8 @@
 #############################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35_r/install/bin"
-export mysqldir="$HOME/mysql-8.0/bld_8.0.37/install"
+export xtrabackup_dir="$HOME/pxb-9.1/bld_9.1/install/bin"
+export mysqldir="$HOME/mysql-9.1/bld_9.1/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -28,7 +28,7 @@ export mysql_start_timeout=60
 load_tool="pstress" # Set value as pquery/pstress/sysbench
 num_tables=10 # Used for Sysbench
 table_size=1000 # Used for Sysbench
-tool_dir="$HOME/pstress/src" # Pquery/pstress dir
+tool_dir="$HOME/pstress_9.1/src" # pstress dir
 
 if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" > /dev/null 2>&1 ; then
   MS=1
@@ -42,6 +42,18 @@ initialize_db() {
     mkdir "${logdir}"
   fi
 
+  echo "=>Setting up component_keyring_file encryption using global manifest/config files"
+  cat <<EOF >"${mysqldir}"/bin/mysqld.my
+{
+"components": "file://component_keyring_file"
+}
+EOF
+  cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_file.cnf
+{
+    "path": "$mysqldir/lib/plugin/component_keyring_file",
+    "read_only": true
+}
+EOF
   echo "=>Creating data directory"
   $mysqldir/bin/mysqld --no-defaults --datadir=$datadir --initialize-insecure > $mysqldir/mysql_install_db.log 2>&1
   echo "..Data directory created"
@@ -70,32 +82,17 @@ run_crash_tests_pstress() {
 
     if [[ "${test_type}" = "encryption" ]]; then
       echo "Running crash tests with ${load_tool} and mysql running with encryption"
-      if "${mysqldir}"/bin/mysqld --version | grep "8.0" >/dev/null 2>&1 ; then
-        if ${mysqldir}/bin/mysqld --version | grep "8.0" | grep "MySQL Community Server" >/dev/null 2>&1 ; then
+      if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
           # Server is MS 8.0
-          MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
+          MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --max-connections=5000 --binlog-encryption"
           load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-column-compression" # MS does not support column compression
-        else
-          # Server is PS 8.0
-          MYSQLD_OPTIONS="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --table-encryption-privilege-check=ON --max-connections=5000"
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
-        fi
       else
-        # Server is MS/PS 5.7
-        if "${mysqldir}"/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
-          # Server is MS 5.7
-          MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-          # Run pstress without ddl
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0 --no-ddl --no-column-compression"
-        else
-          # Server is PS 5.7 --innodb-temp-tablespace-encrypt is not GA and is deprecated
-          MYSQLD_OPTIONS="--log-bin=binlog --early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-encrypt-tables=ON --encrypt-binlog --encrypt-tmp-files --innodb-encrypt-online-alter-logs=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --max-connections=5000"
-          # Run pstress
-          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0"
-        fi
+          # Server is PS 8.0
+          MYSQLD_OPTIONS="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --table-encryption-privilege-check=ON --max-connections=5000"
+          load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
       fi
-      BACKUP_PARAMS="--keyring_file_data=${mysqldir}/keyring --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
-      PREPARE_PARAMS="${BACKUP_PARAMS}"
+      BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
+      PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config=${mysqldir}/lib/plugin/component_keyring_file.cnf"
       RESTORE_PARAMS="${BACKUP_PARAMS}"
     elif [[ "${test_type}" = "rocksdb" ]]; then
       echo "Running crash tests with ${load_tool} for rocksdb"
@@ -509,14 +506,10 @@ if [ "$#" -lt 1 ]; then
     echo "   load_tool, tool_dir, num_tables, table_size, kmip, kms configuration"
     echo "3. Run the script as: $0 <Test Suites>"
     echo "   Test Suites: "
-    echo "   Normal_and_Encryption_tests"
-    echo "   Kmip_Encryption_tests"
-    echo "   Kms_Encryption_tests"
-    echo "   Rocksdb_tests"
     echo "   Page_Tracking_tests"
     echo " "
     echo "   Example:"
-    echo "   $0 Normal_and_Encryption_tests Page_Tracking_tests"
+    echo "   $0 Page_Tracking_tests"
     echo " "
     echo "4. Logs are available at: $logdir"
     exit 1

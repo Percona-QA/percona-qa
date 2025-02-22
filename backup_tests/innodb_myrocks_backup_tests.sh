@@ -15,8 +15,8 @@
 ########################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.0/bld_8.0.35/install/bin"
-export mysqldir="$HOME/ps-8.0/bld_8.0.40/install"
+export xtrabackup_dir="$HOME/pxb-9.1/bld_9.1/install/bin"
+export mysqldir="$HOME/mysql-9.1/bld_9.1/install"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export datadir="${mysqldir}/data"
 export qascripts="$HOME/percona-qa"
@@ -27,6 +27,7 @@ rocksdb="disabled" # Set this to disabled for PXB2.4 and MySQL versions
 server_type="PS" # Default server PS
 install_type="tarball" # Set value to tarball/package
 LOCK_DDL=on # LOCK_DDL Accepted values: on, reduced
+mysql_start_timeout=60
 
 # Set sysbench variables
 num_tables=10
@@ -104,6 +105,26 @@ VERSION=$(normalize_version $VER)
 PXB_VERSION=$(normalize_version $PXB_VER)
 
 #set -o pipefail
+start_server() {
+  # This function starts the server
+  ADD_OPTIONS=$1
+  { for pid in $(pgrep mysqld); do kill -9 $pid && wait $pid 2>/dev/null; done; } 2>/dev/null
+
+
+  rr $mysqldir/bin/mysqld --no-defaults --basedir=$mysqldir --datadir=$datadir $MYSQLD_OPTIONS $ADD_OPTIONS --port=21000 --socket=$mysqldir/socket.sock --plugin-dir=$mysqldir/lib/plugin --max-connections=1024 --log-error=$datadir/error.log  --general-log --log-error-verbosity=3 --core-file > /dev/null 2>&1 &
+  MPID="$!"
+  for X in $(seq 0 ${mysql_start_timeout}); do
+      sleep 1
+      if ${mysqldir}/bin/mysqladmin -uroot -S${mysqldir}/socket.sock ping > /dev/null 2>&1; then
+          echo "..Server started successfully"
+          break
+      fi
+      if [ $X -eq ${mysql_start_timeout} ]; then
+          echo "ERR: Database could not be started. Please check error logs: ${mysqldir}/data/error.log"
+          exit 1
+      fi
+  done
+}
 
 initialize_db() {
     # This function initializes and starts mysql database
@@ -112,21 +133,16 @@ initialize_db() {
     if [ ! -d ${logdir} ]; then
         mkdir ${logdir}
     fi
-
-    echo "Starting mysql database"
-    pushd $mysqldir >/dev/null 2>&1
-    if [ ! -f $mysqldir/all_no_cl ]; then
-        $qascripts/startup.sh
+    if [ -d $datadir ]; then
+        rm -rf $datadir
     fi
 
-    ./all_no_cl --log-bin=binlog ${MYSQLD_OPTIONS} >${logdir}/database_startup_log 2>${logdir}/database_startup_log
-    ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: Database could not be started in location ${mysqldir}. Please check the directory. Log available at: ${logdir}/database_startup_log"
-        popd >/dev/null 2>&1
-        exit 1
-    fi
-    popd >/dev/null 2>&1
+    echo "=>Creating data directory"
+    $mysqldir/bin/mysqld --no-defaults --datadir=$datadir --initialize-insecure > $mysqldir/mysql_install_db.log 2>&1
+    echo "..Data directory created"
+
+    echo "=>Starting MySQL server"
+    start_server
 
     echo "Creating innodb data in database"
     which sysbench >/dev/null 2>&1
@@ -135,7 +151,8 @@ initialize_db() {
         exit 1
     fi
 
-    ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';"
+    $mysqldir/bin/mysql -uroot -S$mysqldir/socket.sock -e"CREATE DATABASE test"
+
     if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
         # Create tables without encryption
         sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --table-size=${table_size} --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --rand-type=${random_type} prepare
@@ -213,23 +230,6 @@ process_backup() {
     fi
 }
 
-restart_db() {
-    # This function restarts the mysql database
-    local MYSQLD_OPTIONS="$1"
-
-    ${mysqldir}/bin/mysqladmin -uroot -S${mysqldir}/socket.sock shutdown
-    sleep 2
-    pushd $mysqldir >/dev/null 2>&1
-    ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1
-    ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: Database could not be started in location ${mysqldir}. Database logs: ${mysqldir}/log"
-        popd >/dev/null 2>&1
-        exit 1
-    fi
-    popd >/dev/null 2>&1
-}
-
 incremental_backup() {
     # This function takes the incremental backup
     local BACKUP_PARAMS="$1 --lock-ddl=$LOCK_DDL"
@@ -251,24 +251,24 @@ incremental_backup() {
 
     case "${BACKUP_TYPE}" in
         'cloud')
-            echo "Taking full backup and uploading it"
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
+            echo "=>Taking full backup and uploading it"
+            rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --extra-lsndir=${backup_dir} --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/full_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put full_backup_${log_date} 2>${logdir}/upload_full_backup_${log_date}_log
             ;;
 
         'stream')
-            echo "Taking full backup and creating a stream file"
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
+            echo "=>Taking full backup and creating a stream file"
+            rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/full_backup_${log_date}_log
             ;;
 
         'tar')
-            echo "Taking full backup and creating a tar file"
+            echo "=>Taking full backup and creating a tar file"
             # Note: The --stream=tar option does not support --parallel option
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=tar > ${backup_dir}/${backup_tar} 2>${logdir}/full_backup_${log_date}_log
+            rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=tar > ${backup_dir}/${backup_tar} 2>${logdir}/full_backup_${log_date}_log
             ;;
 
         *)
-            echo "Taking full backup"
-            ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/full_backup_${log_date}_log
+            echo "=>Taking full backup"
+            rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/full_backup_${log_date}_log
             ;;
     esac
     if [ "$?" -ne 0 ]; then
@@ -280,7 +280,7 @@ incremental_backup() {
             return # Backup could not be completed due to DDL
         fi
     else
-        echo "Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
+        echo "..Full backup was successfully created at: ${backup_dir}/full. Logs available at: ${logdir}/full_backup_${log_date}_log"
     fi
 
     if [ "${BACKUP_TYPE}" = "tar" ]; then
@@ -300,19 +300,19 @@ incremental_backup() {
     fi
 
     if [ "${BACKUP_TYPE}" = "cloud" ]; then
-        echo "Downloading full backup"
+        echo "=>Downloading full backup"
         ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} get full_backup_${log_date} 2>${logdir}/download_full_backup_${log_date}_log | ${xtrabackup_dir}/xbstream -xv -C ${backup_dir}/full 2>${logdir}/download_stream_full_backup_${log_date}_log
         if [ "$?" -ne 0 ]; then
             echo "ERR: Download of Full Backup failed. Please check the log at: ${logdir}/download_full_backup_${log_date}_log and ${logdir}/download_stream_full_backup_${log_date}_log"
             exit 1
         else
-            echo "Full backup was successfully downloaded at: ${backup_dir}/full"
+            echo "..Full backup was successfully downloaded at: ${backup_dir}/full"
         fi
     fi
     # Call function to process backup for streaming, encryption and compression
     process_backup "${BACKUP_TYPE}" "${BACKUP_PARAMS}" "${backup_dir}/full"
 
-    echo "Adding data in database"
+    echo "=>Adding data in database"
     # Innodb data
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=${num_tables} --mysql-db=test --mysql-user=root --threads=50 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=20 --rand-type=${random_type} run >/dev/null 2>&1 &
 
@@ -324,19 +324,19 @@ incremental_backup() {
 
     case "${BACKUP_TYPE}" in
         'cloud')
-            echo "Taking incremental backup and uploading it"
+            echo "=>Taking incremental backup and uploading it"
             ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir} -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream 2>${logdir}/inc_backup_${log_date}_log | ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} put inc_backup_${log_date} 2>${logdir}/upload_inc_backup_${log_date}_log
             ;;
 
         'stream')
-            echo "Taking incremental backup and creating a stream file"
+            echo "=>Taking incremental backup and creating a stream file"
             ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --stream=xbstream --parallel=10 > ${backup_dir}/${backup_stream} 2>${logdir}/inc_backup_${log_date}_log
             ;;
 
             # Note: The --stream=tar option is not supported for incremental backup in PXB2.4
 
         *)
-            echo "Taking incremental backup"
+            echo "=>Taking incremental backup"
             rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=${backup_user} --password='' --backup --target-dir=${backup_dir}/inc --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} --register-redo-log-consumer 2>${logdir}/inc_backup_${log_date}_log
             ;;
     esac
@@ -349,35 +349,35 @@ incremental_backup() {
             return # Backup could not be completed due to DDL
         fi
     else
-        echo "Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
+        echo "..Inc backup was successfully created at: ${backup_dir}/inc. Logs available at: ${logdir}/inc_backup_${log_date}_log"
     fi
 
     if [ "${BACKUP_TYPE}" = "cloud" ]; then
-        echo "Downloading incremental backup"
+        echo "=>Downloading incremental backup"
         ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} get inc_backup_${log_date} 2>${logdir}/download_inc_backup_${log_date}_log | ${xtrabackup_dir}/xbstream -xv -C ${backup_dir}/inc 2>${logdir}/download_stream_inc_backup_${log_date}_log
         if [ "$?" -ne 0 ]; then
             echo "ERR: Download of Inc Backup failed. Please check the log at: ${logdir}/download_inc_backup_${log_date}_log and ${logdir}/download_stream_inc_backup_${log_date}_log"
             exit 1
         else
-            echo "Incremental backup was successfully downloaded at: ${backup_dir}/inc"
+            echo "..Incremental backup was successfully downloaded at: ${backup_dir}/inc"
         fi
     fi
 
     if [ "${BACKUP_TYPE}" = "cloud" ]; then
-        echo "Deleting full backup"
+        echo "=>Deleting full backup"
         ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} delete full_backup_${log_date} 2>${logdir}/delete_full_backup_${log_date}_log
         if [ "$?" -ne 0 ]; then
             echo "ERR: Delete of Full Backup failed. Please check the log at: ${logdir}/delete_full_backup_${log_date}_log"
         else
-            echo "Full backup was successfully deleted from the cloud"
+            echo "..Full backup was successfully deleted from the cloud"
         fi
 
-        echo "Deleting incremental backup"
+        echo "=>Deleting incremental backup"
         ${xtrabackup_dir}/xbcloud ${CLOUD_PARAMS} delete inc_backup_${log_date} 2>${logdir}/delete_inc_backup_${log_date}_log
         if [ "$?" -ne 0 ]; then
             echo "ERR: Delete of Inc Backup failed. Please check the log at: ${logdir}/delete_inc_backup_${log_date}_log"
         else
-            echo "Incremental backup was successfully deleted from the cloud"
+            echo "..Incremental backup was successfully deleted from the cloud"
         fi
     fi
 
@@ -390,27 +390,26 @@ incremental_backup() {
     fi
     cp -r ${backup_dir} $HOME/dbbackup_save
 
-    echo "Preparing full backup"
+    echo "=>Preparing full backup"
     rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
         exit 1
     else
-        echo "Prepare of full backup was successful. Logs available at: ${logdir}/prepare_full_backup_${log_date}_log"
+        echo "..Prepare of full backup was successful. Logs available at: ${logdir}/prepare_full_backup_${log_date}_log"
     fi
 
-    echo "Preparing incremental backup"
+    echo "=>Preparing incremental backup"
     rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc ${PREPARE_PARAMS} 2>${logdir}/prepare_inc_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc_backup_${log_date}_log"
         exit 1
     else
-        echo "Prepare of incremental backup was successful. Logs available at: ${logdir}/prepare_inc_backup_${log_date}_log"
+        echo "..Prepare of incremental backup was successful. Logs available at: ${logdir}/prepare_inc_backup_${log_date}_log"
     fi
 
-    echo "Restart mysql server to stop all running queries"
-    restart_db "${MYSQLD_OPTIONS}"
-    echo "The mysql server was restarted successfully"
+    echo "=>Restart mysql server"
+    start_server
 
     echo "Collecting current data of all tables"
     # Get record count and checksum for each table in test database
@@ -447,29 +446,20 @@ incremental_backup() {
         rm -r "${mysqldir}"/binlog
     fi
 
-    echo "Restoring full backup"
+    echo "=>Restoring full backup"
     ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --copy-back --target-dir=${backup_dir}/full --datadir=${datadir} ${RESTORE_PARAMS} 2>${logdir}/res_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Restore of full backup failed. Please check the log at: ${logdir}/res_backup_${log_date}_log"
         exit 1
     else
-        echo "Restore of full backup was successful. Logs available at: ${logdir}/res_backup_${log_date}_log"
+        echo "..Restore of full backup was successful. Logs available at: ${logdir}/res_backup_${log_date}_log"
     fi
 
     # Copy server certificates from original data dir
     cp -pr ${mysqldir}/data_orig_$(date +"%d_%m_%Y")/*.pem ${mysqldir}/data/
 
-    echo "Starting mysql server"
-    pushd $mysqldir >/dev/null 2>&1
-    ./start --log-bin=binlog ${MYSQLD_OPTIONS} >/dev/null 2>&1 
-    ${mysqldir}/bin/mysqladmin ping --user=root --socket=${mysqldir}/socket.sock >/dev/null 2>&1
-    if [ "$?" -ne 0 ]; then
-        echo "ERR: Database could not be started in location ${mysqldir}. The restore was unsuccessful. Database logs: ${mysqldir}/log"
-        popd >/dev/null 2>&1
-        exit 1
-    fi
-    popd >/dev/null 2>&1
-    echo "The mysql server was started successfully"
+    echo "=>Restarting the mysql server"
+    start_server
 
     # Binlog can't be applied if binlog is encrypted or skipped
     if [[ "${MYSQLD_OPTIONS}" != *"binlog-encryption"* ]] && [[ "${MYSQLD_OPTIONS}" != *"--encrypt-binlog"* ]] && [[ "${MYSQLD_OPTIONS}" != *"skip-log-bin"* ]]; then
@@ -1331,7 +1321,8 @@ test_change_compression() {
     if [ "${rocksdb}" = "enabled" ]; then
         # Restart db with rocksdb compression options
         echo "Restart db with rocksdb compression options"
-        restart_db "--rocksdb_override_cf_options=cf1={compression=kZlibCompression};cf2={compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression}"
+        ADD_OPTION= "--rocksdb_override_cf_options=cf1={compression=kZlibCompression};cf2={compression=kLZ4Compression};cf3={compression=kZSTDNotFinalCompression};cf4={compression=kNoCompression}"
+        start_server $ADD_OPTION
 
         change_compression
 
@@ -1556,7 +1547,7 @@ test_inc_backup_encryption_8_0() {
         if [ "$server_type" == "MS" ]; then
             server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         else
-            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+            server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         fi
 
         echo "#################################################################################################################"
@@ -1638,7 +1629,7 @@ test_inc_backup_encryption_8_0() {
         fi
 
         # Run keyring_vault tests for PS8.0
-        server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        server_options="--early-plugin-load=keyring_vault=keyring_vault.so --keyring_vault_config=${vault_config} --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 
         echo "################################################################################################################"
         echo "# Test Suite2: Incremental Backup and Restore for PS-${VER} using PXB-${PXB_VER} with $encrypt_type encryption #"
@@ -1708,7 +1699,7 @@ test_inc_backup_encryption_8_0() {
         if [ "$server_type" == "MS" ]; then
             server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         else
-            server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+            server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
         fi
         if [ $VERSION -lt 080100 ]; then
             echo "[SKIPPED] Test Suite3: $encrypt_type is not supported in ${server_type}-${VER}"
@@ -1808,7 +1799,7 @@ EOF
           if [ "$server_type" == "MS" ]; then
              server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
           else
-             server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+             server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
           fi
         else
             echo "[SKIPPED] Test Suite4: $encrypt_type is not supported on PS/MS-${VER}"
@@ -1909,7 +1900,7 @@ EOF
         fi
 
         # Run keyring_kmip tests for PS8.0
-        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 
         echo "Test Suite5: Incremental Backup and Restore for ${server_type}-${VER} using PXB-${PXB_VER} with $encrypt_type encryption"
         suite=5
@@ -2001,7 +1992,7 @@ EOF
         fi
 
         # Run keyring_kms tests for PS8.0
-        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
+        server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
 
         echo "Test Suite6: Incremental Backup and Restore for ${server_type}-${VER} using PXB-${PXB_VER} with $encrypt_type encryption"
         suite=6
@@ -2598,7 +2589,8 @@ test_ssl_backup() {
     echo "Test: Backup with SSL certificates and keys"
 
     # Restart server with ssl options
-    restart_db "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem"
+    ADD_OPTIONS="--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem"
+    start_server $ADD_OPTIONS
 
     # Add user with ssl
     ${mysqldir}/bin/mysql -uroot -S${mysqldir}/socket.sock -e "CREATE USER 'backup'@'localhost' REQUIRE SSL;"
@@ -2617,7 +2609,8 @@ test_ssl_backup() {
     echo "Test: Backup with SSL option --ssl-cipher and --ssl-fips-mode"
     # Note: PS should be compiled with OpenSSL lib to use with --ssl-fips-mode
     # Restart server with ssl-cipher and ssl-fips-mode options
-    restart_db "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=DHE-RSA-AES128-GCM-SHA256:AES128-SHA --ssl-fips-mode=ON"
+    ADD_OPTIONS="--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=DHE-RSA-AES128-GCM-SHA256:AES128-SHA --ssl-fips-mode=ON"
+    start_server $ADD_OPTIONS
 
     incremental_backup "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=AES128-SHA --ssl-fips-mode=ON --host=127.0.0.1 -P ${mysql_port}" "" "" "--ssl-ca=${mysqldir}/data/ca.pem --ssl-cert=${mysqldir}/data/server-cert.pem --ssl-key=${mysqldir}/data/server-key.pem --ssl-cipher=DHE-RSA-AES128-GCM-SHA256:AES128-SHA --ssl-fips-mode=ON" "" ""
 
@@ -2659,7 +2652,8 @@ test_inc_backup_archive_log() {
 
     echo "Test: Incremental Backup and Restore with --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs and encryption options"
 
-    server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-extend-and-initialize=OFF"
+    if [ $VERSION -lt 080100 ]; then
+        server_options="--early-plugin-load=keyring_file.so --keyring_file_data=${mysqldir}/keyring --innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON --innodb-extend-and-initialize=OFF"
 
     initialize_db "${server_options} --binlog-encryption --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive"
 
@@ -2670,6 +2664,7 @@ test_inc_backup_archive_log() {
     fi
 
     incremental_backup "${pxb_encrypt_options}" "${pxb_encrypt_options} --innodb-log-file-size=536870912" "${pxb_encrypt_options}" "${server_options} --binlog-encryption --innodb-redo-log-capacity=536870912 --binlog-transaction-compression=ON --binlog-transaction-compression-level-zstd=22 --innodb-extend-and-initialize=OFF --innodb-log-writer-threads=OFF --innodb-redo-log-archive-dirs=archive:${mysqldir}/archive" "" ""
+    fi
 }
 
 test_grant_tables() {
@@ -2817,6 +2812,8 @@ if [ "$#" -lt 1 ]; then
     echo "   Encryption_PXB8_0_PS8_0_KMIP_tests"
     echo "   Encryption_PXB8_0_PS8_0_KMS_tests"
     echo "   Encryption_PXB8_0_MS8_0_tests"
+    echo "   Encryption_PXB9_0_PS9_0_tests"
+    echo "   Encryption_PXB9_0_MS9_0_tests"
     echo "   Cloud_backup_tests"
     echo "   Innodb_params_redo_archive_tests"
     echo "   SSL_tests"
@@ -2874,6 +2871,14 @@ for tsuitelist in $*; do
             done
             ;;
 
+        Encryption_PXB9_0_PS9_0_tests)
+            echo "Encryption test suites for PXB-${PXB_VER} and PS-${VER}"
+            for testsuite in "test_inc_backup_encryption_8_0 keyring_file_component"  "test_inc_backup_encryption_8_0 keyring_vault_component"; do
+                $testsuite
+                echo "###################################################################################"
+            done
+            ;;
+
         Encryption_PXB8_0_PS8_0_KMIP_tests)
             echo "Encryption test suites for PXB-${PXB_VER} and PS--${VER} using KMIP"
             for testsuite in "test_inc_backup_encryption_8_0 keyring_kmip_component"; do
@@ -2897,6 +2902,14 @@ for tsuitelist in $*; do
                 echo "###################################################################################"
             done
             ;;
+
+         Encryption_PXB9_0_MS9_0_tests)
+             echo "Encryption test suites for PXB-${PXB_VER} and MS-${VER}"
+             for testsuite in "test_inc_backup_encryption_8_0 keyring_file_component"; do
+                 $testsuite
+                 echo "###################################################################################"
+             done
+             ;;
 
         Cloud_backup_tests)
             echo "Cloud backup test suite"

@@ -10,9 +10,9 @@ log="$HOME/install_log"
 
 help() {
     echo "Usage: $0 repo_name repo_type [version]"
-    echo "Accepted values for repo_name: pxb-24 , pxb-80 , pxb-8x-innovation, pxb-84-lts"
+    echo "Accepted values for repo_name: pxb-24 , pxb-80 , pxb-8x-innovation, pxb-84-lts, pxb-9x-innovation"
     echo "Accepted values for repo_type: release, testing, experimental"
-    echo "Accepted value for version: 81, 82, 83 [Required only when repo_name=pxb-8x-innovation]"
+    echo "Accepted value for version: 81, 82, 83, 91 [Required only when repo_name=pxb-8x-innovation or pxb-9x-innovation]"
     echo "eg. pkg_install_tests.sh pxb-8x-innovation main 81"
     echo "eg. pkg_install_tests.sh pxb-80 testing"
     echo "eg. pkg_install_tests.sh pxb-24 release"
@@ -27,11 +27,11 @@ fi
 repo_name="$1"
 repo_type="$2"
 
-# Check if pxb_version is "pxb-8x-innovation"
-if [ "$repo_name" == "pxb-8x-innovation" ]; then
+# Check if pxb_version is "innovation" 
+if [ "$repo_name" == "pxb-8x-innovation" -o "$repo_name" == "pxb-9x-innovation" ]; then
     # Check if the number of arguments is 3
     if [ "$#" -ne 3 ]; then
-        echo "Error: 'version' argument is required for pxb-8x-innovation. Accepted values: 81, 82, 83"
+        echo "Error: 'version' argument is required for $repo_name"
         help
     fi
     version=$3
@@ -69,7 +69,7 @@ else
     elif [ "$repo_name" = "pxb-80" ]; then
         pxb_package="percona-xtrabackup-80"
         pxb_addon_packages="percona-xtrabackup-test-80 percona-xtrabackup-dbg-80"
-    elif [ "$repo_name" = "pxb-8x-innovation" ]; then
+    elif [ "$repo_name" = "pxb-8x-innovation" -o "$repo_name" = "pxb-9x-innovation" ]; then
         pxb_package="percona-xtrabackup-$version"
         pxb_addon_packages="percona-xtrabackup-test-$version percona-xtrabackup-dbg-$version"
     elif [ "$repo_name" = "pxb-84-lts" ]; then

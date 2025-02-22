@@ -15,8 +15,8 @@
 #############################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-8.4/bld_8.4_debug/install/bin"
-export mysqldir="$HOME/upstream-8.4/bld_8.4.0/install"
+export xtrabackup_dir="$HOME/pxb-9.1/bld_9.1/install/bin"
+export mysqldir="$HOME/mysql-9.1/bld_9.1/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
@@ -30,7 +30,7 @@ num_tables=25 # This will make 50 tables on the database tt_1, tt_1_p, .. tt_25,
 table_size=100
 seconds=60
 threads=5
-tool_dir="$HOME/pstress_8.4/src" # pstress dir
+tool_dir="$HOME/pstress_9.1/src" # pstress dir
 
 # PXB Lock option
 LOCK_DDL=on # lock_ddl accepted values (on, reduced)
@@ -57,7 +57,7 @@ setup_kmip() {
   sudo pkill -9 kmip
   # Start KMIP server
   sleep 5
-  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip altmannmarcelo/kmip:latest
+  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
   if [ -d /tmp/certs ]; then
     echo "certs directory exists"
     rm -rf /tmp/certs
@@ -75,6 +75,9 @@ setup_kmip() {
   kmip_client_ca="/tmp/certs/client_certificate_jane_doe.pem"
   kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
   kmip_server_ca="/tmp/certs/root_certificate.pem"
+
+  # Sleep for 30 sec to fully initialize the KMIP server
+  sleep 30
 }
 
 # For kms tests set the values of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY in the shell and then run the tests
