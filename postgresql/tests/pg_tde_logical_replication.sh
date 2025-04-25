@@ -1,15 +1,11 @@
 #!/bin/bash
 
-set -e  # Exit immediately if a command exits with a non-zero status
-set -u  # Treat unset variables as an error
-set -o pipefail  # Prevent errors in a pipeline from being masked
-
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
-export PUB_DATA=$INSTALL_DIR/pub_db
-export SUB_DATA=$INSTALL_DIR/sub_db
-export PUB_LOG=$PUB_DATA/pub.log
-export SUB_LOG=$SUB_DATA/sub.log
+INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+PUB_DATA=$INSTALL_DIR/pub_db
+SUB_DATA=$INSTALL_DIR/sub_db
+PUB_LOG=$PUB_DATA/pub.log
+SUB_LOG=$SUB_DATA/sub.log
 
 # Create data directory
 initialize_server() {
@@ -20,7 +16,7 @@ initialize_server() {
         kill -9 $PG_PIDS
     fi
 
-    sudo rm -rf $PUB_DATA
+    rm -rf $PUB_DATA
     echo "Creating Publication Data Directory..."
     $INSTALL_DIR/bin/initdb -D $PUB_DATA > /dev/null 2>&1
     cat > "$PUB_DATA/postgresql.conf" <<SQL

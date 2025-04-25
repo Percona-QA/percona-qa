@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
-PGDATA=$INSTALL_DIR/data
-LOG_FILE=$PGDATA/server.log
-DB_NAME="sbtest"
-TABLE_PREFIX="ddl_test"
-TOTAL_TABLES=20
+export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+export PGDATA=$INSTALL_DIR/data
+export LOG_FILE=$PGDATA/server.log
+export DB_NAME="sbtest"
+export TABLE_PREFIX="ddl_test"
+export TOTAL_TABLES=20
 
 # initate the database
 initialize_server() {
@@ -190,13 +190,33 @@ run_maintenance() {
 }
 
 crash_start() {
-    $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
+    echo "Starting PostgreSQL server..."
+    local start_time=$(date +%s)
+
+    $INSTALL_DIR/bin/pg_ctl -D "$PGDATA" -l "$LOG_FILE" start
+    if [ $? -ne 0 ]; then
+        echo "Check Server Logs for the error: $PGDATA/server.log"
+        grep "Failed to decrypt key" "$PGDATA/server.log"
+        exit 1
+    fi
+
+    # Wait until PostgreSQL is ready to accept connections
+    while true; do
+        if $INSTALL_DIR/bin/pg_isready -h localhost -p 5432 >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.5
+        echo "Waiting for server to start"
+    done
+
+    local end_time=$(date +%s)
+    local elapsed=$((end_time - start_time))
+
     PG_PID=$(lsof -ti :5432)
+    echo "PostgreSQL server started in $elapsed seconds (PID: $PG_PID)"
 }
 
-
 crash_server() {
-    value=$([ $(( RANDOM % 2 )) -eq 0 ] && echo "on" || echo "off")
     echo "Killing the Server with PID=$PG_PID..."
     kill -9 $PG_PID
 }
@@ -205,41 +225,41 @@ crash_server() {
 initialize_server
 start_server
 create_tables         # Create initial tables
-run_load &
-LOAD_PID=$!
-run_maintenance &
-MAINT_PID=$!
-add_column &
-ADD_PID=$!
-drop_column &
-DROP_COLUMN_PID=$!
-create_index &
-CREATE_PID=$!
-drop_index &
-DROP_INDEX_PID=$!
-rotate_master_key 120 >/dev/null 2>&1 &
-ROTATE_MASTER_KEY=$!
-enable_disable_wal_encryption 120 >/dev/null 2>&1 &
-WAL_ENCRYPTION=$!
-rotate_wal_key 120 >/dev/null 2>&1 &
-WAL_KEY=$!
-alter_encrypt_unencrypt_tables 120 >/dev/null 2>&1 &
-ALTER_TABLES=$!
 
+for i in {1..20}; do
+    echo "########################################"
+    echo "# TRIAL $i                              #"
+    echo "########################################"
 
-for i in {1..10}; do
-    echo "########################################"
-    echo "# TRIAL $i                             #"
-    echo "########################################"
+    run_load >/dev/null 2>&1 &
+    LOAD_PID=$!
+    run_maintenance >/dev/null 2>&1 &
+    MAINT_PID=$!
+    add_column >/dev/null 2>&1 &
+    ADD_PID=$!
+    drop_column >/dev/null 2>&1 &
+    DROP_COLUMN_PID=$!
+    create_index >/dev/null 2>&1 &
+    CREATE_PID=$!
+    drop_index >/dev/null 2>&1 &
+    DROP_INDEX_PID=$!
+    rotate_master_key 120 >/dev/null 2>&1 &
+    ROTATE_MASTER_KEY=$!
+    enable_disable_wal_encryption 120 >/dev/null 2>&1 &
+    WAL_ENCRYPTION=$!
+    rotate_wal_key 120 >/dev/null 2>&1 &
+    WAL_KEY=$!
+    alter_encrypt_unencrypt_tables 120 >/dev/null 2>&1 &
+    ALTER_TABLES=$!
+
     sleep 20
-    echo "Killing the Server"
     crash_server
     sleep 2
-    echo "Starting the Server"
     crash_start
+
+    echo "Killing old background jobs..."
+    kill $LOAD_PID $MAINT_PID $ADD_PID $DROP_COLUMN_PID $CREATE_PID $DROP_INDEX_PID $ROTATE_MASTER_KEY $WAL_ENCRYPTION $WAL_KEY $ALTER_TABLES 2>/dev/null
+    wait $LOAD_PID $MAINT_PID $ADD_PID $DROP_COLUMN_PID $CREATE_PID $DROP_INDEX_PID $ROTATE_MASTER_KEY $WAL_ENCRYPTION $WAL_KEY $ALTER_TABLES 2>/dev/null
 done
 
-# Cleanup
-kill $LOAD_PID $MAINT_PID $ADD_PID $DROP_COLUMN_PID $CREATE_PID $DROP_INDEX_PID $ROTATE_MASTER_KEY $WAL_ENCRYPTION $WAL_KEY $ALTER_TABLES
-wait $LOAD_PID $MAINT_PID $ADD_PID $DROP_COLUMN_PID $CREATE_PID $DROP_INDEX_PID $ROTATE_MASTER_KEY $WAL_ENCRYPTION $WAL_KEY $ALTER_TABLES 2>/dev/null
 echo "Multi-table DDL stress test completed."
