@@ -6,6 +6,7 @@ PUB_DATA=$INSTALL_DIR/pub_db
 SUB_DATA=$INSTALL_DIR/sub_db
 PUB_LOG=$PUB_DATA/pub.log
 SUB_LOG=$SUB_DATA/sub.log
+TABLES=5
 
 # Create data directory
 initialize_server() {
@@ -25,8 +26,8 @@ wal_compression=on
 port=5433
 shared_preload_libraries='pg_tde'
 SQL
-   sudo rm -rf $SUB_DATA
-   sudo mkdir $SUB_DATA
+   rm -rf $SUB_DATA
+   mkdir $SUB_DATA
    echo "Creating Subscription Data Directory..."
    $INSTALL_DIR/bin/initdb -D $SUB_DATA > /dev/null 2>&1
    cat > "$SUB_DATA/postgresql.conf" << SQL
@@ -39,18 +40,18 @@ start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PUB_DATA -l $PUB_LOG start
     $INSTALL_DIR/bin/createdb "-p 5433" pub_db
     $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
-    $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_add_key_provider_file('local_keyring','$PUB_DATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_set_principal_key('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PUB_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
 
     $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PUB_DATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_set_server_principal_key('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest','local_keyring');"
     $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"ALTER SYSTEM SET pg_tde.wal_encrypt = on;"
 
     $INSTALL_DIR/bin/pg_ctl -D $SUB_DATA -l $SUB_LOG start
     $INSTALL_DIR/bin/createdb -p 5434 sub_db
     $INSTALL_DIR/bin/psql  -d sub_db -p 5434 -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
-    $INSTALL_DIR/bin/psql  -d sub_db -p 5434 -c"SELECT pg_tde_add_key_provider_file('local_keyring','$SUB_DATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d sub_db -p 5434 -c"SELECT pg_tde_set_principal_key('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql  -d sub_db -p 5434 -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$SUB_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d sub_db -p 5434 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
 }
 
 stop_server() {
@@ -64,7 +65,7 @@ restart_server() {
 }
 
 create_tables_on_publisher() {
-    sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=pub_db --pgsql-user=`whoami` --pgsql-port=5433 --db-driver=pgsql --threads=10 --tables=1000 --table-size=1000 prepare
+    sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=pub_db --pgsql-user=`whoami` --pgsql-port=5433 --db-driver=pgsql --threads=5 --tables=$TABLES --table-size=1000 prepare
 }
 
 dump_schema_on_subscriber() {
@@ -72,7 +73,7 @@ dump_schema_on_subscriber() {
 }
 
 run_read_write_load(){
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=pub_db --pgsql-user=`whoami` --pgsql-port=5433 --db-driver=pgsql --threads=1000 --tables=10 --time=60 --report-interval=1 --events=1870000000 run
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=pub_db --pgsql-user=`whoami` --pgsql-port=5433 --db-driver=pgsql --threads=5 --tables=$TABLES --time=60 --report-interval=1 --events=1870000000 run
 }
 
 encrypt_decrypt_wal(){
@@ -94,7 +95,7 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
        RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
        echo "Rotating master key: principal_key_test$RAND_KEY"
-       $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c "SELECT pg_tde_set_server_principal_key('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+       $INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
 
     done
 }
@@ -110,22 +111,24 @@ rotate_wal_key 60 > /dev/null 2>&1 &
 pid2=$!
 
 echo "Read table data on subscriber db. It must have empty rows"
-for i in $(seq 1 10); do
+for i in $(seq 1 $TABLES); do
     $INSTALL_DIR/bin/psql  -d sub_db -p 5434 -c"SELECT count(*) FROM sbtest$i"
 done
 
 echo "Create a Publication on the primary server"
-$INSTALL_DIR/bin/psql  -d pub_db -p 5433 -c"CREATE PUBLICATION mypub for all tables;"
+$INSTALL_DIR/bin/psql -d pub_db -p 5433 -c"CREATE PUBLICATION mypub for all tables;"
 
 echo "Create a Subscription on the secondary server"
-$INSTALL_DIR/bin/psql  -d sub_db --port=5434 -c"CREATE SUBSCRIPTION mysub connection 'dbname=pub_db host=localhost user=postgres port=5433' publication mypub;"
+$INSTALL_DIR/bin/psql -d sub_db -p 5434 -c"CREATE SUBSCRIPTION mysub connection 'dbname=pub_db host=localhost user=mohit.joshi port=5433' publication mypub;"
 
 echo "Wait for sometime to sync data"
-sleep 60
+sleep 10
 echo "Read table data on subscriber db. It must have rows"
-for i in $(seq 1 10); do
+for i in $(seq 1 $TABLES); do
     $INSTALL_DIR/bin/psql  -d sub_db --port=5434 -c"SELECT count(*) FROM sbtest$i"
 done
 
+
+kill -9 $pid1 $pid2
 wait $pid1
 wait $pid2

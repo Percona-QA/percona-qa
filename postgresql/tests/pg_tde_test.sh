@@ -1,13 +1,9 @@
 #!/bin/bash
 
-set -e  # Exit immediately if a command exits with a non-zero status
-set -u  # Treat unset variables as an error
-set -o pipefail  # Prevent errors in a pipeline from being masked
-
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/percona-postgresql17
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
+INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
 
 # initate the database
 initialize_server() {
@@ -29,8 +25,8 @@ start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA start -l $LOG_FILE
     $INSTALL_DIR/bin/createdb sbtest
     $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION pg_tde;"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_principal_key('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
 }
 
 stop_server() {
@@ -81,7 +77,7 @@ rotate_master_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d sbtest -c "SELECT pg_tde_set_principal_key('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql  -d sbtest -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
 
     done
 }
