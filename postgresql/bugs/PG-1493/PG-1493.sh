@@ -44,7 +44,7 @@ echo "Create a Global Key Provider"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','/tmp/keyring.file')"
 
 echo "Create a Principal key using the Global Key Provider"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_principal_key_using_global_key_provider('local_key_of_db1_using_global_key_provider','global_keyring')"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_global_key_provider('local_key_of_db1_using_global_key_provider','global_keyring')"
 
 echo "Create external tablespace"
 rm -rf /tmp/custom_tablespace || true

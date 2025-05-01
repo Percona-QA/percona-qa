@@ -26,9 +26,9 @@ start_server() {
     sleep 1
     $INSTALL_DIR/bin/createdb $DB_NAME
     $INSTALL_DIR/bin/psql -d $DB_NAME -c"CREATE EXTENSION pg_tde;"
-    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_set_server_principal_key_using_global_key_provider('wal_key','local_keyring');"
-    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_set_principal_key_using_global_key_provider('table_key','local_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('global_provider','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_provider');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_set_key_using_global_key_provider('table_key','global_provider');"
     PG_PID=$(lsof -ti :5432)
 }
 # Create a partitioned table and partitions

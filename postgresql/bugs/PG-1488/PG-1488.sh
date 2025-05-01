@@ -28,8 +28,8 @@ start_server() {
     $INSTALL_DIR/bin/createdb $DB_NAME
     $INSTALL_DIR/bin/psql  -d $DB_NAME -c"CREATE EXTENSION pg_tde;"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_server_principal_key_using_global_key_provider('wal_key','local_keyring');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_principal_key_using_global_key_provider('table_key','local_keyring');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','local_keyring');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_key_using_global_key_provider('table_key','local_keyring');"
     PG_PID=$(lsof -ti :5432)
 }
 
@@ -189,5 +189,3 @@ if grep -q "Invalid page in block" "$LOG_FILE"; then
 else
     echo "Multi-table DDL stress test completed"
 fi
-
-

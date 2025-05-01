@@ -143,12 +143,6 @@ start_replica
 echo "4=>Enable pg_tde on Primary Server"
 enable_tde_and_create_load
 
-#echo "Running Sysbench Load"
-#run_sysbench_load 300 > /dev/null 2>&1 &
-#rotate_wal_key 300 >/dev/null 2>&1 &
-#rotate_master_key 300 >/dev/null 2>&1  &
-#alter_encrypt_unencrypt_tables 300   > /dev/null 2>&1 &
-
 for i in $(seq 1 5); do
     crash_primary_server
     sleep 1

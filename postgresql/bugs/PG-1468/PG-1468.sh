@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
-export PRIMARY_DATA=$INSTALL_DIR/primary_data
-export REPLICA_DATA=$INSTALL_DIR/replica_data
-export PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
-export REPLICA_LOGFILE=$REPLICA_DATA/server.log
+INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+PRIMARY_DATA=$INSTALL_DIR/primary_data
+REPLICA_DATA=$INSTALL_DIR/replica_data
+PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
+REPLICA_LOGFILE=$REPLICA_DATA/server.log
 
 # Initialize the data-directory
 initialize_server() {
@@ -14,7 +14,7 @@ initialize_server() {
         echo "Killing any old PostgreSQL processes: $PG_PIDS"
         kill -9 $PG_PIDS
     fi
-    sudo rm -rf $PRIMARY_DATA $REPLICA_DATA || true
+    rm -rf $PRIMARY_DATA $REPLICA_DATA || true
     $INSTALL_DIR/bin/initdb -D $PRIMARY_DATA > /dev/null 2>&1
     cat > "$PRIMARY_DATA/postgresql.conf" <<SQL
 port=5433
@@ -129,13 +129,14 @@ sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=postgres --pgsql-user=`w
 echo "Running Sysbench Load"
 run_sysbench_load 60 > /dev/null &
 pid1=$!
-rotate_wal_key 60 >/dev/null 2>&1 &
+rotate_wal_key 60 > /dev/null 2>&1 &
 pid2=$!
 enable_disable_wal_encryption 60 2>&1 > /dev/null &
 pid3=$!
-for i in $(seq 1 2); do
+for i in $(seq 1 1); do
     sleep 10
     crash_replica_server
+    echo "Sleeping for 30 seconds bfore starting replica server..."
     sleep 30
     echo "Restarting Replica Server"
     restart_server $REPLICA_DATA

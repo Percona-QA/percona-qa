@@ -33,9 +33,18 @@ start_server() {
     fi
 }
 
+wal_switch() {
+    duration=$1
+    end_time=$((SECONDS + duration))
+    while [ $SECONDS -lt $end_time ]; do
+        $INSTALL_DIR/bin/psql -d postgres -c  "SELECT pg_switch_wal();"
+        sleep 3
+    done
+}
+
 run_sysbench_load(){
     duration=$1
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=postgres --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=100 --time=$duration --report-interval=1 --events=1870000000 run
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=postgres --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=10 --time=$duration --report-interval=1 --events=1870000000 run
 }
 
 crash_server() {
@@ -61,19 +70,20 @@ $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_server_key_using_global_k
 echo "Creating Sysbench tables"
 sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=postgres --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=10 --table-size=100 prepare
 
-for X in $(seq 1 20); do
+for X in $(seq 1 40); do
     # Run Tests
-    run_sysbench_load 300 > $INSTALL_DIR/sysbench.log 2>&1 &
+    run_sysbench_load 200 > $INSTALL_DIR/sysbench.log 2>&1 &
+    #wal_switch 300 > /dev/null 2>&1 &
     sleep 20
     # Change WAL encryption and crash the server
     crash_server
     sleep 5
     start_server
+
+    if grep -q "invalid magic" "$LOG_FILE"; then
+        echo "ERROR Found: Invalid magic number in Logs: $LOG_FILE"
+        exit 1
+    fi
 done
 
-if grep -q "invalid magic" "$LOG_FILE"; then
-    echo "ERROR Found: Invalid magic number in Logs: $LOG_FILE"
-    exit 1
-else
-    echo "Test passed successfully ✅"
-fi
+echo "Test passed successfully ✅"

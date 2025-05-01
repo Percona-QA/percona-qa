@@ -80,7 +80,7 @@ change_key_provider(){
             provider_config="'$PGDATA/keyring.file'"
         fi
         $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_${provider_type}('$provider_name',$provider_config)"
-        $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_principal_key_using_database_key_provider('principal_key_sbtest','$provider_name')"
+        $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','$provider_name')"
         sleep 1
     done
 }
@@ -95,7 +95,7 @@ start_server
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE DATABASE sbtest"
 $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION pg_tde;"
 $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
-$INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_principal_key_using_global_key_provider('principal_key_sbtest','global_keyring');"
+$INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_global_key_provider('principal_key_sbtest','global_keyring');"
 echo "Create sysbench tables"
 sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=50 --table-size=1000 prepare
 # Run sysbench for 20 sec for 50 tables

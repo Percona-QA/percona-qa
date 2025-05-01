@@ -158,15 +158,15 @@ alter_encrypt_unencrypt_tables 300   > /dev/null 2>&1 &
 
 for i in $(seq 1 5); do
     sleep 20
-    crash_primary_server
-    sleep 10
-    echo "Restarting Primary Server"
-    restart_server $PRIMARY_DATA
-    sleep 30
     crash_replica_server
-    sleep 20
+    sleep 30
     echo "Restarting Replica Server"
     restart_server $REPLICA_DATA
+    sleep 30
+    crash_primary_server
+    sleep 30
+    echo "Restarting Primary Server"
+    restart_server $PRIMARY_DATA
 done
 
 echo "Verify table and data between primary and replica node..."

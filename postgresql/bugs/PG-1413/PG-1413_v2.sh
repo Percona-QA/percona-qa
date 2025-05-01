@@ -18,19 +18,20 @@ shared_preload_libraries = 'pg_tde'
 default_table_access_method='tde_heap'
 SQL
 }
+
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA start -o "-p 5432" -l $LOG_FILE
-    sleep 5
-    $INSTALL_DIR/bin/createdb sbtest || echo "Database sbtest already exists"
-    $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest','local_keyring');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    PG_PID=$( lsof -ti :5432)
+    if [[ -z "$PG_PID" ]]; then
+        echo "ERROR: PostgreSQL server failed to start: $LOG_FILE"
+        exit 1
+    fi
 }
+
 stop_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA stop
 }
+
 restart_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA restart
 }
@@ -52,11 +53,11 @@ rotate_wal_key(){
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
         $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+        sleep 2
     done
 }
 run_sysbench_load(){
-    sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --table-size=1000 prepare
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=60 --report-interval=1 --events=1870000000 run
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=25 --report-interval=1 --events=1870000000 run
 }
 enable_disable_wal_encryption(){
     start_time=$1
@@ -65,7 +66,7 @@ enable_disable_wal_encryption(){
         value=$([ $(( RANDOM % 2 )) -eq 0 ] && echo "on" || echo "off")
         echo "Altering WAL encryption to use $value..."
         $INSTALL_DIR/bin/psql -d sbtest -c "ALTER SYSTEM SET pg_tde.wal_encrypt = '$value';"
-        sleep 1
+        sleep 2
     done
 }
 crash_server() {
@@ -73,22 +74,30 @@ crash_server() {
     echo "Killing the Server with PID=$PG_PID..."
     kill -9 $PG_PID
 }
-run_parallel_tests() {
-    run_sysbench_load > $INSTALL_DIR/sysbench.log 2>&1 &
-    enable_disable_wal_encryption 60 > $INSTALL_DIR/wal.log 2>&1 &
-    rotate_wal_key 60 > $INSTALL_DIR/rotate.log 2>&1 &
-}
+
 main() {
     initialize_server
+    start_server
+    $INSTALL_DIR/bin/createdb sbtest
+    $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --table-size=1000 prepare
+    enable_disable_wal_encryption 60 &
+    rotate_wal_key 60 &
+
     for X in $(seq 1 5); do
         # Run Tests
-        start_server
-        PG_PID=$( lsof -ti :5432)
-        run_parallel_tests &
+        run_sysbench_load &
         sleep 20
         crash_server $PG_PID
-        sleep 5
+        sleep 1
+        start_server
+        sleep 9
     done
 }
+
 main
 

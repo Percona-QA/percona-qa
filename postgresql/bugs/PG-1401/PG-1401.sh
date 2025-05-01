@@ -1,9 +1,5 @@
 #!/bin/bash
 
-set -e  # Exit immediately if a command exits with a non-zero status
-set -u  # Treat unset variables as an error
-set -o pipefail  # Prevent errors in a pipeline from being masked
-
 # Set variable
 export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
 export PGDATA=$INSTALL_DIR/data
@@ -29,7 +25,7 @@ start_server() {
     $INSTALL_DIR/bin/createdb sbtest
     $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION pg_tde;"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_principal_key_using_global_key_provider('principal_key_sbtest','global_keyring');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_global_key_provider('key1','global_keyring');"
 }
 
 stop_server() {
@@ -58,4 +54,3 @@ echo "Restart server"
 restart_server
 
 $INSTALL_DIR/bin/psql -d sbtest -c "SELECT * FROM t1"
-
