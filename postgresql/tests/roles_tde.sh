@@ -6,7 +6,7 @@
 #                                                                            #
 ##############################################################################
 
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde_17.4/install
+INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
 
@@ -16,6 +16,7 @@ initialize_server() {
         echo "Killing PostgreSQL processes: $PG_PIDS"
         kill -9 $PG_PIDS
     fi
+    rm -rf $data_dir
     $INSTALL_DIR/bin/initdb -D $data_dir > /dev/null 2>&1
     cat > "$data_dir/postgresql.conf" <<SQL
 port=5432
@@ -31,7 +32,6 @@ SQL
 start_server() {
     data_dir=$1
     $INSTALL_DIR/bin/pg_ctl -D $data_dir start 
-    $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
 }
 
 restart_server() {
@@ -91,13 +91,13 @@ start_kmip_server
 start_vault_server
 
 # Actual testing starts here
-echo "=>Scenario 4: Switching Providers with Data Validation"
+echo "=>Test: Switching Providers with Data Validation"
 $INSTALL_DIR/bin/psql  -d postgres -c"CREATE DATABASE sbtest4"
 $INSTALL_DIR/bin/psql  -d sbtest4 -c"CREATE EXTENSION pg_tde;"
-$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_add_key_provider_kmip('kmip_keyring','0.0.0.0',5696,'/tmp/certs/root_certificate.pem','/tmp/certs/client_key_jane_doe.pem');"
-$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_set_principal_key('kmip_key','kmip_keyring');"
-$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_add_key_provider_vault_v2('vault_keyring','$token','$vault_url','$secret_mount_point','$vault_ca');"
-$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_set_principal_key('vault_key','vault_keyring');"
+$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_add_database_key_provider_kmip('kmip_keyring','0.0.0.0',5696,'/tmp/certs/root_certificate.pem','/tmp/certs/client_key_jane_doe.pem');"
+$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_set_key_using_database_key_provider('kmip_key','kmip_keyring');"
+$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_add_database_key_provider_vault_v2('vault_keyring','$token','$vault_url','$secret_mount_point','$vault_ca');"
+$INSTALL_DIR/bin/psql  -d sbtest4 -c"SELECT pg_tde_set_key_using_database_key_provider('vault_key','vault_keyring');"
 
 $INSTALL_DIR/bin/psql -d sbtest4 -c"CREATE TABLE t1(a INT, b varchar) USING tde_heap;"
 $INSTALL_DIR/bin/psql -d sbtest4 -c"INSERT INTO t1 VALUES(100,'Mohit');"
@@ -105,7 +105,7 @@ $INSTALL_DIR/bin/psql -d sbtest4 -c"INSERT INTO t1 VALUES(200,'Rohit');"
 $INSTALL_DIR/bin/psql -d sbtest4 -c"UPDATE t1 SET b='Sachin' WHERE a=100;"
 $INSTALL_DIR/bin/psql -d sbtest4 -c"SELECT * FROM t1;"
 
-$INSTALL_DIR/bin/psql -d sbtest4 -c"SELECT pg_tde_change_key_provider_kmip('kmip_keyring','0.0.0.0',5696,'/tmp/certs/root_certificate.pem','/tmp/certs/client_key_jane_doe.pem');"
+$INSTALL_DIR/bin/psql -d sbtest4 -c"SELECT pg_tde_change_database_key_provider_kmip('kmip_keyring','0.0.0.0',5696,'/tmp/certs/root_certificate.pem','/tmp/certs/client_key_jane_doe.pem');"
 
 $INSTALL_DIR/bin/psql -d sbtest4 -c"SELECT * FROM t1;"
 restart_server $data_dir

@@ -74,10 +74,10 @@ setup_key_provider() {
         start_vault_server
     elif [ $key_provider_type == "file" ]; then
         echo "Using Key Provider Type = file"
-        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_add_key_provider_file('local_keyring','$data_dir/keyring.file');" > /dev/null
-        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_set_principal_key('principal_key_sbtest','local_keyring');" > /dev/null
-        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$data_dir/keyring.file');" > /dev/null
-        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_set_server_principal_key('principal_key_sbtest','local_keyring');" > /dev/null
+        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$data_dir/keyring.file');" > /dev/null
+        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_set_key_using_database_key_provider('key1','local_keyring');" > /dev/null
+        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$data_dir/keyring.file');" > /dev/null
+        $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_set_server_key_using_global_key_provider('key2','global_keyring');" > /dev/null
     fi
 }
 
