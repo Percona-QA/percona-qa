@@ -1,0 +1,39 @@
+CREATE DATABASE testdb;
+CREATE EXTENSION IF NOT EXISTS pg_tde;
+CREATE EXTENSION IF NOT EXISTS pg_tde;
+SELECT pg_tde_add_global_key_provider_file('global_keyring','/tmp/pg_tde_test_pg1480.per');
+ pg_tde_add_global_key_provider_file 
+-------------------------------------
+                                  -1
+(1 row)
+
+SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_of_testdb', 'global_keyring');
+ pg_tde_set_default_key_using_global_key_provider 
+--------------------------------------------------
+ 
+(1 row)
+
+CREATE TABLE t1(a INT PRIMARY KEY, b VARCHAR) USING tde_heap;
+INSERT INTO t1 VALUES(101, 'James Bond');
+SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_of_testdb2', 'global_keyring');
+ pg_tde_set_default_key_using_global_key_provider 
+--------------------------------------------------
+ 
+(1 row)
+
+SELECT * FROM t1;
+  a  |     b      
+-----+------------
+ 101 | James Bond
+(1 row)
+
+-- server restart
+SELECT * FROM t1;
+  a  |     b      
+-----+------------
+ 101 | James Bond
+(1 row)
+
+DROP TABLE t1;
+DROP EXTENSION pg_tde;
+DROP EXTENSION pg_tde;
