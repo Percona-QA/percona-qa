@@ -1,6 +1,5 @@
-# Set Kmip configuration
 #! /bin/bash
-setup_kmip() {
+start_kmip_server() {
   # Kill and existing kmip server
   sudo pkill -9 kmip
   # Start KMIP server
@@ -27,5 +26,3 @@ setup_kmip() {
   # Sleep for 30 sec to fully initialize the KMIP server
   sleep 30
 }
-
-setup_kmip

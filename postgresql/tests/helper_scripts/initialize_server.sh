@@ -1,0 +1,42 @@
+#!/bin/bash
+
+initialize_server() {
+    # Allow overriding via env variables or use defaults
+    local port="${PORT:-5432}"
+    local data_dir="${PGDATA:-$HOME/postgresql/pg_tde/bld_tde/install/data}"
+    local install_dir="${INSTALL_DIR:-$HOME/postgresql/pg_tde/bld_tde/install}"
+
+    # Kill PostgreSQL if running on common ports (5432–5434)
+    local pg_pids
+    pg_pids=$(lsof -ti :5432 -ti :5433 -ti :5434 2>/dev/null)
+    if [[ -n "$pg_pids" ]]; then
+        echo "Killing PostgreSQL processes: $pg_pids"
+        kill -9 $pg_pids
+    fi
+
+    # Clean up data directory
+    if [[ -d "$data_dir" ]]; then
+        echo "Removing old data directory: $data_dir"
+        rm -rf "$data_dir"
+    fi
+
+    echo "Initializing database at $data_dir"
+    "$install_dir/bin/initdb" -D "$data_dir" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo "Error: initdb failed"
+        return 1
+    fi
+
+    # Write basic postgresql.conf
+    cat > "$data_dir/postgresql.conf" <<EOF
+port = $port
+listen_addresses = '*'
+shared_preload_libraries = 'pg_tde'
+logging_collector = on
+log_directory = '$data_dir'
+log_filename = 'server.log'
+log_statement = 'all'
+EOF
+
+    echo "Server initialized on port $port with data dir $data_dir"
+}

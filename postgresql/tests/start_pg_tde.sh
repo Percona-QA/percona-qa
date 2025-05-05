@@ -2,25 +2,8 @@
 
 INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
 data_dir=$INSTALL_DIR/data
-
-initialize_server() {
-    PG_PIDS=$(lsof -ti :5432 -ti :5433 -ti :5434 2>/dev/null) || true
-    if [[ -n "$PG_PIDS" ]]; then
-        echo "Killing PostgreSQL processes: $PG_PIDS"
-        kill -9 $PG_PIDS
-    fi
-    rm -rf $data_dir
-    $INSTALL_DIR/bin/initdb -D $data_dir > /dev/null 2>&1
-    cat > "$data_dir/postgresql.conf" <<SQL
-port=5432
-listen_addresses='*'
-shared_preload_libraries = 'pg_tde'
-logging_collector = on
-log_directory = '$data_dir'
-log_filename = 'server.log'
-log_statement = 'all'
-SQL
-}
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/setup_kmip.sh"
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $data_dir start 
@@ -30,36 +13,6 @@ start_server() {
 restart_server() {
     datadir=$1
     $INSTALL_DIR/bin/pg_ctl -D $datadir restart
-}
-
-start_kmip_server() {
-    # Kill and existing kmip server
-    sudo pkill -9 kmip
-    # Start KMIP server
-    sleep 5
-    sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
-    if [ -d /tmp/certs ]; then
-        echo "certs directory exists"
-        rm -rf /tmp/certs
-        mkdir /tmp/certs
-    else
-        echo "does not exist. creating certs dir"
-        mkdir /tmp/certs
-    fi
-    sudo docker cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
-    sudo docker cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
-    sudo docker cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
-    # This is an improvement ticket to fix this
-    sudo cat /tmp/certs/client_certificate_jane_doe.pem | sudo tee -a /tmp/certs/client_key_jane_doe.pem
-    
-    kmip_server_address="0.0.0.0"
-    kmip_server_port=5696
-    kmip_client_ca="/tmp/certs/client_certificate_jane_doe.pem"
-    kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
-    kmip_server_ca="/tmp/certs/root_certificate.pem"
-
-    # Sleep for 30 sec to fully initialize the KMIP server
-    sleep 30
 }
 
 setup_key_provider() {
@@ -84,4 +37,5 @@ setup_key_provider() {
 
 initialize_server
 start_server
+start_kmip_server
 setup_key_provider kmip

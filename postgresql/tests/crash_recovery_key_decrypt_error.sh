@@ -8,32 +8,9 @@ export DB_NAME="sbtest"
 export TABLE_PREFIX="ddl_test"
 export TOTAL_TABLES=20
 
-# initate the database
-initialize_server() {
-    PG_PID=$(lsof -ti :5432) || true
-    if [[ -n "$PG_PID" ]]; then
-        kill -9 $PG_PID
-    fi
-    rm -rf $PGDATA
-    $INSTALL_DIR/bin/initdb -D $PGDATA
-    cat > "$PGDATA/postgresql.conf" <<SQL
-shared_preload_libraries = 'pg_tde'
-log_statement = 'all'
-log_directory = '$PGDATA'
-SQL
-}
-
-start_server() {
-    $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
-    $INSTALL_DIR/bin/createdb $DB_NAME
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"CREATE EXTENSION pg_tde;"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_key_using_database_key_provider('table_key','local_keyring');"
-    PG_PID=$(lsof -ti :5432)
-}
-
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/start_server.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/enable_tde.sh"
 
 # Create multiple tables
 create_tables() {
@@ -221,10 +198,17 @@ crash_server() {
     kill -9 $PG_PID
 }
 
-# Main load and DDL loop
+# Create data directory
 initialize_server
+# Start PG server and save PID
 start_server
-create_tables         # Create initial tables
+PG_PID=$(lsof -ti :5432)
+# Create a new database
+$INSTALL_DIR/bin/createdb $DB_NAME
+# Enable TDE
+enable_tde
+# Create initial tables
+create_tables
 
 for i in {1..20}; do
     echo "########################################"

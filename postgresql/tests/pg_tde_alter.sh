@@ -5,19 +5,7 @@ INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# initate the database
-initialize_server() {
-    PG_PID=$(lsof -ti :5432) || true
-    if [[ -n "$PG_PID" ]]; then
-       kill -9 $PG_PID
-    fi
-    rm -rf $PGDATA
-    $INSTALL_DIR/bin/initdb -D $PGDATA
-    cat > "$PGDATA/postgresql.conf" <<SQL
-shared_preload_libraries = 'pg_tde'
-SQL
-}
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start

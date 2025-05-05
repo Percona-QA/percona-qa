@@ -4,22 +4,7 @@
 INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
-
-# initate the database
-initialize_server() {
-    PG_PIDS=$(lsof -ti :5432 2>/dev/null) || true
-    if [[ -n "$PG_PIDS" ]]; then
-        echo "Killing PostgreSQL processes: $PG_PIDS"
-        kill -9 $PG_PIDS
-    fi
-    rm -rf $PGDATA
-    mkdir $PGDATA
-    $INSTALL_DIR/bin/initdb -D $PGDATA
-    cat > "$PGDATA/postgresql.conf" <<SQL
-shared_preload_libraries = 'pg_tde'
-default_table_access_method='tde_heap'
-SQL
-}
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA start -l $LOG_FILE

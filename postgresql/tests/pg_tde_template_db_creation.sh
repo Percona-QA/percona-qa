@@ -4,6 +4,8 @@ INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$INSTALL_DIR/server.log
 
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
+
 # Output formatting
 log() { echo -e "\n===> $1\n"; }
 
@@ -27,20 +29,6 @@ CREATE TABLE enc_test(id INT, secret TEXT) USING tde_heap;
 INSERT INTO enc_test VALUES (1, 'secret_text');
 SELECT * FROM enc_test;
 EOF
-}
-
-initialize_server() {
-    PG_PID=$(lsof -ti :5432) || true
-    if [[ -n "$PG_PID" ]]; then
-        kill -9 $PG_PID
-    fi
-    rm -rf $PGDATA
-    $INSTALL_DIR/bin/initdb -D $PGDATA
-    cat > "$PGDATA/postgresql.conf" <<SQL
-shared_preload_libraries = 'pg_tde'
-log_statement = 'all'
-log_directory = '$PGDATA'
-SQL
 }
 
 start_server() {

@@ -8,7 +8,6 @@ PUB_LOG=$PUB_DATA/pub.log
 SUB_LOG=$SUB_DATA/sub.log
 TABLES=5
 
-# Create data directory
 initialize_server() {
     # Find and kill PostgreSQL processes running on ports 5432, 5433, 5434
     PG_PIDS=$( lsof -ti :5432 -ti :5433 -ti :5434 2>/dev/null) || true

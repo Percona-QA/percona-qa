@@ -9,25 +9,8 @@
 INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
-
-initialize_server() {
-    PG_PIDS=$(lsof -ti :5432 -ti :5433 -ti :5434 2>/dev/null) || true
-    if [[ -n "$PG_PIDS" ]]; then
-        echo "Killing PostgreSQL processes: $PG_PIDS"
-        kill -9 $PG_PIDS
-    fi
-    rm -rf $data_dir
-    $INSTALL_DIR/bin/initdb -D $data_dir > /dev/null 2>&1
-    cat > "$data_dir/postgresql.conf" <<SQL
-port=5432
-listen_addresses='*'
-shared_preload_libraries = 'pg_tde'
-logging_collector = on
-log_directory = '$data_dir'
-log_filename = 'server.log'
-log_statement = 'all'
-SQL
-}
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/setup_kmip.sh"
 
 start_server() {
     data_dir=$1

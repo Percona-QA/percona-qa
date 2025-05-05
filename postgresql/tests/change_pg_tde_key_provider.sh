@@ -1,28 +1,12 @@
 #!/bin/bash
 
-set -e  # Exit immediately if a command exits with a non-zero status
-set -u  # Treat unset variables as an error
-set -o pipefail  # Prevent errors in a pipeline from being masked
-
 # Set variable
 export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
 export PGDATA=$INSTALL_DIR/data
 export LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# initate the database
-initialize_server() {
-    PG_PID=$(lsof -ti :5432) || true
-    if [[ $PG_PID != "" ]]; then
-        kill -9 $PG_PID
-    fi
-    rm -rf $PGDATA
-    $INSTALL_DIR/bin/initdb -D $PGDATA
-    cat > "$PGDATA/postgresql.conf" <<SQL
-shared_preload_libraries = 'pg_tde'
-default_table_access_method='tde_heap'
-SQL
-}
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA start -o "-p 5432" -l $LOG_FILE

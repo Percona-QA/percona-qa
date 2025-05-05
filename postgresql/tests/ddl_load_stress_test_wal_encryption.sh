@@ -1,33 +1,14 @@
 #!/bin/bash
 
-set -e  # Exit immediately if a command exits with a non-zero status
-set -u  # Treat unset variables as an error
-set -o pipefail  # Prevent errors in a pipeline from being masked
-
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde_17.4/install
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
-export DB_NAME="sbtest"
-export TABLE_PREFIX="ddl_test"
-export TOTAL_TABLES=20
+INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
+DB_NAME="sbtest"
+TABLE_PREFIX="ddl_test"
+TOTAL_TABLES=20
 
-# initate the database
-initialize_server() {
-    PG_PID=$(sudo -u postgres lsof -ti :5432) || true
-    if [[ -n "$PG_PID" ]]; then
-        sudo -u postgres kill -9 $PG_PID
-    fi
-    sudo rm -rf $PGDATA
-    sudo mkdir $PGDATA
-    sudo chown postgres:postgres $PGDATA
-    sudo -u postgres bash <<EOF
-    $INSTALL_DIR/bin/initdb -D $PGDATA
-    cat > "$PGDATA/postgresql.conf" <<SQL
-shared_preload_libraries = 'pg_tde'
-SQL
-EOF
-}
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 
 start_server() {
     sudo -u postgres bash <<EOF
