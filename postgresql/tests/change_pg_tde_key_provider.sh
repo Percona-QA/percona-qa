@@ -130,7 +130,3 @@ main() {
 }
 
 main
-if grep -iq "invalid" "$LOG_FILE"; then
-    echo "ERROR Found: Unable to read redo logs: $LOG_FILE"
-    exit 1
-else

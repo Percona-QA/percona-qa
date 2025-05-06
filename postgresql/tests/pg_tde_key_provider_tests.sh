@@ -9,8 +9,6 @@
 INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
-# Accept only 3 values ( file, vault, kmip )
-key_provider_type=$1
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 
 start_server() {
@@ -61,7 +59,7 @@ start_vault_server() {
     mkdir $SCRIPT_DIR/vault
     fi
     rm -rf $SCRIPT_DIR/vault/*
-    $SCRIPT_DIR/vault_test_setup.sh --workdir=$SCRIPT_DIR/vault --setup-pxc-mount-points --use-ssl > /dev/null 2>&1
+    $SCRIPT_DIR/helper_scripts/vault_test_setup.sh --workdir=$SCRIPT_DIR/vault --setup-pxc-mount-points --use-ssl > /dev/null 2>&1
     vault_url=$(grep 'vault_url' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     secret_mount_point=$(grep 'secret_mount_point' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     token=$(grep 'token' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
@@ -340,7 +338,7 @@ $INSTALL_DIR/bin/psql  -d sbtest6 -c"INSERT INTO t1 VALUES(100,'Mohit');"
 $INSTALL_DIR/bin/psql  -d sbtest6 -c"INSERT INTO t1 VALUES(200,'Rohit');"
 $INSTALL_DIR/bin/psql  -d sbtest6 -c"SELECT * FROM t1;"
 
-$INSTALL_DIR/bin/psql  -d sbtest6 -c"SELECT pg_tde_change_global_key_provider_vault_v2('vault_keyring6','$token','$vault_url','$secret_mount_point','$vault_ca');"
+$INSTALL_DIR/bin/psql  -d sbtest6 -c"SELECT pg_tde_add_database_key_provider_vault_v2('vault_keyring6','$token','$vault_url','$secret_mount_point','$vault_ca');"
 $INSTALL_DIR/bin/psql  -d sbtest6 -c"SELECT pg_tde_set_key_using_database_key_provider('vault_key6','vault_keyring6');"
 $INSTALL_DIR/bin/psql  -d sbtest6 -c"CREATE TABLE t2(a INT, b varchar) USING tde_heap;"
 $INSTALL_DIR/bin/psql  -d sbtest6 -c"INSERT INTO t2 VALUES(100,'Mohit');"
