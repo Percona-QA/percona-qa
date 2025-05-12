@@ -2,6 +2,7 @@ package tde_helper;
 # This file contains helper functions for pg_tde tests
 # It includes functions for running sysbench, performing node operations,
 # and checking encryption status.
+# For KMIP and VAULT server update the URL or define environment variable
 
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
