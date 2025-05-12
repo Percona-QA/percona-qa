@@ -4,7 +4,7 @@ use File::Basename;
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
-use lib 't', 't/tde_test';
+use lib 't';
 use pgtde;
 use tde_helper;
 
