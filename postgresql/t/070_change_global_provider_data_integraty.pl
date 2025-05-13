@@ -20,10 +20,6 @@ set_default_table_am_tde_heap($node_primary);
 $node_primary->append_conf('postgresql.conf', "listen_addresses = '*'");
 $node_primary->start;
 
-# Create a new database if not exists
-ensure_database_exists_and_accessible($node_primary, $DB_NAME);
-$node_primary->safe_psql($DB_NAME, "CREATE EXTENSION pg_tde;");
-
 # Common variables
 my $dbname = 'test_db';
 my $KMIP_PRO = 'kmip_keyring5';
@@ -33,140 +29,107 @@ my $KMIP_KEY = 'kmip_key5';
 my $VAULT_KEY = 'vault_key5';
 my $FILE_KEY = 'file_key5';
 
-
+# Ensure database exists and create pg_tde extension
 ensure_database_exists_and_accessible($node_primary, $dbname);
 $node_primary->safe_psql($dbname, "CREATE EXTENSION pg_tde;");
 
-# Global FILE provider
-my $setup_sql_file = sprintf(
+# Add and set FILE key provider
+add_global_key_provider($node_primary, $dbname, $FILE_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_file('%s', '/tmp/keyring.file');",
     $FILE_PRO
-);
-my $vault_result = invoke_add_key_provider_function($node_primary, $dbname, $FILE_PRO, $setup_sql_file);
-ok($vault_result, "$FILE_PRO global key provider created successfully");
+));
+set_global_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO);
 
-# Global KMIP provider
-my $setup_sql_kmip = sprintf(
+# Create and populate table t1
+$node_primary->safe_psql($dbname, <<'SQL');
+CREATE TABLE t1(a INT, b VARCHAR) USING tde_heap;
+INSERT INTO t1 VALUES (100, 'Bob'), (300, 'global');
+SQL
+verify_table_data($node_primary, $dbname, 't1', "100|Bob\n300|global");
+
+# Add and set KMIP key provider
+add_global_key_provider($node_primary, $dbname, $KMIP_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_kmip('%s', '%s', %d, '%s', '%s');",
     $KMIP_PRO, $KMIP_URL, $KMIP_PORT, $KMIP_SERVER_CA, $KMIP_SERVER_CLIENT_KEY
-);
-$vault_result = invoke_add_key_provider_function($node_primary, $dbname, $KMIP_PRO, $setup_sql_kmip);
-ok($vault_result, "$KMIP_PRO global key provider created successfully");
+));
+set_global_key($node_primary, $dbname, $KMIP_KEY, $KMIP_PRO);
 
-# Global Vault_v2 provider
-my $setup_sql_vault = sprintf(
+# Create and populate table t2
+$node_primary->safe_psql($dbname, <<'SQL');
+CREATE TABLE t2(a INT, b VARCHAR) USING tde_heap;
+INSERT INTO t2 VALUES (100, 'Bob'), (200, 'global');
+SQL
+verify_table_data($node_primary, $dbname, 't2', "100|Bob\n200|global");
+
+# Add and set Vault key provider
+add_global_key_provider($node_primary, $dbname, $VAULT_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_vault_v2('%s', '%s', '%s', '%s', NULL);",
     $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
-);
+));
+set_global_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
-$vault_result = invoke_add_key_provider_function($node_primary, $dbname, $VAULT_PRO, $setup_sql_vault);
-ok($vault_result, "$VAULT_PRO global key provider created successfully");
+# Create and populate table t3
+$node_primary->safe_psql($dbname, <<'SQL');
+CREATE TABLE t3(a INT, b VARCHAR) USING tde_heap;
+INSERT INTO t3 VALUES (300, 'Percona'), (400, 'global');
+SQL
+verify_table_data($node_primary, $dbname, 't3', "300|Percona\n400|global");
 
-# Set Principal Key using FILE provider
-my $key_result = invoke_add_key_function($node_primary, $dbname, 'pg_tde_set_key_using_global_key_provider', $FILE_KEY, $FILE_PRO);
-ok($key_result, "$FILE_KEY global key was set successfully using provider $FILE_PRO");
-
-# Create a table using the FILE provider
-eval {
-    $node_primary->safe_psql($dbname,
-        "CREATE TABLE t1(a INT, b varchar) USING tde_heap;");
-    $node_primary->safe_psql($dbname,
-        "INSERT INTO t1 VALUES (100, 'Bob'), (300, 'global');");
-    1;
-} or do {
-    fail("Table operations failed: $@");
-    return;
-};
-
-# Verify data integrity in t1
-my $result = $node_primary->safe_psql($dbname, "SELECT a, b FROM t1 ORDER BY a;");
-chomp($result);
-is($result, "100|Bob\n300|global", "Table contents are as expected: $result");
-
-# Change Global KMIP provider
-$setup_sql_kmip = sprintf(
-    "SELECT pg_tde_change_global_key_provider_kmip('%s', '%s', %d, '%s', '%s');",
-    $KMIP_PRO, $KMIP_URL, $KMIP_PORT, $KMIP_SERVER_CA, $KMIP_SERVER_CLIENT_KEY
-);
-$vault_result = invoke_add_key_provider_function($node_primary, $dbname, $KMIP_PRO, $setup_sql_kmip);
-ok($vault_result, "$KMIP_PRO global key provider changed successfully");
-$key_result = invoke_add_key_function($node_primary, $dbname, 'pg_tde_set_key_using_global_key_provider', $KMIP_KEY, $KMIP_PRO);
-ok($key_result, "$KMIP_KEY global key was set successfully using provider $KMIP_PRO");
-
-# Create a table using the KMIP provider
-eval {
-    $node_primary->safe_psql($dbname,
-        "CREATE TABLE t2(a INT, b varchar) USING tde_heap;");
-    $node_primary->safe_psql($dbname,
-        "INSERT INTO t2 VALUES (100, 'Bob'), (200, 'global');");
-    1;
-} or do {
-    fail("Table operations failed: $@");
-    return;
-};
-# Verify data integrity in t2
-$result = $node_primary->safe_psql($dbname, "SELECT a, b FROM t2 ORDER BY a;");
-chomp($result);
-is($result, "100|Bob\n200|global", "Table contents are as expected: $result");
-
-# Change Global Vault_v2 provider
-$setup_sql_vault = sprintf(
-    "SELECT pg_tde_change_global_key_provider_vault_v2('%s', '%s', '%s', '%s', NULL);",
-    $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
-);
-$vault_result = invoke_add_key_provider_function($node_primary, $dbname, $VAULT_PRO, $setup_sql_vault);
-ok($vault_result, "$VAULT_PRO global key provider changed successfully");
-$key_result = invoke_add_key_function($node_primary, $dbname, 'pg_tde_set_key_using_global_key_provider', $VAULT_KEY, $VAULT_PRO);
-ok($key_result, "$VAULT_KEY global Key was set successfully using provider $VAULT_PRO");
-
-eval {
-    $node_primary->safe_psql($dbname,
-        "CREATE TABLE t3(a INT, b varchar) USING tde_heap;");
-    $node_primary->safe_psql($dbname,
-        "INSERT INTO t3 VALUES (300, 'Percona'),(400, 'global');");
-    1;
-} or do {
-    fail("Table operations failed: $@");
-    return;
-};
-# Verify data integrity in t3
-$result = $node_primary->safe_psql($dbname, "SELECT a, b FROM t3 ORDER BY a;");
-chomp($result);
-is($result, "300|Percona\n400|global", "Table contents are as expected: $result");
-
- # Verify key info
-my $default_key_info = $node_primary->safe_psql($dbname,
-    "SELECT key_name, key_provider_name FROM pg_tde_key_info();");
-like($default_key_info, qr/^$VAULT_KEY\|$VAULT_PRO$/m,
-    "Database principal key info matches expected");
+# Verify key info
+verify_key_info($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
 # Verify key presence
-my $verify_result = $node_primary->safe_psql($dbname,
-            "SELECT pg_tde_verify_key();");
-        is($verify_result, '',
-            "pg_tde_verify_key returns empty string when key is present");
+my $verify_result = $node_primary->safe_psql($dbname, "SELECT pg_tde_verify_key();");
+is($verify_result, '', "pg_tde_verify_key returns empty string when key is present");
 
+# Verify row counts before restart
+verify_row_counts($node_primary, $dbname, [qw/t1 t2 t3/], '2');
 
-# "List of Global Key Providers"
-my $local_providers = $node_primary->safe_psql(
-    $dbname,
-    "SELECT provider_name, provider_type FROM pg_tde_list_all_database_key_providers();"
-);
-
-foreach my $table (qw/t1 t2 t3/) {
-    my $result = $node_primary->safe_psql($dbname, "SELECT COUNT(*) FROM $table");
-    chomp($result);
-    is($result, '2', "Row count in $table is unchanged before restart. $result");
-}
-
+# Restart the server
 diag("Restarting the server...");
 $node_primary->restart;
 
-foreach my $table (qw/t1 t2 t3/) {
-    my $result = $node_primary->safe_psql($dbname, "SELECT COUNT(*) FROM $table");
-    chomp($result);
-    is($result, '2', "Row count in $table is unchanged after restart. $result");
-}
+# Verify row counts after restart
+verify_row_counts($node_primary, $dbname, [qw/t1 t2 t3/], '2');
 
 done_testing();
 
+# ===== subroutines =====
+# Subroutine to add a global key provider
+sub add_global_key_provider {
+    my ($node, $db, $provider_name, $setup_sql) = @_;
+    my $result = invoke_add_key_provider_function($node, $db, $provider_name, $setup_sql);
+    ok($result, "$provider_name global key provider created successfully");
+}
+
+# Subroutine to set a global key
+sub set_global_key {
+    my ($node, $db, $key_name, $provider_name) = @_;
+    my $result = invoke_add_key_function($node, $db, 'pg_tde_set_key_using_global_key_provider', $key_name, $provider_name);
+    ok($result, "$key_name global key was set successfully using provider $provider_name");
+}
+
+# Subroutine to verify table data
+sub verify_table_data {
+    my ($node, $db, $table, $expected_data) = @_;
+    my $result = $node->safe_psql($db, "SELECT a, b FROM $table ORDER BY a;");
+    chomp($result);
+    is($result, $expected_data, "Table $table contents are as expected: $result");
+}
+
+# Subroutine to verify key info
+sub verify_key_info {
+    my ($node, $db, $key_name, $provider_name) = @_;
+    my $key_info = $node->safe_psql($db, "SELECT key_name, key_provider_name FROM pg_tde_key_info();");
+    like($key_info, qr/^$key_name\|$provider_name$/m, "Key info matches expected values");
+}
+
+# Subroutine to verify row counts
+sub verify_row_counts {
+    my ($node, $db, $tables, $expected_count) = @_;
+    foreach my $table (@$tables) {
+        my $result = $node->safe_psql($db, "SELECT COUNT(*) FROM $table;");
+        chomp($result);
+        is($result, $expected_count, "Row count in $table is $expected_count");
+    }
+}
