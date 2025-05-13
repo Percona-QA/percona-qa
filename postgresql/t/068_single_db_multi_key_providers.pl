@@ -70,10 +70,10 @@ my @providers = (
     },
     {
         type       => 'file',
-        name       => 'file_keyring',
-        key_name   => 'file_key1',
+        name       => 'file_keyring4',
+        key_name   => 'file_key4',
         table      => 't3',
-        setup_sql  => "SELECT pg_tde_add_database_key_provider_file('file_keyring', '/tmp/file_keyring.per')",
+        setup_sql  => "SELECT pg_tde_add_database_key_provider_file('file_keyring4', '/tmp/file_keyring.per')",
         args       => sub {
             my $self = shift;
             return [
