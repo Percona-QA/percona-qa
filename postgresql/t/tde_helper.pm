@@ -53,6 +53,8 @@ our @EXPORT = qw(
     set_default_table_am_tde_heap
     enable_pg_tde_in_conf
     ensure_database_exists_and_accessible
+    invoke_add_key_function
+    invoke_add_key_provider_function
 );
 
 our $DB_NAME = "postgres";
@@ -409,6 +411,37 @@ sub setup_encryption {
         "SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/db_keyring.fil');");
     $node->safe_psql($db_name,
         "SELECT pg_tde_set_key_using_database_key_provider('local_key', 'local_key_provider');");
+}
+
+# This function add a key using the specified function and provider
+# It takes the database name, function name, key name, and provider name as arguments
+# and returns 1 on success or 0 on failure
+sub invoke_add_key_function {
+    my ($node, $dbname, $function_name, $key_name, $provider_name) = @_;
+    eval {
+    $node->safe_psql($dbname,
+            "SELECT $function_name('$key_name', '$provider_name');");
+        1;
+    } or do {
+        fail("Failed to set key using $provider_name: $@");
+        return 0;
+    };
+    return 1;
+}
+
+# This function adds a key provider using the specified SQL command
+# It takes the database name, provider name, and SQL command as arguments
+# and returns 1 on success or 0 on failure
+sub invoke_add_key_provider_function {
+    my ($node, $dbname, $provider_name, $setup_sql) = @_;
+    eval {
+        $node->safe_psql($dbname, $setup_sql);
+        1;
+    } or do {
+        diag("$provider_name key provider creation failed: $@");
+        return 0;
+    };
+    return 1;
 }
 
 1;
