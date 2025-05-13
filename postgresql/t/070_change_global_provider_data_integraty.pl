@@ -37,8 +37,6 @@ my $FILE_KEY = 'file_key5';
 ensure_database_exists_and_accessible($node_primary, $dbname);
 $node_primary->safe_psql($dbname, "CREATE EXTENSION pg_tde;");
 
-#diag("Creating global file provider");
-
 # Global FILE provider
 my $setup_sql_file = sprintf(
     "SELECT pg_tde_add_global_key_provider_file('%s', '/tmp/keyring.file');",
