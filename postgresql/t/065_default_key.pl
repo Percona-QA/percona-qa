@@ -10,18 +10,6 @@ use tde_helper;
 
 PGTDE::setup_files_dir(basename($0));
 
-my $DB_NAME= "postgres";
-my $KMIP_URL = "kmip1";
-my $KMIP_PORT = 5696;
-my $KMIP_SERVER_CA = "/tmp/certs/server_certificate.pem";
-my $KMIP_SERVER_CLIENT_KEY = "/tmp/certs/client_key_jane_doe.pem";
-my $VAULT_URL = "172.18.0.2";
-my $VAULT_PORT = 8200;
-my $VAULT_SERVER_URL = "http://$VAULT_URL:$VAULT_PORT";
-my $VAULT_TOKEN = 'root';
-my $VAULT_SECRET_MOUNT_POINT = 'secret';
-
-
 # Initialize primary node
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init;
@@ -36,13 +24,6 @@ $node_primary->start;
 ensure_database_exists_and_accessible($node_primary, $DB_NAME);
 $node_primary->safe_psql($DB_NAME, "CREATE EXTENSION pg_tde;");
 
-# "Creating databases test1, test2
-#ensure_database_exists_and_accessible($node_primary, 'test1');
-#ensure_database_exists_and_accessible($node_primary, 'test2');
-
-# "Creating pg_tde extension in test1, test2"
-#$node_primary->safe_psql('test1', "CREATE EXTENSION pg_tde;");
-#$node_primary->safe_psql('test2', "CREATE EXTENSION pg_tde;");
 $node_primary->safe_psql($DB_NAME, 
     "SELECT pg_tde_add_global_key_provider_file('global-prov-file', '/tmp/global-file-keyring.per');"
     );
