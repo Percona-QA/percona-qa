@@ -10,7 +10,8 @@ use tde_helper;
 
 PGTDE::setup_files_dir(basename($0));
 
-# Initialize primary node
+# ====== STEP 1: Initialize Primary Node ======
+diag("Initializing primary node and configuring TDE settings");
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init;
 
@@ -29,72 +30,84 @@ my $KMIP_KEY = 'kmip_key5';
 my $VAULT_KEY = 'vault_key5';
 my $FILE_KEY = 'file_key5';
 
-# Ensure database exists and create pg_tde extension
+# ====== STEP 2: Ensure Database Exists and Enable pg_tde ======
+diag("Ensuring database exists and enabling pg_tde extension");
 ensure_database_exists_and_accessible($node_primary, $dbname);
 $node_primary->safe_psql($dbname, "CREATE EXTENSION pg_tde;");
 
-# Add and set FILE key provider
+# ====== STEP 3: Add and Set FILE Key Provider ======
+diag("Adding FILE global key provider and setting encryption key");
 add_global_key_provider($node_primary, $dbname, $FILE_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_file('%s', '/tmp/keyring.file');",
     $FILE_PRO
 ));
 set_global_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO);
 
-# Create and populate table t1
+# ====== STEP 4: Create and Populate Table t1 ======
+diag("Creating and populating table t1 using FILE key provider");
 $node_primary->safe_psql($dbname, <<'SQL');
 CREATE TABLE t1(a INT, b VARCHAR) USING tde_heap;
 INSERT INTO t1 VALUES (100, 'Bob'), (300, 'global');
 SQL
 verify_table_data($node_primary, $dbname, 't1', "100|Bob\n300|global");
 
-# Add and set KMIP key provider
+# ====== STEP 5: Add and Set KMIP Key Provider ======
+diag("Adding KMIP global key provider and setting encryption key");
 add_global_key_provider($node_primary, $dbname, $KMIP_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_kmip('%s', '%s', %d, '%s', '%s');",
     $KMIP_PRO, $KMIP_URL, $KMIP_PORT, $KMIP_SERVER_CA, $KMIP_SERVER_CLIENT_KEY
 ));
 set_global_key($node_primary, $dbname, $KMIP_KEY, $KMIP_PRO);
 
-# Create and populate table t2
+# ====== STEP 6: Create and Populate Table t2 ======
+diag("Creating and populating table t2 using KMIP key provider");
 $node_primary->safe_psql($dbname, <<'SQL');
 CREATE TABLE t2(a INT, b VARCHAR) USING tde_heap;
 INSERT INTO t2 VALUES (100, 'Bob'), (200, 'global');
 SQL
 verify_table_data($node_primary, $dbname, 't2', "100|Bob\n200|global");
 
-# Add and set Vault key provider
+# ====== STEP 7: Add and Set Vault Key Provider ======
+diag("Adding Vault global key provider and setting encryption key");
 add_global_key_provider($node_primary, $dbname, $VAULT_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_vault_v2('%s', '%s', '%s', '%s', NULL);",
     $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
 ));
 set_global_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
-# Create and populate table t3
+# ====== STEP 8: Create and Populate Table t3 ======
+diag("Creating and populating table t3 using Vault key provider");
 $node_primary->safe_psql($dbname, <<'SQL');
 CREATE TABLE t3(a INT, b VARCHAR) USING tde_heap;
 INSERT INTO t3 VALUES (300, 'Percona'), (400, 'global');
 SQL
 verify_table_data($node_primary, $dbname, 't3', "300|Percona\n400|global");
 
-# Verify key info
+# ====== STEP 9: Verify Key Info ======
+diag("Verifying key information for the Vault key provider");
 verify_key_info($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
-# Verify key presence
+# ====== STEP 10: Verify Key Presence ======
+diag("Verifying key presence using pg_tde_verify_key()");
 my $verify_result = $node_primary->safe_psql($dbname, "SELECT pg_tde_verify_key();");
 is($verify_result, '', "pg_tde_verify_key returns empty string when key is present");
 
-# Verify row counts before restart
+# ====== STEP 11: Verify Row Counts Before Restart ======
+diag("Verifying row counts in all tables before server restart");
 verify_row_counts($node_primary, $dbname, [qw/t1 t2 t3/], '2');
 
-# Restart the server
+# ====== STEP 12: Restart the Server ======
 diag("Restarting the server...");
 $node_primary->restart;
 
-# Verify row counts after restart
+# ====== STEP 13: Verify Row Counts After Restart ======
+diag("Verifying row counts in all tables after server restart");
 verify_row_counts($node_primary, $dbname, [qw/t1 t2 t3/], '2');
 
 done_testing();
 
-# ===== subroutines =====
+# ===== Subroutines =====
+
 # Subroutine to add a global key provider
 sub add_global_key_provider {
     my ($node, $db, $provider_name, $setup_sql) = @_;

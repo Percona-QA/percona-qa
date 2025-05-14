@@ -10,7 +10,8 @@ use tde_helper;
 
 PGTDE::setup_files_dir(basename($0));
 
-# Initialize primary node
+# ====== STEP 1: Initialize Primary Node ======
+diag("Initializing primary node and configuring TDE settings");
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init;
 
@@ -29,23 +30,27 @@ my $FILE_PRO = 'file_keyring8';
 my $KMIP_KEY = 'kmip_key8';
 my $VAULT_KEY = 'vault_key8';
 my $FILE_KEY = 'file_key8';
+my $TDE_HEAP = 't'; # used for tde_heap access method verification
+my $HEAP = 'f';
 my $dump_file = "$PostgreSQL::Test::Utils::tmp_check/t1_t2_dump.sql";
 
-
-# Ensure databases exist and create pg_tde extension
+# ====== STEP 2: Ensure Databases Exist and Enable pg_tde ======
+diag("Ensuring databases exist and enabling pg_tde extension");
 ensure_database_exists_and_accessible($node_primary, $dbname);
 $node_primary->safe_psql($dbname, "CREATE EXTENSION pg_tde;");
 ensure_database_exists_and_accessible($node_primary, $dbname_new);
 $node_primary->safe_psql($dbname_new, "CREATE EXTENSION pg_tde;");
 
-# Add and set Vault key provider
+# ====== STEP 3: Add and Set Vault Key Provider ======
+diag("Adding Vault key provider and setting default encryption key");
 add_key_provider($node_primary, $dbname, $VAULT_PRO, sprintf(
     "SELECT pg_tde_add_database_key_provider_vault_v2('%s', '%s', '%s', '%s', NULL);",
     $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
 ));
 set_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
-# Create and populate tables
+# ====== STEP 4: Create and Populate Tables ======
+diag("Creating and populating tables in the source database");
 $node_primary->safe_psql($dbname, <<'SQL');
 CREATE TABLE t1(a INT PRIMARY KEY, b VARCHAR) USING tde_heap;
 CREATE TABLE t2(a INT PRIMARY KEY, b VARCHAR) USING heap;
@@ -53,50 +58,51 @@ INSERT INTO t1 VALUES (101, 'James Bond');
 INSERT INTO t2 VALUES (101, 'James Bond');
 SQL
 
-# Add and set File key provider
+# ====== STEP 5: Add and Set File Key Provider ======
+diag("Adding File key provider and setting encryption key for the target database");
 add_key_provider($node_primary, $dbname_new, $FILE_PRO, sprintf(
     "SELECT pg_tde_add_database_key_provider_file('%s', '/tmp/keyring.file');",
     $FILE_PRO
 ));
 set_key($node_primary, $dbname_new, $FILE_KEY, $FILE_PRO);
 
-# Dump and restore tables
+# ====== STEP 6: Dump and Restore Tables ======
+diag("Dumping tables from the source database and restoring them into the target database");
 $node_primary->run_log(['pg_dump', '-d', $dbname, '-t', 't1', '-t', 't2', '-f', $dump_file]);
 ok(-e $dump_file, 'pg_dump created dump file');
 $node_primary->command_ok(['psql', '-d', $dbname_new, '-f', $dump_file], 'Restored dump into new DB');
 
-# Verify table data and key info
-verify_table_data($node_primary, $dbname_new, 't1', "101|James Bond");
-verify_table_data($node_primary, $dbname_new, 't2', "101|James Bond");
+# ====== STEP 7: Verify Table Data and Key Info ======
+diag("Verifying table data and key information in the target database");
+verify_table_data($node_primary, $dbname_new, 't1', "101|James Bond", $TDE_HEAP);
+verify_table_data($node_primary, $dbname_new, 't2', "101|James Bond", $HEAP);
 verify_key_info($node_primary, $dbname_new, $FILE_KEY, $FILE_PRO);
 
-# Restart node and verify
-diag("Restarting node...");
+# ====== STEP 8: Restart Node and Verify ======
+diag("Restarting node and verifying table data and key information");
 $node_primary->restart;
-
-# Verify table data and key info after restart
-verify_table_data($node_primary, $dbname_new, 't1', "101|James Bond");
-verify_table_data($node_primary, $dbname_new, 't2', "101|James Bond");
+verify_table_data($node_primary, $dbname_new, 't1', "101|James Bond", $TDE_HEAP);
+verify_table_data($node_primary, $dbname_new, 't2', "101|James Bond", $HEAP);
 verify_key_info($node_primary, $dbname_new, $FILE_KEY, $FILE_PRO);
 
-# Rotate key and verify
+# ====== STEP 9: Rotate Key and Verify ======
+diag("Rotating encryption key and verifying key information");
 set_key($node_primary, $dbname_new, 'file_key2', $FILE_PRO);
 verify_key_info($node_primary, $dbname_new, 'file_key2', $FILE_PRO);
 
-# Add and set KMIP key provider
+# ====== STEP 10: Add and Set KMIP Key Provider ======
+diag("Adding KMIP key provider and setting encryption key");
 add_key_provider($node_primary, $dbname_new, $KMIP_PRO, sprintf(
     "SELECT pg_tde_add_database_key_provider_kmip('%s', '%s', %d, '%s', '%s');",
     $KMIP_PRO, $KMIP_URL, $KMIP_PORT, $KMIP_SERVER_CA, $KMIP_SERVER_CLIENT_KEY
 ));
 set_key($node_primary, $dbname_new, $KMIP_KEY, $KMIP_PRO);
 
-# Restart node and verify
-diag("Restarting node...");
+# ====== STEP 11: Restart Node and Final Verification ======
+diag("Restarting node and performing final verification of table data and key information");
 $node_primary->restart;
-
-# Final verification
-verify_table_data($node_primary, $dbname_new, 't1', "101|James Bond");
-verify_table_data($node_primary, $dbname_new, 't2', "101|James Bond");
+verify_table_data($node_primary, $dbname_new, 't1', "101|James Bond", $TDE_HEAP);
+verify_table_data($node_primary, $dbname_new, 't2', "101|James Bond", $HEAP);
 verify_key_info($node_primary, $dbname_new, $KMIP_KEY, $KMIP_PRO);
 
 done_testing();
@@ -116,13 +122,17 @@ sub set_key {
     ok($result, "$key_name database key was set successfully using provider $provider_name");
 }
 
-# Subroutine to verify table data
+# Subroutine to verify table data and access method
 sub verify_table_data {
-    my ($node, $db, $table, $expected_data) = @_;
+    my ($node, $db, $table, $expected_data, $expected_am) = @_;
     my $result = $node->safe_psql($db, "SELECT * FROM $table;");
+    my $result_am = $node->safe_psql($db, "SELECT pg_tde_is_encrypted('$table');");
     chomp($result);
+    chomp($result_am);
     is($result, $expected_data, "Table $table contents are as expected: $result");
+    is($result_am, $expected_am, "Table $table is using the expected access method: $result_am");
 }
+
 
 # Subroutine to verify key info
 sub verify_key_info {
