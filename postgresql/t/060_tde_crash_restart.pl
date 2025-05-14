@@ -41,6 +41,20 @@ $node->safe_psql(
 				   ALTER SYSTEM SET log_connections = 1;
 				   SELECT pg_reload_conf();]);
 
+
+diag("Creating table and verifying data and encryption");
+$node->safe_psql('postgres', <<'SQL');
+CREATE TABLE t2(a INT PRIMARY KEY, b VARCHAR) USING tde_heap;
+INSERT INTO t2 VALUES (101, 'Ruskin Bond 007 from t2');
+-- Insert large data into the table
+INSERT INTO t2(a, b)
+SELECT i, 'Large data row ' || i
+FROM generate_series(102, 100000) AS i;
+SQL
+
+
+# Expected number of rows in the t2 table to verify after crash
+my $expected_row_count = $node->safe_psql('postgres', "SELECT COUNT(*) FROM t2");
 # Run psql, keeping session alive, so we have an alive backend to kill.
 my ($killme_stdin, $killme_stdout, $killme_stderr) = ('', '', '');
 my $killme = IPC::Run::start(
@@ -73,7 +87,7 @@ my $monitor = IPC::Run::start(
 
 #create table, insert row that should survive
 $killme_stdin .= q[
-CREATE TABLE alive(status text);
+CREATE TABLE alive(status text)USING tde_heap;
 INSERT INTO alive VALUES($$committed-before-sigquit$$);
 SELECT pg_backend_pid();
 ];
@@ -255,6 +269,21 @@ is( $node->safe_psql(
 	),
 	'after-orderly-restart',
 	'can still write after orderly restart');
+
+is( $node->safe_psql('postgres', "SELECT pg_tde_is_encrypted('alive')"),
+	't',
+	'pg_tde is enabled');
+
+is( $node->safe_psql('postgres', "SELECT pg_tde_is_encrypted('t2')"),
+	't',
+	't2 is encrypted');
+is( $node->safe_psql('postgres', "SELECT * FROM t2 ORDER BY a LIMIT 5"),
+    "101|Ruskin Bond 007 from t2\n102|Large data row 102\n103|Large data row 103\n104|Large data row 104\n105|Large data row 105",
+    'First 5 rows of t2 are as expected');
+# Compare the count of all rows in the t2 table before and after crash
+my $actual_row_count = $node->safe_psql('postgres', "SELECT COUNT(*) FROM t2");
+
+is($actual_row_count, $expected_row_count, "Row count in t2 is as expected: $expected_row_count");
 
 $node->stop();
 
