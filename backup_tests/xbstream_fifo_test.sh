@@ -81,6 +81,41 @@ start_minio() {
     exit 1
 }
 
+# Set Kmip configuration
+setup_kmip() {
+  # Kill and existing kmip server
+  sudo pkill -9 kmip
+  # Start KMIP server
+  sleep 5
+  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
+  if [ -d /tmp/certs ]; then
+    echo "certs directory exists"
+    rm -rf /tmp/certs
+    mkdir /tmp/certs
+  else
+    echo "does not exist. creating certs dir"
+    mkdir /tmp/certs
+  fi
+  sudo docker cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
+  sudo docker cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
+  sudo docker cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
+
+  kmip_server_address="0.0.0.0"
+  kmip_server_port=5696
+  kmip_client_ca="/tmp/certs/client_certificate_jane_doe.pem"
+  kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
+  kmip_server_ca="/tmp/certs/root_certificate.pem"
+
+  cat > "$PS_DIR/lib/plugin/component_keyring_kmip.cnf" <<-EOF
+    {
+      "server_addr": "$kmip_server_address", "server_port": "$kmip_server_port", "client_ca": "$kmip_client_ca", "client_key": "$kmip_client_key", "server_ca": "$kmip_server_ca"
+    }
+EOF
+
+  # Sleep for 30 sec to fully initialize the KMIP server
+  sleep 30
+}
+
 xbcloud_put() {
  BACKUP_NAME=$1
  echo "$XTRABACKUP_DIR/bin/xbcloud put --storage=s3 --s3-access-key=admin --s3-secret-key=password --s3-endpoint=http://localhost:9000 --s3-bucket=my-bucket --parallel=64 --fifo-streams=$FIFO_STREAM --fifo-dir=$FIFO_DIR $BACKUP_NAME"
@@ -104,17 +139,20 @@ init_datadir() {
 
   if [ "$keyring_type" = "keyring_kmip" ]; then
     echo "Keyring type is KMIP. Taking KMIP-specific action..."
-    cat > "$PS_DIR/lib/plugin/component_keyring_kmip.cnf" <<-EOF
-    {
-      "server_addr": "0.0.0.0",
-      "server_port": "5696",
-      "client_ca": "/tmp/certs_sai/client_certificate_jane_doe.pem",
-      "client_key": "/tmp/certs_sai/client_key_jane_doe.pem",
-      "server_ca": "/tmp/certs_sai/root_certificate.pem"
-    }
-EOF
+
+    echo '{
+      "components": "file://component_keyring_kmip"
+    }' > "$PS_DIR/bin/mysqld.my"
+
+    setup_kmip
+
   elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
+
+    echo '{
+      "components": "file://component_keyring_file"
+    }' > "$PS_DIR/bin/mysqld.my"
+
     cat > "$PS_DIR/component_keyring_file.cnf" <<-EOFL
     {
        "components": "file://component_keyring_file",
@@ -524,7 +562,7 @@ $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DI
 start_server
 
 echo "######################################################################"
-echo "# 5. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip  #"
+echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip  #"
 echo "######################################################################"
 
 LOGDIR=$HOME/6
@@ -565,7 +603,7 @@ start_server
 
 
 echo "#######################################################"
-echo "# 6. Test FIFO xbstream: Test with encrypted backup   #"
+echo "# 7. Test FIFO xbstream: Test with encrypted backup   #"
 echo "#######################################################"
 ENCRYPT="--encrypt=AES256"
 ENCRYPT_KEY="--encrypt-key=maaoWib1SuXz0UKexOZW37bUbtfEMOdA"
