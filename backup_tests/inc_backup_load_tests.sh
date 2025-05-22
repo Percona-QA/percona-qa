@@ -35,6 +35,32 @@ tool_dir="$HOME/pstress_9.1/src" # pstress dir
 # PXB Lock option
 LOCK_DDL=on # lock_ddl accepted values (on, reduced)
 
+cleanup() {
+  echo "Cleaning up at Exit..."
+
+    IMAGE="mohitpercona/kmip:latest"
+    # Find containers using the image
+    container=$(docker ps -a -q --filter ancestor="$IMAGE")
+
+    # Stop and remove those containers
+    if [ -n "$container" ]; then
+      echo "Removing containers using image: $IMAGE"
+      docker rm -f $container
+    fi
+
+    # Remove the image
+    if docker images -q "$IMAGE" > /dev/null 2>&1; then
+      echo "Removing image: $IMAGE"
+      docker rmi -f "$IMAGE"
+    fi
+
+    if [ -d "$HOME/certs/" ]; then
+      rm -rf "$HOME/certs/"
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
 normalize_version() {
     local major=0
     local minor=0
@@ -53,28 +79,29 @@ VERSION=$(normalize_version $VER)
 
 # Set Kmip configuration
 setup_kmip() {
-  # Kill and existing kmip server
-  sudo pkill -9 kmip
-  # Start KMIP server
-  sleep 5
-  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
-  if [ -d /tmp/certs ]; then
+  # Remove existing container if any
+  docker rm -f kmip 2>/dev/null || true
+
+  # Remove the image (only if not used by any other container)
+  docker rmi mohitpercona/kmip:latest 2>/dev/null || true
+
+  if [ -d "$HOME/certs/" ]; then
     echo "certs directory exists"
-    rm -rf /tmp/certs
-    mkdir /tmp/certs
+    rm -rf "$HOME/certs/"
+    mkdir "$HOME/certs/"
   else
     echo "does not exist. creating certs dir"
-    mkdir /tmp/certs
+    mkdir "$HOME/certs/"
   fi
-  sudo docker cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
+  docker cp kmip:/opt/certs/root_certificate.pem "$HOME/certs/"
+  docker cp kmip:/opt/certs/client_key_jane_doe.pem "$HOME/certs/"
+  docker cp kmip:/opt/certs/client_certificate_jane_doe.pem "$HOME/certs/"
 
   kmip_server_address="0.0.0.0"
   kmip_server_port=5696
-  kmip_client_ca="/tmp/certs/client_certificate_jane_doe.pem"
-  kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
-  kmip_server_ca="/tmp/certs/root_certificate.pem"
+  kmip_client_ca="$HOME/certs/client_certificate_jane_doe.pem"
+  kmip_client_key="$HOME/certs/client_key_jane_doe.pem"
+  kmip_server_ca="$HOME/certs/root_certificate.pem"
 
   # Sleep for 30 sec to fully initialize the KMIP server
   sleep 30

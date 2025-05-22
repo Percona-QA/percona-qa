@@ -36,7 +36,42 @@ cleanup() {
   $XTRABACKUP_DIR/bin/xbcloud delete --storage=s3 --s3-access-key=admin --s3-secret-key=password --s3-endpoint=http://localhost:9000 --s3-bucket=my-bucket --parallel=64 inc1 >> $LOGDIR/cleanup.log 2>&1
   $XTRABACKUP_DIR/bin/xbcloud delete --storage=s3 --s3-access-key=admin --s3-secret-key=password --s3-endpoint=http://localhost:9000 --s3-bucket=my-bucket --parallel=64 inc2 >> $LOGDIR/cleanup.log 2>&1
   $XTRABACKUP_DIR/bin/xbcloud delete --storage=s3 --s3-access-key=admin --s3-secret-key=password --s3-endpoint=http://localhost:9000 --s3-bucket=my-bucket --parallel=64 inc3 >> $LOGDIR/cleanup.log 2>&1
+
 }
+
+cleanup_exit() {
+  echo "Cleaning up at Exit..."
+
+    IMAGE_NAMES=("mohitpercona/kmip:latest" "minio/minio:latest")
+    for image in "${IMAGE_NAMES[@]}"; do
+    # Find containers using the image
+    containers=$(docker ps -a -q --filter ancestor="$image")
+
+    # Stop and remove those containers
+    if [ -n "$containers" ]; then
+      echo "Removing containers using image: $image"
+      docker rm -f $containers
+    fi
+
+    # Remove the image
+    if docker images -q "$image" > /dev/null 2>&1; then
+      echo "Removing image: $image"
+      docker rmi -f "$image"
+    fi
+    done
+
+    if [ -d "$HOME/certs/" ]; then
+      rm -rf "$HOME/certs/"
+    fi
+    if [ -n "$(ls "$PS_DIR"/lib/plugin/component_keyring*.cnf 2>/dev/null)" ]; then
+      rm -f "$PS_DIR"/lib/plugin/component_keyring*.cnf
+    fi
+    if [ -f "$PS_DIR/mysqld.my" ]; then
+      rm -f "$PS_DIR/mysqld.my"
+    fi
+}
+
+trap cleanup_exit EXIT INT TERM
 
 start_minio() {
     # Check if MinIO is already running
@@ -83,22 +118,33 @@ start_minio() {
 
 # Set Kmip configuration
 setup_kmip() {
-  # Kill and existing kmip server
-  sudo pkill -9 kmip
+  # Remove existing container if any
+  docker rm -f kmip 2>/dev/null || true
+
+  # Remove the image (only if not used by any other container)
+  docker rmi mohitpercona/kmip:latest 2>/dev/null || true
+
   # Start KMIP server
-  sleep 5
-  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
-  if [ -d /tmp/certs ]; then
+  docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
+  sleep 10
+  if [ -d "$HOME/certs" ]; then
     echo "certs directory exists"
-    rm -rf /tmp/certs
-    mkdir /tmp/certs
+    rm -rf "$HOME/certs"
+    mkdir "$HOME/certs"
   else
     echo "does not exist. creating certs dir"
-    mkdir /tmp/certs
+    mkdir "$HOME/certs"
   fi
-  sudo docker cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
+  docker cp kmip:/opt/certs/root_certificate.pem "$HOME/certs"
+  docker cp kmip:/opt/certs/client_key_jane_doe.pem "$HOME/certs"
+  docker cp kmip:/opt/certs/client_certificate_jane_doe.pem "$HOME/certs"
+
+  kmip_server_address="0.0.0.0"
+  kmip_server_port=5696
+  kmip_client_ca="$HOME/certs/client_certificate_jane_doe.pem"
+  kmip_client_key="$HOME/certs/client_key_jane_doe.pem"
+  kmip_server_ca="$HOME/certs/root_certificate.pem"
+
 
   kmip_server_address="0.0.0.0"
   kmip_server_port=5696
@@ -111,9 +157,6 @@ setup_kmip() {
       "server_addr": "$kmip_server_address", "server_port": "$kmip_server_port", "client_ca": "$kmip_client_ca", "client_key": "$kmip_client_key", "server_ca": "$kmip_server_ca"
     }
 EOF
-
-  # Sleep for 30 sec to fully initialize the KMIP server
-  sleep 30
 }
 
 xbcloud_put() {
@@ -153,7 +196,7 @@ init_datadir() {
       "components": "file://component_keyring_file"
     }' > "$PS_DIR/bin/mysqld.my"
 
-    cat > "$PS_DIR/component_keyring_file.cnf" <<-EOFL
+    cat > "$PS_DIR/lib/plugin/component_keyring_file.cnf" <<-EOFL
     {
        "components": "file://component_keyring_file",
        "component_keyring_file_data": "${PS_DIR}/keyring"
@@ -349,7 +392,7 @@ echo "=>Preparing Incremental Backup 1"
 if [ $ENCRYPTION -eq 0 ]; then
   $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target-dir=$BACKUP_DIR/full --incremental-dir=$BACKUP_DIR/inc1 --core-file > $LOGDIR/prepare_inc1.log 2>&1
 else
-  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target-dir=$BACKUP_DIR/full --keyring_file_data=$PS_DIR/mykey --incremental-dir=$BACKUP_DIR/inc1 --core-file > $LOGDIR/prepare_inc1.log 2>&1
+  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target-dir=$BACKUP_DIR/full --component-keyring-config="$keyring_filename" --incremental-dir=$BACKUP_DIR/inc1 --core-file > $LOGDIR/prepare_inc1.log 2>&1
 fi
 echo "..Successful"
 
@@ -357,7 +400,7 @@ echo "=>Preparing Incremental Backup 2"
 if [ $ENCRYPTION -eq 0 ]; then
   $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target-dir=$BACKUP_DIR/full --incremental-dir=$BACKUP_DIR/inc2 --core-file > $LOGDIR/prepare_inc2.log 2>&1
 else
-  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target-dir=$BACKUP_DIR/full --keyring_file_data=$PS_DIR/mykey --incremental-dir=$BACKUP_DIR/inc2 --core-file > $LOGDIR/prepare_inc2.log 2>&1
+  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target-dir=$BACKUP_DIR/full --component-keyring-config="$keyring_filename" --incremental-dir=$BACKUP_DIR/inc2 --core-file > $LOGDIR/prepare_inc2.log 2>&1
 fi
 echo "..Successful"
 
@@ -365,7 +408,7 @@ echo "=>Preparing Incremental Backup 3"
 if [ $ENCRYPTION -eq 0 ]; then
   $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --target-dir=$BACKUP_DIR/full --incremental-dir=$BACKUP_DIR/inc3 --core-file > $LOGDIR/prepare_inc3.log 2>&1
 else
-  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --target-dir=$BACKUP_DIR/full --keyring_file_data=$PS_DIR/mykey --incremental-dir=$BACKUP_DIR/inc3 --core-file > $LOGDIR/prepare_inc3.log 2>&1
+  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --target-dir=$BACKUP_DIR/full --component-keyring-config="$keyring_filename" --incremental-dir=$BACKUP_DIR/inc3 --core-file > $LOGDIR/prepare_inc3.log 2>&1
 fi
 echo "..Successful"
 }
@@ -598,7 +641,7 @@ fi
 echo "..Successful"
 
 echo "Copy the backup in datadir"
-$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back5.log 2>&1
+$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.log 2>&1
 start_server
 
 
@@ -643,5 +686,5 @@ fi
 echo "..Successful"
 
 echo "Copy the backup in datadir"
-$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.log 2>&1
+$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR --datadir=$DATADIR --core-file > $LOGDIR/copy_back7.log 2>&1
 start_server
