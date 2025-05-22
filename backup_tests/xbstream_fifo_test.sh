@@ -148,9 +148,9 @@ setup_kmip() {
 
   kmip_server_address="0.0.0.0"
   kmip_server_port=5696
-  kmip_client_ca="/tmp/certs/client_certificate_jane_doe.pem"
-  kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
-  kmip_server_ca="/tmp/certs/root_certificate.pem"
+  kmip_client_ca="$HOME/certs/client_certificate_jane_doe.pem"
+  kmip_client_key="$HOME/certs/client_key_jane_doe.pem"
+  kmip_server_ca="$HOME/certs/root_certificate.pem"
 
   cat > "$PS_DIR/lib/plugin/component_keyring_kmip.cnf" <<-EOF
     {
