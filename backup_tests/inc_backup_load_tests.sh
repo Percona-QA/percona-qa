@@ -87,8 +87,7 @@ setup_kmip() {
 
   if [ -d "$HOME/certs/" ]; then
     echo "certs directory exists"
-    rm -rf "$HOME/certs/"
-    mkdir "$HOME/certs/"
+    rm -rf $HOME/certs/*
   else
     echo "does not exist. creating certs dir"
     mkdir "$HOME/certs/"
