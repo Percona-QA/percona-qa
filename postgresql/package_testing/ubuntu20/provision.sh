@@ -52,3 +52,6 @@ EOF
 
 # Stop server
 sudo systemctl stop postgresql
+
+# Uninstall PG 17.5
+sudo apt-get -y remove percona-postgresql-17

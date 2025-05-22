@@ -11,7 +11,6 @@ sudo percona-release enable-only ppg-17.5 testing
 sudo dnf module disable postgresql -y
 sudo dnf clean all
 sudo dnf makecache
-#sudo dnf install -y percona-postgresql17 percona-postgresql17-contrib percona-postgresql17-server
 sudo dnf install -y percona-postgresql17-contrib percona-postgresql17-server
 # Initialize Datadir
 sudo /usr/pgsql-17/bin/postgresql-17-setup initdb
@@ -55,3 +54,6 @@ EOF
 
 # Stop server
 sudo systemctl stop postgresql-17
+
+# Uninstall PG 17.5
+sudo dnf remove -y percona-postgresql17-contrib percona-postgresql17-server
