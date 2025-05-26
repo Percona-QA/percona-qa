@@ -4,13 +4,17 @@ set -e
 username=postgres
 server_version=17.5
 
-# Install required packages
-sudo apt-get update
-sudo apt-get install -y wget gnupg lsb-release curl build-essential checkinstall zlib1g-dev
+# Create postgres user if not exists
+if ! id "$username" &>/dev/null; then
+    sudo useradd "$username" -m
+fi
 
-# libreadline workaround for PG-1618
-sudo apt-get install -y libreadline-dev libreadline8t64
+# Make sure base directory exists
+sudo chmod o+rx /home/vagrant
+mkdir pg_tarball
+sudo chown $username:$username pg_tarball
 
+# Oracle Linux 8 comes with OpenSSL 1.1.1 by default and requires OpenSSL 3.0 to be installed explicitly
 current_openssl_version=$($(command -v openssl) version | awk '{print $2}')
 echo "Current OpenSSL version: $current_openssl_version"
 if [[ "$current_openssl_version" == 1.1.* ]]; then
@@ -19,14 +23,12 @@ if [[ "$current_openssl_version" == 1.1.* ]]; then
     tar -xzf openssl-3.0.13.tar.gz
     pushd openssl-3.0.13
     echo "Installing OpenSSL 3.0"
-    # Configure with custom install path (to avoid replacing system OpenSSL)
     ./Configure --prefix=/opt/openssl-3.0 --openssldir=/opt/openssl-3.0 shared zlib > /dev/null 2>&1
     # Build and install
     make -j$(nproc) > /dev/null 2>&1
     sudo make install > /dev/null 2>&1
     popd
 elif [[ "$current_openssl_version" == 3.* ]]; then
-    echo "Do nothing, we have ssl 3"
     echo "Download OpenSSL 1.1.1 source"
     wget -q https://www.openssl.org/source/old/1.1.1/openssl-1.1.1w.tar.gz
     tar -xzf openssl-1.1.1w.tar.gz
@@ -39,24 +41,14 @@ elif [[ "$current_openssl_version" == 3.* ]]; then
     popd
 fi
 
-# Create postgres user if not exists
-if ! id "$username" &>/dev/null; then
-  sudo useradd "$username" -m
-fi
-
-# Make sure base directory exists
-sudo chmod o+rx /home/vagrant
-mkdir pg_tarball
-sudo chown -R $username:$username pg_tarball
-
 # ----------- FUNCTION DEFINITION -------------
 run_tests() {
-  local ssl_version=$1
-  local workdir="pg_tarball/${ssl_version}"
-  local tarball_name="percona-postgresql-${server_version}-${ssl_version}-linux-x86_64.tar.gz"
-  local testing_repo_url="https://downloads.percona.com/downloads/TESTING/pg_tarballs-${server_version}/${tarball_name}"
+    local ssl_version=$1
+    local workdir="pg_tarball/${ssl_version}"
+    local tarball_name="percona-postgresql-${server_version}-${ssl_version}-linux-x86_64.tar.gz"
+    local testing_repo_url="https://downloads.percona.com/downloads/TESTING/pg_tarballs-${server_version}/${tarball_name}"
 
-  sudo -u "$username" -s /bin/bash <<EOF
+    sudo -u "$username" -s /bin/bash <<EOF
 set -e
 
 if [ $ssl_version=ssl3 ]; then

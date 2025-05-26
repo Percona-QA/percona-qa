@@ -6,30 +6,38 @@ server_version=17.5
 
 # Install required packages
 sudo apt-get update
-sudo apt-get install -y wget gnupg lsb-release curl
+sudo apt-get install -y wget gnupg lsb-release curl build-essential checkinstall zlib1g-dev
 
-# Symlink workaround for PG-1618
-sudo apt-get install -y libreadline-dev
-sudo ln -sf /lib/x86_64-linux-gnu/libreadline.so.8 /lib/x86_64-linux-gnu/libreadline.so.7
+# libreadline workaround for PG-1618
+sudo apt-get install -y libreadline-dev libreadline8t64
 
-# Debian11 comes with OpenSSL1.1.1 by default and does not have OpenSSL3.0. To test tarballs built with ssl3
-# we need to install OpenSSL 3.0 explicitly on Debian11
-# Install dependencies
-sudo apt-get install -y build-essential checkinstall zlib1g-dev
-
-# Download OpenSSL 3.0 source (replace with latest version if needed)
-wget https://www.openssl.org/source/openssl-3.0.13.tar.gz
-tar -xzf openssl-3.0.13.tar.gz
-pushd openssl-3.0.13
-
-# Configure with custom install path (to avoid replacing system OpenSSL)
-./Configure --prefix=/opt/openssl-3.0 --openssldir=/opt/openssl-3.0 shared zlib
-
-# Build and install
-make -j$(nproc)
-sudo make install
-popd
-
+current_openssl_version=$($(command -v openssl) version | awk '{print $2}')
+echo "Current OpenSSL version: $current_openssl_version"
+if [[ "$current_openssl_version" == 1.1.* ]]; then
+    echo "Download OpenSSL 3.0 source"
+    wget -q https://www.openssl.org/source/openssl-3.0.13.tar.gz
+    tar -xzf openssl-3.0.13.tar.gz
+    pushd openssl-3.0.13
+    echo "Installing OpenSSL 3.0"
+    # Configure with custom install path (to avoid replacing system OpenSSL)
+    ./Configure --prefix=/opt/openssl-3.0 --openssldir=/opt/openssl-3.0 shared zlib > /dev/null 2>&1
+    # Build and install
+    make -j$(nproc) > /dev/null 2>&1
+    sudo make install > /dev/null 2>&1
+    popd
+elif [[ "$current_openssl_version" == 3.* ]]; then
+    echo "Do nothing. we have ss3"
+    echo "Download OpenSSL 1.1.1 source"
+    wget -q https://www.openssl.org/source/old/1.1.1/openssl-1.1.1w.tar.gz
+    tar -xzf openssl-1.1.1w.tar.gz
+    pushd openssl-1.1.1w
+    echo "Installing OpenSSL 1.1.1"
+    sudo ./Configure linux-x86_64 --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1 shared zlib > /dev/null 2>&1
+    # Build and install
+    sudo make -j$(nproc) > /dev/null 2>&1
+    sudo make install > /dev/null 2>&1
+    popd
+fi
 
 # Create postgres user if not exists
 if ! id "$username" &>/dev/null; then
@@ -37,7 +45,8 @@ if ! id "$username" &>/dev/null; then
 fi
 
 # Make sure base directory exists
-mkdir -p pg_tarball
+sudo chmod o+rx /home/vagrant
+mkdir pg_tarball
 sudo chown -R $username:$username pg_tarball
 
 # ----------- FUNCTION DEFINITION -------------
@@ -54,7 +63,7 @@ if [ $ssl_version=ssl3 ]; then
   export LD_LIBRARY_PATH=/opt/openssl-3.0/lib64
 fi
 
-mkdir -p "$workdir"
+mkdir "$workdir"
 wget -q -P "$workdir" "$testing_repo_url"
 
 cd "$workdir"
