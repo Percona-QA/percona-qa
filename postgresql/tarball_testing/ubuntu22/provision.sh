@@ -9,7 +9,7 @@ sudo apt-get update
 sudo apt-get install -y wget gnupg lsb-release curl build-essential checkinstall zlib1g-dev
 
 # libreadline workaround for PG-1618
-sudo apt-get install -y libreadline-dev libreadline8t64
+sudo apt-get install -y libreadline-dev
 
 current_openssl_version=$($(command -v openssl) version | awk '{print $2}')
 echo "Current OpenSSL version: $current_openssl_version"
@@ -59,8 +59,10 @@ run_tests() {
   sudo -u "$username" -s /bin/bash <<EOF
 set -e
 
-if [ $ssl_version=ssl3 ]; then
+if [ $ssl_version == "ssl3" ]; then
   export LD_LIBRARY_PATH=/opt/openssl-3.0/lib64
+elif [ $ssl_version == "ssl1.1" ]; then
+  export LD_LIBRARY_PATH=/opt/openssl-1.1/lib
 fi
 
 mkdir "$workdir"

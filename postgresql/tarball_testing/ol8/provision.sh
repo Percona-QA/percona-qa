@@ -9,6 +9,8 @@ if ! id "$username" &>/dev/null; then
     sudo useradd "$username" -m
 fi
 
+sudo dnf install -y readline-devel
+
 # Make sure base directory exists
 sudo chmod o+rx /home/vagrant
 mkdir pg_tarball
@@ -51,8 +53,10 @@ run_tests() {
     sudo -u "$username" -s /bin/bash <<EOF
 set -e
 
-if [ $ssl_version=ssl3 ]; then
+if [ $ssl_version == "ssl3" ]; then
   export LD_LIBRARY_PATH=/opt/openssl-3.0/lib64
+elif [ $ssl_version == "ssl1.1" ]; then
+  export LD_LIBRARY_PATH=/opt/openssl-1.1/lib
 fi
 
 mkdir "$workdir"
