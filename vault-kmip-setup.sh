@@ -76,7 +76,7 @@ start_vault_container() {
       docker run -d \
         --name "${CONTAINER_NAME}" \
         -e VAULT_DISABLE_MLOCK=true \
-	      --cap-add IPC_LOCK \
+        --cap-add IPC_LOCK \
         -p 8200:8200 \
         -p 8201:8201 \
         -p 5696:5696 \
@@ -174,9 +174,9 @@ verify_kmip_connection() {
 
   # Add timeout and better error handling
   output=$(timeout $timeout openssl s_client -connect 127.0.0.1:5696 \
-    -CAfile "${HOME}"/vault/certs/vault-kmip-ca.pem \
-    -cert "${HOME}"/vault/certs/mysql-client-cert.pem \
-    -key "${HOME}"/vault/certs/mysql-client-key.pem \
+    -CAfile "${CERTS_DIR}/vault-kmip-ca.pem" \
+    -cert "${CERTS_DIR}/mysql-client-cert.pem" \
+    -key "${CERTS_DIR}/mysql-client-key.pem" \
     -showcerts \
     -status \
     < /dev/null 2>&1)
