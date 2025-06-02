@@ -13,7 +13,7 @@ start_vault_server() {
     mkdir -p "$vault_dir"
     rm -rf "$vault_dir"/*
 
-    "$script_dir/vault_test_setup.sh" \
+    "$script_dir/helper_scripts/vault_test_setup.sh" \
         --workdir="$vault_dir" \
         --setup-pxc-mount-points \
         --use-ssl > /dev/null 2>&1
