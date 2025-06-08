@@ -257,7 +257,7 @@ if [[ ${GEN_MYSQL_CONFIG} -eq 1 ]]; then
   echo -e "\n===== Generating MySQL config file ====="
   echo "Keyring vault plugin config file location: ${WORKDIR}/keyring_vault_ps.cnf"
   echo "vault_url = ${VAULT_PROTOCOL}://${VAULT_IP}:${VAULT_PORT}" > ${WORKDIR}/keyring_vault_ps.cnf
-  echo "secret_mount_point = secret" >> ${WORKDIR}/keyring_vault_ps.cnf
+  echo "secret_mount_point = secret_v2" >> ${WORKDIR}/keyring_vault_ps.cnf
   echo "token = ${ROOT_TOKEN}" >> ${WORKDIR}/keyring_vault_ps.cnf
   if [[ ${USE_SSL} -eq 1 ]]; then
     echo "vault_ca = ${WORKDIR}/certificates/root.cer" >> ${WORKDIR}/keyring_vault_ps.cnf
