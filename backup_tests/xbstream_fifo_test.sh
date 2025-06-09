@@ -104,7 +104,7 @@ start_minio() {
     echo -n "Waiting for MinIO to become ready"
     for i in {1..20}; do
         if curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/minio/health/ready | grep -q 200; then
-            echo -n "\n MinIO is ready!"
+            echo -e "\n MinIO is ready!\n"
             return
         fi
         echo -n "."
