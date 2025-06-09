@@ -96,7 +96,7 @@ start_minio() {
                 -v ~/minio/data:/data \
                 -e "MINIO_ROOT_USER=admin" \
                 -e "MINIO_ROOT_PASSWORD=password" \
-                quay.io/minio/minio server /data --console-address ":9001"
+                minio/minio:latest server /data --console-address ":9001"
         fi
     fi
 
