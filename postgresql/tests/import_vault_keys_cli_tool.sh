@@ -44,11 +44,10 @@ EOF
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $DATA_DIR start 
-    $INSTALL_DIR/bin/psql  -d postgres -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
 }
 
-restart_server() {
-    $INSTALL_DIR/bin/pg_ctl -D $DATA_DIR restart
+stop_server() {
+    $INSTALL_DIR/bin/pg_ctl -D $DATA_DIR stop
 }
 
 start_vault_server() {
@@ -88,6 +87,7 @@ initialize_server
 start_server
 start_vault_server
 
+$INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde;"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_database_key_provider_vault_v2('local_vault_provider', '$vault_url', '$secret_mount_point', '$filename', '$vault_ca')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_database_key_provider('local_key','local_vault_provider')"
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE TABLE t1(a INT) USING tde_heap"
@@ -100,18 +100,18 @@ mkdir -p $EXPORT_DIR
 export VAULT_ADDR=$vault_url
 export VAULT_TOKEN=$token
 
-# Read list from vault
+# Read list from vault and Export Keys
 $script_dir/vault/vault kv list -format=json -tls-skip-verify $secret_mount_point/ | jq -r '.[]' | while read -r key; do
 echo "Exporting secret/$key"
 $script_dir/vault/vault kv get -format=json -tls-skip-verify "$secret_mount_point/$key" > "$EXPORT_DIR/$key.json"
 done
 
-
+# Restart new Vault server with new Token
 start_vault_server
-echo "Restarting PG server"
-restart_server
-echo "It should fail to fetch data"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1"
+
+echo "Stop PG server"
+stop_server
+
 
 export VAULT_ADDR=$vault_url
 export VAULT_TOKEN=$token
@@ -134,10 +134,9 @@ done
 
 echo "✅ Import complete."
 
-echo "It should still fail to fetch table data"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1"
+CMD="$INSTALL_DIR/bin/pg_tde_change_key_provider -D '$DATA_DIR' 5 local_vault_provider vault-v2 '$vault_url' '$secret_mount_point' '$filename' '$vault_ca'"
+echo "Running: $CMD"
+eval "$CMD"
 
-echo "SELECT pg_tde_change_database_key_provider_vault_v2('local_vault_provider', '$vault_url', '$secret_mount_point', '$filename', '$vault_ca')"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_change_database_key_provider_vault_v2('local_vault_provider', '$vault_url', '$secret_mount_point', '$filename', '$vault_ca')"
-echo "Must be successful"
+start_server
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1"

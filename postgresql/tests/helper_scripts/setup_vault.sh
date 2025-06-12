@@ -15,7 +15,6 @@ start_vault_server() {
 
     "$script_dir/helper_scripts/vault_test_setup.sh" \
         --workdir="$vault_dir" \
-        --setup-pxc-mount-points \
         --use-ssl > /dev/null 2>&1
 
     if [[ ! -f "$config_file" ]]; then
@@ -23,11 +22,16 @@ start_vault_server() {
         return 1
     fi
 
+    if [ -f /tmp/token_file ]; then
+        rm /tmp/token_file
+    fi
+
     export vault_url=$(grep 'vault_url' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     export secret_mount_point=$(grep 'secret_mount_point' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     export token=$(grep 'token' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     export vault_ca=$(grep 'vault_ca' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
 
+    echo $token > /tmp/token_file
+
     echo ".. Vault server started"
 }
-
