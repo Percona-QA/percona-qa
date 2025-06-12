@@ -1,0 +1,189 @@
+import requests
+import os
+import random
+import string
+import argparse
+from urllib.parse import quote
+from urllib3.exceptions import InsecureRequestWarning
+
+# Disable SSL warnings for self-signed certificates
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+def generate_secure_password(length=12):
+    """Generate a secure password with at least one of each character type"""
+    special_chars = "!@#$%^&*()-_=+"
+    password_chars = (
+        random.choice(string.ascii_uppercase) +
+        random.choice(string.ascii_lowercase) +
+        random.choice(string.digits) +
+        random.choice(special_chars) +
+        ''.join(random.choices(string.ascii_letters + string.digits + special_chars, k=length - 4))
+    )
+    password_list = list(password_chars)
+    random.shuffle(password_list)
+    return ''.join(password_list)
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='KMIP Client Setup for CipherTrust Manager')
+parser.add_argument('--admin-pass', required=True, help='Password for admin user')
+parser.add_argument('--ip', required=True, help='CTM IP address')
+parser.add_argument('--username', default='testmysql', help='Username to create (default: testmysql)')
+parser.add_argument('--client-name', default='mysql-client', help='KMIP client name (default: mysql-client)')
+args = parser.parse_args()
+
+# Configuration
+CTM_IP = args.ip
+ADMIN_PASS = args.admin_pass
+USERNAME = args.username
+USER_PASS = generate_secure_password(12)  # Generate secure password
+CLIENT_NAME = args.client_name
+
+# Base URL
+base_url = f"https://{CTM_IP}/api/v1"
+
+def make_request(method, endpoint, headers=None, data=None):
+    """Helper function to make HTTP requests"""
+    url = f"{base_url}{endpoint}"
+    response = requests.request(
+        method=method,
+        url=url,
+        headers=headers,
+        json=data,
+        verify=False  # Skip SSL verification (equivalent to -k flag)
+    )
+    return response
+
+# Get authentication token
+print("Getting authentication token...")
+auth_data = {
+    "name": "admin",
+    "password": ADMIN_PASS,
+    "validity_period": 86400
+}
+
+auth_response = make_request("POST", "/auth/tokens/", data=auth_data)
+if auth_response.status_code != 200:
+    raise Exception(f"Authentication failed. Status: {auth_response.status_code}")
+
+jwt_token = auth_response.json()["jwt"]
+print("Authentication successful")
+
+# Set up headers with JWT token
+headers = {
+    "Authorization": f"Bearer {jwt_token}",
+    "Content-Type": "application/json"
+}
+
+# Create user
+print(f"Creating user: {USERNAME}")
+user_data = {
+    "username": USERNAME,
+    "password": USER_PASS,
+    "email": f"{USERNAME}@example.com"
+}
+
+user_response = make_request("POST", "/usermgmt/users/", headers=headers, data=user_data)
+
+if user_response.status_code == 201 or user_response.status_code == 200:
+    user_response_json = user_response.json()
+    user_id = user_response_json["user_id"]
+    print("User created successfully")
+elif user_response.status_code == 409:  # Conflict - user already exists
+    print("User already exists, fetching user ID...")
+    # Get user list to find the user ID
+    users_response = make_request("GET", "/usermgmt/users/", headers=headers)
+    users_list = users_response.json()
+    for user in users_list.get("resources", []):
+        if user.get("username") == USERNAME:
+            user_id = user.get("user_id")
+            print("Found existing user")
+            break
+    else:
+        raise Exception(f"Could not find user ID for {USERNAME}")
+else:
+    raise Exception(f"Failed to create user. Status: {user_response.status_code}")
+
+# Assign to Key Admins group
+print("Assigning user to Key Admins group...")
+# URL encode the user_id since it contains special characters like '|'
+encoded_user_id = quote(user_id, safe='')
+group_response = make_request("POST", f"/usermgmt/groups/Key%20Admins/users/{encoded_user_id}", headers=headers)
+
+if group_response.status_code not in [200, 201, 204]:
+    print(f"Warning: Failed to add user to Key Admins group. Status: {group_response.status_code}")
+else:
+    print("Successfully added user to Key Admins group")
+
+# Create profile for KMIP
+print("Creating KMIP profile...")
+profile_data = {
+    "name": "mysql",
+    "subject_dn_field_to_modify": "UID",
+    "properties": {
+        "cert_user_field": "CN"
+    },
+    "device_credential": {}
+}
+
+profile_response = make_request("POST", "/kmip/kmip-profiles", headers=headers, data=profile_data)
+
+# Register the token for KMIP
+print("Registering KMIP token...")
+token_data = {
+    "name_prefix": "mysql",
+    "profile_name": "mysql",
+    "max_clients": 100
+}
+
+token_response = make_request("POST", "/kmip/regtokens/", headers=headers, data=token_data)
+if token_response.status_code not in [200, 201]:
+    raise Exception(f"Token registration failed. Status: {token_response.status_code}")
+
+kmip_token = token_response.json()["token"]
+print("KMIP token registered successfully")
+
+# Adjust Interface for MySQL Auth/Cert mode
+print("Adjusting KMIP interface mode...")
+interface_data = {"mode": "tls-pw-opt"}
+interface_response = make_request("PATCH", "/configs/interfaces/kmip", headers=headers, data=interface_data)
+
+# Create the KMIP Client setup using the token
+print(f"Creating KMIP client: {CLIENT_NAME}")
+client_data = {
+    "name": CLIENT_NAME,
+    "reg_token": kmip_token
+}
+
+client_response = make_request("POST", "/kmip/kmip-clients", headers=headers, data=client_data)
+
+if client_response.status_code in [200, 201]:
+    client_resp_json = client_response.json()
+    print("KMIP client created successfully")
+elif client_response.status_code == 409:  # Conflict - client already exists
+    raise Exception(f"KMIP client '{CLIENT_NAME}' already exists. Please change the CLIENT_NAME variable in the script and try again.")
+else:
+    raise Exception(f"KMIP client creation failed. Status: {client_response.status_code}")
+
+# Save certificate files
+print("Saving certificate files...")
+
+# Save private key to mysql-client-key.pem
+with open("mysql-client-key.pem", "w") as key_file:
+    key_file.write(client_resp_json["key"])
+
+# Save certificate to mysql-client-cert.pem
+with open("mysql-client-cert.pem", "w") as cert_file:
+    cert_file.write(client_resp_json["cert"])
+
+# Save CA certificate to vault-kmip-ca.pem
+with open("vault-kmip-ca.pem", "w") as ca_file:
+    ca_file.write(client_resp_json["client_ca"])
+
+# Set restrictive permissions on private key file (equivalent to chmod 600)
+os.chmod("mysql-client-key.pem", 0o600)
+
+print("KMIP setup completed successfully!")
+print("Files created:")
+print("- mysql-client-key.pem (private key)")
+print("- mysql-client-cert.pem (client certificate)")
+print("- vault-kmip-ca.pem (CA certificate)")
