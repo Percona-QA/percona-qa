@@ -20,6 +20,7 @@ sudo systemctl restart postgresql
 
 # Test pg_tde
 sudo -u postgres psql <<EOF
+SELECT version();
 CREATE EXTENSION pg_tde;
 SELECT pg_tde_add_global_key_provider_file('global_file_provider','/tmp/keyring.per');
 SELECT pg_tde_add_database_key_provider_file('local_file_provider','/tmp/keyring.per');
