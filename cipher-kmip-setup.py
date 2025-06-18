@@ -74,6 +74,20 @@ headers = {
     "Content-Type": "application/json"
 }
 
+# Get license information
+license_response = make_request("GET", "/licensing/trials/", headers=headers)
+license_data = license_response.json()['resources'][0]
+print(license_data)
+
+license_data = license_response.json()['resources'][0]
+license_status = license_data['status']
+license_id = license_data['id']
+
+# Activate only if new instance or deactivated state
+if license_status in ["deactivated", "available"]:
+    activate_response = make_request("POST", f"/licensing/trials/{license_id}/activate", headers=headers)
+    activate_response.raise_for_status()
+
 # Create user
 print(f"Creating user: {USERNAME}")
 user_data = {
