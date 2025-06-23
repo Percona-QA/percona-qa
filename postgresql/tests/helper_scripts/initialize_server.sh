@@ -3,8 +3,8 @@
 initialize_server() {
     # Allow overriding via env variables or use defaults
     local port="${PORT:-5432}"
-    local data_dir="${PGDATA:-$HOME/postgresql/pg_tde/bld_tde/install/data}"
-    local install_dir="${INSTALL_DIR:-$HOME/postgresql/pg_tde/bld_tde/install}"
+    local install_dir="${INSTALL_DIR:-$HOME/postgresql/pg_tde/17.5.2/install}"
+    local data_dir="${PGDATA:-$HOME/postgresql/pg_tde/bld_17.5.2/install/data}"
 
     # Kill PostgreSQL if running on common ports (5432–5434)
     local pg_pids

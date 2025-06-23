@@ -27,10 +27,15 @@ SELECT version();
 CREATE EXTENSION pg_tde;
 SELECT pg_tde_add_global_key_provider_file('global_file_provider','/tmp/keyring.per');
 SELECT pg_tde_add_database_key_provider_file('local_file_provider','/tmp/keyring.per');
+SELECT pg_tde_create_key_using_global_key_provider('global_database_key', 'global_file_provider');
+SELECT pg_tde_create_key_using_global_key_provider('server_key', 'global_file_provider');
+SELECT pg_tde_create_key_using_global_key_provider('default_key', 'global_file_provider');
+SELECT pg_tde_create_key_using_database_key_provider('database_key', 'local_file_provider');
+SELECT pg_tde_set_key_using_database_key_provider('database_key', 'local_file_provider');
+SELECT pg_tde_set_key_using_global_key_provider('global_database_key', 'global_file_provider');
 SELECT pg_tde_set_server_key_using_global_key_provider('server_key', 'global_file_provider');
-SELECT pg_tde_set_key_using_global_key_provider('database_key1', 'global_file_provider');
-SELECT pg_tde_set_key_using_database_key_provider('database_key2', 'local_file_provider');
-SELECT pg_tde_set_default_key_using_global_key_provider('database_key3', 'global_file_provider');
+SELECT pg_tde_set_default_key_using_global_key_provider('default_key', 'global_file_provider');
+
 CREATE TABLE t1(id INT, data TEXT) USING tde_heap;
 INSERT INTO t1 VALUES (1, 'secret');
 SELECT * FROM t1;

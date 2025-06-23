@@ -81,6 +81,7 @@ sed -i "1i shared_preload_libraries = 'pg_tde'" data/postgresql.conf
 ./bin/pg_ctl -D data start
 
 # pg_tde Tests
+./bin/psql -d postgres -c "SELECT version()"
 ./bin/psql -d postgres -c "CREATE EXTENSION pg_tde"
 ./bin/psql -d postgres -c "SELECT pg_tde_add_global_key_provider_file('global_file_provider','/tmp/keyring.per')"
 ./bin/psql -d postgres -c "SELECT pg_tde_add_database_key_provider_file('local_file_provider','/tmp/keyring.per')"
