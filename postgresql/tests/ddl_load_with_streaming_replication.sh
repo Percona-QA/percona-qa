@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_17.5.2/install
 export PGDATA=$INSTALL_DIR/primary_data
 export PGDATA2=$INSTALL_DIR/replica_data
 export LOG_FILE=$PGDATA/server.log
@@ -24,6 +24,7 @@ setup_db() {
     $INSTALL_DIR/bin/psql  -d postgres -c "CREATE DATABASE $DB_NAME"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -c "CREATE EXTENSION pg_tde"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
     for i in $(seq 1 $TOTAL_TABLES); do
        TABLE_NAME="${TABLE_PREFIX}_${i}"
@@ -159,7 +160,8 @@ rotate_master_key(){
        sleep 5
        RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
        echo "Rotating master key: principal_key_test$RAND_KEY"
-       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
+       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
     done
 }
 
@@ -261,6 +263,3 @@ for i in {1..5}; do
 done
 
 echo "Multi-table DDL stress test completed."
-
-# Cleanup
-
