@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_17.5.2/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -86,7 +86,8 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating Global master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
     done
 }
 
@@ -117,7 +118,8 @@ rotate_master_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continue..."
+        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continue..."
+        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continue..."
     done
 }
 
@@ -137,8 +139,10 @@ enable_tde_and_recreate_load() {
     $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"CREATE DATABASE $DB_NAME;"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_add_database_key_provider_file('local_key_provider','$PRIMARY_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_create_key_using_database_key_provider('local_key','local_key_provider');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('local_key','local_key_provider');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_add_global_key_provider_file('global_key_provider','$PRIMARY_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_create_key_using_global_key_provider('global_key','global_key_provider');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 
     echo "Create some tables on Primary Node"
