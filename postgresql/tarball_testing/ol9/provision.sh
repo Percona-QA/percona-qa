@@ -76,14 +76,21 @@ sed -i "1i shared_preload_libraries = 'pg_tde'" data/postgresql.conf
 ./bin/pg_ctl -D data start
 
 # pg_tde Tests
+rm -rf /tmp/keyring.per
 ./bin/psql -d postgres -c "SELECT version()"
 ./bin/psql -d postgres -c "CREATE EXTENSION pg_tde"
 ./bin/psql -d postgres -c "SELECT pg_tde_add_global_key_provider_file('global_file_provider','/tmp/keyring.per')"
 ./bin/psql -d postgres -c "SELECT pg_tde_add_database_key_provider_file('local_file_provider','/tmp/keyring.per')"
+
+./bin/psql -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('global_database_key', 'global_file_provider')"
+./bin/psql -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('server_key', 'global_file_provider')"
+./bin/psql -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('default_key', 'global_file_provider')"
+./bin/psql -d postgres -c "SELECT pg_tde_create_key_using_database_key_provider('database_key', 'local_file_provider')"
+
+./bin/psql -d postgres -c "SELECT pg_tde_set_key_using_database_key_provider('database_key', 'local_file_provider')"
+./bin/psql -d postgres -c "SELECT pg_tde_set_key_using_global_key_provider('global_database_key', 'global_file_provider')"
 ./bin/psql -d postgres -c "SELECT pg_tde_set_server_key_using_global_key_provider('server_key', 'global_file_provider')"
-./bin/psql -d postgres -c "SELECT pg_tde_set_key_using_global_key_provider('database_key1', 'global_file_provider')"
-./bin/psql -d postgres -c "SELECT pg_tde_set_key_using_database_key_provider('database_key2', 'local_file_provider')"
-./bin/psql -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('database_key3', 'global_file_provider')"
+./bin/psql -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('default_key', 'global_file_provider')"
 
 ./bin/psql -d postgres -c "CREATE TABLE t1(id INT, data TEXT) USING tde_heap"
 ./bin/psql -d postgres -c "INSERT INTO t1 VALUES (1, 'secret')"
@@ -99,9 +106,20 @@ sed -i "1i shared_preload_libraries = 'pg_tde'" data/postgresql.conf
 ./bin/psql -d postgres -c "SELECT pg_tde_server_key_info()"
 ./bin/psql -d postgres -c "SELECT pg_tde_default_key_info()"
 ./bin/psql -d postgres -c "SELECT * FROM t1"
+
 ./bin/psql -d postgres -c "SELECT pg_tde_is_encrypted('t1')"
 ./bin/psql -d postgres -c "SHOW pg_tde.wal_encrypt"
-./bin/psql -d postgres -c "DROP EXTENSION pg_tde CASCADE"
+
+./bin/psql -d postgres -c "SELECT pg_tde_delete_key()"
+./bin/psql -d postgres -c "DROP TABLE t1"
+./bin/psql -d postgres -c "SELECT pg_tde_delete_default_key()"
+
+./bin/psql -d postgres -c "ALTER SYSTEM SET pg_tde.wal_encrypt = 'OFF'"
+
+./bin/pg_ctl -D data restart
+
+./bin/psql -d postgres -c "SHOW pg_tde.wal_encrypt"
+./bin/psql -d postgres -c "DROP EXTENSION pg_tde"
 
 EOF
 }
