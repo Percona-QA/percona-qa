@@ -32,6 +32,7 @@ VAULT_BASE="${HOME}/vault"
 CONFIG_DIR="${VAULT_BASE}/config"
 DATA_DIR="${VAULT_BASE}/data"
 LOG_DIR="${VAULT_BASE}/log"
+
 CERTS_DIR="${CERTS_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
 SCRIPT_DIR="$(pwd)"
@@ -191,7 +192,6 @@ configure_kmip() {
 
     jq -r '.data.certificate' /vault/certs/credential.json > /vault/certs/client_certificate.pem
     jq -r '.data.private_key' /vault/certs/credential.json > /vault/certs/client_key.pem
-  "
 }
 
 verify_kmip_connection() {
