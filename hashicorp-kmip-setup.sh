@@ -2,7 +2,7 @@
 set -euo pipefail
 
 VERBOSE=false
-CERT_DIR=""  # Initialize as empty
+CERTS_DIR=""  # Initialize as empty
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -11,11 +11,13 @@ while [[ $# -gt 0 ]]; do
             VERBOSE=true
             shift
             ;;
-        --cert-dir)
-            if [[ -n "$2" && "$2" != -* ]]; then
-                CERT_DIR="$2"
-                shift 2
+        --cert-dir=*)
+            CERT_DIR="${1#*=}"
+            if [[ -z "$CERT_DIR" ]]; then
+                echo "Error: --cert-dir= requires a directory path"
+                exit 1
             fi
+            shift
             ;;
         -*)
             echo "Unknown option: $1"
@@ -36,14 +38,14 @@ CERTS_DIR="${CERTS_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
 SCRIPT_DIR="$(pwd)"
 VAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
-CONTAINER_NAME="vault-enterprise"
+CONTAINER_NAME="kmip_hashicorp"
 
 # Create all necessary directories, and provide permissions for Docker container access.
 mkdir -p "${CONFIG_DIR}" "${DATA_DIR}" "${LOG_DIR}" "${CERTS_DIR}"
-sudo chown -R 100:1000 ${HOME}/vault/data
-sudo chown -R 100:1000 ${HOME}/vault/log
-sudo chown -R 100:1000 ${HOME}/vault/certs
-sudo chown -R 100:1000 ${HOME}/vault/config
+sudo chown -R 100:1000 "${CONFIG_DIR}"
+sudo chown -R 100:1000 "${DATA_DIR}"
+sudo chown -R 100:1000 "${LOG_DIR}"
+sudo chown -R 100:1000 "${CERTS_DIR}"
 
 # Ensure license file exists
 echo "[INFO] Checking for license in working directory..."
@@ -191,6 +193,7 @@ configure_kmip() {
 
     jq -r '.data.certificate' /vault/certs/credential.json > /vault/certs/client_certificate.pem
     jq -r '.data.private_key' /vault/certs/credential.json > /vault/certs/client_key.pem
+    "
 }
 
 verify_kmip_connection() {
