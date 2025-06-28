@@ -11,10 +11,10 @@ while [[ $# -gt 0 ]]; do
             VERBOSE=true
             shift
             ;;
-        --cert-dir=*)
-            CERT_DIR="${1#*=}"
-            if [[ -z "$CERT_DIR" ]]; then
-                echo "Error: --cert-dir= requires a directory path"
+        --cert-dir=*|--certs-dir=*)
+            CERTS="${1#*=}"
+            if [[ -z "$CERTS_DIR" ]]; then
+                echo "Error: --cert-dir= or --certs-dir= requires a directory path"
                 exit 1
             fi
             shift
