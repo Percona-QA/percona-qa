@@ -29,6 +29,8 @@ parser.add_argument('--admin-pass', required=True, help='Password for admin user
 parser.add_argument('--ip', required=True, help='CTM IP address')
 parser.add_argument('--username', default='testmysql', help='Username to create (default: testmysql)')
 parser.add_argument('--client-name', default='mysql-client', help='KMIP client name (default: mysql-client)')
+parser.add_argument('--cert-dir', default='./ciper-kmip', help='Certificate store directory (default: ./certs)')
+parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
 args = parser.parse_args()
 
 # Configuration
@@ -181,23 +183,30 @@ else:
 # Save certificate files
 print("Saving certificate files...")
 
-# Save private key to mysql-client-key.pem
-with open("mysql-client-key.pem", "w") as key_file:
+# Create the certificate directory if it doesn't exist
+os.makedirs(args.cert_dir, exist_ok=True)
+
+# Save private key to client_key.pem
+key_file_path = os.path.join(args.cert_dir, "client_key.pem")
+with open(key_file_path, "w") as key_file:
     key_file.write(client_resp_json["key"])
 
-# Save certificate to mysql-client-cert.pem
-with open("mysql-client-cert.pem", "w") as cert_file:
+# Save certificate to client_certificate.pem
+cert_file_path = os.path.join(args.cert_dir, "client_certificate.pem")
+with open(cert_file_path, "w") as cert_file:
     cert_file.write(client_resp_json["cert"])
 
-# Save CA certificate to vault-kmip-ca.pem
-with open("vault-kmip-ca.pem", "w") as ca_file:
+# Save CA certificate to root_certificate.pem
+ca_file_path = os.path.join(args.cert_dir, "root_certificate.pem")
+with open(ca_file_path, "w") as ca_file:
     ca_file.write(client_resp_json["client_ca"])
 
 # Set restrictive permissions on private key file (equivalent to chmod 600)
-os.chmod("mysql-client-key.pem", 0o600)
+os.chmod(key_file_path, 0o600)
 
-print("KMIP setup completed successfully!")
-print("Files created:")
-print("- mysql-client-key.pem (private key)")
-print("- mysql-client-cert.pem (client certificate)")
-print("- vault-kmip-ca.pem (CA certificate)")
+if args.verbose:
+    print("KMIP setup completed successfully!")
+    print(f"Files created within {args.cert_dir}:")
+    print(f"  - Private key: {key_file_path} ")
+    print(f"  - Certificate: {cert_file_path}")
+    print(f"  - CA certificate: {ca_file_path}")

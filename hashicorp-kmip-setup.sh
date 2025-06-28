@@ -1,12 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+VERBOSE=false
+CERT_DIR=""  # Initialize as empty
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        --cert-dir)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                CERT_DIR="$2"
+                shift 2
+            fi
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 # Base directory under $HOME
 VAULT_BASE="${HOME}/vault"
 CONFIG_DIR="${VAULT_BASE}/config"
 DATA_DIR="${VAULT_BASE}/data"
 LOG_DIR="${VAULT_BASE}/log"
-CERTS_DIR="${VAULT_BASE}/certs"
+CERTS_DIR="${CERTS_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
 SCRIPT_DIR="$(pwd)"
 VAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
@@ -17,6 +43,7 @@ mkdir -p "${CONFIG_DIR}" "${DATA_DIR}" "${LOG_DIR}" "${CERTS_DIR}"
 sudo chown -R 100:1000 ${HOME}/vault/data
 sudo chown -R 100:1000 ${HOME}/vault/log
 sudo chown -R 100:1000 ${HOME}/vault/certs
+sudo chown -R 100:1000 ${HOME}/vault/config
 
 # Ensure license file exists
 echo "[INFO] Checking for license in working directory..."
@@ -146,7 +173,7 @@ configure_kmip() {
       listen_addrs='0.0.0.0:5696' \
       server_hostnames='172.17.0.1'
 
-    vault read -field=ca_pem kmip/ca > /vault/certs/vault-kmip-ca.pem
+    vault read -field=ca_pem kmip/ca > /vault/certs/root_certificate.pem
 
     # Check if scope exists before creating
     if ! vault list kmip/scope 2>/dev/null | grep -q my-service 2>/dev/null; then
@@ -162,8 +189,8 @@ configure_kmip() {
     vault write -format=json kmip/scope/my-service/role/admin/credential/generate \
       format=pem > /vault/certs/credential.json
 
-    jq -r '.data.certificate' /vault/certs/credential.json > /vault/certs/mysql-client-cert.pem
-    jq -r '.data.private_key' /vault/certs/credential.json > /vault/certs/mysql-client-key.pem
+    jq -r '.data.certificate' /vault/certs/credential.json > /vault/certs/client_certificate.pem
+    jq -r '.data.private_key' /vault/certs/credential.json > /vault/certs/client_key.pem
   "
 }
 
@@ -174,9 +201,9 @@ verify_kmip_connection() {
 
   # Add timeout and better error handling
   output=$(timeout $timeout openssl s_client -connect 127.0.0.1:5696 \
-    -CAfile "${CERTS_DIR}/vault-kmip-ca.pem" \
-    -cert "${CERTS_DIR}/mysql-client-cert.pem" \
-    -key "${CERTS_DIR}/mysql-client-key.pem" \
+    -CAfile "${CERTS_DIR}/root_certificate.pem" \
+    -cert "${CERTS_DIR}/client_certificate.pem" \
+    -key "${CERTS_DIR}/client_key.pem" \
     -showcerts \
     -status \
     < /dev/null 2>&1)
@@ -196,20 +223,13 @@ main() {
   verify_kmip_connection
 
   echo "[INFO] Vault Enterprise deployment successful"
-  # JSON output
-    jq -n \
-    --arg server_addr "127.0.0.1" \
-    --arg server_port "5696" \
-    --arg client_ca "${CERTS_DIR}/mysql-client-cert.pem" \
-    --arg client_key "${CERTS_DIR}/mysql-client-key.pem" \
-    --arg server_ca "${CERTS_DIR}/vault-kmip-ca.pem" \
-    '{
-      server_addr: $server_addr,
-      server_port: $server_port,
-      client_ca: $client_ca,
-      client_key: $client_key,
-      server_ca: $server_ca
-    }' | jq '.'
+  if [ "$VERBOSE" = true ]; then
+    echo "[INFO] KMIP setup completed successfully!"
+    echo "[INFO] Files created within $CERT_DIR:"
+    echo "[INFO]  - Private key: $CERT_DIR/client_key.pem"
+    echo "[INFO]  - Certificate: $CERT_DIR/client_certificate.pem"
+    echo "[INFO]  - CA certificate: $CERT_DIR/root_certificate.pem"
+  fi
 }
 
 main "$@"
