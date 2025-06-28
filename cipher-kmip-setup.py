@@ -79,7 +79,6 @@ headers = {
 # Get license information
 license_response = make_request("GET", "/licensing/trials/", headers=headers)
 license_data = license_response.json()['resources'][0]
-print(license_data)
 
 license_data = license_response.json()['resources'][0]
 license_status = license_data['status']
