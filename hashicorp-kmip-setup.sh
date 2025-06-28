@@ -12,7 +12,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --cert-dir=*|--certs-dir=*)
-            CERTS="${1#*=}"
+            CERTS_DIR="${1#*=}"
             if [[ -z "$CERTS_DIR" ]]; then
                 echo "Error: --cert-dir= or --certs-dir= requires a directory path"
                 exit 1
@@ -227,10 +227,10 @@ main() {
   echo "[INFO] Vault Enterprise deployment successful"
   if [ "$VERBOSE" = true ]; then
     echo "[INFO] KMIP setup completed successfully!"
-    echo "[INFO] Files created within $CERT_DIR:"
-    echo "[INFO]  - Private key: $CERT_DIR/client_key.pem"
-    echo "[INFO]  - Certificate: $CERT_DIR/client_certificate.pem"
-    echo "[INFO]  - CA certificate: $CERT_DIR/root_certificate.pem"
+    echo "[INFO] Files created within $CERTS_DIR:"
+    echo "[INFO]  - Private key: $CERTS_DIR/client_key.pem"
+    echo "[INFO]  - Certificate: $CERTS_DIR/client_certificate.pem"
+    echo "[INFO]  - CA certificate: $CERTS_DIR/root_certificate.pem"
   fi
 }
 
