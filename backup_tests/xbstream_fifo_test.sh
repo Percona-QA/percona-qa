@@ -96,7 +96,7 @@ start_minio() {
                 -v ~/minio/data:/data \
                 -e "MINIO_ROOT_USER=admin" \
                 -e "MINIO_ROOT_PASSWORD=password" \
-                quay.io/minio/minio server /data --console-address ":9001"
+                minio/minio:latest server /data --console-address ":9001"
         fi
     fi
 
@@ -104,7 +104,7 @@ start_minio() {
     echo -n "Waiting for MinIO to become ready"
     for i in {1..20}; do
         if curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/minio/health/ready | grep -q 200; then
-            echo -n "\n MinIO is ready!"
+            echo -e "\n MinIO is ready!\n"
             return
         fi
         echo -n "."
@@ -231,8 +231,33 @@ start_server() {
 }
 
 sysbench_create_load() {
+  # Get MySQL version
+  MYSQL_VERSION_OUTPUT=$($PS_DIR/bin/mysqld --version 2>/dev/null)
+
+  if [ $? -ne 0 ]; then
+    echo "Error: Could not get MySQL version"
+    exit 1
+  fi
+
+  # Extract full version number
+  MYSQL_VERSION=$(echo "$MYSQL_VERSION_OUTPUT" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+
+  if [ -z "$MYSQL_VERSION" ]; then
+    echo "Error: Could not parse MySQL version"
+    exit 1
+  fi
+
+  echo "Detected MySQL version: $MYSQL_VERSION"
+
+  # Convert version to numeric for easy comparison (e.g., 8.0.35 becomes 80035, 5.7.44 becomes 50744)
+  VERSION_NUMERIC=$(echo "$MYSQL_VERSION" | awk -F. '{printf "%d%02d%02d", $1, $2, $3}')
+  TARGET_VERSION=80000  # 8.0.0
   # Create user
-  $PS_DIR/bin/mysql -A -uroot -S $SOCKET -e "CREATE USER sysbench@'%' IDENTIFIED WITH mysql_native_password BY 'test';"
+  if [ "$VERSION_NUMERIC" -ge "$TARGET_VERSION" ]; then
+    $PS_DIR/bin/mysql -A -uroot -S $SOCKET -e "CREATE USER sysbench@'%' IDENTIFIED BY 'test';"
+  else
+    $PS_DIR/bin/mysql -A -uroot -S $SOCKET -e "CREATE USER sysbench@'%' IDENTIFIED WITH mysql_native_password BY 'test';"
+  fi
   $PS_DIR/bin/mysql -A -uroot -S $SOCKET -e "GRANT ALL ON *.* TO sysbench@'%';"
   $PS_DIR/bin/mysql -A -uroot -S $SOCKET -e "DROP DATABASE IF EXISTS sbtest;CREATE DATABASE sbtest;"
 
