@@ -84,7 +84,7 @@ if ! command -v pt-table-checksum &>/dev/null; then
 fi
 pt_ver=$(pt-table-checksum --version 2>/dev/null | awk '{print $NF}')
     # Version-specific requirements
-    if [ "$VERSION" -ge "080000" ] || [ "$VERSION" -lt "080400" ] && [ $(normalize_version "$pt_ver") -lt $(normalize_version "3.0.9") ]; then
+    if [ "$VERSION" -ge "080000" ] && [ "$VERSION" -lt "080400" ] && [ $(normalize_version "$pt_ver") -lt $(normalize_version "3.0.9") ]; then
         echo "ERROR: MySQL 8.0 requires pt-table-checksum 3.0.9 or later (but found $pt_ver)"
         exit 1
     elif [ "$VERSION" -ge "080400" ] && [ $(normalize_version "$pt_ver") -lt $(normalize_version "3.7.0") ]; then
