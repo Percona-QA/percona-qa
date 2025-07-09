@@ -120,48 +120,6 @@ start_minio() {
     exit 1
 }
 
-# Set Kmip configuration
-setup_kmip() {
-  # Remove existing container if any
-  docker rm -f kmip 2>/dev/null || true
-
-  # Remove the image (only if not used by any other container)
-  docker rmi mohitpercona/kmip:latest 2>/dev/null || true
-
-  # Start KMIP server
-  docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
-  sleep 10
-  if [ -d "$HOME/certs" ]; then
-    echo "certs directory exists"
-    rm -rf $HOME/certs/*
-  else
-    echo "does not exist. creating certs dir"
-    mkdir "$HOME/certs"
-  fi
-  docker cp kmip:/opt/certs/root_certificate.pem "$HOME/certs"
-  docker cp kmip:/opt/certs/client_key_jane_doe.pem "$HOME/certs"
-  docker cp kmip:/opt/certs/client_certificate_jane_doe.pem "$HOME/certs"
-
-  kmip_server_address="0.0.0.0"
-  kmip_server_port=5696
-  kmip_client_ca="$HOME/certs/client_certificate_jane_doe.pem"
-  kmip_client_key="$HOME/certs/client_key_jane_doe.pem"
-  kmip_server_ca="$HOME/certs/root_certificate.pem"
-
-
-  kmip_server_address="0.0.0.0"
-  kmip_server_port=5696
-  kmip_client_ca="$HOME/certs/client_certificate_jane_doe.pem"
-  kmip_client_key="$HOME/certs/client_key_jane_doe.pem"
-  kmip_server_ca="$HOME/certs/root_certificate.pem"
-
-  cat > "$PS_DIR/lib/plugin/component_keyring_kmip.cnf" <<-EOF
-    {
-      "server_addr": "$kmip_server_address", "server_port": "$kmip_server_port", "client_ca": "$kmip_client_ca", "client_key": "$kmip_client_key", "server_ca": "$kmip_server_ca"
-    }
-EOF
-}
-
 xbcloud_put() {
  BACKUP_NAME=$1
  echo "$XTRABACKUP_DIR/bin/xbcloud put --storage=s3 --s3-access-key=admin --s3-secret-key=password --s3-endpoint=http://localhost:9000 --s3-bucket=my-bucket --parallel=64 --fifo-streams=$FIFO_STREAM --fifo-dir=$FIFO_DIR $BACKUP_NAME"
