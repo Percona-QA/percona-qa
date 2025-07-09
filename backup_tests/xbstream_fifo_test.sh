@@ -42,33 +42,37 @@ cleanup() {
 cleanup_exit() {
   echo "Cleaning up at Exit..."
 
-    IMAGE_NAMES=("mohitpercona/kmip:latest" "minio/minio:latest")
-    for image in "${IMAGE_NAMES[@]}"; do
-    # Find containers using the image
-    containers=$(docker ps -a -q --filter ancestor="$image")
+  echo "Checking for previously started containers..."
+  get_kmip_container_names
+  containers_found=false
 
-    # Stop and remove those containers
-    if [ -n "$containers" ]; then
-      echo "Removing containers using image: $image"
-      docker rm -f $containers
-    fi
+   for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+      if docker ps -aq --filter "name=$name" | grep -q .; then
+        containers_found=true
+        break
+      fi
+   done
 
-    # Remove the image
-    if docker images -q "$image" > /dev/null 2>&1; then
-      echo "Removing image: $image"
-      docker rmi -f "$image"
-    fi
+  if [[ "$containers_found" == true ]]; then
+    echo "Killing previously started containers if any..."
+    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+        cleanup_existing_container "$name"
     done
+  fi
 
-    if [ -d "$HOME/certs/" ]; then
-      rm -rf "$HOME/certs/"
-    fi
-    if [ -n "$(ls "$PS_DIR"/lib/plugin/component_keyring*.cnf 2>/dev/null)" ]; then
-      rm -f "$PS_DIR"/lib/plugin/component_keyring*.cnf
-    fi
-    if [ -f "$PS_DIR/mysqld.my" ]; then
-      rm -f "$PS_DIR/mysqld.my"
-    fi
+ # Only cleanup vault directory if it exists
+  if [[ -d "$HOME/vault" && -n "$HOME" ]]; then
+    echo "Cleaning up vault directory..."
+    sudo rm -rf "$HOME/vault"
+  fi
+
+  if [ -n "$(ls "$PS_DIR"/lib/plugin/component_keyring*.cnf 2>/dev/null)" ]; then
+    rm -f "$PS_DIR"/lib/plugin/component_keyring*.cnf
+  fi
+
+  if [ -f "$PS_DIR/mysqld.my" ]; then
+    rm -f "$PS_DIR/mysqld.my"
+  fi
 }
 
 trap cleanup_exit EXIT INT TERM
@@ -186,8 +190,6 @@ init_datadir() {
       "components": "file://component_keyring_kmip"
     }' > "$PS_DIR/bin/mysqld.my"
 
-    setup_kmip
-
   elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
 
@@ -302,6 +304,7 @@ echo "..Prepare successful"
 
 incremental_backup_and_restore() {
 local keyring_type=$1
+local kmip_type=$2
 echo "=>Taking Full Backup"
 if [ ! -d $HOME/lsn/full ]; then
   mkdir -p $HOME/lsn/full
@@ -378,7 +381,14 @@ echo "=>Preparing Full Backup"
 if [ $ENCRYPTION -eq 0 ]; then
   $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target_dir=$BACKUP_DIR/full --core-file > $LOGDIR/prepare_full.log 2>&1
 else
+  if ! source ./kmip_helper.sh; then
+    echo "ERROR: Failed to load KMIP helper library"
+    exit 1
+  fi
+  init_kmip_configs
+  start_kmip_server "$kmip_type"
   if [ "$keyring_type" = "keyring_kmip" ]; then
+    [ -f "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" "$PS_DIR/lib/plugin/"
     keyring_filename="$PS_DIR/lib/plugin/component_keyring_kmip.cnf"
   elif [ "$keyring_type" = "keyring_file" ]; then
     keyring_filename="$PS_DIR/lib/plugin/component_keyring_file.cnf"
@@ -603,9 +613,9 @@ echo "Copy the backup in datadir"
 $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back5.log 2>&1
 start_server
 
-echo "######################################################################"
-echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip  #"
-echo "######################################################################"
+echo "##############################################################################"
+echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip(pykmip) ##"
+echo "##############################################################################"
 
 LOGDIR=$HOME/6
 if [ -d $LOGDIR ]; then
@@ -625,7 +635,7 @@ start_server
 echo "=>Run pstress load"
 pstress_run_load
 
-incremental_backup_and_restore keyring_kmip
+incremental_backup_and_restore keyring_kmip pykmip
 echo "=>Shutting down MySQL server"
 stop_server
 echo "..Successful"
@@ -643,6 +653,45 @@ echo "Copy the backup in datadir"
 $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.log 2>&1
 start_server
 
+echo "#####################################################################################"
+echo "# 6.5 Test FIFO xbstream: Test with encrypted tables w/ keyring kmip (hashicorp) ####"
+echo "#####################################################################################"
+
+LOGDIR=$HOME/6.5
+if [ -d $LOGDIR ]; then
+  rm -rf $LOGDIR/*
+else
+  mkdir $LOGDIR
+fi
+echo "=>Cleanup in progress"
+cleanup
+echo "..Cleanup completed"
+
+ENCRYPTION=1
+stop_server
+rm -rf $DATADIR
+init_datadir keyring_kmip
+start_server
+echo "=>Run pstress load"
+pstress_run_load
+
+incremental_backup_and_restore keyring_kmip hashicorp
+echo "=>Shutting down MySQL server"
+stop_server
+echo "..Successful"
+
+echo "=>Taking backup of original datadir"
+if [ ! -d ${DATADIR}_bk6.5 ]; then
+  mv $DATADIR ${DATADIR}_bk6.5
+else
+  rm -rf ${DATADIR}_bk6.5
+  mv $DATADIR ${DATADIR}_bk6.5
+fi
+echo "..Successful"
+
+echo "Copy the backup in datadir"
+$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.5.log 2>&1
+start_server
 
 echo "#######################################################"
 echo "# 7. Test FIFO xbstream: Test with encrypted backup   #"
