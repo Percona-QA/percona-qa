@@ -137,6 +137,7 @@ stop_server() {
 
 init_datadir() {
   local keyring_type=$1
+  local kmip_type=$2
   if [ -d $DATADIR ]; then
     rm -rf $DATADIR
   fi
@@ -148,6 +149,14 @@ init_datadir() {
       "components": "file://component_keyring_kmip"
     }' > "$PS_DIR/bin/mysqld.my"
 
+    if ! source ./kmip_helper.sh; then
+        echo "ERROR: Failed to load KMIP helper library"
+        exit 1
+    fi
+    init_kmip_configs
+    start_kmip_server "$kmip_type"
+    [ -f "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" "$PS_DIR/lib/plugin/"
+
   elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
 
@@ -157,8 +166,8 @@ init_datadir() {
 
     cat > "$PS_DIR/lib/plugin/component_keyring_file.cnf" <<-EOFL
     {
-       "components": "file://component_keyring_file",
-       "component_keyring_file_data": "${PS_DIR}/keyring"
+       "component_keyring_file_data": "${PS_DIR}/keyring",
+       "read_only": false
     }
 EOFL
   fi
@@ -262,7 +271,6 @@ echo "..Prepare successful"
 
 incremental_backup_and_restore() {
 local keyring_type=$1
-local kmip_type=$2
 echo "=>Taking Full Backup"
 if [ ! -d $HOME/lsn/full ]; then
   mkdir -p $HOME/lsn/full
@@ -339,14 +347,7 @@ echo "=>Preparing Full Backup"
 if [ $ENCRYPTION -eq 0 ]; then
   $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --prepare --apply-log-only --target_dir=$BACKUP_DIR/full --core-file > $LOGDIR/prepare_full.log 2>&1
 else
-  if ! source ./kmip_helper.sh; then
-    echo "ERROR: Failed to load KMIP helper library"
-    exit 1
-  fi
-  init_kmip_configs
-  start_kmip_server "$kmip_type"
   if [ "$keyring_type" = "keyring_kmip" ]; then
-    [ -f "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" "$PS_DIR/lib/plugin/"
     keyring_filename="$PS_DIR/lib/plugin/component_keyring_kmip.cnf"
   elif [ "$keyring_type" = "keyring_file" ]; then
     keyring_filename="$PS_DIR/lib/plugin/component_keyring_file.cnf"
@@ -548,12 +549,12 @@ echo "..Cleanup completed"
 ENCRYPTION=1
 stop_server
 rm -rf $DATADIR
-init_datadir keyring_file
+init_datadir "keyring_file"
 start_server
 echo "=>Run pstress load"
 pstress_run_load
 
-incremental_backup_and_restore keyring_file
+incremental_backup_and_restore "keyring_file"
 echo "=>Shutting down MySQL server"
 stop_server
 echo "..Successful"
@@ -572,7 +573,7 @@ $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DI
 start_server
 
 echo "##############################################################################"
-echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip(pykmip) ##"
+echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip - pykmip #"
 echo "##############################################################################"
 
 LOGDIR=$HOME/6
@@ -588,12 +589,12 @@ echo "..Cleanup completed"
 ENCRYPTION=1
 stop_server
 rm -rf $DATADIR
-init_datadir keyring_kmip
+init_datadir "keyring_kmip" "pykmip"
 start_server
 echo "=>Run pstress load"
 pstress_run_load
 
-incremental_backup_and_restore keyring_kmip pykmip
+incremental_backup_and_restore "keyring_kmip"
 echo "=>Shutting down MySQL server"
 stop_server
 echo "..Successful"
@@ -612,7 +613,7 @@ $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DI
 start_server
 
 echo "#####################################################################################"
-echo "# 6.5 Test FIFO xbstream: Test with encrypted tables w/ keyring kmip (hashicorp) ####"
+echo "# 6.5 Test FIFO xbstream: Test with encrypted tables w/ keyring kmip - hashicorp ####"
 echo "#####################################################################################"
 
 LOGDIR=$HOME/6.5
@@ -628,19 +629,19 @@ echo "..Cleanup completed"
 ENCRYPTION=1
 stop_server
 rm -rf $DATADIR
-init_datadir keyring_kmip
+init_datadir "keyring_kmip" "hashicorp"
 start_server
 echo "=>Run pstress load"
 pstress_run_load
 
-incremental_backup_and_restore keyring_kmip hashicorp
+incremental_backup_and_restore "keyring_kmip"
 echo "=>Shutting down MySQL server"
 stop_server
 echo "..Successful"
 
 echo "=>Taking backup of original datadir"
 if [ ! -d ${DATADIR}_bk6.5 ]; then
-  mv $DATADIR ${DATADIR}_bk6.5
+  mv $DATADIR ${DATADIR}_bk6
 else
   rm -rf ${DATADIR}_bk6.5
   mv $DATADIR ${DATADIR}_bk6.5
