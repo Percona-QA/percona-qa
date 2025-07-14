@@ -15,20 +15,30 @@
 #############################################################################
 
 # Set script variables
-export xtrabackup_dir="$HOME/pxb-9.1/bld_9.1/install/bin"
-export mysqldir="$HOME/mysql-9.1/bld_9.1/install"
+export xtrabackup_dir="/home/saikumar/WORKDIR/PXB/percona-xtrabackup/bld/install/bin"
+export mysqldir="/home/saikumar/WORKDIR/PS/percona-server/bld/install"
 export datadir="${mysqldir}/data"
 export backup_dir="$HOME/dbbackup_$(date +"%d_%m_%Y")"
 export PATH="$PATH:$xtrabackup_dir"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export mysql_start_timeout=60
+declare -A KMIP_CONFIGS=(
+    # PyKMIP Docker Configuration
+    ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
+
+    # Hashicorp Docker Setup Configuration
+    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+
+    # API Configuration
+    # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
+)
 
 # Set tool variables
 load_tool="pstress" # Set value as pquery/pstress/sysbench
 num_tables=10 # Used for Sysbench
 table_size=1000 # Used for Sysbench
-tool_dir="$HOME/pstress_9.1/src" # pstress dir
+tool_dir="/home/saikumar/WORKDIR/PSTRESS/pstress/src" # pstress dir
 
 if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" > /dev/null 2>&1 ; then
   MS=1
@@ -37,23 +47,39 @@ else
 fi
 
 initialize_db() {
-  # This function initializes and starts mysql database
-  if [ ! -d "${logdir}" ]; then
+local keyring_type="$1"
+local kmip_type="$2"
+# This function initializes and starts mysql database
+if [ ! -d "${logdir}" ]; then
     mkdir "${logdir}"
-  fi
+fi
 
-  echo "=>Setting up component_keyring_file encryption using global manifest/config files"
-  cat <<EOF >"${mysqldir}"/bin/mysqld.my
-{
-"components": "file://component_keyring_file"
-}
-EOF
-  cat <<EOF >"${mysqldir}"/lib/plugin/component_keyring_file.cnf
-{
-    "path": "$mysqldir/lib/plugin/component_keyring_file",
-    "read_only": true
-}
-EOF
+if [[ "${MYSQLD_OPTIONS}" != *"keyring"* ]]; then
+ if [ "$keyring_type" = "keyring_kmip" ]; then
+    echo "Keyring type is KMIP. Taking KMIP-specific action..."
+
+    echo '{
+      "components": "file://component_keyring_kmip"
+    }' > "$mysqldir/bin/mysqld.my"
+
+    start_kmip_server "$kmip_type"
+    [ -f "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
+
+  elif [ "$keyring_type" = "keyring_file" ]; then
+    echo "Keyring type is file. Taking file-based action..."
+
+    echo '{
+      "components": "file://component_keyring_file"
+    }' > "$mysqldir/bin/mysqld.my"
+
+    cat > "$mysqldir/lib/plugin/component_keyring_file.cnf" <<-EOFL
+    {
+       "component_keyring_file_data": "${mysqldir}/keyring",
+       "read_only": false
+    }
+EOFL
+  fi
+fi
   echo "=>Creating data directory"
   $mysqldir/bin/mysqld --no-defaults --datadir=$datadir --initialize-insecure > $mysqldir/mysql_install_db.log 2>&1
   echo "..Data directory created"
@@ -79,8 +105,9 @@ EOF
 run_crash_tests_pstress() {
     # This function crashes the server during load and then runs backup
     local test_type="$1"
+    local kmip_type="$2"
 
-    if [[ "${test_type}" = "encryption" ]]; then
+    if [[ "${test_type}" == *keyring* ]]; then
       echo "Running crash tests with ${load_tool} and mysql running with encryption"
       if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" >/dev/null 2>&1 ; then
           # Server is MS 8.0
@@ -92,7 +119,12 @@ run_crash_tests_pstress() {
           load_options="--tables 10 --records 200 --threads 10 --seconds 50 --undo-tbs-sql 0" # Used for pstress
       fi
       BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
-      PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config=${mysqldir}/lib/plugin/component_keyring_file.cnf"
+      if [ "$test_type" = "keyring_kmip" ]; then
+        keyring_filename="${mysqldir}/lib/plugin/component_keyring_kmip.cnf"
+      elif [ "$test_type" = "keyring_file" ]; then
+        keyring_filename="${mysqldir}/lib/plugin/component_keyring_file.cnf"
+      fi
+      PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config=$keyring_filename"
       RESTORE_PARAMS="${BACKUP_PARAMS}"
     elif [[ "${test_type}" = "rocksdb" ]]; then
       echo "Running crash tests with ${load_tool} for rocksdb"
@@ -121,12 +153,12 @@ run_crash_tests_pstress() {
     log_date=$(date +"%d_%m_%Y_%M")
 
     cleanup
-    initialize_db
+    initialize_db $test_type $kmip_type
     if [ "$test_type" = "rocksdb" ]; then
       $mysqldir/bin/ps-admin --enable-rocksdb -uroot -S${mysqldir}/socket.sock >/dev/null 2>&1
     fi
 
-    if [[ "$2" = "pagetracking" ]]; then
+    if [[ "$3" = "pagetracking" ]]; then
         echo "Running test with page tracking enabled"
         BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
         "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
@@ -139,7 +171,7 @@ run_crash_tests_pstress() {
     echo "..Metadata created"
     run_load "${load_options} --step 2"
     echo "=>Taking full backup"
-    rr "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
+     "${xtrabackup_dir}"/xtrabackup --no-defaults --user=root --password='' --backup --target-dir="${backup_dir}"/full -S "${mysqldir}"/socket.sock --datadir="${datadir}" ${BACKUP_PARAMS} 2>"${logdir}"/full_backup_"${log_date}"_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Full Backup failed. Please check the log at: ${logdir}/full_backup_${log_date}_log"
         exit 1
@@ -166,9 +198,9 @@ run_crash_tests_pstress() {
     for inc_num in $(seq 1 4); do
       echo "Taking incremental backup: $inc_num"
       if [ ${inc_num} -eq 1 ]; then
-        rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
+         ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
       else
-        rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/inc$((inc_num - 1)) -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
+         ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/inc$((inc_num - 1)) -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
       fi
       if [ "$?" -ne 0 ]; then
         echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
@@ -190,9 +222,9 @@ run_crash_tests_pstress() {
     for ((inc_num=5;inc_num<9;inc_num++)); do
       echo "Taking incremental backup: $inc_num"
       if [ ${inc_num} -eq 1 ]; then
-        rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_${i}_backup_${log_date}_log
+         ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/full -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_${i}_backup_${log_date}_log
       else
-        rr ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/inc$((inc_num - 1)) -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
+         ${xtrabackup_dir}/xtrabackup --no-defaults --user=root --password='' --backup --target-dir=${backup_dir}/inc${inc_num} --incremental-basedir=${backup_dir}/inc$((inc_num - 1)) -S ${mysqldir}/socket.sock --datadir=${datadir} ${BACKUP_PARAMS} 2>${logdir}/inc${inc_num}_backup_${log_date}_log
       fi
       if [ "$?" -ne 0 ]; then
         echo "ERR: Incremental Backup failed. Please check the log at: ${logdir}/inc${inc_num}_backup_${log_date}_log"
@@ -206,7 +238,7 @@ run_crash_tests_pstress() {
     done
 
     echo "Preparing full backup"
-    rr ${xtrabackup_dir}/xtrabackup --no-defaults --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
+     ${xtrabackup_dir}/xtrabackup --no-defaults --prepare --apply-log-only --target_dir=${backup_dir}/full ${PREPARE_PARAMS} 2>${logdir}/prepare_full_backup_${log_date}_log
     if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of full backup failed. Please check the log at: ${logdir}/prepare_full_backup_${log_date}_log"
         exit 1
@@ -217,9 +249,9 @@ run_crash_tests_pstress() {
     for ((i=1; i<$inc_num; i++)); do
       echo "Preparing incremental backup: $i"
         if [[ "${i}" -eq "${inc_num}-1" ]]; then
-          rr ${xtrabackup_dir}/xtrabackup --no-defaults --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc${i} ${PREPARE_PARAMS} 2>${logdir}/prepare_inc${i}_backup_${log_date}_log
+           ${xtrabackup_dir}/xtrabackup --no-defaults --prepare --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc${i} ${PREPARE_PARAMS} 2>${logdir}/prepare_inc${i}_backup_${log_date}_log
         else
-          rr ${xtrabackup_dir}/xtrabackup --no-defaults --prepare --apply-log-only --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc${i} ${PREPARE_PARAMS} 2>${logdir}/prepare_inc${i}_backup_${log_date}_log
+           ${xtrabackup_dir}/xtrabackup --no-defaults --prepare --apply-log-only --target_dir=${backup_dir}/full --incremental-dir=${backup_dir}/inc${i} ${PREPARE_PARAMS} 2>${logdir}/prepare_inc${i}_backup_${log_date}_log
         fi
       if [ "$?" -ne 0 ]; then
         echo "ERR: Prepare of incremental backup failed. Please check the log at: ${logdir}/prepare_inc${i}_backup_${log_date}_log"
@@ -401,7 +433,7 @@ take_backup() {
 start_server() {
   # This function starts the server
   echo "=>Starting MySQL server"
-  rr $mysqldir/bin/mysqld --no-defaults --basedir=$mysqldir --datadir=$datadir $MYSQLD_OPTIONS --port=21000 --socket=$mysqldir/socket.sock --plugin-dir=$mysqldir/lib/plugin --max-connections=1024 --log-error=$datadir/error.log  --general-log --log-error-verbosity=3 --core-file > /dev/null 2>&1 &
+  $mysqldir/bin/mysqld --no-defaults --basedir=$mysqldir --datadir=$datadir $MYSQLD_OPTIONS --port=21000 --socket=$mysqldir/socket.sock --plugin-dir=$mysqldir/lib/plugin --max-connections=1024 --log-error=$mysqldir/error.log  --general-log --log-error-verbosity=3 --core-file > /dev/null 2>&1 &
   MPID="$!"
 
   for X in $(seq 0 ${mysql_start_timeout}); do
@@ -467,6 +499,31 @@ run_load_tests() {
     load_tool="${original_tool}"
 }
 
+run_pagetracking_encryption_tests() {
+    local test_type="$1"
+    local feature="$2"
+
+    if [[ "${test_type}" == "encryption" ]]; then
+      echo "Testing keyring_file..."
+      for X in $(seq 1 2); do
+        run_crash_tests_pstress "keyring_file" "" "$feature"
+      done
+
+      if ! source ./kmip_helper.sh; then
+        echo "ERROR: Failed to load KMIP helper library"
+        exit 1
+      fi
+      init_kmip_configs
+      echo "Testing keyring_kmip with vault types..."
+      for vault_type in "${!KMIP_CONFIGS[@]}"; do
+        echo "Testing with $vault_type..."
+        for X in $(seq 1 2); do
+            run_crash_tests_pstress "keyring_kmip" "$vault_type" "$feature"
+        done
+      done
+    fi
+}
+
 cleanup() {
   echo "################################## CleanUp #######################################"
   echo "Killing any previously running mysqld process"
@@ -494,7 +551,33 @@ cleanup() {
     rm -rf $mysqldir/lib/plugin/component_keyring_file
     echo "..Deleted"
   fi
+
+  containers_found=false
+  if [ ${#KMIP_CONTAINER_NAMES[@]} -gt 0 ] 2>/dev/null; then
+   get_kmip_container_names
+   echo "Checking for previously started containers..."
+   for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+      if docker ps -aq --filter "name=$name" | grep -q .; then
+        containers_found=true
+        break
+      fi
+   done
+  fi
+
+  if [[ "$containers_found" == true ]]; then
+    echo "Killing previously started containers if any..."
+    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+        cleanup_existing_container "$name"
+    done
+  fi
+
+ # Only cleanup vault directory if it exists
+  if [[ -d "$HOME/vault" && -n "$HOME" ]]; then
+    echo "Cleaning up vault directory..."
+    sudo rm -rf "$HOME/vault"
+  fi
 }
+trap cleanup EXIT INT TERM
 
 if [ "$#" -lt 1 ]; then
     echo "This script tests backup with a load tool as pquery/pstress/sysbench"
@@ -533,10 +616,6 @@ for tsuitelist in $*; do
         echo "Page Tracking is not supported in MS/PS 5.7, skipping tests"
         return
       fi
-      echo "Page Tracking Tests"
-      for X in $(seq 1 10); do
-	    run_crash_tests_pstress "encryption" "pagetracking"
-      done
-      ;;
+      run_pagetracking_encryption_tests "encryption" "pagetracking"
   esac
 done
