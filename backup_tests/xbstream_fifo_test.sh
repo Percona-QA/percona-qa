@@ -52,18 +52,17 @@ cleanup() {
 cleanup_exit() {
   echo "Cleaning up at Exit..."
 
-  echo "Checking for previously started containers..."
-  if [ -z "${KMIP_CONTAINER_NAMES+x}" ] || [ ${#KMIP_CONTAINER_NAMES[@]} -eq 0 ]; then
-  get_kmip_container_names
-  fi
   containers_found=false
-
+  if [ ${#KMIP_CONTAINER_NAMES[@]} -gt 0 ] 2>/dev/null; then
+   get_kmip_container_names
+   echo "Checking for previously started containers..."
    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
       if docker ps -aq --filter "name=$name" | grep -q .; then
         containers_found=true
         break
       fi
    done
+  fi
 
   if [[ "$containers_found" == true ]]; then
     echo "Killing previously started containers if any..."
