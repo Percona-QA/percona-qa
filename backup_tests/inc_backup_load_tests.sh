@@ -923,7 +923,9 @@ cleanup() {
     echo "..Deleted"
   fi
   echo "Checking for previously started containers..."
+  if [ -z "${KMIP_CONTAINER_NAMES+x}" ] || [ ${#KMIP_CONTAINER_NAMES[@]} -eq 0 ]; then
   get_kmip_container_names
+  fi
   containers_found=false
 
    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
