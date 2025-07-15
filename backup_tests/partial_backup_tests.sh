@@ -19,6 +19,16 @@ export PATH="$PATH:$xtrabackup_dir"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export mysql_random_data_load_tool="$HOME/mysql_random_data_load"
+declare -A KMIP_CONFIGS=(
+    # PyKMIP Docker Configuration
+    ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
+
+    # Hashicorp Docker Setup Configuration
+    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+
+    # API Configuration
+    # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
+)
 
 # Set sysbench variables
 num_tables=10
@@ -230,26 +240,32 @@ check_tables() {
 }
 
 create_keyring_component_files() {
-    echo "Create global manifest file"
-    cat <<-EOF >"${mysqldir}"/bin/mysqld.my
-    {
- "components": "file://component_keyring_file"
-    }
-EOF
-    if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
-        echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
-        exit 1
-    fi
-    echo "Create global configuration file"
-    cat <<-EOF >"${mysqldir}"/lib/plugin/component_keyring_file.cnf
-    {
-      "path": "$mysqldir/lib/plugin/component_keyring_file",                                                                                                                               "read_only": false           }
-EOF
-    if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
-      echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_file.cnf"
-      exit 1
-    fi
+ local keyring_type="$1"
+ local kmip_type="$2"
+ if [ "$keyring_type" = "keyring_kmip" ]; then
+    echo "Keyring type is KMIP. Taking KMIP-specific action..."
 
+    echo '{
+      "components": "file://component_keyring_kmip"
+    }' > "$mysqldir/bin/mysqld.my"
+
+    start_kmip_server "$kmip_type"
+    [ -f "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
+
+  elif [ "$keyring_type" = "keyring_file" ]; then
+    echo "Keyring type is file. Taking file-based action..."
+
+    echo '{
+      "components": "file://component_keyring_file"
+    }' > "$mysqldir/bin/mysqld.my"
+
+    cat > "$mysqldir/lib/plugin/component_keyring_file.cnf" <<-EOFL
+    {
+       "component_keyring_file_data": "${mysqldir}/keyring",
+       "read_only": false
+    }
+EOFL
+  fi
 }
 
 test_partial_table_backup() {
@@ -308,6 +324,24 @@ test_partial_table_backup() {
 }
 
 test_partial_table_backup_encrypt() {
+      echo "Testing keyring_file..."
+      test_partial_table_backup_encrypted "keyring_file" "" "$feature"
+
+      if ! source ./kmip_helper.sh; then
+        echo "ERROR: Failed to load KMIP helper library"
+        exit 1
+      fi
+      init_kmip_configs
+      echo "Testing keyring_kmip with vault types..."
+      for vault_type in "${!KMIP_CONFIGS[@]}"; do
+        echo "Testing with $vault_type..."
+        test_partial_table_backup_encrypted "keyring_kmip" "$vault_type" "$feature"
+      done
+}
+
+test_partial_table_backup_encrypted() {
+    local keyring_type="$1"
+    local kmip_type="$2"
     # Test suite for partial table backup tests with encryption
 
     echo "Test suite for partial table backup tests with encryption"
@@ -319,7 +353,7 @@ test_partial_table_backup_encrypt() {
     elif [ "$server_type" == "PS" ]; then
         server_options="--innodb-undo-log-encrypt --innodb-redo-log-encrypt --default-table-encryption=ON --innodb_encrypt_online_alter_logs=ON --innodb_temp_tablespace_encrypt=ON --log-slave-updates --gtid-mode=ON --enforce-gtid-consistency --binlog-format=row --master_verify_checksum=ON --binlog_checksum=CRC32 --encrypt-tmp-files --innodb_sys_tablespace_encrypt --binlog-rotate-encryption-master-key-at-startup --table-encryption-privilege-check=ON"
     fi
-    create_keyring_component_files
+    create_keyring_component_files $keyring_type $kmip_type
     initialize_db "${server_options} --binlog-encryption"
 
     echo "Create a table with all data types"
@@ -331,11 +365,16 @@ test_partial_table_backup_encrypt() {
     ${mysql_random_data_load_tool} test alltypes 10 --user root --password '' --host=127.0.0.1 --port=${port_no} >"${logdir}"/data_load_log 2>&1
     "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "UPDATE alltypes SET k = 'a', af = POINT(1,2), ag = '{\"key1\": \"value1\", \"key2\": \"value2\"}';" test
 
-    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf  --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 alltypes"
+    if [ "$keyring_type" = "keyring_kmip" ]; then
+      keyring_filename="${mysqldir}/lib/plugin/component_keyring_kmip.cnf"
+    elif [ "$keyring_type" = "keyring_file" ]; then
+      keyring_filename="${mysqldir}/lib/plugin/component_keyring_file.cnf"
+    fi
+    take_partial_backup "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config=$keyring_filename  --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 alltypes"
     echo "###################################################################################"
 
     echo "Test: Partial backup and restore of tables using a pattern and excluding some tables"
-    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest[1-5] --tables-exclude=sbtest10,sbtest5,sbtest4" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
+    take_partial_backup "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest[1-5] --tables-exclude=sbtest10,sbtest5,sbtest4" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 
     for table in sbtest10 sbtest5 sbtest4; do
         if [[ -f "${backup_dir}"/full/test/"${table}".ibd ]]; then
@@ -348,7 +387,7 @@ test_partial_table_backup_encrypt() {
     echo "Test: Partial backup and restore of tables using a text file"
     echo "test.sbtest3">"${logdir}"/tables.txt
     echo "test.sbtest5">>"${logdir}"/tables.txt
-    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables-file=${logdir}/tables.txt" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest3 sbtest5"
+    take_partial_backup "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables-file=${logdir}/tables.txt" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest3 sbtest5"
     echo "###################################################################################"
 
     echo "Test: Partial backup and restore of partitioned tables"
@@ -361,8 +400,37 @@ test_partial_table_backup_encrypt() {
     echo "Add data for innodb partitioned tables"
     sysbench /usr/share/sysbench/oltp_insert.lua --tables=3 --mysql-db=test --mysql-user=root --threads=100 --db-driver=mysql --mysql-socket=${mysqldir}/socket.sock --time=5 run >/dev/null 2>&1
 
-    take_partial_backup "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
+    take_partial_backup "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --tables=sbtest1,sbtest2,sbtest3 --tables-exclude=sbtest10" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "--component-keyring-config=$keyring_filename --xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin" "sbtest1 sbtest2 sbtest3"
 }
+
+cleanup() {
+  echo "################################## CleanUp #######################################"
+  containers_found=false
+  if [ ${#KMIP_CONTAINER_NAMES[@]} -gt 0 ] 2>/dev/null; then
+   get_kmip_container_names
+   echo "Checking for previously started containers..."
+   for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+      if docker ps -aq --filter "name=$name" | grep -q .; then
+        containers_found=true
+        break
+      fi
+   done
+  fi
+
+  if [[ "$containers_found" == true ]]; then
+    echo "Killing previously started containers if any..."
+    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+        cleanup_existing_container "$name"
+    done
+  fi
+
+ # Only cleanup vault directory if it exists
+  if [[ -d "$HOME/vault" && -n "$HOME" ]]; then
+    echo "Cleaning up vault directory..."
+    sudo rm -rf "$HOME/vault"
+  fi
+}
+trap cleanup EXIT INT TERM
 
 echo "################################## Running Tests ##################################"
 test_partial_table_backup
