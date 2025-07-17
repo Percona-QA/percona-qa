@@ -470,7 +470,7 @@ create_keyring_component_files() {
     }' > "$mysqldir/bin/mysqld.my"
 
     start_kmip_server "$kmip_type"
-    [ -f "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
+    [ -f "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
 
   elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
