@@ -57,24 +57,19 @@ validate_port_available() {
     for i in $(seq 1 $max_attempts); do
         local port_in_use=false
 
-        # Method 1: Try bash TCP
+        # Method 1: Fast bash TCP check (works without external tools)
         if timeout 1 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port" 2>/dev/null; then
-            exec 3<&-
-            port_in_use=true
+          port_in_use=true
         fi
 
-        # Method 2: Double-check with ss if available
-        if [[ "$port_in_use" == false ]] && command -v ss >/dev/null 2>&1; then
-            if ss -tuln | grep -E ":(${port})\s+" >/dev/null 2>&1; then
-                port_in_use=true
-            fi
-        fi
-
-        # Method 3: Fallback to netstat if ss not available
-        if [[ "$port_in_use" == false ]] && ! command -v ss >/dev/null 2>&1; then
-            if netstat -tuln 2>/dev/null | grep -E ":(${port})\s+" >/dev/null; then
-                port_in_use=true
-            fi
+        # Fallback methods only if bash TCP check failed
+        if [[ "$port_in_use" == false ]]; then
+        # Prefer ss over netstat (faster and more modern)
+          if command -v ss >/dev/null 2>&1; then
+            ss -tuln | grep -qE ":(${port})\s+" && port_in_use=true
+          elif command -v netstat >/dev/null 2>&1; then
+            netstat -tuln 2>/dev/null | grep -qE ":(${port})\s+" && port_in_use=true
+          fi
         fi
 
         if [[ "$port_in_use" == false ]]; then
@@ -124,21 +119,21 @@ get_kmip_container_names() {
 parse_config() {
     local type=$1
     # Clear the existing config array
-    unset config
-    declare -gA config  # Global associative array
+    unset kmip_config
+    declare -gA kmip_config  # Global associative array
 
     IFS=',' read -ra pairs <<< "${KMIP_CONFIGS[$type]}"
     for pair in "${pairs[@]}"; do
         IFS='=' read -r key value <<< "$pair"
-        config["$key"]="$value"
+        kmip_config["$key"]="$value"
     done
 
     # Set defaults if not specified
-    config["type"]="$type"
-    [[ -z "${config[name]}" ]] && config["name"]="kmip_${type}"
-    [[ -z "${config[addr]}" ]] && config["addr"]="127.0.0.1"
-    [[ -z "${config[port]}" ]] && config["port"]="5696"
-    [[ -z "${config[cert_dir]}" ]] && config["cert_dir"]="kmip_certs_${config[type]}"
+    kmip_config["type"]="$type"
+    [[ -z "${kmip_config[name]}" ]] && kmip_config["name"]="kmip_${type}"
+    [[ -z "${kmip_config[addr]}" ]] && kmip_config["addr"]="127.0.0.1"
+    [[ -z "${kmip_config[port]}" ]] && kmip_config["port"]="5696"
+    [[ -z "${kmip_config[cert_dir]}" ]] && kmip_config["cert_dir"]="kmip_certs_${kmip_config[type]}"
 }
 
 # Generate KMIP configuration file
@@ -165,14 +160,12 @@ EOF
 # Setup PyKMIP server
 setup_pykmip() {
     local type="pykmip"
-    local container_name="${config[name]}"
-    local addr="${config[addr]}"
-    local port="${config[port]}"
-    local image="${config[image]}"
-    local cert_dir="${HOME}/${config[cert_dir]}"
+    local container_name="${kmip_config[name]}"
+    local addr="${kmip_config[addr]}"
+    local port="${kmip_config[port]}"
+    local image="${kmip_config[image]}"
+    local cert_dir="${HOME}/${kmip_config[cert_dir]}"
 
-    #Keep container name for cleanup
-    [[ -z "${config[container]}" ]] && config["container"]="$container_name"
 
     if [ -d "$cert_dir" ]; then
       echo "Cleaning existing certificate directory: $cert_dir"
@@ -248,15 +241,13 @@ setup_pykmip() {
 # Setup HashiCorp Vault KMIP server
 setup_hashicorp() {
     local type="hashicorp"
-    local container_name="${config[name]}"
-    local addr="${config[addr]}"
-    local port="${config[port]}"
-    local image="${config[image]}"
-    local setup_script="${config[setup_script]}"
-    local cert_dir="${HOME}/${config[cert_dir]}"
+    local container_name="${kmip_config[name]}"
+    local addr="${kmip_config[addr]}"
+    local port="${kmip_config[port]}"
+    local image="${kmip_config[image]}"
+    local setup_script="${kmip_config[setup_script]}"
+    local cert_dir="${HOME}/${kmip_config[cert_dir]}"
 
-    #Keep container name for cleanup
-    [[ -z "${config[container]}" ]] && config["container"]="$container_name"
 
     echo "Cleaning up existing container... "
     if cleanup_existing_container "$container_name"; then
@@ -334,7 +325,7 @@ start_kmip_server() {
     local type="$1"
     validate_environment "$type" || return 1
     parse_config "$type"
-    echo "Starting ${type^^} KMIP Server on port ${config[port]}"
+    echo "Starting ${type^^} KMIP Server on port ${kmip_config[port]}"
 
     case "$type" in
         pykmip)     setup_pykmip ;;
