@@ -252,7 +252,7 @@ create_keyring_component_files() {
     start_kmip_server "$kmip_type"
     [ -f "${HOME}/${kimp_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kimp_config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
 
-  elif [ "$keyring_type" = "keyring_file" ]; then
+elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
 
     echo '{
@@ -265,7 +265,7 @@ create_keyring_component_files() {
        "read_only": false
     }
 EOFL
-  fi
+fi
 }
 
 test_partial_table_backup() {
@@ -324,19 +324,19 @@ test_partial_table_backup() {
 }
 
 test_partial_table_backup_encrypt() {
-      echo "Testing keyring_file..."
-      test_partial_table_backup_encrypted "keyring_file" "" "$feature"
+  echo "Testing keyring_file..."
+  test_partial_table_backup_encrypted "keyring_file" "" "$feature"
 
-      if ! source ./kmip_helper.sh; then
-        echo "ERROR: Failed to load KMIP helper library"
-        exit 1
-      fi
-      init_kmip_configs
-      echo "Testing keyring_kmip with vault types..."
-      for vault_type in "${!KMIP_CONFIGS[@]}"; do
-        echo "Testing with $vault_type..."
-        test_partial_table_backup_encrypted "keyring_kmip" "$vault_type" "$feature"
-      done
+  if ! source ./kmip_helper.sh; then
+    echo "ERROR: Failed to load KMIP helper library"
+    exit 1
+  fi
+  init_kmip_configs
+  echo "Testing keyring_kmip with vault types..."
+  for vault_type in "${!KMIP_CONFIGS[@]}"; do
+    echo "Testing with $vault_type..."
+    test_partial_table_backup_encrypted "keyring_kmip" "$vault_type" "$feature"
+ done
 }
 
 test_partial_table_backup_encrypted() {
