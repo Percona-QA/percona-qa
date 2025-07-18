@@ -23,6 +23,16 @@ export PATH="$PATH:$xtrabackup_dir"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export mysql_start_timeout=60
+declare -A KMIP_CONFIGS=(
+    # PyKMIP Docker Configuration
+    ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
+
+    # Hashicorp Docker Setup Configuration
+    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+
+    # API Configuration
+    # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
+)
 
 # Set tool variables
 load_tool="pstress" # Set value as pstress/sysbench
@@ -34,32 +44,6 @@ tool_dir="$HOME/pstress_9.1/src" # pstress dir
 
 # PXB Lock option
 LOCK_DDL=on # lock_ddl accepted values (on, reduced)
-
-cleanup() {
-  echo "Cleaning up at Exit..."
-
-    IMAGE="mohitpercona/kmip:latest"
-    # Find containers using the image
-    container=$(docker ps -a -q --filter ancestor="$IMAGE")
-
-    # Stop and remove those containers
-    if [ -n "$container" ]; then
-      echo "Removing containers using image: $IMAGE"
-      docker rm -f $container
-    fi
-
-    # Remove the image
-    if docker images -q "$IMAGE" > /dev/null 2>&1; then
-      echo "Removing image: $IMAGE"
-      docker rmi -f "$IMAGE"
-    fi
-
-    if [ -d "$HOME/certs/" ]; then
-      rm -rf "$HOME/certs/"
-    fi
-}
-
-trap cleanup EXIT INT TERM
 
 normalize_version() {
     local major=0
@@ -91,35 +75,6 @@ pt_ver=$(pt-table-checksum --version 2>/dev/null | awk '{print $NF}')
         echo "ERROR: MySQL 8.4 and higher versions requires pt-table-checksum 3.7.0 or later (but found $pt_ver)"
         exit 1
 fi
-
-# Set Kmip configuration
-setup_kmip() {
-  # Remove existing container if any
-  docker rm -f kmip 2>/dev/null || true
-
-  # Remove the image (only if not used by any other container)
-  docker rmi mohitpercona/kmip:latest 2>/dev/null || true
-
-  if [ -d "$HOME/certs/" ]; then
-    echo "certs directory exists"
-    rm -rf $HOME/certs/*
-  else
-    echo "does not exist. creating certs dir"
-    mkdir "$HOME/certs/"
-  fi
-  docker cp kmip:/opt/certs/root_certificate.pem "$HOME/certs/"
-  docker cp kmip:/opt/certs/client_key_jane_doe.pem "$HOME/certs/"
-  docker cp kmip:/opt/certs/client_certificate_jane_doe.pem "$HOME/certs/"
-
-  kmip_server_address="0.0.0.0"
-  kmip_server_port=5696
-  kmip_client_ca="$HOME/certs/client_certificate_jane_doe.pem"
-  kmip_client_key="$HOME/certs/client_key_jane_doe.pem"
-  kmip_server_ca="$HOME/certs/root_certificate.pem"
-
-  # Sleep for 30 sec to fully initialize the KMIP server
-  sleep 30
-}
 
 # For kms tests set the values of KMS_REGION, KMS_KEYID, KMS_AUTH_KEY, KMS_SECRET_KEY in the shell and then run the tests
 kms_region="${KMS_REGION:-us-east-1}"  # Set KMS_REGION to change default value us-east-1
@@ -505,29 +460,32 @@ run_load_keyring_plugin_tests() {
 }
 
 create_keyring_component_files() {
-    echo "Create global manifest file"
-    cat <<-EOF >"${mysqldir}"/bin/mysqld.my
-    {
+  local keyring_type="$1"
+  local kmip_type="$2"
+  if [ "$keyring_type" = "keyring_kmip" ]; then
+    echo "Keyring type is KMIP. Taking KMIP-specific action..."
+
+    echo '{
+      "components": "file://component_keyring_kmip"
+    }' > "$mysqldir/bin/mysqld.my"
+
+    start_kmip_server "$kmip_type"
+    [ -f "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
+
+  elif [ "$keyring_type" = "keyring_file" ]; then
+    echo "Keyring type is file. Taking file-based action..."
+
+    echo '{
       "components": "file://component_keyring_file"
-    }
-EOF
-    if [[ ! -f "${mysqldir}"/bin/mysqld.my ]]; then
-      echo "ERR: The global manifest could not be created in ${mysqldir}/bin/mysqld.my"
-      exit 1
-    fi
+    }' > "$mysqldir/bin/mysqld.my"
 
-    echo "Create global configuration file"
-    cat <<-EOF >"${mysqldir}"/lib/plugin/component_keyring_file.cnf
+    cat > "$mysqldir/lib/plugin/component_keyring_file.cnf" <<-EOFL
     {
-        "path": "$mysqldir/lib/plugin/component_keyring_file",
-        "read_only": false
+       "component_keyring_file_data": "${mysqldir}/keyring",
+       "read_only": false
     }
-EOF
-    if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_file.cnf ]]; then
-        echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_file.cnf"
-        exit 1
-    fi
-
+EOFL
+  fi
 }
 
 run_load_keyring_component_tests() {
@@ -573,8 +531,23 @@ run_load_keyring_component_tests() {
     check_tables
 }
 
+run_kmip_component_tests () {
+  feature="$1"
+  if ! source ./kmip_helper.sh; then
+    echo "ERROR: Failed to load KMIP helper library"
+    exit 1
+  fi
+  init_kmip_configs
+  echo "Testing keyring_kmip with vault types..."
+  for vault_type in "${!KMIP_CONFIGS[@]}"; do
+    echo "Testing with $vault_type..."
+    run_load_kmip_component_tests "$vault_type" "$feature"
+  done
+}
+
 run_load_kmip_component_tests() {
   # This function runs the load backup tests with keyring_kmip component options
+  kmip_type="$1"
   BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file"
   PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_kmip.cnf"
   RESTORE_PARAMS="${BACKUP_PARAMS}"
@@ -596,7 +569,7 @@ run_load_kmip_component_tests() {
 
   echo "Test: Incremental Backup and Restore for keyring_kmip component with ${load_tool}"
   cleanup
-  setup_kmip
+  start_kmip_server $kmip_type
   echo "Create global manifest file"
   cat <<-EOF >"${mysqldir}"/bin/mysqld.my
     {
@@ -609,11 +582,8 @@ EOF
   fi
 
   echo "Create global configuration file"
-  cat <<-EOF >"${mysqldir}"/lib/plugin/component_keyring_kmip.cnf
-    {
-        "path": "$mysqldir/keyring_kmip", "server_addr": "$kmip_server_address", "server_port": "$kmip_server_port", "client_ca": "$kmip_client_ca", "client_key": "$kmip_client_key", "server_ca": "$kmip_server_ca"
-    }
-EOF
+  cp "${HOME}"/"${kmip_config[cert_dir]}"/component_keyring_kmip.cnf "${mysqldir}"/lib/plugin/
+
   if [[ ! -f "${mysqldir}"/lib/plugin/component_keyring_kmip.cnf ]]; then
     echo "ERR: The global configuration could not be created in ${mysqldir}/lib/plugin/component_keyring_kmip.cnf"
     exit 1
@@ -622,7 +592,7 @@ EOF
   tool_options_encrypt="--tables $num_tables --records $table_size --threads $threads --seconds $seconds --undo-tbs-sql 0" # Used for pstress
   initialize_db
 
-  if [[ "$1" = "pagetracking" ]]; then
+  if [[ "$2" = "pagetracking" ]]; then
     echo "Running test with page tracking enabled"
     BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
     "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
@@ -731,13 +701,30 @@ EOF
         rm "${mysqldir}"/lib/plugin/component_keyring_kms.cnf
     fi
 }
+run_crash_tests_pstress_encrypted() {
+  feature="$1"
+  echo "Testing keyring_file..."
+  run_crash_tests_pstress "keyring_file" "" "$feature"
+
+  if ! source ./kmip_helper.sh; then
+    echo "ERROR: Failed to load KMIP helper library"
+    exit 1
+  fi
+  init_kmip_configs
+  echo "Testing keyring_kmip with vault types..."
+  for vault_type in "${!KMIP_CONFIGS[@]}"; do
+    echo "Testing with $vault_type..."
+    run_crash_tests_pstress "keyring_kmip" "$vault_type" "$feature"
+  done
+}
 
 run_crash_tests_pstress() {
 
     # This function crashes the server during load and then runs backup
     local test_type="$1"
+    local kmip_type="$2"
 
-    if [[ "${test_type}" = "encryption" ]]; then
+    if [[ "${test_type}" = "*keyring*" ]]; then
         echo "Running crash tests with ${load_tool} and mysql running with encryption"
         if [ $VERSION -ge 080000 ]; then
             if [ "$server_type" == "MS" ]; then
@@ -763,7 +750,12 @@ run_crash_tests_pstress() {
             fi
         fi
         BACKUP_PARAMS="--xtrabackup-plugin-dir=${xtrabackup_dir}/../lib/plugin --core-file --lock-ddl=$LOCK_DDL"
-        PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config="${mysqldir}"/lib/plugin/component_keyring_file.cnf"
+        if [ "$test_type" = "keyring_kmip" ]; then
+          keyring_filename="${mysqldir}/lib/plugin/component_keyring_kmip.cnf"
+        elif [ "$test_type" = "keyring_file" ]; then
+          keyring_filename="${mysqldir}/lib/plugin/component_keyring_file.cnf"
+        fi
+        PREPARE_PARAMS="${BACKUP_PARAMS} --component-keyring-config=$keyring_filename"
         RESTORE_PARAMS="${BACKUP_PARAMS}"
     elif [[ "${test_type}" = "rocksdb" ]]; then
         echo "Running crash tests with ${load_tool} for rocksdb"
@@ -792,14 +784,14 @@ run_crash_tests_pstress() {
     log_date=$(date +"%d_%m_%Y_%M")
 
     cleanup
-    create_keyring_component_files
+    create_keyring_component_files $keyring_type $kmip_type
     initialize_db
 
     if [ "$test_type" = "rocksdb" ]; then
       $mysqldir/bin/ps-admin --enable-rocksdb -uroot -S${mysqldir}/socket.sock >/dev/null 2>&1
     fi
 
-    if [[ "$2" = "pagetracking" ]]; then
+    if [[ "$3" = "pagetracking" ]]; then
         echo "Running test with page tracking enabled"
         BACKUP_PARAMS="${BACKUP_PARAMS} --page-tracking"
         "${mysqldir}"/bin/mysql -uroot -S"${mysqldir}"/socket.sock -e "INSTALL COMPONENT 'file://component_mysqlbackup';"
@@ -984,7 +976,35 @@ cleanup() {
     rm -rf $mysqldir/lib/plugin/component_keyring_file
     echo "..Deleted"
   fi
+  echo "Checking for previously started containers..."
+  if [ -z "${KMIP_CONTAINER_NAMES+x}" ] || [ ${#KMIP_CONTAINER_NAMES[@]} -eq 0 ]; then
+  get_kmip_container_names
+  fi
+  containers_found=false
+
+   for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+      if docker ps -aq --filter "name=$name" | grep -q .; then
+        containers_found=true
+        break
+      fi
+   done
+
+  if [[ "$containers_found" == true ]]; then
+    echo "Killing previously started containers if any..."
+    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+        cleanup_existing_container "$name"
+    done
+  fi
+
+ # Only cleanup vault directory if it exists
+  if [[ -d "$HOME/vault" && -n "$HOME" ]]; then
+    echo "Cleaning up vault directory..."
+    sudo rm -rf "$HOME/vault"
+  fi
 }
+trap cleanup EXIT INT TERM
+
+## Main ##
 
 if [ "$#" -lt 1 ]; then
     echo "This script tests backup with a load tool as pquery/pstress/sysbench"
@@ -1036,14 +1056,17 @@ for tsuitelist in $*; do
       if [ $load_tool == "pstress" ]; then
           run_crash_tests_pstress "normal"
           echo "###################################################################################"
-          run_crash_tests_pstress "encryption"
+          run_crash_tests_pstress_encrypted
           echo "###################################################################################"
       fi
       ;;
     Kmip_Encryption_tests)
-      run_load_kmip_component_tests
-      echo "###################################################################################"
-      run_load_kmip_component_tests "pagetracking"
+      if ! source ./kmip_helper.sh; then
+        echo "ERROR: Failed to load KMIP helper library"
+        exit 1
+      fi
+      init_kmip_configs
+      run_kmip_component_tests "pagetracking"
       echo "###################################################################################"
       ;;
     Kms_Encryption_tests)
@@ -1055,7 +1078,7 @@ for tsuitelist in $*; do
     Rocksdb_tests)
       if "${mysqldir}"/bin/mysqld --version | grep "5.7" >/dev/null 2>&1 ; then
         echo "Rocksdb backup is not supported in MS/PS 5.7, skipping tests"
-	continue
+        continue
       fi
       if ${mysqldir}/bin/mysqld --version | grep "MySQL Community Server" > /dev/null 2>&1 ; then
         echo "RocksDB is unsupported in MS, skipping tests"
@@ -1086,7 +1109,7 @@ for tsuitelist in $*; do
       if [ $load_tool == "pstress" ]; then
           run_crash_tests_pstress "normal" "pagetracking"
           echo "###################################################################################"
-          run_crash_tests_pstress "encryption" "pagetracking"
+          run_crash_tests_pstress_encrypted "pagetracking"
           echo "###################################################################################"
           run_crash_tests_pstress "rocksdb" "pagetracking"
           echo "###################################################################################"
