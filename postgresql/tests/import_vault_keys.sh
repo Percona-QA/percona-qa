@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 DATA_DIR=$INSTALL_DIR/data
 EXPORT_DIR=vault_export
 PORT=5432
@@ -89,6 +89,7 @@ start_server
 start_vault_server
 
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_database_key_provider_vault_v2('local_vault_provider', '$vault_url', '$secret_mount_point', '$filename', '$vault_ca')"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_database_key_provider('local_key','local_vault_provider')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_database_key_provider('local_key','local_vault_provider')"
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE TABLE t1(a INT) USING tde_heap"
 $INSTALL_DIR/bin/psql -d postgres -c"INSERT INTO t1 VALUES (100)"
