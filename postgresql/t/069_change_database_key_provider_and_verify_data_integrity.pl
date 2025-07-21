@@ -49,6 +49,7 @@ my $setup_sql_file = sprintf(
 );
 my $vault_result = invoke_add_key_provider_function($node_primary, $dbname, $FILE_PRO, $setup_sql_file);
 ok($vault_result, "$FILE_PRO database key provider created successfully");
+set_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO, 'database_key', 'pg_tde_create_key_using_database_key_provider');
 set_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO, 'database_key', 'pg_tde_set_key_using_database_key_provider');
 
 # ====== STEP 4: Add and Set local KMIP Key Provider ======
@@ -87,6 +88,7 @@ $setup_sql_kmip = sprintf(
 );
 $vault_result = invoke_add_key_provider_function($node_primary, $dbname, $KMIP_PRO, $setup_sql_kmip);
 ok($vault_result, "$KMIP_PRO database key provider changed successfully");
+set_key($node_primary, $dbname, $KMIP_KEY, $KMIP_PRO, 'database_key', 'pg_tde_create_key_using_database_key_provider');
 set_key($node_primary, $dbname, $KMIP_KEY, $KMIP_PRO, 'database_key', 'pg_tde_set_key_using_database_key_provider');
 verify_key_info($node_primary, $dbname, $KMIP_KEY, $KMIP_PRO);
 
@@ -106,6 +108,7 @@ $setup_sql_vault = sprintf(
 );
 $vault_result = invoke_add_key_provider_function($node_primary, $dbname, $VAULT_PRO, $setup_sql_vault);
 ok($vault_result, "$VAULT_PRO database key provider changed successfully");
+set_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO, 'database_key', 'pg_tde_create_key_using_database_key_provider');
 set_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO, 'database_key', 'pg_tde_set_key_using_database_key_provider');
 verify_key_info($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
@@ -159,6 +162,7 @@ sub add_key_provider {
     my $result = invoke_add_key_provider_function($node, $db, $provider_name, $setup_sql);
     ok($result, "$provider_name $provider_type key provider created successfully");
 }
+
 
 # Subroutine to set a key
 sub set_key {

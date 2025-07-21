@@ -53,6 +53,7 @@ $node_primary->safe_psql($dbname, "CREATE EXTENSION pg_tde;");
 
 # ====== STEP 5: Add local key to database ======
 diag("Adding a local key using global key provider for database $dbname");
+set_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO, 'local_key_global', 'pg_tde_create_key_using_global_key_provider');
 set_key($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO, 'local_key_global', 'pg_tde_set_key_using_global_key_provider');
 
 # ====== STEP 6: Create and Verify Table t1 ======

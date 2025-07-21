@@ -118,6 +118,7 @@ sub add_key_provider {
 # Subroutine to set a key
 sub set_key {
     my ($node, $db, $key_name, $provider_name) = @_;
+    my $result1 = invoke_add_key_function($node, $db, 'pg_tde_create_key_using_database_key_provider', $key_name, $provider_name);
     my $result = invoke_add_key_function($node, $db, 'pg_tde_set_key_using_database_key_provider', $key_name, $provider_name);
     ok($result, "$key_name database key was set successfully using provider $provider_name");
 }

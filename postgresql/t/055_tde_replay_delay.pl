@@ -22,6 +22,9 @@ $node_primary->safe_psql('postgres',
 	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/unlogged_tables.per');"
 );
 $node_primary->safe_psql('postgres',
+	"SELECT pg_tde_create_key_using_database_key_provider('test-key', 'file-vault');"
+);
+$node_primary->safe_psql('postgres',
 	"SELECT pg_tde_set_key_using_database_key_provider('test-key', 'file-vault');"
 );
 

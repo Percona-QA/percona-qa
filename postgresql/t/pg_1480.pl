@@ -25,6 +25,9 @@ PGTDE::psql($node, 'postgres',
 
 #Create a Default Principal key using the Global Key Provider
 PGTDE::psql($node, 'postgres',
+	"SELECT pg_tde_create_key_using_global_key_provider('principal_key_of_testdb', 'global_keyring');"
+);
+PGTDE::psql($node, 'postgres',
 	"SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_of_testdb', 'global_keyring');"
 );
 
@@ -37,6 +40,9 @@ PGTDE::psql($node, 'testdb',
 );
 
 #Rotate the Default Principal Key
+PGTDE::psql($node, 'postgres',
+	"SELECT pg_tde_create_key_using_global_key_provider('principal_key_of_testdb2', 'global_keyring');"
+);
 PGTDE::psql($node, 'postgres',
 	"SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_of_testdb2', 'global_keyring');"
 );

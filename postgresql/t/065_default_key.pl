@@ -27,7 +27,9 @@ $node_primary->safe_psql($DB_NAME, "CREATE EXTENSION pg_tde;");
 $node_primary->safe_psql($DB_NAME, 
     "SELECT pg_tde_add_global_key_provider_file('global-prov-file', '/tmp/global-file-keyring.per');"
     );
-$node_primary->safe_psql($DB_NAME, 
+$node_primary->safe_psql($DB_NAME,
+        "SELECT pg_tde_create_key_using_global_key_provider('global_default_key','global-prov-file');");
+$node_primary->safe_psql($DB_NAME,
         "SELECT pg_tde_set_default_key_using_global_key_provider('global_default_key','global-prov-file');");
 
 # create a new database
@@ -51,6 +53,8 @@ like($default_key_info, qr/^global_default_key\|global-prov-file$/, "Default key
 # Verify that the default key of global key provider can be set in a new database using global key provider.
 ensure_database_exists_and_accessible($node_primary, 'test2');
 $node_primary->safe_psql('test2', "CREATE EXTENSION pg_tde;");
+$node_primary->safe_psql('test2',
+        "SELECT pg_tde_create_key_using_global_key_provider('global_db_default_key','global-prov-file');");
 $node_primary->safe_psql('test2',
         "SELECT pg_tde_set_default_key_using_global_key_provider('global_db_default_key','global-prov-file');");
 
