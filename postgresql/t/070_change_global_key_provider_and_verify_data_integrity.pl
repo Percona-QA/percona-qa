@@ -118,6 +118,7 @@ sub add_global_key_provider {
 # Subroutine to set a global key
 sub set_global_key {
     my ($node, $db, $key_name, $provider_name) = @_;
+    my $result1 = invoke_add_key_function($node, $db, 'pg_tde_create_key_using_global_key_provider', $key_name, $provider_name);
     my $result = invoke_add_key_function($node, $db, 'pg_tde_set_key_using_global_key_provider', $key_name, $provider_name);
     ok($result, "$key_name global key was set successfully using provider $provider_name");
 }

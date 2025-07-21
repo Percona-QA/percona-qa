@@ -43,6 +43,8 @@ add_key_provider($node_primary, $DB_NAME, $VAULT_PRO, $GLOBAL_PROVIDER, sprintf(
     $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
 ));
 set_key($node_primary, $DB_NAME, $VAULT_SERVER_KEY, $VAULT_PRO, 
+    'SERVER_KEY', 'pg_tde_create_key_using_global_key_provider');
+set_key($node_primary, $DB_NAME, $VAULT_SERVER_KEY, $VAULT_PRO, 
     'SERVER_KEY', 'pg_tde_set_server_key_using_global_key_provider');
 verify_server_key_info($node_primary, $DB_NAME, $VAULT_SERVER_KEY, $VAULT_PRO);
 

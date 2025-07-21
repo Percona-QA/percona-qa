@@ -19,7 +19,9 @@ PGTDE::psql($node, 'postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 PGTDE::psql($node, 'postgres',
 	"SELECT pg_tde_add_global_key_provider_file('file-keyring-pg-1401','/tmp/pg_tde_test_pg1401.per');"
 );
-
+PGTDE::psql($node, 'postgres',
+	"SELECT pg_tde_create_key_using_global_key_provider('server-key', 'file-keyring-pg-1401');"
+);
 PGTDE::psql($node, 'postgres',
 	"SELECT pg_tde_set_key_using_global_key_provider('server-key', 'file-keyring-pg-1401');"
 );

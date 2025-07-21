@@ -108,6 +108,11 @@ foreach my $provider (@providers) {
         # 2. Test key creation
         eval {
             $node_primary->safe_psql($dbname,
+                "SELECT pg_tde_create_key_using_database_key_provider(
+                    '$provider->{key_name}',
+                    '$provider->{name}',
+                    'false');");
+            $node_primary->safe_psql($dbname,
                 "SELECT pg_tde_set_key_using_database_key_provider(
                     '$provider->{key_name}',
                     '$provider->{name}',

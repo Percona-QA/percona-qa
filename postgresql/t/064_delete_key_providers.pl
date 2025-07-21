@@ -38,6 +38,8 @@ $node_primary->safe_psql('test1',
     "SELECT pg_tde_add_database_key_provider_vault_v2('vault_keyring3_can_delete', '$VAULT_TOKEN', '$VAULT_SERVER_URL', '$VAULT_SECRET_MOUNT_POINT', NULL);"
     );
 $node_primary->safe_psql('test1',
+        "SELECT pg_tde_create_key_using_database_key_provider('vault_key3','vault_keyring3');");
+$node_primary->safe_psql('test1',
         "SELECT pg_tde_set_key_using_database_key_provider('vault_key3','vault_keyring3');");
 $node_primary->safe_psql($DB_NAME, 
     "SELECT pg_tde_add_global_key_provider_kmip('kmip_keyring3', '$KMIP_URL', $KMIP_PORT,
@@ -47,6 +49,7 @@ $node_primary->safe_psql($DB_NAME,
     "SELECT pg_tde_add_global_key_provider_kmip('kmip_keyring3_can_delete', '$KMIP_URL', $KMIP_PORT,
     '$KMIP_SERVER_CA', '$KMIP_SERVER_CLIENT_KEY');"
     );
+$node_primary->safe_psql($DB_NAME, "SELECT pg_tde_create_default_key_using_global_key_provider('kmip_key3', 'kmip_keyring3');");
 $node_primary->safe_psql($DB_NAME, "SELECT pg_tde_set_default_key_using_global_key_provider('kmip_key3', 'kmip_keyring3');");
 
 $node_primary->safe_psql('test1', "CREATE TABLE t1(a INT) USING tde_heap;");
