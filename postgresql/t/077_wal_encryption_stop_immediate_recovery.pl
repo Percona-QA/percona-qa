@@ -75,6 +75,7 @@ add_key_provider($node_primary, $dbname, 'global', $FILE_PRO, sprintf(
     "SELECT pg_tde_add_global_key_provider_file('%s', '/tmp/global_keyring.file');",
     $FILE_PRO_GLOBAL
 ));
+set_key($node_primary, $dbname, $SERVER_KEY, $FILE_PRO_GLOBAL, 'server_key', 'pg_tde_create_key_using_global_key_provider');
 set_key($node_primary, $dbname, $SERVER_KEY, $FILE_PRO_GLOBAL, 'server_key', 'pg_tde_set_server_key_using_global_key_provider');
 
 diag("Adding File local key provider and setting default encryption key");
@@ -82,6 +83,7 @@ add_key_provider($node_primary, $dbname, 'local', $FILE_PRO, sprintf(
     "SELECT pg_tde_add_database_key_provider_file('%s', '/tmp/local_keyring.file');",
     $FILE_PRO
 ));
+set_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO, 'local_key', 'pg_tde_create_key_using_database_key_provider');
 set_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO, 'local_key', 'pg_tde_set_key_using_database_key_provider');
 
 # ====== STEP 4: Enable WAL encryption ======

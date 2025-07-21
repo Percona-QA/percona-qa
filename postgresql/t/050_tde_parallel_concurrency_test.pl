@@ -92,9 +92,13 @@ sub setup_encryption {
     $node->safe_psql($db_name, 
         "SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
     $node->safe_psql($db_name,
+        "SELECT pg_tde_create_key_using_global_key_provider('global_key', 'global_key_provider');");
+    $node->safe_psql($db_name,
         "SELECT pg_tde_set_server_key_using_global_key_provider('global_key', 'global_key_provider');");
     $node->safe_psql($db_name,
         "SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/db_keyring.fil');");
+    $node->safe_psql($db_name,
+        "SELECT pg_tde_create_key_using_database_key_provider('local_key', 'local_key_provider');");
     $node->safe_psql($db_name,
         "SELECT pg_tde_set_key_using_database_key_provider('local_key', 'local_key_provider');");
 }

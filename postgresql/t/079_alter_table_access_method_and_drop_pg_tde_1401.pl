@@ -36,6 +36,8 @@ $node_primary->safe_psql($dbname,
     "SELECT pg_tde_add_global_key_provider_file('$FILE_PRO', '/tmp/keyring.file');"
     );
 $node_primary->safe_psql($dbname, 
+    "SELECT pg_tde_create_key_using_global_key_provider('$FILE_KEY', '$FILE_PRO');");
+$node_primary->safe_psql($dbname, 
     "SELECT pg_tde_set_key_using_global_key_provider('$FILE_KEY', '$FILE_PRO');");
 
 # ====== STEP 4: Create and Populate Table ======

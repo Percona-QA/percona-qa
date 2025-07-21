@@ -70,6 +70,7 @@ is($extension_exists, '1', "pg_tde extension exists in the new database 'new_db3
 # ====== STEP 6: Call TDE functions with new database ======
 diag("Creating and populating table enc_test using TDE");
 add_key_provider($node_primary, 'new_db1', $FILE_PRO, 'file', "SELECT pg_tde_add_database_key_provider_file('$FILE_PRO', '/tmp/keyring.file');");
+set_key($node_primary, 'new_db1', $FILE_KEY, $FILE_PRO, 'database_key', 'pg_tde_create_key_using_database_key_provider');
 set_key($node_primary, 'new_db1', $FILE_KEY, $FILE_PRO, 'database_key', 'pg_tde_set_key_using_database_key_provider');
 $node_primary->safe_psql('new_db1', <<'SQL');
 CREATE TABLE enc_test(id INT, secret TEXT) USING tde_heap;

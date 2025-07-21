@@ -269,6 +269,9 @@ sub rotate_keys {
             diag("Rotating WAL key...");
             eval {
                 $node->safe_psql($db_name,
+                    "SELECT pg_tde_create_key_using_global_key_provider('server_key_$rand', 'global_key_provider', 'true');"
+                );
+                $node->safe_psql($db_name,
                     "SELECT pg_tde_set_server_key_using_global_key_provider('server_key_$rand', 'global_key_provider', 'true');"
                 );
             };
@@ -281,6 +284,9 @@ sub rotate_keys {
             my $rand = int(rand(1000000)) + 1;
             diag("Rotating master key...");
             eval {
+                $node->safe_psql($db_name,
+                    "SELECT pg_tde_create_key_using_database_key_provider('db_key_$rand', 'local_key_provider', 'true');"
+                );
                 $node->safe_psql($db_name,
                     "SELECT pg_tde_set_key_using_database_key_provider('db_key_$rand', 'local_key_provider', 'true');"
                 );
@@ -345,6 +351,8 @@ sub setup_pg_tde_global_environment
 	$node->safe_psql($db_name,
 		"SELECT pg_tde_add_global_key_provider_file('$provider_name', '$provider_path');");
 	$node->safe_psql($db_name, 'postgres',
+		"SELECT pg_tde_create_key_using_global_key_provider('$key_name', '$provider_name');");
+	$node->safe_psql($db_name, 'postgres',
 		"SELECT pg_tde_set_server_key_using_global_key_provider('$key_name', '$provider_name');");
 }
 
@@ -355,6 +363,8 @@ sub setup_pg_tde_db_environment
 	$node->safe_psql($db_name, 'postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 	$node->safe_psql($db_name, 'postgres',
 		"SELECT pg_tde_add_database_key_provider_file('$provider_name', '$provider_path');");
+	$node->safe_psql($db_name, 'postgres',
+		"SELECT pg_tde_create_key_using_database_key_provider('$key_name', '$provider_name');");
 	$node->safe_psql($db_name, 'postgres',
 		"SELECT pg_tde_set_key_using_database_key_provider('$key_name', '$provider_name');");
 }
@@ -406,9 +416,13 @@ sub setup_encryption {
     $node->safe_psql($db_name, 
         "SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
     $node->safe_psql($db_name,
+        "SELECT pg_tde_create_key_using_global_key_provider('global_key', 'global_key_provider');");
+    $node->safe_psql($db_name,
         "SELECT pg_tde_set_server_key_using_global_key_provider('global_key', 'global_key_provider');");
     $node->safe_psql($db_name,
         "SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/db_keyring.fil');");
+    $node->safe_psql($db_name,
+        "SELECT pg_tde_create_key_using_database_key_provider('local_key', 'local_key_provider');");
     $node->safe_psql($db_name,
         "SELECT pg_tde_set_key_using_database_key_provider('local_key', 'local_key_provider');");
 }

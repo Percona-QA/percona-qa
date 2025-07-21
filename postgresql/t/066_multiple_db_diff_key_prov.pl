@@ -50,8 +50,11 @@ $node_primary->safe_psql('db2', "CREATE EXTENSION pg_tde;");
 $node_primary->safe_psql('db3', "CREATE EXTENSION pg_tde;");
 
 # diag("Set Principal Keys for db1, db2, db3");
+$node_primary->safe_psql('db1', "SELECT pg_tde_create_key_using_global_key_provider('vault_key2', 'vault_keyring2');");
 $node_primary->safe_psql('db1', "SELECT pg_tde_set_key_using_global_key_provider('vault_key2', 'vault_keyring2');");
+$node_primary->safe_psql('db2', "SELECT pg_tde_create_key_using_global_key_provider('kmip_key2', 'kmip_keyring2');");
 $node_primary->safe_psql('db2', "SELECT pg_tde_set_key_using_global_key_provider('kmip_key2', 'kmip_keyring2');");
+$node_primary->safe_psql('db3', "SELECT pg_tde_create_key_using_global_key_provider('file_key2', 'file_keyring2');");
 $node_primary->safe_psql('db3', "SELECT pg_tde_set_key_using_global_key_provider('file_key2', 'file_keyring2');");
 
 # diag("Create tables in db1, db2, db3");

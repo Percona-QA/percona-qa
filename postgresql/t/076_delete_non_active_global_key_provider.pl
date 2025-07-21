@@ -44,6 +44,8 @@ add_key_provider($node_primary, $DB_NAME, $VAULT_PRO, $GLOBAL_PROVIDER, sprintf(
     $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
 ));
 set_key($node_primary, $DB_NAME, $VAULT_KEY, $VAULT_PRO, 
+    'default_global_key', 'pg_tde_create_key_using_global_key_provider');
+set_key($node_primary, $DB_NAME, $VAULT_KEY, $VAULT_PRO, 
     'default_global_key', 'pg_tde_set_default_key_using_global_key_provider');
 verify_default_key_info($node_primary, $DB_NAME, $VAULT_KEY, $VAULT_PRO);
 
@@ -58,6 +60,8 @@ add_key_provider($node_primary, $DB_NAME, $FILE_PRO, $GLOBAL_PROVIDER, sprintf(
     "SELECT pg_tde_add_global_key_provider_file('%s', '/tmp/global_file.keyring');",
     $FILE_PRO
 ));
+set_key($node_primary, $DB_NAME, $FILE_KEY, $FILE_PRO, 
+    'default_global_key', 'pg_tde_create_key_using_global_key_provider');
 set_key($node_primary, $DB_NAME, $FILE_KEY, $FILE_PRO, 
     'default_global_key', 'pg_tde_set_default_key_using_global_key_provider');
 verify_default_key_info($node_primary, $DB_NAME, $FILE_KEY, $FILE_PRO);

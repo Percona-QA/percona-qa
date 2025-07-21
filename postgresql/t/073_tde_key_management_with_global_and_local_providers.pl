@@ -45,6 +45,7 @@ add_key_provider($node_primary, $DB_NAME, $VAULT_PRO, 'global', sprintf(
     "SELECT pg_tde_add_global_key_provider_vault_v2('%s', '%s', '%s', '%s', NULL);",
     $VAULT_PRO, $VAULT_TOKEN, $VAULT_SERVER_URL, $VAULT_SECRET_MOUNT_POINT
 ));
+set_key($node_primary, $DB_NAME, $VAULT_KEY, $VAULT_PRO, 'default_key_global', 'pg_tde_create_key_using_global_key_provider');
 set_key($node_primary, $DB_NAME, $VAULT_KEY, $VAULT_PRO, 'default_key_global', 'pg_tde_set_default_key_using_global_key_provider');
 
 # ====== STEP 4: Create and Verify Table t1 ======
@@ -60,6 +61,7 @@ verify_key_info($node_primary, $dbname, $VAULT_KEY, $VAULT_PRO);
 
 # ====== STEP 5: Rotate Vault Key ======
 diag("Rotating Vault default global key");
+set_key($node_primary, $DB_NAME, $VAULT_KEY1, $VAULT_PRO, 'default_key_global', 'pg_tde_create_key_using_global_key_provider');
 set_key($node_primary, $DB_NAME, $VAULT_KEY1, $VAULT_PRO, 'default_key_global', 'pg_tde_set_default_key_using_global_key_provider');
 
 # ====== STEP 6: Create and Verify Table t2 ======
@@ -78,6 +80,7 @@ add_key_provider($node_primary, $dbname, 'local', $FILE_PRO, sprintf(
     "SELECT pg_tde_add_database_key_provider_file('%s', '/tmp/keyring.file');",
     $FILE_PRO
 ));
+set_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO, 'database_key', 'pg_tde_create_key_using_database_key_provider');
 set_key($node_primary, $dbname, $FILE_KEY, $FILE_PRO, 'database_key', 'pg_tde_set_key_using_database_key_provider');
 
 # ====== STEP 8: Create and Verify Table t3 ======
@@ -93,6 +96,7 @@ verify_key_info($node_primary, $dbname, $FILE_KEY, $FILE_PRO);
 
 # ====== STEP 9: Rotate Vault Key ======
 diag("Rotating Vault key and performing key rotation 10 times");
+set_key($node_primary, $dbname, $VAULT_KEY2, $VAULT_PRO, 'set_key_global', 'pg_tde_create_key_using_global_key_provider');
 set_key($node_primary, $dbname, $VAULT_KEY2, $VAULT_PRO, 'set_key_global', 'pg_tde_set_key_using_global_key_provider');
 for my $i (1 .. 10) {
     $node_primary->safe_psql($dbname, "SELECT pg_tde_set_key_using_database_key_provider('$FILE_KEY', '$FILE_PRO');");

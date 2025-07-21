@@ -39,6 +39,9 @@ $node_primary->safe_psql('db1',
 # Trying to create Principal Key using a key provider outside the scope of db2. Must fail"
 my $error;
 eval {
+
+    $node_primary->safe_psql('db2',
+        "SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring');");
     $node_primary->safe_psql('db2',
         "SELECT pg_tde_set_key_using_database_key_provider('vault_key1','vault_keyring');");
     1;
@@ -53,6 +56,8 @@ $error = undef;
 my $result;
 
 eval {
+    $result = $node_primary->safe_psql('db1',
+        "SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring');");
     $result = $node_primary->safe_psql('db1',
         "SELECT pg_tde_set_key_using_database_key_provider('vault_key1','vault_keyring');");
     chomp($result);
