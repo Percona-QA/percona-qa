@@ -9,7 +9,7 @@ use pgtde;
 use tde_helper;
 
 PGTDE::setup_files_dir(basename($0));
-
+unlink('/tmp/keyring.file');
 # ====== STEP 1: Initialize Primary Node ======
 diag("Initializing primary node and configuring TDE settings");
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');

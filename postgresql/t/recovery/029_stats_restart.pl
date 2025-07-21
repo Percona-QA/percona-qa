@@ -19,6 +19,8 @@ $node->append_conf('postgresql.conf',
 $node->append_conf('postgresql.conf', "track_functions = 'all'");
 $node->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $node->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node->safe_psql('postgres',
@@ -54,7 +56,9 @@ $node->safe_psql($db_under_test, 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node->safe_psql($db_under_test,
 	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test', '/tmp/local_keyring_test.file');");
 $node->safe_psql($db_under_test,
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider_test');");
+	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sc', 'local_key_provider_test');");
+$node->safe_psql($db_under_test,
+	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_sc', 'local_key_provider_test');");
 $node->safe_psql($db_under_test,
 	"CREATE TABLE tab_stats_crash_discard_test1 AS SELECT generate_series(1,100) AS a"
 );

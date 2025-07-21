@@ -37,7 +37,7 @@ my $FILE_KEY = 'file_key6';
 my $TDE_HEAP = 't'; # used for tde_heap access method verification
 my $HEAP = 'f';
 
-
+unlink('/tmp/keyring.file');
 ensure_database_exists_and_accessible($node_primary, $dbname);
 $node_primary->safe_psql($dbname, "CREATE EXTENSION pg_tde;");
 

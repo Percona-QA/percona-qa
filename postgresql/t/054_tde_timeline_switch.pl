@@ -18,6 +18,7 @@ $node_primary->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_td
 $node_primary->append_conf('postgresql.conf', "default_table_access_method = 'tde_heap'");
 $node_primary->start;
 
+unlink('/tmp/unlogged_tables.per');
 # Create and enable tde extension
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('postgres',

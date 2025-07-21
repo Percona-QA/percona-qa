@@ -25,6 +25,7 @@ $node_primary->append_conf('postgresql.conf', "default_table_access_method = 'td
 $node_primary->start;
 my $backup_name = 'primary_backup';
 
+unlink('/tmp/unlogged_tables.per');
 # Create and enable tde extension
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('postgres',

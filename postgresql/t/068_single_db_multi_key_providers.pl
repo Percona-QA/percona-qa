@@ -20,6 +20,7 @@ set_default_table_am_tde_heap($node_primary);
 $node_primary->append_conf('postgresql.conf', "listen_addresses = '*'");
 $node_primary->start;
 
+unlink('/tmp/file_keyring.per');
 # Create a new database if not exists
 ensure_database_exists_and_accessible($node_primary, $DB_NAME);
 $node_primary->safe_psql($DB_NAME, "CREATE EXTENSION pg_tde;");

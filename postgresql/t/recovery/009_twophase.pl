@@ -44,20 +44,22 @@ $node_london->append_conf(
 ));
 $node_london->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $node_london->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_london->safe_psql('postgres',
 	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
 $node_london->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key', 'global_key_provider');");
+	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key_twop', 'global_key_provider');");
 $node_london->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');");
+	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key_twop', 'global_key_provider');");
 $node_london->safe_psql('postgres',
 	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
 $node_london->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key', 'local_key_provider');");
+	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_twop', 'local_key_provider');");
 $node_london->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider');");
+	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_twop', 'local_key_provider');");
 
 my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
 

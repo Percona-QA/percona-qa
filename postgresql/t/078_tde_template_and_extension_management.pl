@@ -27,6 +27,7 @@ $node_primary->append_conf('postgresql.conf', q{
 });
 $node_primary->start;
 
+unlink('/tmp/keyring.file');
 # Common variables
 my $dbname = 'test_db';
 my $FILE_PRO = 'file_keyring1';

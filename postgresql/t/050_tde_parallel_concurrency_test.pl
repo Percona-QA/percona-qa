@@ -87,6 +87,8 @@ sub setup_servers {
 
 # Setup pg_tde encryption on the primary node
 sub setup_encryption {
+    unlink('/tmp/global_keyring.file');
+    unlink('/tmp/local_keyring.file');
     my ($node, $db_name) = @_;
     $node->safe_psql($db_name, 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
     $node->safe_psql($db_name, 

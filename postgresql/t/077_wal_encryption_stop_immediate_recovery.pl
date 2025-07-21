@@ -15,6 +15,7 @@ diag("Initializing primary node and configuring TDE settings");
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init;
 
+unlink('/tmp/local_keyring.file');
 enable_pg_tde_in_conf($node_primary);
 set_default_table_am_tde_heap($node_primary);
 

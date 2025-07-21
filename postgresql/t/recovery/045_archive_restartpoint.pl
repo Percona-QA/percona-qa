@@ -26,6 +26,8 @@ $node_primary->append_conf('postgresql.conf',
 
 $node_primary->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('postgres',

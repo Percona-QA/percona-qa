@@ -56,7 +56,7 @@ $node_standby_2->init_from_backup($node_standby_1, $backup_name,
 $node_standby_2->start;
 
 #PGTDE::append_to_result_file("-- At primary");
-
+unlink('/tmp/unlogged_tables.per');
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('postgres',
 	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/unlogged_tables.per');"

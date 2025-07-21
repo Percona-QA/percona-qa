@@ -126,7 +126,8 @@ $node->append_conf('postgresql.conf',
 	"default_table_access_method = 'tde_heap'");
 
 $node->start;
-
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $node->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node->safe_psql('postgres',

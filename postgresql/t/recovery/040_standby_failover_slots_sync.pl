@@ -31,6 +31,8 @@ $publisher->append_conf('postgresql.conf',
 
 $publisher->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $publisher->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $publisher->safe_psql('postgres',

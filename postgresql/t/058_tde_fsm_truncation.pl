@@ -27,6 +27,7 @@ $node_primary->append_conf('postgresql.conf', "default_table_access_method = 'td
 # at the same time.
 $node_primary->start;
 # Create and enable tde extension
+unlink('/tmp/unlogged_tables.per');
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('postgres',
 	"SELECT pg_tde_add_database_key_provider_file('file-vault', '/tmp/unlogged_tables.per');"

@@ -74,6 +74,8 @@ our $VAULT_SERVER_URL = "http://$VAULT_URL:$VAULT_PORT";
 
 our %TASK_PIDS;
 
+unlink('/tmp//tmp/db_keyring.fil');
+unlink('/tmp/global_keyring.file');
 # === Run parallel tasks ===
 # This function runs a subroutine in the background and tracks its PID
 sub run_in_background {

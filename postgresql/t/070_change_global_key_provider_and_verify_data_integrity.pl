@@ -30,6 +30,7 @@ my $KMIP_KEY = 'kmip_key5';
 my $VAULT_KEY = 'vault_key5';
 my $FILE_KEY = 'file_key5';
 
+unlink('/tmp/file_keyring.per');
 # ====== STEP 2: Ensure Database Exists and Enable pg_tde ======
 diag("Ensuring database exists and enabling pg_tde extension");
 ensure_database_exists_and_accessible($node_primary, $dbname);

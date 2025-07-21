@@ -42,6 +42,7 @@ $node_london->append_conf('postgresql.conf', "shared_preload_libraries = 'pg_tde
 $node_london->append_conf('postgresql.conf', "default_table_access_method = 'tde_heap'");
 $node_london->start;
 
+unlink('/tmp/unlogged_tables.per');
 # Create and enable tde extension
 $node_london->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_london->safe_psql('postgres',

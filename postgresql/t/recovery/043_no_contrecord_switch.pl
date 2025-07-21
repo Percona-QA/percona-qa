@@ -73,6 +73,8 @@ $primary->append_conf('postgresql.conf',
 
 $primary->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $primary->safe_psql('postgres',

@@ -298,6 +298,8 @@ $node_primary->append_conf('postgresql.conf',
 $node_primary->dump_info;
 $node_primary->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 
@@ -332,7 +334,9 @@ $node_primary->safe_psql('testdb', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('testdb',
 	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test1', '/tmp/local_keyring_test1.file');");
 $node_primary->safe_psql('testdb',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider_test1');");
+	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sl1', 'local_key_provider_test1');");
+$node_primary->safe_psql('testdb',
+	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_sl1', 'local_key_provider_test1');");
 
 $node_primary->safe_psql('testdb',
 	qq[SELECT * FROM pg_create_physical_replication_slot('$primary_slotname');]
@@ -508,7 +512,9 @@ $node_primary->safe_psql('otherdb', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('otherdb',
 	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test2', '/tmp/local_keyring_test2.file');");
 $node_primary->safe_psql('otherdb',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider_test2');");
+	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sl2', 'local_key_provider_test2');");
+$node_primary->safe_psql('otherdb',
+	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_sl2', 'local_key_provider_test2');");
 
 # Wait for catchup to ensure that the new database is visible to other sessions
 # on the standby.
@@ -948,7 +954,9 @@ $node_primary->safe_psql('testdb', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('testdb',
 	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test3', '/tmp/local_keyring_test3.file');");
 $node_primary->safe_psql('testdb',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider_test3');");
+	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sl3', 'local_key_provider_test3');");
+$node_primary->safe_psql('testdb',
+	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_sl3', 'local_key_provider_test3');");
 $node_primary->safe_psql('testdb',
 	qq[CREATE TABLE decoding_test(x integer, y text);]);
 

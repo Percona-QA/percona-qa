@@ -20,6 +20,8 @@ $node_primary->append_conf('postgresql.conf',
 	"default_table_access_method = 'tde_heap'");
 $node_primary->start;
 
+unlink('/tmp/global_keyring.file');
+unlink('/tmp/local_keyring.file');
 # Create and enable tde extension
 $node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 
@@ -107,7 +109,9 @@ $node_primary->safe_psql('test', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('test',
 	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test', '/tmp/local_keyring_test.file');");
 $node_primary->safe_psql('test',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider_test');");
+	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sc', 'local_key_provider_test');");
+$node_primary->safe_psql('test',
+	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_sc', 'local_key_provider_test');");
 
 $node_primary->wait_for_replay_catchup($node_standby);
 
