@@ -1,9 +1,10 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/start_server.sh"
 rm /tmp/key_holder.pem
 
 start_server() {
@@ -27,7 +28,8 @@ echo "..Add a Global key provider"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('file_provider','/tmp/key_holder.pem');"
 
 echo "..Create a Global Default Principal key"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider','true');"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
 
 echo "..Create encrypted table"
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE TABLE t1(a INT) USING tde_heap;"
