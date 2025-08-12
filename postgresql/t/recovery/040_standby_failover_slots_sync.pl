@@ -6,6 +6,8 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 ##################################################
 # Test that when a subscription with failover enabled is created, it will alter
@@ -24,38 +26,7 @@ $publisher->init(
 # slots at primary lag behind standby during slot sync.
 $publisher->append_conf('postgresql.conf', 'autovacuum = off');
 
-$publisher->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$publisher->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-
-$publisher->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$publisher->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-$publisher->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$publisher->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$publisher->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$publisher->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$publisher->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-$publisher->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$publisher->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
+PGTDE::setup_pg_tde_node($publisher,'publisher');
 
 $publisher->restart;
 
@@ -68,33 +39,7 @@ my $publisher_connstr = $publisher->connstr . ' dbname=postgres';
 my $subscriber1 = PostgreSQL::Test::Cluster->new('subscriber1');
 $subscriber1->init;
 
-$subscriber1->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$subscriber1->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-
-$subscriber1->start;
-
-# Create and enable tde extension
-$subscriber1->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-$subscriber1->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$subscriber1->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$subscriber1->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$subscriber1->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-
-$WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$subscriber1->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
-
+PGTDE::setup_pg_tde_node($subscriber1,'subscriber1');
 $subscriber1->restart;
 
 # Capture the time before the logical failover slot is created on the
@@ -186,7 +131,7 @@ ok( $stderr =~
 
 my $primary = $publisher;
 my $backup_name = 'backup';
-$primary->backup($backup_name);
+PGTDE::backup($primary, $backup_name);
 
 # Create a standby
 my $standby1 = PostgreSQL::Test::Cluster->new('standby1');
@@ -411,7 +356,7 @@ $standby1->reload;
 
 # Create a cascading standby
 $backup_name = 'backup2';
-$standby1->backup($backup_name);
+PGTDE::backup($standby1, $backup_name);
 
 my $cascading_standby = PostgreSQL::Test::Cluster->new('cascading_standby');
 $cascading_standby->init_from_backup(
@@ -672,7 +617,7 @@ $backup_name = 'backup3';
 $primary->psql('postgres',
 	q{SELECT pg_create_physical_replication_slot('sb2_slot');});
 
-$primary->backup($backup_name);
+PGTDE::backup($primary, $backup_name);
 
 # Create another standby
 my $standby2 = PostgreSQL::Test::Cluster->new('standby2');

@@ -11,42 +11,13 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 my $node = PostgreSQL::Test::Cluster->new('main');
 
 $node->init;
-$node->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-$node->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$node->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-$node->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key_ur', 'global_key_provider');");
-$node->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key_ur', 'global_key_provider');");
-$node->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_ur', 'local_key_provider');");
-$node->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_ur', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
-
+PGTDE::setup_pg_tde_node($node);
 $node->restart;
 
 my $pgdata = $node->data_dir;

@@ -10,13 +10,11 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init(allows_streaming => 1);
-$node_primary->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node_primary->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
 
 $node_primary->append_conf(
 	'postgresql.conf', qq{
@@ -27,38 +25,10 @@ autovacuum = off
 
 # Create a primary node and its standby, initializing both with some data
 # at the same time.
-$node_primary->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key_fsm', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key_fsm', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_fsm', 'local_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_fsm', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node_primary->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
-
+PGTDE::setup_pg_tde_node($node_primary);
 $node_primary->restart;
 
-$node_primary->backup('primary_backup');
+PGTDE::backup($node_primary, 'primary_backup');
 my $node_standby = PostgreSQL::Test::Cluster->new('standby');
 $node_standby->init_from_backup($node_primary, 'primary_backup',
 	has_streaming => 1);

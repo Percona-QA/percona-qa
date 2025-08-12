@@ -9,6 +9,8 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 my ($stdin, $stdout, $stderr,
 	$cascading_stdout, $cascading_stderr, $subscriber_stdin,
@@ -291,48 +293,18 @@ max_replication_slots = 4
 max_wal_senders = 4
 autovacuum = off
 });
-$node_primary->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node_primary->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
+
 $node_primary->dump_info;
-$node_primary->start;
 
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node_primary->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
+PGTDE::setup_pg_tde_node($node_primary);
 
 $node_primary->restart;
-
+unlink('/tmp/local_keyring_standby_logical_decode_1.file');
 $node_primary->psql('postgres', q[CREATE DATABASE testdb]);
-
 # Create and enable tde extension
 $node_primary->safe_psql('testdb', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('testdb',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test1', '/tmp/local_keyring_test1.file');");
+	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test1', '/tmp/local_keyring_standby_logical_decode_1.file');");
 $node_primary->safe_psql('testdb',
 	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sl1', 'local_key_provider_test1');");
 $node_primary->safe_psql('testdb',
@@ -351,7 +323,7 @@ $res = $node_primary->safe_psql(
 is($res, 't', "Physical slot reports conflicting as NULL");
 
 my $backup_name = 'b1';
-$node_primary->backup($backup_name);
+PGTDE::backup($node_primary, $backup_name);
 
 # Some tests need to wait for VACUUM to be replayed. But vacuum does not flush
 # WAL. An insert into flush_wal outside transaction does guarantee a flush.
@@ -508,9 +480,10 @@ is($stdout_recv, '', 'pg_recvlogical acknowledged changes');
 $node_primary->safe_psql('postgres', 'CREATE DATABASE otherdb');
 
 # Create and enable tde extension
+unlink('/tmp/local_keyring_standby_logical_decode_2.file');
 $node_primary->safe_psql('otherdb', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('otherdb',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test2', '/tmp/local_keyring_test2.file');");
+	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test2', '/tmp/local_keyring_standby_logical_decode_2.file');");
 $node_primary->safe_psql('otherdb',
 	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sl2', 'local_key_provider_test2');");
 $node_primary->safe_psql('otherdb',
@@ -948,11 +921,12 @@ $node_standby->psql('postgres',
 
 $node_standby->reload;
 
+unlink('/tmp/local_keyring_standby_logical_decode_3.file');
 $node_primary->psql('postgres', q[CREATE DATABASE testdb]);
 # Create and enable tde extension
 $node_primary->safe_psql('testdb', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 $node_primary->safe_psql('testdb',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test3', '/tmp/local_keyring_test3.file');");
+	"SELECT pg_tde_add_database_key_provider_file('local_key_provider_test3', '/tmp/local_keyring_standby_logical_decode_3.file');");
 $node_primary->safe_psql('testdb',
 	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sl3', 'local_key_provider_test3');");
 $node_primary->safe_psql('testdb',
@@ -972,7 +946,7 @@ $node_standby->safe_psql('testdb',
 );
 
 # Initialize cascading standby node
-$node_standby->backup($backup_name);
+PGTDE::backup($node_standby, $backup_name);
 $node_cascading_standby->init_from_backup(
 	$node_standby, $backup_name,
 	has_streaming => 1,

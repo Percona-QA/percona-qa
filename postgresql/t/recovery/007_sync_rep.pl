@@ -7,6 +7,8 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 # Query checking sync_priority and sync_state of each standby
 my $check_sql =
@@ -53,45 +55,14 @@ sub start_standby_and_wait
 # Initialize primary node
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
 $node_primary->init(allows_streaming => 1);
-$node_primary->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node_primary->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-$node_primary->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key_sync', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key_sync', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_sync', 'local_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_sync', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node_primary->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
+PGTDE::setup_pg_tde_node($node_primary);
 
 $node_primary->restart;
 
 my $backup_name = 'primary_backup';
 
 # Take backup
-$node_primary->backup($backup_name);
+PGTDE::backup($node_primary, $backup_name);
 
 # Create all the standbys.  Their status on the primary is checked to ensure
 # the ordering of each one of them in the WAL sender array of the primary.

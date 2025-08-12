@@ -6,7 +6,14 @@ By default, WAL encryption is **off** unless the environment variable is explici
 For example, in Perl you can set the default as follows:
 
 ```perl
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
+my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'on';
+
+$node_primary->append_conf(
+    'postgresql.conf',
+    ($WAL_ENCRYPTION eq 'off')
+        ? "pg_tde.wal_encrypt = off\n"
+        : "pg_tde.wal_encrypt = on\n"
+);
 ```
 
 You can enable WAL encryption in one of two ways:

@@ -10,53 +10,23 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 # Initialize primary node
 my $alpha = PostgreSQL::Test::Cluster->new('alpha');
 $alpha->init(allows_streaming => 1);
-$alpha->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$alpha->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
 # Setting wal_log_hints to off is important to get invalid page
 # references.
 $alpha->append_conf("postgresql.conf", <<EOF);
 wal_log_hints = off
 EOF
-
-# Start the primary
-$alpha->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$alpha->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-$alpha->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$alpha->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key_pp', 'global_key_provider');");
-$alpha->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key_pp', 'global_key_provider');");
-$alpha->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$alpha->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_pp', 'local_key_provider');");
-$alpha->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_pp', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$alpha->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
+PGTDE::setup_pg_tde_node($alpha);
 
 $alpha->restart;
 
 # setup/start a standby
-$alpha->backup('bkp');
+PGTDE::backup($alpha, 'bkp');
 my $bravo = PostgreSQL::Test::Cluster->new('bravo');
 $bravo->init_from_backup($alpha, 'bkp', has_streaming => 1);
 $bravo->append_conf('postgresql.conf', <<EOF);

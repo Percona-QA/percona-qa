@@ -10,6 +10,8 @@ use warnings FATAL => 'all';
 use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
+use lib 't';
+use pgtde;
 
 sub compare_confirmed_flush
 {
@@ -49,71 +51,14 @@ $node_publisher->append_conf(
 checkpoint_timeout = 1h
 autovacuum = off
 });
-$node_publisher->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node_publisher->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-
-$node_publisher->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$node_publisher->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-$node_publisher->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node_publisher->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$node_publisher->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$node_publisher->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node_publisher->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-$node_publisher->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node_publisher->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
-
+PGTDE::setup_pg_tde_node($node_publisher);
 $node_publisher->restart;
 
 # Create subscriber node
 my $node_subscriber = PostgreSQL::Test::Cluster->new('sub');
 $node_subscriber->init;
 
-$node_subscriber->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node_subscriber->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-
-$node_subscriber->start;
-
-# Create and enable tde extension
-$node_subscriber->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-$node_subscriber->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node_subscriber->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key', 'global_key_provider');");
-$node_subscriber->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node_subscriber->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key', 'local_key_provider');");
-
-$WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node_subscriber->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
+PGTDE::setup_pg_tde_node($node_subscriber);
 
 $node_subscriber->restart;
 

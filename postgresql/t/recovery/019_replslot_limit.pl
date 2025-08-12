@@ -11,6 +11,8 @@ use PostgreSQL::Test::Utils;
 use PostgreSQL::Test::Cluster;
 use Test::More;
 use Time::HiRes qw(usleep);
+use lib 't';
+use pgtde;
 
 # Initialize primary node, setting wal-segsize to 1MB
 my $node_primary = PostgreSQL::Test::Cluster->new('primary');
@@ -21,40 +23,7 @@ min_wal_size = 2MB
 max_wal_size = 4MB
 log_checkpoints = yes
 ));
-$node_primary->append_conf('postgresql.conf',
-	"shared_preload_libraries = 'pg_tde'");
-$node_primary->append_conf('postgresql.conf',
-	"default_table_access_method = 'tde_heap'");
-
-$node_primary->start;
-
-unlink('/tmp/global_keyring.file');
-unlink('/tmp/local_keyring.file');
-# Create and enable tde extension
-$node_primary->safe_psql('postgres', 'CREATE EXTENSION IF NOT EXISTS pg_tde;');
-
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_global_key_provider_file('global_key_provider', '/tmp/global_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_global_key_provider('global_test_key_rl', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_server_key_using_global_key_provider('global_test_key_rl', 'global_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_add_database_key_provider_file('local_key_provider', '/tmp/local_keyring.file');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_create_key_using_database_key_provider('local_test_key_rl', 'local_key_provider');");
-$node_primary->safe_psql('postgres',
-	"SELECT pg_tde_set_key_using_database_key_provider('local_test_key_rl', 'local_key_provider');");
-
-my $WAL_ENCRYPTION = $ENV{WAL_ENCRYPTION} // 'off';
-
-if ($WAL_ENCRYPTION eq 'on'){
-	$node_primary->append_conf(
-		'postgresql.conf', qq(
-		pg_tde.wal_encrypt = on
-	));
-}
-
+PGTDE::setup_pg_tde_node($node_primary);
 $node_primary->restart;
 $node_primary->safe_psql('postgres',
 	"SELECT pg_create_physical_replication_slot('rep1')");
@@ -68,7 +37,7 @@ is($result, "t|t|t", 'check the state of non-reserved slot is "unknown"');
 
 # Take backup
 my $backup_name = 'my_backup';
-$node_primary->backup($backup_name);
+PGTDE::backup($node_primary, $backup_name);
 
 # Create a standby linking to it using the replication slot
 my $node_standby = PostgreSQL::Test::Cluster->new('standby_1');
@@ -293,7 +262,7 @@ $node_primary2->start;
 $node_primary2->safe_psql('postgres',
 	"SELECT pg_create_physical_replication_slot('rep1')");
 $backup_name = 'my_backup2';
-$node_primary2->backup($backup_name);
+PGTDE::backup($node_primary2, $backup_name);
 
 $node_primary2->stop;
 $node_primary2->append_conf(
@@ -342,7 +311,7 @@ $node_primary3->safe_psql('postgres',
 	"SELECT pg_create_physical_replication_slot('rep3')");
 # Take backup
 $backup_name = 'my_backup';
-$node_primary3->backup($backup_name);
+PGTDE::backup($node_primary3, $backup_name);
 # Create standby
 my $node_standby3 = PostgreSQL::Test::Cluster->new('standby_3');
 $node_standby3->init_from_backup($node_primary3, $backup_name,
@@ -455,7 +424,7 @@ $primary4->start;
 
 # Take backup
 $backup_name = 'my_backup4';
-$primary4->backup($backup_name);
+PGTDE::backup($primary4, $backup_name);
 
 # Create a standby linking to the primary using the replication slot
 my $standby4 = PostgreSQL::Test::Cluster->new('standby4');
