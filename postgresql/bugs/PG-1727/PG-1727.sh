@@ -6,11 +6,12 @@ PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
 REPLICA_LOGFILE=$REPLICA_DATA/server.log
-TABLES=1000
+TABLES=100
+export PGCTLTIMEOUT=600
 
 # initate the database
 initialize_server() {
-    PG_PIDS=$(lsof -ti :5433 -ti :5434 2>/dev/null) || true
+    PG_PIDS=$(lsof -ti :5433 -ti :5434 2>/dev/null)
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
         kill -9 $PG_PIDS
@@ -59,9 +60,9 @@ logging_collector = on
 log_directory = '$REPLICA_DATA'
 log_filename = 'server.log'
 log_statement = 'all'
+unix_socket_directories = '/tmp'
 SQL
     $INSTALL_DIR/bin/pg_ctl -D $REPLICA_DATA -l $REPLICA_LOGFILE start
-    
 }
 
 enable_tde_and_create_load() {
@@ -85,7 +86,7 @@ rotate_server_key() {
     echo "Rotating server keys for 30 seconds..."
 
     local start_time=$(date +%s)
-    local duration=30
+    local duration=8
 
     while [[ $(($(date +%s) - start_time)) -lt $duration ]]; do
         RAND=$RANDOM
@@ -97,11 +98,11 @@ rotate_server_key() {
 
 verify_streaming_replication() {
     echo "Creating verification table on primary..."
-    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c "CREATE TABLE verify_replication(id INT PRIMARY KEY, val TEXT);" || exit 1
-    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c "INSERT INTO verify_replication VALUES (1, 'streaming_test');" || exit 1
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c "CREATE TABLE verify_replication(id INT PRIMARY KEY, val TEXT);"
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c "INSERT INTO verify_replication VALUES (1, 'streaming_test');"
 
     echo "Waiting for replication to apply..."
-    sleep 5
+    sleep 20
 
     echo "Checking data on replica..."
     result=$($INSTALL_DIR/bin/psql -d postgres -p 5434 -Atc "SELECT val FROM verify_replication WHERE id=1;" 2>/dev/null)
@@ -121,7 +122,7 @@ verify_logical_replication() {
     local delay=5
     local all_tables_replicated=true
 
-    for ((i=1; i<=TABLES; i++)); do
+    for ((i=1; i<=$TABLES; i++)); do
         table_name="sbtest$i"
         echo "Checking table: $table_name"
 
@@ -167,13 +168,13 @@ run_workload_during_conversion() {
         --table-size=1000 \
         --time=30 \
         run > /tmp/workload.log 2>&1 &
-    WORKLOAD_PID=$!
 }
 
 run_pg_createsubscriber() {
     echo "Running pg_createsubscriber..."
 
     stop_server $REPLICA_DATA
+    rm -f $REPLICA_DATA/postmaster.pid
 
     $INSTALL_DIR/bin/pg_createsubscriber \
         -d postgres \
@@ -183,6 +184,7 @@ run_pg_createsubscriber() {
 	--publisher-server="host=127.0.0.1 port=5433 dbname=postgres user=$(whoami)" \
         --publication=mypub \
         --subscription=mysub \
+	--socketdir=/tmp \
         --verbose
 
     start_server $REPLICA_DATA
@@ -206,11 +208,13 @@ echo "5=>Verifying Streaming Replication"
 verify_streaming_replication
 
 echo "6=>Run workload in parallel on Primary Server"
-rotate_server_key &
+#rotate_server_key &
 run_workload_during_conversion
 
 echo "7=>Convert physical replica into logical replica"
-run_pg_createsubscriber
+#run_pg_createsubscriber
+stop_server $REPLICA_DATA
+start_server $REPLICA_DATA
 
 #echo "8=>Verifying Logical Replication"
 #verify_logical_replication

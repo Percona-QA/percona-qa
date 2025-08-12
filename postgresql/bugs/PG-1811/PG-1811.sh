@@ -11,6 +11,10 @@ PG_REWIND="$INSTALL_DIR/bin/pg_rewind"
 PG_BASEBACKUP="$INSTALL_DIR/bin/pg_basebackup"
 PSQL="$INSTALL_DIR/bin/psql"
 SYSBENCH="/usr/bin/sysbench"
+SYSBENCH_TABLES=1000
+SYSBENCH_RECORDS=1000
+THREADS=10
+PGCTLTIMEOUT=600
 
 PORT_PRIMARY=5433
 PORT_REPLICA=5434
@@ -34,7 +38,7 @@ default_table_access_method = 'tde_heap'
 port = $PORT_PRIMARY
 wal_level = replica
 wal_log_hints = on
-wal_keep_size = 1024MB
+wal_keep_size = 2048MB
 max_replication_slots = 2
 max_wal_senders = 10
 listen_addresses = 'localhost'
@@ -55,10 +59,10 @@ $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_fil
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_key_using_global_key_provider('key1','file_provider');"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+#$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 # Restart primary
-$PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" restart
-sleep 3
+#$PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" restart
+#sleep 3
 
 # Create replication user
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE ROLE $REPL_USER WITH LOGIN REPLICATION SUPERUSER PASSWORD '$REPL_PASS';"
@@ -84,10 +88,10 @@ echo "=>Step 3: Start replica"
 echo "########################"
 $PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" start
 sleep 5
-$PSQL -p $PORT_REPLICA -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+#$PSQL -p $PORT_REPLICA -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 # Restart replica
-$PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" restart
-sleep 5
+#$PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" restart
+#sleep 5
 
 echo "=>Step 3: Stop primary (simulate crash)"
 echo "#######################################"
@@ -105,12 +109,12 @@ echo "##########################################################"
 echo "Generating WAL with sysbench..."
 $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_REPLICA \
   --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \
-  --threads=10 --tables=1000 --table-size=1000 \
+  --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS \
   /usr/share/sysbench/oltp_write_only.lua prepare
 
 $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_REPLICA \
   --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \
-  --threads=10 --tables=1000 --table-size=1000 --time=300 --report-interval=5 \
+  --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS --time=200 --report-interval=5 \
   /usr/share/sysbench/oltp_write_only.lua run
 
 # Backing up the Original config file

@@ -98,11 +98,11 @@ $PG_CTL -D "$DATA_B" -o "-p $PORT_B" -l "$LOG_B" restart
 sleep 2
 $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-host=localhost \
-  --pgsql-port=$port \
+  --pgsql-port=$PORT_A \
   --pgsql-user=$USER \
   --pgsql-db=$DB_NAME \
   --db-driver=pgsql \
-  --time=40 --threads=2 --tables=1 --table-size=1000 prepare
+  --time=40 --threads=5 --tables=100 --table-size=1000 prepare
 
 # Helper to run sysbench on a port
 run_sysbench() {
@@ -167,4 +167,3 @@ for i in {1..10}; do
 done
 
 echo "✅ Test complete"
-

@@ -6,7 +6,7 @@
 #                                                                            #
 ##############################################################################
 
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"

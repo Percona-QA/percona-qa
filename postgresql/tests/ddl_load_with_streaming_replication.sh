@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_17.5.2/install
+export INSTALL_DIR=$HOME/postgresql/bld_tde/install
 export PGDATA=$INSTALL_DIR/primary_data
 export PGDATA2=$INSTALL_DIR/replica_data
 export LOG_FILE=$PGDATA/server.log
@@ -127,7 +127,7 @@ run_maintenance() {
 
 crash_start() {
     $INSTALL_DIR/bin/pg_ctl -D "$PGDATA" -l "$PGDATA/server.log" start
-    exit_stats="$?"
+    exit_status="$?"
     if [ $exit_status -ne 0 ]; then
         echo "Primary Server Failed to start. Check Logs: $PGDATA/server.log"
         grep "lock pg_tde_tranche is not held" $PGDATA/server.log
@@ -204,7 +204,7 @@ echo "Primary Server started PID:$PG_PID1"
 $INSTALL_DIR/bin/psql -d postgres -c "CREATE USER replica_user WITH REPLICATION;"
 $INSTALL_DIR/bin/psql -d postgres -c "SELECT pg_create_physical_replication_slot('standby1_slot');"
 
-echo "Creating initial load with 5tables and 100 records each..."
+echo "Creating initial load with $TOTAL_TABLES tables and 100 records each..."
 setup_db > /dev/null 2>&1
 
 $INSTALL_DIR/bin/pg_basebackup -D $PGDATA2 -U replica_user -p 5432 -Xs -R -P

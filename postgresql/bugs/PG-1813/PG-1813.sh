@@ -65,7 +65,7 @@ $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE ROLE $REPL_USER WITH LOGIN REPLICA
 
 # Create tables
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE TABLE t1(id INT, name TEXT);"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "INSERT INTO t1 VALUES(101,'First Record');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "INSERT INTO t1 VALUES(101,'First Record Before BaseBackup');"
 
 echo "=> Step 2: Take base backup for replica"
 echo "#######################################"
@@ -96,7 +96,7 @@ $PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" restart
 sleep 5
 
 echo "=>Step 4: Generate some WAL on primary"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "INSERT INTO t1 VALUES (102, 'Second Record');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "INSERT INTO t1 VALUES (102, 'Second Record After Setting Streaming Replication');"
 
 $PG_CTL -D "$PRIMARY_DATA" -m immediate stop
 sleep 3
@@ -110,7 +110,7 @@ $PG_CTL -D "$REPLICA_DATA" promote
 echo "=>Step 6: Use sysbench to generate WAL on promoted replica"
 echo "##########################################################"
 echo "Generating WAL with sysbench..."
-$PSQL -p $PORT_REPLICA -d $DB_NAME -c "INSERT INTO t1 VALUES(103,'Third Record');"
+$PSQL -p $PORT_REPLICA -d $DB_NAME -c "INSERT INTO t1 VALUES(103,'Third Record Replicated Via PgRewind');"
 
 # Backing up the Original config file
 cp $PRIMARY_DATA/postgresql.conf /tmp/postgresql_bk.conf
@@ -140,4 +140,3 @@ $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT * FROM t1"
 $PSQL -p $PORT_REPLICA -d $DB_NAME -c "SELECT * FROM t1"
 
 tail -10f $PRIMARY_DATA/log/primary.log
-

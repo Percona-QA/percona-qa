@@ -1,19 +1,24 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 
+# Cleanup
+rm -rf $PGDATA/keyring.file
+
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
-    $INSTALL_DIR/bin/psql  -d postgres -c"CREATE EXTENSION pg_tde;"
-    $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key','local_keyring');"
-    $INSTALL_DIR/bin/psql  -d postgres -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key','local_keyring');"
+    $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde;"
+    $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_provider','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_database_key_provider_file('local_provider','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('principal_key1','global_provider');"
+    $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key2','local_provider');"
+    $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key1','global_provider');"
+    $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key2','local_provider');"
 }
 
 stop_server() {
@@ -51,8 +56,7 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql -d postgres -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
-
+        $INSTALL_DIR/bin/psql -d postgres -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
     done
 }
 
@@ -68,7 +72,7 @@ run_read_write_load(){
     end_time=$((SECONDS + total_duration))
 
     while [ $SECONDS -lt $end_time ]; do
-        sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=postgres --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=$count --time=60 --report-interval=1 --events=1870000000 run
+        sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=postgres --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=$count --time=60 --report-interval=5 run
         sleep 1
     done
 }
@@ -110,17 +114,10 @@ rename_tables() {
     done
 }
 
-
 crash_server() {
     PG_PID=$1
     echo "Killing the Server with PID=$PG_PID..."
     kill -9 $PG_PID
-}
-
-run_parallel_tests() {
-    run_read_write_load 60 10 &
-    rename_tables 60 &
-    alter_encrypt_unencrypt_tables 60 > $INSTALL_DIR/alter_e_d.log 2>&1 &
 }
 
 read_tables(){
@@ -130,21 +127,21 @@ read_tables(){
     done
 }
 
-
 main() {
     initialize_server
     start_server
     create_tables 10
+
     for X in $(seq 1 1); do
         # Run Tests
         PG_PID=$( lsof -ti :5432)
-        run_parallel_tests &
+	run_read_write_load 60 10 &
+	#rename_tables 60 > /dev/null 2>&1 &
+	alter_encrypt_unencrypt_tables 60 > $INSTALL_DIR/alter_e_d.log 2>&1 &
         sleep 20
-        #crash_server $PG_PID
-        #stop_server
+        crash_server $PG_PID
     done
 
-    # bash -c "sed -i 's/^shared_preload_libraries/#&/' $PGDATA/postgresql.conf"
     restart_server
     read_tables
 }
