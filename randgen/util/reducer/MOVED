@@ -1,5 +1,0 @@
-reducer.sh, previously present in this directory, was moved to GitHub https://github.com/Percona-QA/percona-qa. Use:
-  $ sudo yum install git  # or apt-get
-  $ cd ~
-  $ git clone https://github.com/Percona-QA/percona-qa.git
-to fetch it
