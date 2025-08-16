@@ -12,6 +12,10 @@ rm -rf $PGDATA/keyring.file
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
+    PG_PID=$( lsof -ti :5432)
+}
+
+enable_tde() {
     $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde;"
     $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_provider','$PGDATA/keyring.file');"
     $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_database_key_provider_file('local_provider','$PGDATA/keyring.file');"
@@ -90,30 +94,6 @@ enable_disable_wal_encryption(){
     done
 }
 
-rename_tables() {
-    start_time=$1
-    end_time=$((SECONDS + start_time))
-    suffix="_r"
-
-    while [ $SECONDS -lt $end_time ]; do
-        pick_random_table="sbtest$(( RANDOM % 10 + 1 ))"
-        original=$pick_random_table
-        renamed="${pick_random_table}${suffix}"
-
-        # Check the current name and rename accordingly
-        exists=$($INSTALL_DIR/bin/psql -d postgres -t -A -c "SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename IN ('$original', '$renamed');" | tr -d ' ')
-
-        if [[ "$exists" == "$original" ]]; then
-            new_name=$renamed
-        else
-            new_name=$original
-        fi
-
-        echo "Renaming $exists to $new_name..."
-        $INSTALL_DIR/bin/psql -d postgres -c "ALTER TABLE $exists RENAME TO $new_name;"
-    done
-}
-
 crash_server() {
     PG_PID=$1
     echo "Killing the Server with PID=$PG_PID..."
@@ -130,19 +110,24 @@ read_tables(){
 main() {
     initialize_server
     start_server
+    enable_tde
     create_tables 10
 
-    for X in $(seq 1 1); do
+    for X in $(seq 1 3); do
         # Run Tests
-        PG_PID=$( lsof -ti :5432)
-	run_read_write_load 60 10 &
-	#rename_tables 60 > /dev/null 2>&1 &
-	alter_encrypt_unencrypt_tables 60 > $INSTALL_DIR/alter_e_d.log 2>&1 &
+	echo "=> Running sysbench read/write load"
+	run_read_write_load 21 10 /dev/null 2>&1 &
+	echo "=> Running encrypt/decrypt tables"
+	alter_encrypt_unencrypt_tables 20 > $INSTALL_DIR/alter_e_d.log 2>&1 &
+	echo "=> Sleeping for 20 seconds"
         sleep 20
+	echo "Killing server with PID: $PG_PID"
         crash_server $PG_PID
+	echo "Starting server...."
+	start_server
+	echo "Server started with PID: $PG_PID"
     done
 
-    restart_server
     read_tables
 }
 

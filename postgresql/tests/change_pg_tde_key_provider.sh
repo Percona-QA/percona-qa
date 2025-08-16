@@ -7,6 +7,8 @@ export LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/setup_kmip.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/setup_vault.sh"
 
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA start -o "-p 5432" -l $LOG_FILE
@@ -42,13 +44,13 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
-
+        $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','global_keyring');"
+        $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_keyring');"
     done
 }
 
 run_sysbench_load(){
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=60 --report-interval=1 --events=1870000000 run
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=60 --report-interval=10 run
 }
 
 enable_disable_wal_encryption(){
@@ -69,21 +71,6 @@ crash_server() {
     kill -9 $PG_PID
 }
 
-start_vault_server(){
-    killall vault > /dev/null 2>&1
-    echo "=> Starting vault server"
-    if [ ! -d $SCRIPT_DIR/vault ]; then
-    mkdir $SCRIPT_DIR/vault
-    fi
-    rm -rf $SCRIPT_DIR/vault/*
-    $SCRIPT_DIR/vault_test_setup.sh --workdir=$SCRIPT_DIR/vault --setup-pxc-mount-points --use-ssl > /dev/null 2>&1
-    vault_url=$(grep 'vault_url' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    secret_mount_point=$(grep 'secret_mount_point' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    token=$(grep 'token' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    vault_ca=$(grep 'vault_ca' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    echo ".. Vault server started"
-}
-
 change_key_provider(){
     start_time=$1
     end_time=$((SECONDS + start_time))
@@ -91,10 +78,10 @@ change_key_provider(){
     while [ $SECONDS -lt $end_time ]; do
         provider_type=$([ $(( RANDOM % 2 )) -eq 0 ] && echo "vault_v2" || echo "file")
         if [ $provider_type == "vault_v2" ]; then
-            provider_name=vault_keyring
-            provider_config="'$token','$vault_url','$secret_mount_point','$vault_ca'"
+            provider_name=vault_local_provider
+            provider_config="'$vault_url','$secret_mount_point','/tmp/token_file','$vault_ca'"
         elif [ $provider_type == "file" ]; then
-            provider_name=file_keyring
+            provider_name=file_local_provider
             provider_config="'/tmp/keyring.file'"
         fi
         $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_change_database_key_provider_$provider_type('$provider_name',$provider_config)"
@@ -102,28 +89,30 @@ change_key_provider(){
     done
 }
 
-run_parallel_tests() {
-    run_sysbench_load &
-    change_key_provider 60 &
-}
-
-
 main() {
     initialize_server
     start_vault_server
     start_server
+    if [ -f /tmp/keyring.file ]; then
+	    rm -f /tmp/keyring.file
+    fi
     $INSTALL_DIR/bin/createdb sbtest
     $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_file('file_keyring','/tmp/keyring.file');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_vault_v2('vault_keyring','$token','$vault_url','$secret_mount_point','$vault_ca');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','file_keyring');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_file('file_local_provider','/tmp/keyring.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('file_global_provider','/tmp/keyring.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_vault_v2('vault_local_provider','$vault_url','$secret_mount_point','/tmp/token_file','$vault_ca');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','file_local_provider');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_global_key_provider('principal_key_sbtest2','file_global_provider');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','file_local_provider');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest2','file_global_provider');"
     sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --table-size=1000 prepare
+
     for X in $(seq 1 5); do
         # Run Tests
-        run_parallel_tests &
+	run_sysbench_load &
+	change_key_provider 60 &
         sleep 10
         crash_server $PG_PID
-        #stop_server
         sleep 5
         start_server
     done

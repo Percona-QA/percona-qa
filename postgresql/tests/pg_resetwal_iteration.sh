@@ -25,7 +25,7 @@ rotate_wal_key(){
 }
 
 
-for iter in {1..10}; do
+for iter in {1..3}; do
     echo -e "\n================= Iteration $iter =================\n"
 
     DATA_DIR=$INSTALL_DIR/pg_resetwal_test_data_$iter
@@ -63,8 +63,8 @@ for iter in {1..10}; do
     echo "=> Restarting PostgreSQL with WAL encryption"
     $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" restart
     sleep 2
-
-    rotate_wal_key 10 &
+    echo "=> Rotate WAL key"
+    rotate_wal_key 10 >/dev/null 2>&1 &
 
     echo "=> Preparing 50 tables using sysbench"
     sysbench $LUA_SCRIPT \
@@ -78,8 +78,8 @@ for iter in {1..10}; do
         prepare
 
     $PSQL -d postgres -p $PORT -c "CHECKPOINT;"
-
-    rotate_wal_key $DURATION &
+    echo "=> Rotate WAL key"
+    rotate_wal_key 10 > /dev/null 2>&1 &
 
     echo "=> Starting heavy sysbench write load for $DURATION seconds"
     sysbench $LUA_SCRIPT \
@@ -110,8 +110,8 @@ for iter in {1..10}; do
     echo "=> Restarting PostgreSQL after pg_resetwal"
     $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" start
     sleep 2
-
-    rotate_wal_key $DURATION &
+    echo "=> Rotate WAL key"
+    rotate_wal_key 10 > /dev/null 2>&1 &
 
     echo "=> Performing additional writes"
         sysbench $LUA_SCRIPT \

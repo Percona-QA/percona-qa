@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_17.5.2/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PUB_DATA=$INSTALL_DIR/pub_db
 SUB_DATA=$INSTALL_DIR/sub_db
 PUB_LOG=$PUB_DATA/pub.log

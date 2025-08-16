@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$INSTALL_DIR/server.log
 

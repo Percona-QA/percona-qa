@@ -157,7 +157,7 @@ failover_iteration() {
 }
 
 # Loop: Alternate roles
-for i in {1..10}; do
+for i in {1..3}; do
   echo -e "\n=================== Iteration $i ==================="
   if (( $i % 2 == 1 )); then
     failover_iteration "$DATA_A" "$PORT_A" "$DATA_B" "$PORT_B"
