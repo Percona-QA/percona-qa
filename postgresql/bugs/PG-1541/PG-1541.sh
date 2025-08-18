@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 wal_encrypt_flag=off
@@ -35,12 +35,13 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: wal_key$RAND_KEY"
-        $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key$RAND_KEY','global_keyring','true');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key$RAND_KEY','global_keyring');"
+        $INSTALL_DIR/bin/psql -d sbtest -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key$RAND_KEY','global_keyring');"
         sleep 2
     done
 }
 run_sysbench_load(){
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=25 --report-interval=1 --events=1870000000 run
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=25 --report-interval=5 run
 }
 
 crash_server() {
@@ -64,13 +65,15 @@ main() {
     $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring_global.file');"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring_local.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
     sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --table-size=1000 prepare
     rotate_wal_key 20 &
 
     
-    for X in $(seq 1 2); do
+    for X in $(seq 1 5); do
         # Run Tests
         run_sysbench_load > /dev/null 2>&1 &
         sleep 20

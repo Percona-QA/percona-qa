@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+export INSTALL_DIR=$HOME/postgresql/bld_tde/install
 export PGDATA=$INSTALL_DIR/data
 export LOG_FILE=$PGDATA/server.log
 export DB_NAME="sbtest"
@@ -26,10 +26,13 @@ SQL
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
     $INSTALL_DIR/bin/createdb $DB_NAME
+    rm -f $PGDATA/keyring.file
     $INSTALL_DIR/bin/psql  -d $DB_NAME -c"CREATE EXTENSION pg_tde;"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','local_keyring');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_key_using_global_key_provider('table_key','local_keyring');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_create_key_using_global_key_provider('table_key','global_keyring');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_key_using_global_key_provider('table_key','global_keyring');"
     PG_PID=$(lsof -ti :5432)
 }
 

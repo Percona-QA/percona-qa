@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -33,12 +33,14 @@ SQL
 
 start_primary() {
     $INSTALL_DIR/bin/pg_ctl -D $PRIMARY_DATA start -l $PRIMARY_LOGFILE > $PRIMARY_LOGFILE 2>&1
-    $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"CREATE USER repuser replication;"
-    $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"CREATE EXTENSION IF NOT EXISTS pg_tde;" > /dev/null
-    $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PRIMARY_DATA/keyring.file');" > /dev/null
-    $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');" > /dev/null
-    $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"SELECT pg_tde_add_global_key_provider_file('local_keyring','$PRIMARY_DATA/keyring.file');" > /dev/null
-    $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest','local_keyring');" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"CREATE USER repuser replication;"
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"CREATE EXTENSION IF NOT EXISTS pg_tde;" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PRIMARY_DATA/keyring.file');" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','local_keyring');" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PRIMARY_DATA/keyring.file');" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"SELECT pg_tde_create_key_using_global_key_provider('principal_key_sbtest','global_keyring');" > /dev/null
+    $INSTALL_DIR/bin/psql -d postgres -p 5433 -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest','global_keyring');" > /dev/null
 }
 
 restart_server() {
@@ -79,7 +81,8 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating Global master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','global_keyring');"
+        $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_keyring');"
     done
 }
 
@@ -105,7 +108,8 @@ rotate_master_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql -d postgres  -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continue..."
+        $INSTALL_DIR/bin/psql -d postgres  -p 5433 -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
+        $INSTALL_DIR/bin/psql -d postgres  -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');"
     done
 }
 

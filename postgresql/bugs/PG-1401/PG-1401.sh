@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+export INSTALL_DIR=$HOME/postgresql/bld_tde/install
 export PGDATA=$INSTALL_DIR/data
 export LOG_FILE=$PGDATA/server.log
 
@@ -25,6 +25,7 @@ start_server() {
     $INSTALL_DIR/bin/createdb sbtest
     $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION pg_tde;"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_global_key_provider('key1','global_keyring');"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_global_key_provider('key1','global_keyring');"
 }
 

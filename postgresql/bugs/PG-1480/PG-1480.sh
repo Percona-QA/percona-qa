@@ -1,4 +1,4 @@
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 DATA_DIR=$INSTALL_DIR/data
 
 initialize_server() {
@@ -37,12 +37,14 @@ echo "Create a Global Key Provider"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$DATA_DIR/keyring.file')"
 
 echo "Create a Default Principal key using the Global Key Provider"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('principal_key_of_abc','global_keyring')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_of_abc','global_keyring')"
 
 $INSTALL_DIR/bin/psql -d abc -c"CREATE TABLE t1(a INT PRIMARY KEY, b VARCHAR) USING tde_heap"
 $INSTALL_DIR/bin/psql -d abc -c"INSERT INTO t1 VALUES(101, 'James Bond')"
 
 echo "Rotate the Default Principal Key"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('principal_key_of_abc2','global_keyring');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_of_abc2','global_keyring');"
 echo "Query the table"
 $INSTALL_DIR/bin/psql -d abc -c"SELECT * FROM t1;"

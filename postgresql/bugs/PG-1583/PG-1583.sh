@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 
@@ -42,11 +42,10 @@ start_server
 echo "Enabling TDE and setting Global Key Provider"
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('provider1','$PGDATA/keyring1.file')"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('key1','provider1')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_global_key_provider('key1','provider1')"
 
-
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE TABLE t1(a INT) USING tde_heap"
-
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_change_global_key_provider_file('provider1','$PGDATA/keyring2.file')"
 
 restart_server

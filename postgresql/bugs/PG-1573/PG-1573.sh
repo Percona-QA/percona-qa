@@ -1,24 +1,25 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+export INSTALL_DIR=$HOME/postgresql/bld_tde/install
 export PGDATA=$INSTALL_DIR/primary_data
 export PGDATA2=$INSTALL_DIR/replica_data
 export LOG_FILE=$PGDATA/server.log
 export DB_NAME="sbtest"
 export TABLE_PREFIX="ddl_test"
-export TOTAL_TABLES=5
+export TOTAL_TABLES=50
 export MASTER_PORT=5432
 export REPLICA_PORT=5433
 export PATH=/usr/local/pgsql/bin:$PATH
 
 # Create multiple tables
 setup_db() {
-    $INSTALL_DIR/bin/psql  -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME"
-    $INSTALL_DIR/bin/psql  -d postgres -c "CREATE DATABASE $DB_NAME"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "CREATE EXTENSION pg_tde"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME"
+    $INSTALL_DIR/bin/psql -d postgres -c "CREATE DATABASE $DB_NAME"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "CREATE EXTENSION pg_tde"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
     for i in $(seq 1 $TOTAL_TABLES); do
        TABLE_NAME="${TABLE_PREFIX}_${i}"
        $INSTALL_DIR/bin/psql  -d $DB_NAME -c "
@@ -153,7 +154,8 @@ rotate_master_key(){
        sleep 5
        RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
        echo "Rotating master key: principal_key_test$RAND_KEY"
-       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continuing..."
+       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
+       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
     done
 }
 
@@ -196,7 +198,7 @@ echo "Primary Server started PID:$PG_PID1"
 $INSTALL_DIR/bin/psql -d postgres -c "CREATE USER replica_user WITH REPLICATION;"
 $INSTALL_DIR/bin/psql -d postgres -c "SELECT pg_create_physical_replication_slot('standby1_slot');"
 
-echo "Creating initial load with 5tables and 100 records each..."
+echo "Creating initial load with $TOTAL_TABLES tables and 100 records each..."
 setup_db > /dev/null 2>&1
 
 $INSTALL_DIR/bin/pg_basebackup -D $PGDATA2 -U replica_user -p 5432 -Xs -R -P
@@ -255,6 +257,3 @@ for i in {1..5}; do
 done
 
 echo "Multi-table DDL stress test completed."
-
-# Cleanup
-

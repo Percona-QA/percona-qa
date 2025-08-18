@@ -1,12 +1,8 @@
 #!/bin/bash
 
-###########################################################################################################
-# PG-1503 - Deleting a Global key provider must not be allowed when we have active keys on the database   #
-###########################################################################################################
-
-TABLES=10
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 DATA_DIR=$INSTALL_DIR/data
+TABLES=10
 
 initialize_server() {
     PG_PIDS=$(lsof -ti :5432 2>/dev/null) || true
@@ -44,6 +40,7 @@ echo "Create a Global Key Provider"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','/tmp/keyring.file')"
 
 echo "Create a Principal key using the Global Key Provider"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('local_key_of_db1_using_global_key_provider','global_keyring')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_global_key_provider('local_key_of_db1_using_global_key_provider','global_keyring')"
 
 echo "Create external tablespace"

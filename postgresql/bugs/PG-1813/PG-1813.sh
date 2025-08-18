@@ -139,4 +139,4 @@ sleep 5
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT * FROM t1"
 $PSQL -p $PORT_REPLICA -d $DB_NAME -c "SELECT * FROM t1"
 
-tail -10f $PRIMARY_DATA/log/primary.log
+tail -n 10 $PRIMARY_DATA/log/primary.log

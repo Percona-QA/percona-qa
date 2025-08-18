@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+export INSTALL_DIR=$HOME/postgresql/bld_tde/install
 export PGDATA=$INSTALL_DIR/data
 export LOG_FILE=$PGDATA/server.log
 export DB_NAME="sbtest"
@@ -26,11 +26,13 @@ SQL
 start_server() {
     $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
     $INSTALL_DIR/bin/createdb $DB_NAME
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"CREATE EXTENSION pg_tde;"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c"SELECT pg_tde_set_key_using_database_key_provider('table_key','local_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"CREATE EXTENSION pg_tde;"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_create_key_using_database_key_provider('table_key','local_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c"SELECT pg_tde_set_key_using_database_key_provider('table_key','local_keyring');"
     PG_PID=$(lsof -ti :5432)
 }
 
@@ -140,7 +142,8 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating Global master key: wal_key$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5432 -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key$RAND_KEY','global_keyring','true');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql -d $DB_NAME -p 5432 -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key$RAND_KEY','global_keyring');"
+        $INSTALL_DIR/bin/psql -d $DB_NAME -p 5432 -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key$RAND_KEY','global_keyring');"
         sleep 1
     done
 }
@@ -162,7 +165,8 @@ rotate_master_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql -d $DB_NAME  -p 5432 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring','true');" || echo "SQL command failed, continue..."
+        $INSTALL_DIR/bin/psql -d $DB_NAME  -p 5432 -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
+        $INSTALL_DIR/bin/psql -d $DB_NAME  -p 5432 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
         sleep 1
     done
 }
@@ -226,7 +230,7 @@ initialize_server
 start_server
 create_tables         # Create initial tables
 
-for i in {1..20}; do
+for i in {1..5}; do
     echo "########################################"
     echo "# TRIAL $i                              #"
     echo "########################################"

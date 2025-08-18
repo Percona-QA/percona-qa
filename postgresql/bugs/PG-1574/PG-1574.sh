@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -79,14 +79,15 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating Global master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_key_provider','true');" || echo "SQL command failed, continuing..."
+        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','global_key_provider');"
+        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_key_provider');"
         sleep 5
     done
 }
 
 run_sysbench_load(){
     time=$1
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=5433 --threads=10 --tables=$TABLES --time=$time --report-interval=1 --events=1870000000 run &
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=5433 --threads=10 --tables=$TABLES --time=$time --report-interval=5 run &
     sysbench /usr/share/sysbench/oltp_delete.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=5433 --threads=10 --tables=$TABLES --time=$time --table-size=1000 &
     sysbench /usr/share/sysbench/oltp_update_index.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=5433 --threads=10 --tables=$TABLES --time=$time --table-size=1000 &
 
@@ -99,7 +100,8 @@ rotate_master_key(){
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
         echo "Rotating master key: principal_key_test$RAND_KEY"
-        $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_key_provider','true');" || echo "SQL command failed, continue..."
+        $INSTALL_DIR/bin/psql -d $DB_NAME -p 5433 -c"SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_key_provider');"
+        $INSTALL_DIR/bin/psql -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_key_provider');"
         sleep 5
     done
 }
@@ -121,8 +123,10 @@ enable_tde_and_create_load() {
     $INSTALL_DIR/bin/psql  -d postgres -p 5433 -c"CREATE DATABASE $DB_NAME;"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_add_database_key_provider_file('local_key_provider','$PRIMARY_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_create_key_using_database_key_provider('local_key','local_key_provider');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_key_using_database_key_provider('local_key','local_key_provider');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_add_global_key_provider_file('global_key_provider','$PRIMARY_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_create_key_using_global_key_provider('global_key','global_key_provider');"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p 5433 -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 
     echo "Create some tables on Primary Node"
@@ -150,8 +154,7 @@ for i in $(seq 1 5); do
     restart_server $PRIMARY_DATA
     sleep 5
 
-    if grep -iq "invalid magic number" $REPLICA_DATA/server.log; then
-        grep -i "invalid magic number" $REPLICA_DATA/server.log
+    if grep -Eq "FATAL:*invalid magic number" $REPLICA_DATA/server.log; then
         echo "Exiting. Check Logs: $REPLICA_DATA/server.log"
         exit 1
     fi

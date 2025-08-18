@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Set variables
-INSTALL_DIR=/home/mohit.joshi/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
 REPLICA_LOGFILE=$REPLICA_DATA/server.log
-DB_NAME=mohit
+DB_NAME=test_db
 WAL_ENCRYPT=OFF
 TABLES=5
 
@@ -83,10 +83,11 @@ crash_replica_server() {
 
 enable_tde_and_set_keys() {
     PORT=$1
-    $INSTALL_DIR/bin/psql  -d postgres -p $PORT -c"CREATE DATABASE $DB_NAME;"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -p $PORT -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -p $PORT -c"SELECT pg_tde_add_global_key_provider_file('global_key_provider','$PRIMARY_DATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -p $PORT -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
+    $INSTALL_DIR/bin/psql -d postgres -p $PORT -c"CREATE DATABASE $DB_NAME;"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_add_global_key_provider_file('global_key_provider','$PRIMARY_DATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_create_key_using_global_key_provider('global_key','global_key_provider');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 }
 # Existing functions for workload, rotation, etc. (no change)
 
@@ -109,8 +110,7 @@ sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-user=`whoami` --pgsql-db=$D
 sysbench /usr/share/sysbench/bulk_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=5433 --threads=5 --tables=$TABLES --table-size=1000
 
 for i in $(seq 1 5); do
-    if grep -q "invalid magic number" $REPLICA_DATA/server.log; then
-        grep -i "invalid magic number" $REPLICA_DATA/server.log
+    if grep -Eq "FATAL:.*invalid magic number" $REPLICA_DATA/server.log; then
         exit 1
     fi
     echo "####TRIAL $i##########"

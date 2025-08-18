@@ -14,7 +14,7 @@ SYSBENCH="/usr/bin/sysbench"
 SYSBENCH_TABLES=1000
 SYSBENCH_RECORDS=1000
 THREADS=10
-PGCTLTIMEOUT=600
+export PGCTLTIMEOUT=600
 
 PORT_PRIMARY=5433
 PORT_REPLICA=5434
@@ -138,7 +138,12 @@ EOF
 echo "=> Step 9: Start rewound primary"
 echo "################################"
 $PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" start
-sleep 5
+
+# Wait until PostgreSQL is ready
+echo "Waiting for PostgreSQL to become available on port $PORT_PRIMARY..."
+until $INSTALL_DIR/bin/pg_isready -p $PORT_PRIMARY -d $DB_NAME -q; do
+    sleep 1
+done
 
 # Done
 echo -e "\n✅ Old primary successfully rewound and rejoined as standby."

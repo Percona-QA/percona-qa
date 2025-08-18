@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/pg_tde/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_tde/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 wal_encrypt_flag=off
@@ -55,13 +55,17 @@ initialize_server
 start_server
 
 echo "Enabling TDE and setting Global Key Provider"
+if [ -f $PGDATA/keyring.file ]; then
+	rm -f $PGDATA/keyring.file
+fi
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file')"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('wal_encryption_key','global_keyring')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_server_key_using_global_key_provider('wal_encryption_key','global_keyring')"
 echo "Creating Sysbench tables"
 sysbench /usr/share/sysbench/oltp_insert.lua --pgsql-db=postgres --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=10 --table-size=100 prepare
 
-for X in $(seq 1 20); do
+for X in $(seq 1 5); do
     # Run Tests
     run_sysbench_load 300 > $INSTALL_DIR/sysbench.log 2>&1 &
     sleep 20
