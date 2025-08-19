@@ -43,7 +43,6 @@ wal_keep_size=128MB
 # Make sure that Msys perl doesn't complain about difficulty in setting locale
 # when called from the archive_command.
 local $ENV{PERL_BADLANG} = 0;
-$node_primary->start;
 
 PGTDE::setup_pg_tde_node($node_primary);
 
