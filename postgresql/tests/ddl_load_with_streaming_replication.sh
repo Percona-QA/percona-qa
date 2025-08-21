@@ -20,12 +20,19 @@ THREADS=4       # Suitable for 4+ core machines
 
 # Create multiple tables
 setup_db() {
-    $INSTALL_DIR/bin/psql  -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME"
-    $INSTALL_DIR/bin/psql  -d postgres -c "CREATE DATABASE $DB_NAME"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "CREATE EXTENSION pg_tde"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
-    $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d postgres -c "DROP DATABASE IF EXISTS $DB_NAME"
+    $INSTALL_DIR/bin/psql -d postgres -c "CREATE DATABASE $DB_NAME"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "CREATE EXTENSION pg_tde"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_add_database_key_provider_file('local_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt='ON';"
+
+    $INSTALL_DIR/bin/pg_ctl -D "$PGDATA" -l "$PGDATA/server.log" restart
+    PG_PID1=$(lsof -ti :5432)
     for i in $(seq 1 $TOTAL_TABLES); do
        TABLE_NAME="${TABLE_PREFIX}_${i}"
        $INSTALL_DIR/bin/psql  -d $DB_NAME -c "
@@ -160,8 +167,8 @@ rotate_master_key(){
        sleep 5
        RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
        echo "Rotating master key: principal_key_test$RAND_KEY"
-       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
-       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
+       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
+       $INSTALL_DIR/bin/psql -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('principal_key_test$RAND_KEY','local_keyring');"
     done
 }
 
@@ -207,7 +214,10 @@ $INSTALL_DIR/bin/psql -d postgres -c "SELECT pg_create_physical_replication_slot
 echo "Creating initial load with $TOTAL_TABLES tables and 100 records each..."
 setup_db > /dev/null 2>&1
 
-$INSTALL_DIR/bin/pg_basebackup -D $PGDATA2 -U replica_user -p 5432 -Xs -R -P
+mkdir $PGDATA2
+chmod 700 $PGDATA2
+cp -R $PGDATA/pg_tde $PGDATA2
+$INSTALL_DIR/bin/pg_basebackup -D $PGDATA2 -U replica_user -p 5432 -X stream -E -R -P
 cat >> "$PGDATA2/postgresql.conf" <<SQL
 port=5433
 logging_collector = on
