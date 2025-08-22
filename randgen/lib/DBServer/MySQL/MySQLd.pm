@@ -31,6 +31,7 @@ use strict;
 use Carp;
 use Data::Dumper;
 use File::Path qw(mkpath rmtree);
+use File::Spec::Functions qw(catfile);
 
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_VARDIR => 1;
@@ -194,8 +195,8 @@ sub new {
                                "--datadir=".$self->datadir,
                                $self->_messages,
                                "--character-sets-dir=".$self->[MYSQLD_CHARSETS],
-                               "--default-storage-engine=myisam",
-                               "--log-warnings=0",
+                               "--default-storage-engine=innodb",
+                               "--log_error_verbosity=1",
                                "--tmpdir=".$self->tmpdir];    
 
     if ($self->[MYSQLD_START_DIRTY]) {
@@ -310,7 +311,6 @@ sub addServerOptions {
 
 sub createMysqlBase  {
     my ($self) = @_;
-    
     ## 1. Clean old db if any
     if (-d $self->vardir) {
         rmtree($self->vardir);
@@ -320,38 +320,31 @@ sub createMysqlBase  {
     mkpath($self->vardir);
     mkpath($self->tmpdir);
     mkpath($self->datadir);
-    mkpath($self->datadir."/mysql");
-    mkpath($self->datadir."/test");
     
-    ## 3. Create boot file
-    my $boot = $self->vardir."/boot.sql";
-    open BOOT,">$boot";
+    my $init_options = [
+        "--no-defaults",
+        "--initialize-insecure",  # Creates root user without password
+        "--datadir=" . $self->datadir,
+        "--basedir=" . $self->basedir
+    ];
     
-    ## Set curren database
-    print BOOT  "use mysql;\n";
-    foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
-        open B,$b;
-        while (<B>) { print BOOT $_;}
-        close B;
-    }
-    ## Don't want empty users
-    print BOOT "DELETE FROM user WHERE `User` = '';\n";
-    close BOOT;
-    
-    ## 4. Boot database
+    ## 4. Initialize database
+    my $exit_code;
+    my $initlog;
     if (osWindows()) {
-        my $command = $self->generateCommand(["--no-defaults","--bootstrap"],
-                                             $self->[MYSQLD_STDOPTS]);
-    
-        my $bootlog = $self->vardir."/boot.log";
-        system("$command < \"$boot\" > \"$bootlog\"");
+        # Todo Untested code (WINDOWS).
+        my $command = $self->generateCommand($init_options, $self->[MYSQLD_STDOPTS]);
+
+        $initlog = catfile($self->vardir, "init.log");
+        $exit_code = system(qq{$command > "$initlog" 2>&1});
     } else {
-        my $boot_options = ["--no-defaults","--bootstrap"];
-        push(@$boot_options,"--loose-skip-innodb") if $self->_olderThan(5,6,3);
-        my $command = $self->generateCommand($boot_options,
-                                             $self->[MYSQLD_STDOPTS]);
-        my $bootlog = $self->vardir."/boot.log";
-        system("cat \"$boot\" | $command > \"$bootlog\"  2>&1 ");
+        my $command = $self->generateCommand($init_options, $self->[MYSQLD_STDOPTS]);
+        $initlog = catfile($self->vardir, "init.log");
+        $exit_code = system(qq{$command > "$initlog" 2>&1});
+    }
+
+    if ($exit_code != 0) {
+        croak("MySQL initialization failed. Check log: $initlog");
     }
 }
 
@@ -430,6 +423,7 @@ sub startServer {
         $self->printInfo;
         say("Starting MySQL ".$self->version.": $command");
         $self->[MYSQLD_AUXPID] = fork();
+        croak("Could not fork: $!") unless defined $self->[MYSQLD_AUXPID];
         if ($self->[MYSQLD_AUXPID]) {
             ## Wait for the pid file to have been created
             my $wait_time = 0.2;
@@ -443,8 +437,14 @@ sub startServer {
                 croak("Could not start mysql server, waited ".($waits*$wait_time)." seconds for pid file");
             }
             my $pidfile = $self->pidfile;
-            my $pid = `cat \"$pidfile\"`;
-            $pid =~ m/([0-9]+)/;
+            open(my $fh, '<', $pidfile) or croak("Cannot open pidfile '$pidfile': $!");
+            my $pid = <$fh>;
+            close($fh);
+
+            chomp($pid) if defined $pid;
+            if (!defined $pid || $pid !~ /^(\d+)$/) {
+                croak("Invalid or empty PID in pidfile '$pidfile'");
+            }
             $self->[MYSQLD_SERVERPID] = int($1);
         } else {
             exec("$command > \"$errorlog\"  2>&1") || croak("Could not start mysql server");
