@@ -412,12 +412,13 @@ if ($rpl_mode ne '') {
             croak("Could not start all servers");
         }
 
-        $server[0]->dbh()->do("CREATE DATABASE IF NOT EXISTS test") if $server_id == 0;
-
         if (
             ($server_id == 0) ||
             ($rpl_mode eq '') 
             ) {
+            # Create default test database.
+            $server[$server_id]->dbh()->do("CREATE DATABASE IF NOT EXISTS test");
+
             $dsns[$server_id] = $server[$server_id]->dsn($database);
         }
     
