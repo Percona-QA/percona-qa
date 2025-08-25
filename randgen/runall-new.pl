@@ -417,7 +417,7 @@ if ($rpl_mode ne '') {
             ($rpl_mode eq '') 
             ) {
             # Create default test database.
-            $server[$server_id]->dbh()->do("CREATE DATABASE IF NOT EXISTS test");
+            $server[$server_id]->dbh()->do("CREATE DATABASE IF NOT EXISTS $database");
 
             $dsns[$server_id] = $server[$server_id]->dsn($database);
         }
