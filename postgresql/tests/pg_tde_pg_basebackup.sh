@@ -24,6 +24,8 @@ DB_USER=$(whoami)
 
 # Clean slate
 pkill -9 postgres
+
+echo "Removing Previous Data Directory..."
 rm -rf "$PRIMARY_DATA" "$SECONDARY_DATA" $KEYFILE
 
 # Step 1: Init primary
@@ -52,10 +54,22 @@ rotate_wal_key(){
 
     while [ $SECONDS -lt $end_time ]; do
         RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
-        echo "Rotating Global master key: principal_key_test$RAND_KEY"
-        $PSQL -d $DB_NAME -p $PORT_PRIMARY -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','file_provider');"
-        $PSQL -d $DB_NAME -p $PORT_PRIMARY -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','file_provider');"
+        echo "Rotating WAL key: principal_key_test$RAND_KEY"
+        $PSQL -d $DB_NAME -p $PORT_PRIMARY -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
+        $PSQL -d $DB_NAME -p $PORT_PRIMARY -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
     done
+}
+
+rotate_table_key() {
+  duration=$1
+  end_time=$((SECONDS + duration))
+
+  while [ $SECONDS -lt $end_time ]; do
+	  RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
+	  echo "Rotating Database master key: database_key_$RAND_KEY"
+	  $PSQL -d $DB_NAME -p $PORT_PRIMARY -c "SELECT pg_tde_create_key_using_database_key_provider('database_key$RAND_KEY','local_provider');"
+	  $PSQL -d $DB_NAME -p $PORT_PRIMARY -c "SELECT pg_tde_set_key_using_database_key_provider('database_key$RAND_KEY','local_provider');"
+  done
 }
 
 echo "=> Step 1: Start primary"
@@ -63,13 +77,16 @@ echo "#########################"
 $PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" start
 sleep 3
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE EXTENSION pg_tde;"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
-#$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_file('global_provider','$KEYFILE');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_database_key_provider_file('local_provider','$KEYFILE');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_provider');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_create_key_using_database_key_provider('table_key','local_provider');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_provider');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_key_using_database_key_provider('table_key','local_provider');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 #Restart primary
-#$PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" restart
-#sleep 3
+$PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" restart
+sleep 3
 
 # Create replication user
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE ROLE $REPL_USER WITH LOGIN REPLICATION SUPERUSER PASSWORD '$REPL_PASS';"
@@ -78,23 +95,43 @@ $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE ROLE $REPL_USER WITH LOGIN REPLICA
 $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_PRIMARY \
   --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \
   --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS \
-  /usr/share/sysbench/oltp_write_only.lua prepare > /dev/null 2>&1 &
+  /usr/share/sysbench/oltp_write_only.lua prepare
 
-rotate_wal_key 10 &
+echo "=> Rotate Keys and Run Load in Parallel while pg_basebackup takes backup of primary server"
+rotate_wal_key 30 > /dev/null 2>&1 &
+rotate_table_key 30 > /dev/null 2>&1 &
+
+$SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_PRIMARY \
+  --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \
+  --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS --time=30 --report-interval=5 \
+  /usr/share/sysbench/oltp_write_only.lua run > /dev/null 2>&1 &
 
 echo "Sleeping for 5 seconds"
-sleep 2
-
-#$SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_REPLICA \
-#  --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \
-#  --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS --time=200 --report-interval=5 \
-#  /usr/share/sysbench/oltp_write_only.lua run
+sleep 5
 
 echo "=> Step 2: Take base backup for replica"
 echo "#######################################"
-$PG_BASEBACKUP -D "$SECONDARY_DATA" -X stream -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
-
+mkdir $SECONDARY_DATA
+chmod 700 $SECONDARY_DATA
+cp -R $PRIMARY_DATA/pg_tde $SECONDARY_DATA/
+$PG_BASEBACKUP -D "$SECONDARY_DATA" -X stream -R -E -h localhost -p $PORT_PRIMARY -U $REPL_USER
 
 echo "=>Step 3: Start Secondary Server"
-echo "########################"
+echo "################################"
 $PG_CTL -D "$SECONDARY_DATA" -o "-p $PORT_SECONDARY" -l "$SECONDARY_LOGFILE" start
+
+echo "=>Step 4: Verify Data on both Pirmary and Secondary Server"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest1"
+$PSQL -p $PORT_SECONDARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest1"
+
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest10"
+$PSQL -p $PORT_SECONDARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest10"
+
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest25"
+$PSQL -p $PORT_SECONDARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest25"
+
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest55"
+$PSQL -p $PORT_SECONDARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest55"
+
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest100"
+$PSQL -p $PORT_SECONDARY -d $DB_NAME -c"SELECT COUNT(*) FROM sbtest100"
