@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for os in debian11 debian12 ol8 ol9 ubuntu20 ubuntu22 ubuntu24; do
+for os in debian11 debian12 ol8 ol9 ubuntu22 ubuntu24; do
     echo -e "\n=> Running tests on ${os^^}"
     pushd $os > /dev/null
     vagrant destroy -f
