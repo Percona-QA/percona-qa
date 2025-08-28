@@ -13,7 +13,7 @@ declare -A KMIP_CONFIGS=(
     ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
 
     # Hashicorp Docker Setup Configuration
-    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    # ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
@@ -81,8 +81,8 @@ cleanup_exit() {
     rm -f "$PS_DIR"/lib/plugin/component_keyring*.cnf
   fi
 
-  if [ -f "$PS_DIR/mysqld.my" ]; then
-    rm -f "$PS_DIR/mysqld.my"
+  if [ -f "$PS_DIR/bin/mysqld.my" ]; then
+    rm -f "$PS_DIR/bin/mysqld.my"
   fi
 }
 
@@ -166,7 +166,7 @@ init_datadir() {
     fi
     init_kmip_configs
     start_kmip_server "$kmip_type"
-    [ -f "${HOME}/${kimp_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kimp_config[cert_dir]}/component_keyring_kmip.cnf" "$PS_DIR/lib/plugin/"
+    [ -f "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" "$PS_DIR/lib/plugin/"
 
   elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
