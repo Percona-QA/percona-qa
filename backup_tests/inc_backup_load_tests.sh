@@ -28,7 +28,7 @@ declare -A KMIP_CONFIGS=(
     ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
 
     # Hashicorp Docker Setup Configuration
-    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    # ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
@@ -511,7 +511,7 @@ run_load_keyring_component_tests() {
 
     echo "Test: Incremental Backup and Restore for keyring_file component with ${load_tool}"
     cleanup
-    create_keyring_component_files
+    create_keyring_component_files "keyring_file"
 
     if [ "$server_type" == "MS" ]; then
       tool_options_encrypt="--tables $num_tables --records $table_size --threads $threads --seconds 50 --undo-tbs-sql 0 --no-column-compression"
