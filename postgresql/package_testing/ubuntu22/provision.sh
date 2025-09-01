@@ -10,7 +10,7 @@ sudo apt-get update
 sudo apt-get install -y wget gnupg lsb-release curl
 wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
 sudo dpkg -i percona-release_latest.generic_all.deb
-sudo percona-release enable-only ppg-17.5 testing
+sudo percona-release enable-only ppg-17.5 $REPO
 sudo apt-get update
 sudo apt-get install -y percona-postgresql-17
 
