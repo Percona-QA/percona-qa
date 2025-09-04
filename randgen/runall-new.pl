@@ -411,11 +411,14 @@ if ($rpl_mode ne '') {
             }
             croak("Could not start all servers");
         }
-        
+
         if (
             ($server_id == 0) ||
             ($rpl_mode eq '') 
             ) {
+            # Create default test database.
+            $server[$server_id]->dbh()->do("CREATE DATABASE IF NOT EXISTS $database");
+
             $dsns[$server_id] = $server[$server_id]->dsn($database);
         }
     
@@ -423,6 +426,7 @@ if ($rpl_mode ne '') {
             my $dbh = DBI->connect($dsns[$server_id], undef, undef, { mysql_multi_statements => 1, RaiseError => 1 } );
             $dbh->do("SET GLOBAL storage_engine = '$engine'");
         }
+
     }
 }
 
