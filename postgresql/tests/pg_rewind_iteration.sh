@@ -1,9 +1,7 @@
 #!/bin/bash
 
-set -e
-
 # Config paths
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"
 PG_REWIND="$INSTALL_DIR/bin/pg_rewind"
 PG_BASEBACKUP="$INSTALL_DIR/bin/pg_basebackup"

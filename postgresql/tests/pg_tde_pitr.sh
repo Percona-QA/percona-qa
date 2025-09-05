@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 DATA_DIR_BASE=$INSTALL_DIR/data
 ARCHIVE_DIR=$INSTALL_DIR/wal_archive
 BASE_BACKUP_DIR=$INSTALL_DIR/base_backup
@@ -74,7 +74,7 @@ chmod 700 "$PITR_RECOVERY_DIR"
 cat >> "$PITR_RECOVERY_DIR/postgresql.conf" <<EOF
 port = $PORT
 restore_command = 'cp $ARCHIVE_DIR/%f %p'
-recovery_target_time = '$TARGET_TIME3'
+recovery_target_time = '$TARGET_TIME2'
 EOF
 
 touch "$PITR_RECOVERY_DIR/recovery.signal"

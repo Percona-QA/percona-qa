@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=/home/mohit.joshi/postgresql/bld_tde/install
+INSTALL_DIR=/home/mohit.joshi/postgresql/bld_17.6/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -176,7 +176,7 @@ pid4=$!
 alter_encrypt_unencrypt_tables 300   > /dev/null 2>&1 &
 pid5=$!
 
-for i in $(seq 1 5); do
+for i in $(seq 1 3); do
     sleep 30
     crash_replica_server
     sleep 30

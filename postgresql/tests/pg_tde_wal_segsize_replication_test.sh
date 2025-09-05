@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/postgresql/bld_tde/install"
+INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
 DATA_DIR_BASE="$INSTALL_DIR/data_segsize"
 KEYFILE="/tmp/keyfile.per"
 PG_PORT=5432
@@ -56,7 +56,10 @@ EOF
 
   # Setup replica
   echo "Setting up replica..."
-  "$INSTALL_DIR/bin/pg_basebackup" -h 127.0.0.1 -p $PG_PORT -D "$replica_dir" -U $(whoami) --no-password --write-recovery-conf
+  mkdir $replica_dir
+  chmod 700 $replica_dir
+  cp -R $data_dir/pg_tde $replica_dir
+  "$INSTALL_DIR/bin/pg_basebackup" -h 127.0.0.1 -p $PG_PORT -D "$replica_dir" -Xs -E -U $(whoami) --no-password --write-recovery-conf
 
   cat >> "$replica_dir/postgresql.conf" <<EOF
 port = $replica_port
@@ -124,7 +127,7 @@ for phase in {1..4}; do
     --threads=5 \
     --tables=100 \
     --time=30 \
-    --report-interval=1 \
+    --report-interval=5 \
     --events=1870000000 \
     run
 

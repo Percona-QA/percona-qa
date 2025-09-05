@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Setup paths and variables
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 SECONDARY_DATA=$INSTALL_DIR/secondary_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/primary.log

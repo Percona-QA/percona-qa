@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$INSTALL_DIR/server.log
 
@@ -24,6 +24,7 @@ run_pg_tde_function_test() {
     $INSTALL_DIR/bin/psql -d "$db" <<EOF
 -- Clean up if exists
 SELECT pg_tde_add_database_key_provider_file('keyring_file','/tmp/mykey.per');
+SELECT pg_tde_create_key_using_database_key_provider('key1','keyring_file');
 SELECT pg_tde_set_key_using_database_key_provider('key1','keyring_file');
 CREATE TABLE enc_test(id INT, secret TEXT) USING tde_heap;
 INSERT INTO enc_test VALUES (1, 'secret_text');

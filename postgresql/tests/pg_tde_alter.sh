@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

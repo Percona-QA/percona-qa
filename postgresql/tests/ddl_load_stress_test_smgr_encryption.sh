@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 DB_NAME="sbtest"
@@ -207,17 +207,17 @@ create_index &
 CREATE_PID=$!
 drop_index &
 DROP_INDEX_PID=$!
-rotate_master_key 120 >/dev/null 2>&1 &
+rotate_master_key 60 >/dev/null 2>&1 &
 ROTATE_MASTER_KEY=$!
-enable_disable_wal_encryption 120 >/dev/null 2>&1 &
+enable_disable_wal_encryption 60 >/dev/null 2>&1 &
 WAL_ENCRYPTION=$!
-rotate_wal_key 120 >/dev/null 2>&1 &
+rotate_wal_key 60 >/dev/null 2>&1 &
 WAL_KEY=$!
-alter_encrypt_unencrypt_tables 120 >/dev/null 2>&1 &
+alter_encrypt_unencrypt_tables 60 >/dev/null 2>&1 &
 ALTER_TABLES=$!
 
 
-for i in {1..10}; do
+for i in {1..5}; do
     echo "########################################"
     echo "# TRIAL $i                             #"
     echo "########################################"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CONFIGURATION
-INSTALL_DIR="$HOME/postgresql/bld_tde/install"
+INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
 PGDATA="$INSTALL_DIR/data"
 LOGFILE=$PGDATA/server.log
 ARCHIVE_DIR="$INSTALL_DIR/wal_archive"

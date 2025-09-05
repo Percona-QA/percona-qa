@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_tde/install
+export INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 export PGDATA=$INSTALL_DIR/primary_data
 export PGDATA2=$INSTALL_DIR/replica_data
 export LOG_FILE=$PGDATA/server.log

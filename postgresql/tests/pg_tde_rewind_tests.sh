@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Setup paths and variables
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -11,6 +11,7 @@ PG_REWIND="$INSTALL_DIR/bin/pg_rewind"
 PG_BASEBACKUP="$INSTALL_DIR/bin/pg_basebackup"
 PSQL="$INSTALL_DIR/bin/psql"
 SYSBENCH="/usr/bin/sysbench"
+KEYFILE="/tmp/primary_keyfile"
 
 PORT_PRIMARY=5432
 PORT_REPLICA=5433
@@ -21,8 +22,7 @@ DB_USER=$(whoami)
 
 # Clean slate
 pkill -9 postgres
-rm -rf "$PRIMARY_DATA" "$REPLICA_DATA"
-rm -rf /tmp/primary_keyfile
+rm -rf "$PRIMARY_DATA" "$REPLICA_DATA" "$KEYFILE"
 
 # Step 1: Init primary
 $INSTALL_DIR/bin/initdb -D "$PRIMARY_DATA"
@@ -52,7 +52,7 @@ echo "#########################"
 $PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" start
 sleep 3
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE EXTENSION pg_tde;"
-$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_file('file_provider','/tmp/primary_keyfile');"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
@@ -69,7 +69,10 @@ $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "INSERT INTO t1 VALUES(101,'First Record b
 
 echo "=> Step 2: Take base backup for replica"
 echo "#######################################"
-$PG_BASEBACKUP -D "$REPLICA_DATA" -X stream -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
+mkdir $REPLICA_DATA
+chmod 700 $REPLICA_DATA
+cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+$PG_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
 
 # Configure replica
 cat > "$REPLICA_DATA/postgresql.conf" <<EOF
@@ -164,6 +167,6 @@ $PSQL -p $PORT_REPLICA -d $DB_NAME -c "SELECT * FROM t1"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT * FROM t1"
 
 # Tail logs
-tail -10f "$PRIMARY_DATA/log/primary.log"
+tail -n 10 "$PRIMARY_DATA/log/primary.log"
 echo "######################################"
-tail -10f "$REPLICA_DATA/log/replica.log"
+tail -n 10 "$REPLICA_DATA/log/replica.log"

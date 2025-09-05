@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/postgresql/bld_tde/install"
+INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
 DATA_DIR_BASE="$INSTALL_DIR/data"
 KEYFILE="/tmp/keyfile.per"
 PG_PORT=5432

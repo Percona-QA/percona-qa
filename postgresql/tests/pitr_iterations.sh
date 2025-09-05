@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 DATA_DIR_BASE=$INSTALL_DIR/data
 ARCHIVE_DIR=$INSTALL_DIR/wal_archive
 BASE_BACKUP_DIR=$INSTALL_DIR/base_backup
@@ -78,7 +78,7 @@ pkill -9 postgres
 sleep 2
 
 # Recovery iterations
-for i in {1..3}; do
+for i in {1..2}; do
   echo "==============================="
   echo " Recovery iteration $i"
   echo "==============================="

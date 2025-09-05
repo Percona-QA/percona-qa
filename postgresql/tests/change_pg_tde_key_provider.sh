@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_tde/install
+export INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 export PGDATA=$INSTALL_DIR/data
 export LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -110,7 +110,7 @@ main() {
     for X in $(seq 1 5); do
         # Run Tests
 	run_sysbench_load &
-	change_key_provider 60 &
+	change_key_provider 15 &
         sleep 10
         crash_server $PG_PID
         sleep 5

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/postgresql/bld_tde/install"
+INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
 DATA_DIR_BASE="$INSTALL_DIR/data_segsize"
 KEYFILE="/tmp/keyfile.per"
 PG_PORT=5432
@@ -70,7 +70,7 @@ run_test() {
   --threads=5 \
   --tables=100 \
   --time=50 \
-  --report-interval=1 \
+  --report-interval=5 \
   --events=1870000000 \
   run &
 

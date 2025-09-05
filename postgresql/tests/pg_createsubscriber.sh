@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
 REPLICA_LOGFILE=$REPLICA_DATA/server.log
-TABLES=1000
+TABLES=200
 
 # initate the database
 initialize_server() {

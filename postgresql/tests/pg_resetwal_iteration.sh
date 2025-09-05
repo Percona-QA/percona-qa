@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
+INSTALL_DIR=$HOME/postgresql/bld_17.6/install
 PG_CTL=$INSTALL_DIR/bin/pg_ctl
 INITDB=$INSTALL_DIR/bin/initdb
 PSQL=$INSTALL_DIR/bin/psql
