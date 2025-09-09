@@ -2,7 +2,7 @@
 set -e
 
 username=postgres
-server_version=17.5
+server_version=17.6
 
 # Create postgres user if not exists
 if ! id "$username" &>/dev/null; then

@@ -2,7 +2,7 @@
 set -e
 
 username=postgres
-server_version=17.5
+server_version=17.6
 
 # Install required packages
 sudo apt-get update
