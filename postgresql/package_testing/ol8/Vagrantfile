@@ -1,7 +1,10 @@
-# Vagrantfile for Oracle Linux 8 (ol8/Vagrantfile)
-
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/oracle8"
-  config.vm.network "forwarded_port", guest: 5432, host: 5435
-  config.vm.provision "shell", path: "provision.sh", env: { "REPO" => ENV['REPO'] }
+  config.vm.network "forwarded_port", guest: 5432, host: 5433
+  config.vm.provision "shell",
+    path: "provision.sh",
+    env: {
+      "REPO" => ENV['REPO'],
+      "PG_VERSION" => ENV['PG_VERSION']
+    }
 end

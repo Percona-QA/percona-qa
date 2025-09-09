@@ -7,7 +7,7 @@ fi
 
 echo "Using DNF for Oracle Linux $VERSION_ID"
 sudo dnf install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-sudo percona-release enable-only ppg-17.5 $REPO
+sudo percona-release enable-only ppg-$PG_VERSION $REPO
 sudo dnf module disable postgresql -y
 sudo dnf clean all
 sudo dnf makecache
