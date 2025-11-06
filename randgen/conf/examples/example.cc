@@ -15,5 +15,5 @@ $combinations = [
         [
                 '--threads=1',
                 '--threads=2'
-        ],
+        ]
 ]
