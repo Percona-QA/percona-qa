@@ -68,7 +68,7 @@ $SIG{CHLD} = "IGNORE" if osWindows();
 my ($config_file, $basedir, $vardir, $trials, $duration, $grammar, $gendata, 
     $seed, $testname, $xml_output, $report_xml_tt, $report_xml_tt_type,
     $report_xml_tt_dest, $force, $no_mask, $exhaustive, $start_combination, $debug, $noLog, 
-    $threads, $new, $servers, $noshuffle, $clean, $workdir);
+    $threads, $servers, $noshuffle, $clean, $workdir);
 
 my @basedirs=('','');
 my $combinations;
@@ -103,7 +103,6 @@ my $opt_result = GetOptions(
     'debug' => \$debug,
     'no-log' => \$noLog,
     'parallel=i' => \$threads,
-    'new' => \$new,
     'servers=i' => \$servers,
     'no-shuffle' => \$noshuffle,
     'clean' => \$clean
@@ -273,7 +272,7 @@ sub doCombination {
     say("[$thread_id] Running $comment ".$trial_id."/".$trials);
 	my $mask = $prng->uint16(0, 65535);
 
-    my $runall = $new?"runall-new.pl":"runall.pl";
+    my $runall = "runall-new.pl";
 
 	my $command = "
 		perl ".($Carp::Verbose?"-MCarp=verbose ":"").

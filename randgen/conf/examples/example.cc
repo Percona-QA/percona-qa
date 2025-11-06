@@ -1,0 +1,19 @@
+$combinations = [
+        [
+        '
+                --reporters=Deadlock,ErrorLog,Backtrace,Recovery,Shutdown
+        '
+        ],
+        [
+                '--mysqld=--transaction-isolation=READ-COMMITTED',
+                '--mysqld=--transaction-isolation=REPEATABLE-READ',
+        ],
+        [
+                '--rows=10',
+                '--rows=10000'
+        ],
+        [
+                '--threads=1',
+                '--threads=2'
+        ]
+]
