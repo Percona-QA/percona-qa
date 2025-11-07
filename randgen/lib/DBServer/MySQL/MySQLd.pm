@@ -574,7 +574,7 @@ sub stopServer {
         my $waits = 0;
         # Need to check if $dbh is defined, in case the server has crashed
         if (defined $dbh) {
-            $res = $dbh->func('shutdown','127.0.0.1','root','admin');
+            $res = $dbh->do("SHUTDOWN");
             if ($res) {
                 while ($self->running && $waits < 100) {
                     Time::HiRes::sleep(0.2);
