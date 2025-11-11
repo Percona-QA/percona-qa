@@ -56,7 +56,11 @@ def authenticate(args):
     auth = api_request('POST', '/sys/v1/session/auth',
                        payload={"method": "password", "email": args.email, "password": args.password},
                        base_url=args.dsm_url, verbose=args.verbose)
-    token = auth['access_token']
+    if not auth:
+        raise Exception("Authentication failed: Empty response from server")
+    token = auth.get('access_token')
+    if not token:
+        raise Exception("Authentication failed: No access token in response")
     print(f"Authenticated")
 
     # Get and select account
