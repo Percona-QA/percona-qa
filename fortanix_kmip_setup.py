@@ -1,5 +1,4 @@
 import requests
-import json
 import os
 import subprocess
 import argparse
@@ -41,9 +40,10 @@ def api_request(method, endpoint, token=None, payload=None, cert=None, base_url=
         response.raise_for_status()
         return response.json() if response.content else {}
     except requests.exceptions.RequestException as e:
-        raise Exception(f"API request failed: {e}")
-
-
+        error_msg = f"API request failed: {e}"
+        if hasattr(e, 'response') and e.response is not None:
+            error_msg += f" (Status: {e.response.status_code}, Body: {e.response.text})"
+        raise Exception(error_msg)
 def authenticate(args):
     """Authenticate and select account"""
     if args.verbose:
@@ -59,6 +59,8 @@ def authenticate(args):
     # Get and select account
     accounts = api_request('GET', '/sys/v1/accounts', token=token,
                            base_url=args.dsm_url, verbose=args.verbose)
+    if not accounts:
+        raise Exception("No accounts found for this user")
     account_id = accounts[0]['acct_id']
 
     api_request('POST', '/sys/v1/session/select_account',
@@ -129,14 +131,12 @@ def generate_certs(app_id, args):
     # Setup directory
     os.makedirs(args.cert_dir, exist_ok=True)
 
-    # Clean existing files
-    for f in os.listdir(args.cert_dir):
-        path = os.path.join(args.cert_dir, f)
-        if os.path.isfile(path):
-            os.remove(path)
-
+    # Clean existing certificate files only
     key_path = os.path.join(args.cert_dir, "private.key")
     cert_path = os.path.join(args.cert_dir, "certificate.crt")
+    for cert_file in [key_path, cert_path]:
+        if os.path.isfile(cert_file):
+            os.remove(cert_file)
 
     # Generate certificate
     cmd = [
@@ -199,11 +199,11 @@ def download_server_cert(args):
     # Extract hostname from DSM URL
     hostname = urlparse(args.dsm_url).netloc
 
-    cmd = f"openssl s_client -connect {hostname}:443 -servername {hostname}"
+    cmd = ["openssl", "s_client", "-connect", f"{hostname}:443", "-servername", hostname]
 
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True,
+            cmd, capture_output=True, text=True,
             input="", timeout=10
         )
 
