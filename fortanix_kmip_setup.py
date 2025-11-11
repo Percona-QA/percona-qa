@@ -9,6 +9,9 @@ from urllib.parse import urlparse
 # Disable SSL warnings
 requests.packages.urllib3.disable_warnings()
 
+# Configuration constants
+RSA_KEY_SIZE = 2048
+CERT_VALIDITY_DAYS = 365
 
 def parse_args():
     """Parse command line arguments"""
@@ -140,8 +143,8 @@ def generate_certs(app_id, args):
 
     # Generate certificate
     cmd = [
-        "openssl", "req", "-newkey", "rsa:2048", "-nodes",
-        "-keyout", key_path, "-x509", "-days", "365",
+        "openssl", "req", "-newkey", f"rsa:{RSA_KEY_SIZE}", "-nodes",
+        "-keyout", key_path, "-x509", "-days", str(CERT_VALIDITY_DAYS),
         "-out", cert_path, "-subj", f"/CN={app_id}"
     ]
 
@@ -250,7 +253,7 @@ def main():
         # Step 5: Test certificate auth
         test_cert_auth(cert_path, key_path, args)
 
-        # Step 6: Download server cert (optional)
+        # Step 6: Download server cert
         download_server_cert(args)
 
         print("\nSetup completed successfully!")
