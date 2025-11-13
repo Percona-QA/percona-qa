@@ -47,6 +47,8 @@ def api_request(method, endpoint, token=None, payload=None, cert=None, base_url=
         if hasattr(e, 'response') and e.response is not None:
             error_msg += f" (Status: {e.response.status_code}, Body: {e.response.text})"
         raise Exception(error_msg)
+
+
 def authenticate(args):
     """Authenticate and select account"""
     if args.verbose:
@@ -227,9 +229,9 @@ def download_server_cert(args):
             print("Could not extract server certificate")
 
     except subprocess.TimeoutExpired:
-        print("Server certificate download timed out")
+        raise Exception("Server certificate download timed out")
     except Exception as e:
-        print(f"Server certificate download failed: {e}")
+        raise Exception(f"Server certificate download failed: {e}")
 
 
 def main():
