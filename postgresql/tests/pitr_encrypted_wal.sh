@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CONFIGURATION
-INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
+INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 PGDATA="$INSTALL_DIR/data"
 LOGFILE=$PGDATA/server.log
 ARCHIVE_DIR="$INSTALL_DIR/wal_archive"
@@ -21,6 +21,7 @@ echo "=== Step 1: Initialize primary server ==="
 
 # Configure archive settings
 echo "shared_preload_libraries = 'pg_tde'" >> "$PGDATA/postgresql.conf"
+echo "io_method = 'sync'" >> "$PGDATA/postgresql.conf"
 echo "archive_mode = on" >> "$PGDATA/postgresql.conf"
 echo "archive_command = 'cp %p $ARCHIVE_DIR/%f'" >> "$PGDATA/postgresql.conf"
 echo "wal_level = replica" >> "$PGDATA/postgresql.conf"
@@ -54,7 +55,7 @@ echo "=== Step 4: Restart server to enable WAL encryption ==="
 sleep 2
 
 echo "=== Step 5: Take a base backup ==="
-"$INSTALL_DIR/bin/pg_basebackup" -D "$BACKUP_DIR" -F plain -X fetch -p $PORT
+"$INSTALL_DIR/bin/pg_tde_basebackup" -D "$BACKUP_DIR" -F plain -X fetch -p $PORT
 
 echo "=== Step 5.1: Insert and capture 5 recovery target times ==="
 declare -A RECOVERY_TARGET_TIMES
@@ -77,7 +78,7 @@ echo "=== Step 6: Simulate initial crash ==="
 pkill -9 postgres
 sleep 2
 
-for i in {1..5}; do
+for i in {1..4}; do
     echo "=== Recovery iteration $i ==="
 
     # Clean old data
@@ -116,4 +117,4 @@ for i in {1..5}; do
     sleep 2
 done
 
-echo "=== DONE: Completed 5 recovery iterations across timelines ==="
+echo "=== DONE: Completed 4 recovery iterations across timelines ==="

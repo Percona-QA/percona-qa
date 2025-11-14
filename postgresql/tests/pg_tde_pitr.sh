@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 DATA_DIR_BASE=$INSTALL_DIR/data
 ARCHIVE_DIR=$INSTALL_DIR/wal_archive
 BASE_BACKUP_DIR=$INSTALL_DIR/base_backup
@@ -13,7 +13,7 @@ mkdir $ARCHIVE_DIR $LOG_DIR
 
 PG_CTL=$INSTALL_DIR/bin/pg_ctl
 PSQL=$INSTALL_DIR/bin/psql
-PG_BASEBACKUP=$INSTALL_DIR/bin/pg_basebackup
+PG_TDE_BASEBACKUP=$INSTALL_DIR/bin/pg_tde_basebackup
 
 PORT=5432
 pkill -9 postgres
@@ -28,6 +28,7 @@ logging_collector = on
 log_directory = '$LOG_DIR'
 wal_level = replica
 archive_mode = on
+io_method = 'sync'
 archive_command = 'cp %p $ARCHIVE_DIR/%f'
 EOF
 
@@ -39,7 +40,7 @@ $PSQL -p $PORT -c "CREATE TABLE accounts(id INT PRIMARY KEY, balance INT);" post
 $PSQL -p $PORT -c "INSERT INTO accounts VALUES (1, 100), (2, 200);" postgres
 
 echo "Step 3: Take Base Backup..."
-$PG_BASEBACKUP -D "$BASE_BACKUP_DIR" -Fp -Xs -P -v -p $PORT
+$PG_TDE_BASEBACKUP -D "$BASE_BACKUP_DIR" -Fp -Xs -P -v -p $PORT
 
 echo "Step 4: Generate more data and capture recovery target timestamp..."
 $PSQL -p $PORT -c "INSERT INTO accounts VALUES (3, 300);" postgres
@@ -75,6 +76,7 @@ cat >> "$PITR_RECOVERY_DIR/postgresql.conf" <<EOF
 port = $PORT
 restore_command = 'cp $ARCHIVE_DIR/%f %p'
 recovery_target_time = '$TARGET_TIME2'
+io_method = 'sync'
 EOF
 
 touch "$PITR_RECOVERY_DIR/recovery.signal"

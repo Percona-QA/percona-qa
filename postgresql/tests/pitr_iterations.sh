@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 DATA_DIR_BASE=$INSTALL_DIR/data
 ARCHIVE_DIR=$INSTALL_DIR/wal_archive
 BASE_BACKUP_DIR=$INSTALL_DIR/base_backup
@@ -11,7 +11,7 @@ PORT=5432
 
 PG_CTL=$INSTALL_DIR/bin/pg_ctl
 PSQL=$INSTALL_DIR/bin/psql
-PG_BASEBACKUP=$INSTALL_DIR/bin/pg_basebackup
+PG_TDE_BASEBACKUP=$INSTALL_DIR/bin/pg_tde_basebackup
 
 # Cleanup
 echo "Cleaning up previous data..."
@@ -25,6 +25,7 @@ $INSTALL_DIR/bin/initdb -D "$DATA_DIR_BASE"
 cat >> "$DATA_DIR_BASE/postgresql.conf" <<EOF
 port = $PORT
 shared_preload_libraries = 'pg_tde'
+io_method = 'sync'
 wal_level = replica
 archive_mode = on
 archive_command = 'cp %p $ARCHIVE_DIR/%f'
@@ -53,7 +54,7 @@ for i in {1..50}; do
 done
 
 echo "Step 4: Take base backup..."
-$PG_BASEBACKUP -D "$BASE_BACKUP_DIR" -Fp -Xs -v -p $PORT
+$PG_TDE_BASEBACKUP -D "$BASE_BACKUP_DIR" -Fp -Xs -v -p $PORT
 
 echo "Step 5: Load heavy write data..."
 declare -A TARGET_TIMES

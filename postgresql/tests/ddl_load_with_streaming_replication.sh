@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 export PGDATA=$INSTALL_DIR/primary_data
 export PGDATA2=$INSTALL_DIR/replica_data
 export LOG_FILE=$PGDATA/server.log
@@ -193,6 +193,7 @@ cat > "$PGDATA/postgresql.conf" <<SQL
 port=5432
 listen_addresses='*'
 shared_preload_libraries = 'pg_tde'
+io_method = 'sync'
 logging_collector = on
 log_directory = '$PGDATA'
 log_filename = 'server.log'
@@ -217,10 +218,11 @@ setup_db > /dev/null 2>&1
 mkdir $PGDATA2
 chmod 700 $PGDATA2
 cp -R $PGDATA/pg_tde $PGDATA2
-$INSTALL_DIR/bin/pg_basebackup -D $PGDATA2 -U replica_user -p 5432 -X stream -E -R -P
+$INSTALL_DIR/bin/pg_tde_basebackup -D $PGDATA2 -U replica_user -p 5432 -X stream -E -R -P
 cat >> "$PGDATA2/postgresql.conf" <<SQL
 port=5433
 logging_collector = on
+io_method = 'sync'
 log_directory = '$PGDATA2'
 log_filename = 'server.log'
 log_statement = 'all'

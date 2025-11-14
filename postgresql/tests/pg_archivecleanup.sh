@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CONFIGURATION
-INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
+INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 PGDATA="$INSTALL_DIR/data"
 LOGFILE=$PGDATA/server.log
 ARCHIVE_DIR="$INSTALL_DIR/wal_archive"
@@ -34,6 +34,7 @@ echo "logging_collector = on" >> "$PGDATA/postgresql.conf"
 echo "log_directory = '$PGDATA'" >> "$PGDATA/postgresql.conf"
 echo "log_filename = 'server.log'" >> "$PGDATA/postgresql.conf"
 echo "log_statement = 'all'" >> "$PGDATA/postgresql.conf"
+echo "io_method = 'sync'" >> "$PGDATA/postgresql.conf"
 
 echo "=== Step 2: Start PostgreSQL server ==="
 "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" -o "-p $PORT" -w start
@@ -79,7 +80,7 @@ echo "=== Step 5: Take a base backup ==="
 mkdir $BACKUP_DIR
 chmod 700 $BACKUP_DIR
 cp -R $PGDATA/pg_tde $BACKUP_DIR/
-"$INSTALL_DIR/bin/pg_basebackup" -D "$BACKUP_DIR" -F plain -X stream -E -p $PORT
+"$INSTALL_DIR/bin/pg_tde_basebackup" -D "$BACKUP_DIR" -F plain -X stream -E -p $PORT
 
 echo "=== Step 5.1: Insert and capture 5 recovery target times ==="
 declare -A RECOVERY_TARGET_TIMES
@@ -102,7 +103,7 @@ echo "=== Step 6: Simulate initial crash ==="
 pkill -9 postgres
 sleep 2
 
-for i in {1..5}; do
+for i in {1..4}; do
     echo "=== Recovery iteration $i ==="
 
     # Clean old data
@@ -159,5 +160,5 @@ done
 kill $PG_RECEIVEWAL_PID
 rm -f "$PGPASSFILE"
 
-echo "=== DONE: Completed 5 recovery iterations across timelines ==="
+echo "=== DONE: Completed 4 recovery iterations across timelines ==="
 

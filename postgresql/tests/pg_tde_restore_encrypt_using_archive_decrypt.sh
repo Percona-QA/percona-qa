@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CONFIGURATION
-INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
+INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 PGDATA="$INSTALL_DIR/data"
 LOGFILE=$PGDATA/server.log
 ARCHIVE_DIR="$INSTALL_DIR/wal_archive"
@@ -21,6 +21,7 @@ echo "=== Step 1: Initialize primary server ==="
 
 # Configure archive settings
 echo "shared_preload_libraries = 'pg_tde'" >> "$PGDATA/postgresql.conf"
+echo "io_method = 'sync'" >> "$PGDATA/postgresql.conf"
 echo "archive_mode = on" >> "$PGDATA/postgresql.conf"
 echo "archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'" >> "$PGDATA/postgresql.conf"
 #echo "archive_command = 'cp %p $ARCHIVE_DIR/%f'" >> "$PGDATA/postgresql.conf"
@@ -58,7 +59,7 @@ echo "=== Step 5: Take a base backup ==="
 mkdir $BACKUP_DIR
 chmod 700 $BACKUP_DIR
 cp -R $PGDATA/pg_tde $BACKUP_DIR/
-"$INSTALL_DIR/bin/pg_basebackup" -D "$BACKUP_DIR" -F plain -X stream -E -p $PORT
+"$INSTALL_DIR/bin/pg_tde_basebackup" -D "$BACKUP_DIR" -F plain -X stream -E -p $PORT
 
 echo "=== Step 5.1: Insert and capture 5 recovery target times ==="
 declare -A RECOVERY_TARGET_TIMES

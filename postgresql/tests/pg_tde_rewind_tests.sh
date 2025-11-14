@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Setup paths and variables
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
 REPLICA_LOGFILE=$REPLICA_DATA/server.log
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"
-PG_REWIND="$INSTALL_DIR/bin/pg_rewind"
-PG_BASEBACKUP="$INSTALL_DIR/bin/pg_basebackup"
+PG_TDE_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
+PG_TDE_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PSQL="$INSTALL_DIR/bin/psql"
 SYSBENCH="/usr/bin/sysbench"
 KEYFILE="/tmp/primary_keyfile"
@@ -33,6 +33,7 @@ shared_preload_libraries = 'pg_tde'
 default_table_access_method = 'tde_heap'
 port = $PORT_PRIMARY
 wal_level = replica
+io_method = 'sync'
 wal_compression = on
 wal_log_hints = on
 wal_keep_size = 512MB
@@ -72,7 +73,7 @@ echo "#######################################"
 mkdir $REPLICA_DATA
 chmod 700 $REPLICA_DATA
 cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
-$PG_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
+$PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
 
 # Configure replica
 cat > "$REPLICA_DATA/postgresql.conf" <<EOF
@@ -140,7 +141,7 @@ cp $PRIMARY_DATA/postgresql.conf /tmp/postgresql_bk.conf
 echo "=> Step 9: Rewind old primary"
 echo "############################"
 echo "Rewinding old primary..."
-$PG_REWIND --target-pgdata="$PRIMARY_DATA" \
+$PG_TDE_REWIND --target-pgdata="$PRIMARY_DATA" \
   --source-server="host=localhost port=$PORT_REPLICA user=$REPL_USER dbname=$DB_NAME"
 
 # Restoring the Original config file

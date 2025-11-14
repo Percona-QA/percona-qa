@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -21,6 +21,7 @@ initialize_server() {
 port=5433
 listen_addresses='*'
 shared_preload_libraries = 'pg_tde'
+io_method = 'sync'
 logging_collector = on
 log_directory = '$PRIMARY_DATA'
 log_filename = 'server.log'
@@ -51,7 +52,7 @@ start_server() {
 }
 
 start_replica() {
-    $INSTALL_DIR/bin/pg_basebackup -h localhost -U repuser --checkpoint=fast -D $REPLICA_DATA -R --slot=somename -C --port=5433
+    $INSTALL_DIR/bin/pg_tde_basebackup -h localhost -U repuser --checkpoint=fast -D $REPLICA_DATA -R --slot=somename -C --port=5433
     sleep 5
     cat >> "$REPLICA_DATA/postgresql.conf" <<SQL
 port=5434

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 enable_tde() {
-    local install_dir="${INSTALL_DIR:-$HOME/postgresql/bld_tde/install}"
+    local install_dir="${INSTALL_DIR:-$HOME/postgresql/bld_18.0.1/install}"
     local pgdata="${PGDATA:-$HOME/pgdata}"
     local db_name="${DB_NAME:-postgres}"
     local keyring_file="${KEYRING_FILE:-$pgdata/keyring.file}"

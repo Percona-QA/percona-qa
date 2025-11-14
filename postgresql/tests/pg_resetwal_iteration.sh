@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_17.7.1/install
 PG_CTL=$INSTALL_DIR/bin/pg_ctl
 INITDB=$INSTALL_DIR/bin/initdb
 PSQL=$INSTALL_DIR/bin/psql
-PG_RESETWAL=$INSTALL_DIR/bin/pg_resetwal
+PG_TDE_RESETWAL=$INSTALL_DIR/bin/pg_tde_resetwal
 PORT=5432
 SYSBENCH_TABLES=10
 SYSBENCH_THREADS=5
@@ -28,7 +28,7 @@ rotate_wal_key(){
 for iter in {1..3}; do
     echo -e "\n================= Iteration $iter =================\n"
 
-    DATA_DIR=$INSTALL_DIR/pg_resetwal_test_data_$iter
+    DATA_DIR=$INSTALL_DIR/pg_tde_resetwal_test_data_$iter
     LOGFILE=$DATA_DIR/server.log
 
     # Cleanup
@@ -45,6 +45,7 @@ for iter in {1..3}; do
     # PostgreSQL configuration
     echo "shared_preload_libraries = 'pg_tde'" >> $DATA_DIR/postgresql.conf
     echo "default_table_access_method = 'tde_heap'" >> $DATA_DIR/postgresql.conf
+    #echo "io_method = 'sync'" >> $DATA_DIR/postgresql.conf
     echo "port = $PORT" >> $DATA_DIR/postgresql.conf
 
     echo "=> Starting PostgreSQL"
@@ -58,7 +59,7 @@ for iter in {1..3}; do
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('database_key', 'global_provider');"
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key', 'global_provider');"
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_set_key_using_global_key_provider('database_key', 'global_provider');"
-    $PSQL -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+    $PSQL -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt=OFF;"
 
     echo "=> Restarting PostgreSQL with WAL encryption"
     $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" restart
@@ -104,10 +105,10 @@ for iter in {1..3}; do
 
     rm -f $DATA_DIR/postmaster.pid
 
-    echo "=> Running pg_resetwal"
-    $PG_RESETWAL -D "$DATA_DIR" -f
+    echo "=> Running pg_tde_resetwal"
+    $PG_TDE_RESETWAL -D "$DATA_DIR" -f
 
-    echo "=> Restarting PostgreSQL after pg_resetwal"
+    echo "=> Restarting PostgreSQL after pg_tde_resetwal"
     $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" start
     sleep 2
     echo "=> Rotate WAL key"

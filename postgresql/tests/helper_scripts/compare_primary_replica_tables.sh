@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-INSTALL_DIR="/home/mohit.joshi/postgresql/pg_tde/bld_tde/install"
+INSTALL_DIR="/home/mohit.joshi/postgresql/pg_tde/bld_18.0.1/install"
 PRIMARY_PORT="5432"
 REPLICA_PORT="5433"
 DB_NAME="sbtest"

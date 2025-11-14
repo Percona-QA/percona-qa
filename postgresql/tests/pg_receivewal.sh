@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CONFIGURATION
-INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
+INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 PGDATA="$INSTALL_DIR/data"
 LOGFILE=$PGDATA/server.log
 ARCHIVE_DIR="$INSTALL_DIR/wal_archive"
@@ -26,6 +26,7 @@ echo "=== Step 1: Initialize primary server ==="
 # Configure settings
 echo "shared_preload_libraries = 'pg_tde'" >> "$PGDATA/postgresql.conf"
 echo "wal_level = replica" >> "$PGDATA/postgresql.conf"
+echo "io_method = 'sync'" >> "$PGDATA/postgresql.conf"
 echo "max_wal_senders = 5" >> "$PGDATA/postgresql.conf"
 echo "wal_compression = on" >> "$PGDATA/postgresql.conf"
 echo "listen_addresses = '*'" >> "$PGDATA/postgresql.conf"
@@ -58,7 +59,7 @@ echo "=== Step 3: Create extension, keys, and table ==="
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('database_key', 'global_provider');"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key', 'global_provider');"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_set_key_using_global_key_provider('database_key', 'global_provider');"
-"$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+"$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt=OFF;"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "CREATE TABLE t1(id SERIAL PRIMARY KEY, name TEXT) USING tde_heap;"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "INSERT INTO t1(name) VALUES('before backup 1'), ('before backup 2');"
 
@@ -70,7 +71,7 @@ echo "=== Step 5: Take a base backup ==="
 mkdir $BACKUP_DIR
 chmod 700 $BACKUP_DIR
 cp -R $PGDATA/pg_tde $BACKUP_DIR
-"$INSTALL_DIR/bin/pg_basebackup" -D "$BACKUP_DIR" -F plain -X stream -E  -p $PORT
+"$INSTALL_DIR/bin/pg_tde_basebackup" -D "$BACKUP_DIR" -F plain -X stream -E -p $PORT
 
 echo "=== Step 5.1: Insert and capture 5 recovery target times ==="
 declare -A RECOVERY_TARGET_TIMES

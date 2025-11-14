@@ -3,8 +3,8 @@
 initialize_server() {
     # Allow overriding via env variables or use defaults
     local port="${PORT:-5432}"
-    local install_dir="${INSTALL_DIR:-$HOME/postgresql/bld_17.6/install}"
-    local data_dir="${PGDATA:-$HOME/postgresql/bld_17.6/install/data}"
+    local install_dir="${INSTALL_DIR:-$HOME/postgresql/bld_18.1.1/install}"
+    local data_dir="${PGDATA:-$HOME/postgresql/bld_18.1.1/install/data}"
 
     # Kill PostgreSQL if running on common ports (5432–5434)
     local pg_pids
@@ -37,6 +37,7 @@ logging_collector = on
 log_directory = '$data_dir'
 log_filename = 'server.log'
 log_statement = 'all'
+io_method = 'sync'
 EOF
 
     echo "Server initialized on port $port with data dir $data_dir"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PUB_DATA=$INSTALL_DIR/pub_db
 SUB_DATA=$INSTALL_DIR/sub_db
 PUB_LOG=$PUB_DATA/pub.log
@@ -22,6 +22,7 @@ initialize_server() {
     cat > "$PUB_DATA/postgresql.conf" <<SQL
 wal_level=logical
 wal_compression=on
+io_method = 'sync'
 port=5433
 shared_preload_libraries='pg_tde'
 SQL
@@ -32,6 +33,7 @@ SQL
    cat > "$SUB_DATA/postgresql.conf" << SQL
 port=5434
 shared_preload_libraries='pg_tde'
+io_method = 'sync'
 SQL
 }
 

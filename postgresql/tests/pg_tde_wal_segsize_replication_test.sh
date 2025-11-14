@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
+INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 DATA_DIR_BASE="$INSTALL_DIR/data_segsize"
 KEYFILE="/tmp/keyfile.per"
 PG_PORT=5432
@@ -32,6 +32,7 @@ port = $PG_PORT
 logging_collector = on
 log_directory = 'log'
 log_filename = 'postgresql.log'
+io_method = 'sync'
 wal_level = replica
 max_wal_senders = 5
 wal_keep_size = 64
@@ -48,7 +49,7 @@ SELECT pg_tde_add_global_key_provider_file('global_provider', '$KEYFILE');
 SELECT pg_tde_create_key_using_global_key_provider('server_key1', 'global_provider');
 SELECT pg_tde_set_key_using_global_key_provider('server_key1', 'global_provider');
 SELECT pg_tde_set_server_key_using_global_key_provider('server_key1', 'global_provider');
-ALTER SYSTEM SET pg_tde.wal_encrypt = 'ON';
+ALTER SYSTEM SET pg_tde.wal_encrypt = 'OFF';
 EOF
 
   "$INSTALL_DIR/bin/pg_ctl" -D "$data_dir" restart
@@ -59,7 +60,7 @@ EOF
   mkdir $replica_dir
   chmod 700 $replica_dir
   cp -R $data_dir/pg_tde $replica_dir
-  "$INSTALL_DIR/bin/pg_basebackup" -h 127.0.0.1 -p $PG_PORT -D "$replica_dir" -Xs -E -U $(whoami) --no-password --write-recovery-conf
+  "$INSTALL_DIR/bin/pg_tde_basebackup" -h 127.0.0.1 -p $PG_PORT -D "$replica_dir" -Xs -E -U $(whoami) --no-password --write-recovery-conf
 
   cat >> "$replica_dir/postgresql.conf" <<EOF
 port = $replica_port
@@ -143,7 +144,6 @@ done
 
   "$INSTALL_DIR/bin/pg_ctl" -D "$data_dir" stop
   "$INSTALL_DIR/bin/pg_ctl" -D "$replica_dir" stop
-
   echo "Test complete for --wal-segsize = ${segsize_mb}MB"
   echo
 }

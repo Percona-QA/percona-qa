@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Setup paths and variables
-INSTALL_DIR=$HOME/postgresql/bld_17.6/install
+INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 SECONDARY_DATA=$INSTALL_DIR/secondary_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/primary.log
 SECONDARY_LOGFILE=$SECONDARY_DATA/secondary.log
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"
-PG_BASEBACKUP="$INSTALL_DIR/bin/pg_basebackup"
+PG_TDE_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PSQL="$INSTALL_DIR/bin/psql"
 KEYFILE="/tmp/keyring.file"
 SYSBENCH="/usr/bin/sysbench"
@@ -39,6 +39,7 @@ cat >> "$PRIMARY_DATA/postgresql.conf" <<EOF
 port = $PORT_PRIMARY
 shared_preload_libraries = 'pg_tde'
 default_table_access_method = 'tde_heap'
+io_method = 'sync'
 wal_level = replica
 wal_compression = on
 wal_log_hints = on
@@ -102,7 +103,7 @@ $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_PRIMARY \
   --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS \
   /usr/share/sysbench/oltp_write_only.lua prepare
 
-echo "=> Rotate Keys and Run Load in Parallel while pg_basebackup takes backup of primary server"
+echo "=> Rotate Keys and Run Load in Parallel while pg_tde_basebackup takes backup of primary server"
 rotate_wal_key 60 > //tmp/rotate_wal.log 2>&1 &
 rotate_table_key 60 > /tmp/rotate_table.log 2>&1 &
 
@@ -119,7 +120,7 @@ echo "#######################################"
 mkdir $SECONDARY_DATA
 chmod 700 $SECONDARY_DATA
 cp -R $PRIMARY_DATA/pg_tde $SECONDARY_DATA/
-$PG_BASEBACKUP -D "$SECONDARY_DATA" -X stream -R -E -h localhost -p $PORT_PRIMARY -U $REPL_USER
+$PG_TDE_BASEBACKUP -D "$SECONDARY_DATA" -X stream -E -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
 
 echo "=> Step 3: Start Secondary Server"
 echo "################################"
@@ -128,6 +129,7 @@ cat >> "$SECONDARY_DATA/postgresql.conf" <<EOF
 port = $PORT_SECONDARY
 shared_preload_libraries = 'pg_tde'
 default_table_access_method = 'tde_heap'
+io_method = 'sync'
 wal_level = replica
 wal_compression = on
 wal_log_hints = on

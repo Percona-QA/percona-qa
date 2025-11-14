@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/postgresql/bld_17.6/install"
+INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 DATA_DIR_BASE="$INSTALL_DIR/data_segsize"
 KEYFILE="/tmp/keyfile.per"
 PG_PORT=5432
@@ -26,6 +26,7 @@ run_test() {
   echo "shared_preload_libraries = 'pg_tde'" >> "$data_dir/postgresql.conf"
   echo "port = $PG_PORT" >> "$data_dir/postgresql.conf"
   echo "logging_collector = on" >> "$data_dir/postgresql.conf"
+  echo "io_method = 'sync'" >> "$data_dir/postgresql.conf"
   echo "log_directory = 'log'" >> "$data_dir/postgresql.conf"
   echo "log_filename = 'postgresql.log'" >> "$data_dir/postgresql.conf"
 

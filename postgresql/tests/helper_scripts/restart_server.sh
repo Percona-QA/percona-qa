@@ -1,7 +1,7 @@
 #!/bin/bash
 
 restart_server() {
-    local install_dir="${INSTALL_DIR:-$HOME/postgresql/pg_tde/bld_tde/install}"
+    local install_dir="${INSTALL_DIR:-$HOME/postgresql/pg_tde/bld_18.0.1/install}"
     local data_dir="${PGDATA:-$install_dir/data}"
     local log_file="${LOG_FILE:-$data_dir/server.log}"
 
