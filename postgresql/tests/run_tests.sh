@@ -4,7 +4,7 @@
 DIR="."
 
 # List of files to exclude (space-separated)
-EXCLUDE_LIST=("server_upgrade_17.5_17.6.sh" "import_vault_keys_cli_tool.sh" "import_vault_keys.sh" "read_encrypted_wal_using_pg_waldump.sh" "pg_tde_upgrade_test.sh" "change_pg_tde_key_provider.sh" "run_tests.sh")
+EXCLUDE_LIST=("server_upgrade_17.5_17.6.sh" "import_vault_keys_cli_tool.sh" "import_vault_keys.sh" "read_encrypted_wal_using_pg_waldump.sh" "pg_tde_upgrade_test.sh" "run_tests.sh")
 
 # Loop through all .sh files
 for file in "$DIR"/*.sh; do
