@@ -141,9 +141,10 @@ def generate_certs(app_id, args):
     os.makedirs(args.cert_dir, exist_ok=True)
 
     # Clean existing certificate files only
-    key_path = os.path.join(args.cert_dir, "private.key")
-    cert_path = os.path.join(args.cert_dir, "certificate.crt")
-    for cert_file in [key_path, cert_path]:
+    key_path = os.path.join(args.cert_dir, "client_key.pem")
+    cert_path = os.path.join(args.cert_dir, "client_certificate.pem")
+    server_cert_path = os.path.join(args.cert_dir, "root_certificate.pem")
+    for cert_file in [key_path, cert_path, server_cert_path]:
         if os.path.isfile(cert_file):
             os.remove(cert_file)
 
@@ -221,7 +222,7 @@ def download_server_cert(args):
                           result.stdout, re.DOTALL)
 
         if match:
-            server_cert_path = os.path.join(args.cert_dir, "server.crt")
+            server_cert_path = os.path.join(args.cert_dir, "root_certificate.pem")
             with open(server_cert_path, 'w') as f:
                 f.write(match.group(0))
             print(f"Server certificate saved")
