@@ -144,7 +144,7 @@ def generate_certs(app_id, args):
     key_path = os.path.join(args.cert_dir, "client_key.pem")
     cert_path = os.path.join(args.cert_dir, "client_certificate.pem")
     server_cert_path = os.path.join(args.cert_dir, "root_certificate.pem")
-    for cert_file in [key_path, cert_path,server_cert_path]:
+    for cert_file in [key_path, cert_path, server_cert_path]:
         if os.path.isfile(cert_file):
             os.remove(cert_file)
 
