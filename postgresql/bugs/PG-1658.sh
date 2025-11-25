@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"

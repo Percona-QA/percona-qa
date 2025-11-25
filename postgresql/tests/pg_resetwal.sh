@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Paths and ports
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"
 PG_TDE_RESETWAL="$INSTALL_DIR/bin/pg_tde_resetwal"

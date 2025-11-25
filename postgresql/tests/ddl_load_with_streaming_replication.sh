@@ -1,16 +1,15 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-export PGDATA=$INSTALL_DIR/primary_data
-export PGDATA2=$INSTALL_DIR/replica_data
-export LOG_FILE=$PGDATA/server.log
-export DB_NAME="sbtest"
-export TABLE_PREFIX="ddl_test"
-export TOTAL_TABLES=5
-export MASTER_PORT=5432
-export REPLICA_PORT=5433
-export PATH=/usr/local/pgsql/bin:$PATH
+PGDATA=$INSTALL_DIR/primary_data
+PGDATA2=$INSTALL_DIR/replica_data
+LOG_FILE=$PGDATA/server.log
+DB_NAME="sbtest"
+TABLE_PREFIX="ddl_test"
+TOTAL_TABLES=5
+MASTER_PORT=5432
+REPLICA_PORT=5433
+exportt PATH=/usr/local/pgsql/bin:$PATH
 
 # pgbench Configuration
 SCALE=50        # ~5 million rows

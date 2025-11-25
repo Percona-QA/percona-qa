@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
 DATA_DIR=$INSTALL_DIR/data
 PORT=5432
 KEYRING_FILE=/tmp/keyring.file

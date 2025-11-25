@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Setup paths and variables
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log
@@ -11,7 +10,7 @@ PG_TDE_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
 PG_TDE_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PSQL="$INSTALL_DIR/bin/psql"
 SYSBENCH="/usr/bin/sysbench"
-SYSBENCH_TABLES=1000
+SYSBENCH_TABLES=100
 SYSBENCH_RECORDS=1000
 THREADS=10
 export PGCTLTIMEOUT=600
@@ -59,17 +58,20 @@ $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_fil
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "SELECT pg_tde_set_key_using_global_key_provider('key1','file_provider');"
-#$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+$PSQL -p $PORT_PRIMARY -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 # Restart primary
-#$PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" restart
-#sleep 3
+$PG_CTL -D "$PRIMARY_DATA" -o "-p $PORT_PRIMARY" -l "$PRIMARY_LOGFILE" restart
+sleep 3
 
 # Create replication user
 $PSQL -p $PORT_PRIMARY -d $DB_NAME -c "CREATE ROLE $REPL_USER WITH LOGIN REPLICATION SUPERUSER PASSWORD '$REPL_PASS';"
 
 echo "=> Step 2: Take base backup for replica"
 echo "#######################################"
-$PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
+mkdir $REPLICA_DATA
+chmod 700 $REPLICA_DATA
+cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+$PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PORT_PRIMARY -U $REPL_USER
 
 # Configure replica
 cat > "$REPLICA_DATA/postgresql.conf" <<EOF
@@ -88,10 +90,10 @@ echo "=>Step 3: Start replica"
 echo "########################"
 $PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" start
 sleep 5
-#$PSQL -p $PORT_REPLICA -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
+$PSQL -p $PORT_REPLICA -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 # Restart replica
-#$PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" restart
-#sleep 5
+$PG_CTL -D "$REPLICA_DATA" -o "-p $PORT_REPLICA" -l "$REPLICA_LOGFILE" restart
+sleep 5
 
 echo "=>Step 3: Stop primary (simulate crash)"
 echo "#######################################"
@@ -114,7 +116,7 @@ $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_REPLICA \
 
 $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PORT_REPLICA \
   --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \
-  --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS --time=200 --report-interval=5 \
+  --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS --time=60 --report-interval=5 \
   /usr/share/sysbench/oltp_write_only.lua run
 
 # Backing up the Original config file

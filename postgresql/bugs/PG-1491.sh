@@ -1,11 +1,10 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
-export DB_NAME="sbtest"
-export PARTITION_PARENT="partitioned_table"
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
+DB_NAME="sbtest"
+PARTITION_PARENT="partitioned_table"
 # initate the database
 initialize_server() {
     PG_PID=$(lsof -ti :5432) || true

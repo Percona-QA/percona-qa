@@ -1,4 +1,5 @@
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
+#!/bin/bash
+
 DATA_DIR=$INSTALL_DIR/data
 
 initialize_server() {

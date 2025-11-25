@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
-export DB_NAME="sbtest"
-export PARTITION_PARENT="partitioned_table"
-export TOTAL_PARTITIONS=5
-export TABLESPACE_NAME="extern_tbsp"
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
+DB_NAME="sbtest"
+PARTITION_PARENT="partitioned_table"
+TOTAL_PARTITIONS=5
+TABLESPACE_NAME="extern_tbsp"
 rm -rf /tmp/$TABLESPACE_NAME
 mkdir -p /tmp/$TABLESPACE_NAME
 chmod 700 /tmp/$TABLESPACE_NAME

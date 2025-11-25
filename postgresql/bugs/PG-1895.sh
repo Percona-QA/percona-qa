@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Setup paths and variables
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/primary.log
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"

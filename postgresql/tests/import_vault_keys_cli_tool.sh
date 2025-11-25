@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_tde/install
 DATA_DIR=$INSTALL_DIR/data
 EXPORT_DIR=vault_export
 PORT=5432

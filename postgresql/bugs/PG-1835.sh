@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 DATA_DIR=$INSTALL_DIR/pg_tde_resetwal_test_data
 LOGFILE=$DATA_DIR/server.log
 PG_CTL=$INSTALL_DIR/bin/pg_ctl

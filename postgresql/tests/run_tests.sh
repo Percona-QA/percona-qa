@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 # Directory containing the .sh files (default: current directory)
 DIR="."
 

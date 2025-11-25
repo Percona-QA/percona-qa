@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/postgresql/bld_18.1.1/install"
 DATA_DIR_BASE="$INSTALL_DIR/data"
 KEYFILE="/tmp/keyfile.per"
 PG_PORT=5432

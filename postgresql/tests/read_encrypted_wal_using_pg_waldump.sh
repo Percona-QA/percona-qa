@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 TDE_KEY_DIR="$INSTALL_DIR/data/pg_tde"
 WAL_DIR="$INSTALL_DIR/data/pg_wal"
 PG_TDE_WALDUMP="$INSTALL_DIR/bin/pg_tde_waldump"

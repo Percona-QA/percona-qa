@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # initate the database
@@ -48,6 +47,10 @@ crash_server() {
 
 start_vault_server(){
     killall vault > /dev/null 2>&1
+    if [ -f /tmp/token_file ]; then
+      rm /tmp/token_file
+      token_file=/tmp/token_file
+    fi
     echo "=> Starting vault server"
     if [ ! -d $SCRIPT_DIR/vault ]; then
     mkdir $SCRIPT_DIR/vault
@@ -58,6 +61,8 @@ start_vault_server(){
     secret_mount_point=$(grep 'secret_mount_point' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     token=$(grep 'token' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
     vault_ca=$(grep 'vault_ca' "${SCRIPT_DIR}/vault/keyring_vault_ps.cnf" | awk -F '=' '{print $2}' | tr -d '[:space:]')
+
+    echo $token > $token_filee
     echo ".. Vault server started"
 }
 
@@ -74,7 +79,7 @@ change_key_provider(){
         fi
         if [ $provider_type == "vault_v2" ]; then
             provider_name=local_vault
-            provider_config="'$token','$vault_url','$secret_mount_point','$vault_ca'"
+            provider_config="'$vault_url','$secret_mount_point','$token_file','$vault_ca'"
         elif [ $provider_type == "file" ]; then
             provider_name=local_keyring
             provider_config="'$PGDATA/keyring.file'"

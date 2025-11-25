@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log
 DB_NAME=postgres

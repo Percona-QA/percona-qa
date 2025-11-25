@@ -1,12 +1,11 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
-export DB_NAME="sbtest"
-export TABLE_PREFIX="ddl_test"
-export TOTAL_TABLES=20
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
+DB_NAME="sbtest"
+TABLE_PREFIX="ddl_test"
+TOTAL_TABLES=20
 
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/start_server.sh"

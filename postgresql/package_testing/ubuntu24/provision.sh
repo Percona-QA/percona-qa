@@ -12,10 +12,10 @@ wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
 sudo dpkg -i percona-release_latest.generic_all.deb
 sudo percona-release enable-only ppg-$PG_VERSION $REPO
 sudo apt-get update
-sudo apt-get install -y percona-postgresql-17
+sudo apt-get install -y percona-postgresql-$PG_VERSION
 
 # Add pg_tde extension in shared_preload_libraries in the PGCONF and restart server
-sudo sed -i -E "s|^\s*shared_preload_libraries\s*=\s*'[^']*'|shared_preload_libraries = 'pg_tde,percona_pg_telemetry'|" /etc/postgresql/17/main/postgresql.conf
+sudo sed -i -E "s|^\s*shared_preload_libraries\s*=\s*'[^']*'|shared_preload_libraries = 'pg_tde,percona_pg_telemetry'|" /etc/postgresql/$PG_VERSION/main/postgresql.conf
 sudo systemctl restart postgresql
 
 # Test pg_tde
@@ -76,4 +76,4 @@ EOF
 sudo systemctl stop postgresql
 
 # Uninstall PG 17.5
-sudo apt-get -y remove percona-postgresql-17
+sudo apt-get -y remove percona-postgresql-$PG_VERSION

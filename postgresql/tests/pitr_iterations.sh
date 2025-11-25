@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Config
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 DATA_DIR_BASE=$INSTALL_DIR/data
 ARCHIVE_DIR=$INSTALL_DIR/wal_archive
 BASE_BACKUP_DIR=$INSTALL_DIR/base_backup

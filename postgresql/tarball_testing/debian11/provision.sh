@@ -2,7 +2,6 @@
 set -e
 
 username=postgres
-server_version=17.6
 
 # Install required packages
 sudo apt-get update
@@ -25,7 +24,8 @@ if [[ "$current_openssl_version" == 1.1.* ]]; then
     pushd openssl-3.0.13
     echo "Installing OpenSSL 3.0"
     # Configure with custom install path (to avoid replacing system OpenSSL)
-    ./Configure --prefix=/opt/openssl-3.0 --openssldir=/opt/openssl-3.0 shared zlib > /dev/null 2>&1
+    #./Configure --prefix=/opt/openssl-3.0 --openssldir=/opt/openssl-3.0 shared zlib > /dev/null 2>&1
+    ./Configure --prefix=/opt/openssl-3.0 --openssldir=/opt/openssl-3.0 shared zlib
     # Build and install
     make -j$(nproc) > /dev/null 2>&1
     sudo make install > /dev/null 2>&1
@@ -56,8 +56,8 @@ sudo chown $username:$username pg_tarball
 run_tests() {
   local ssl_version=$1
   local workdir="pg_tarball/${ssl_version}"
-  local tarball_name="percona-postgresql-${server_version}-${ssl_version}-linux-x86_64.tar.gz"
-  local testing_repo_url="https://downloads.percona.com/downloads/TESTING/pg_tarballs-${server_version}/${tarball_name}"
+  local tarball_name="percona-postgresql-$PG_VERSION-${ssl_version}-linux-x86_64.tar.gz"
+  local testing_repo_url="https://downloads.percona.com/downloads/TESTING/pg_tarballs-$PG_VERSION/${tarball_name}"
 
   sudo -u "$username" -s /bin/bash <<EOF
 set -e
@@ -73,7 +73,7 @@ wget -q -P "$workdir" "$testing_repo_url"
 
 cd "$workdir"
 tar -xzf "$tarball_name"
-cd percona-postgresql17
+cd percona-postgresql18
 
 pkill -9 postgres || true
 if [ -d data ]; then

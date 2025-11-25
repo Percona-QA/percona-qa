@@ -4,7 +4,6 @@
 # PG-1503 - Deleting a Global key provider must not be allowed when we have active keys on the database   #
 ###########################################################################################################
 
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 DATA_DIR=$INSTALL_DIR/data
 
 initialize_server() {
@@ -53,4 +52,12 @@ $INSTALL_DIR/bin/psql -d postgres -c"INSERT INTO t1 VALUES(1)"
 
 echo "Delete the Global Key Provider. Must Fail"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_global_key_provider('global_keyring')"
+ret_code=$?
+
+if [ $ret_code -ne 0 ]; then
+    echo "Success!"
+else
+    echo "FAIL: Command unexpectedly succeeded"
+    exit 1
+fi
 

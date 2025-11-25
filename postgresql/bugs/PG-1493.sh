@@ -1,6 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
 DATA_DIR=$INSTALL_DIR/data
 TABLES=10
 

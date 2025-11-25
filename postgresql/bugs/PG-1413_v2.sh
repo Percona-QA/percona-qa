@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Set variable
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-export PGDATA=$INSTALL_DIR/data
-export LOG_FILE=$PGDATA/server.log
+PGDATA=$INSTALL_DIR/data
+LOG_FILE=$PGDATA/server.log
 
 # initate the database
 initialize_server() {
