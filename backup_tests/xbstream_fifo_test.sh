@@ -8,12 +8,15 @@ SOCKET=/tmp/mysql_22000.sock
 BACKUP_DIR=/tmp/backup
 PSTRESS_BIN=$HOME/pstress/src
 ENCRYPTION=0; COMPRESS=0; ENCRYPT=""; DECRYPT=""; ENCRYPT_KEY=""
-declare -A KMIP_CONFIGS=(
+declare -gA KMIP_CONFIGS=(
     # PyKMIP Docker Configuration
     ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
 
     # Hashicorp Docker Setup Configuration
     # ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+
+    # Fortanix Setup Configuration
+    # ["fortanix"]="email=saikumar.vs@percona.com,password=TrialTest@123,addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
@@ -160,12 +163,7 @@ init_datadir() {
       "components": "file://component_keyring_kmip"
     }' > "$PS_DIR/bin/mysqld.my"
 
-    if ! source ./kmip_helper.sh; then
-        echo "ERROR: Failed to load KMIP helper library"
-        exit 1
-    fi
-    init_kmip_configs
-    start_kmip_server "$kmip_type"
+    start_kmip_server $kmip_type
     [ -f "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" "$PS_DIR/lib/plugin/"
 
   elif [ "$keyring_type" = "keyring_file" ]; then
@@ -608,9 +606,9 @@ echo "Copy the backup in datadir"
 $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back5.log 2>&1
 start_server
 
-echo "##############################################################################"
-echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ keyring kmip - pykmip #"
-echo "##############################################################################"
+echo "###############################################################################"
+echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ component keyring kmip #"
+echo "###############################################################################"
 
 LOGDIR=$HOME/6
 if [ -d $LOGDIR ]; then
@@ -625,7 +623,17 @@ echo "..Cleanup completed"
 ENCRYPTION=1
 stop_server
 rm -rf $DATADIR
-init_datadir "keyring_kmip" "pykmip"
+
+if ! source ./kmip_helper.sh; then
+    echo "ERROR: Failed to load KMIP helper library"
+    exit 1
+fi
+init_kmip_configs
+for vault_type in "${!KMIP_CONFIGS[@]}"; do
+  echo "Testing Encryption with $vault_type..."
+  init_datadir "keyring_kmip" $vault_type
+done
+
 start_server
 echo "=>Run pstress load"
 pstress_run_load
