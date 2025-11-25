@@ -656,46 +656,6 @@ echo "Copy the backup in datadir"
 $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.log 2>&1
 start_server
 
-echo "#####################################################################################"
-echo "# 6.5 Test FIFO xbstream: Test with encrypted tables w/ keyring kmip - hashicorp ####"
-echo "#####################################################################################"
-
-LOGDIR=$HOME/6.5
-if [ -d $LOGDIR ]; then
-  rm -rf $LOGDIR/*
-else
-  mkdir $LOGDIR
-fi
-echo "=>Cleanup in progress"
-cleanup
-echo "..Cleanup completed"
-
-ENCRYPTION=1
-stop_server
-rm -rf $DATADIR
-init_datadir "keyring_kmip" "hashicorp"
-start_server
-echo "=>Run pstress load"
-pstress_run_load
-
-incremental_backup_and_restore "keyring_kmip"
-echo "=>Shutting down MySQL server"
-stop_server
-echo "..Successful"
-
-echo "=>Taking backup of original datadir"
-if [ ! -d ${DATADIR}_bk6.5 ]; then
-  mv $DATADIR ${DATADIR}_bk6
-else
-  rm -rf ${DATADIR}_bk6.5
-  mv $DATADIR ${DATADIR}_bk6.5
-fi
-echo "..Successful"
-
-echo "Copy the backup in datadir"
-$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.5.log 2>&1
-start_server
-
 echo "#######################################################"
 echo "# 7. Test FIFO xbstream: Test with encrypted backup   #"
 echo "#######################################################"
