@@ -1,10 +1,9 @@
 #!/bin/bash
 
-pg_version=18.1
-export PG_VERSION=$pg_version
+export PG_VERSION=18.1
+export PG_MAJOR=$(echo "$PG_VERSION" | cut -d. -f1)
 
-#for os in debian11 debian12 ol8 ol9 ubuntu20 ubuntu22 ubuntu24; do
-for os in ol9 ; do
+for os in debian11 debian12 ol8 ol9 ubuntu20 ubuntu22 ubuntu24; do
     echo -e "\n=> Running tests on ${os^^}"
     pushd $os > /dev/null
     vagrant destroy -f

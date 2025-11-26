@@ -11,15 +11,15 @@ sudo percona-release enable-only ppg-$PG_VERSION $REPO
 sudo dnf module disable postgresql -y
 sudo dnf clean all
 sudo dnf makecache
-sudo dnf install -y percona-postgresql17-contrib percona-postgresql17-server
+sudo dnf install -y percona-postgresql$PG_MAJOR-contrib percona-postgresql$PG_MAJOR-server percona-pg_tde$PG_MAJOR
 # Initialize Datadir
-sudo /usr/pgsql-17/bin/postgresql-17-setup initdb
+sudo /usr/pgsql-$PG_MAJOR/bin/postgresql-$PG_MAJOR-setup initdb
 # Start PG server
-sudo systemctl start postgresql-17
+sudo systemctl start postgresql-$PG_MAJOR
 
 # Add pg_tde extension in shared_preload_libraries in the PGCONF and restart server
-sudo sed -i -E "s|^\s*shared_preload_libraries\s*=\s*'[^']*'|shared_preload_libraries = 'pg_tde,percona_pg_telemetry'|" /var/lib/pgsql/17/data/postgresql.conf
-sudo systemctl restart postgresql-17
+sudo sed -i -E "s|^\s*#shared_preload_libraries\s*=\s*'[^']*'|shared_preload_libraries = 'pg_tde'|" /var/lib/pgsql/$PG_MAJOR/data/postgresql.conf
+sudo systemctl restart postgresql-$PG_MAJOR
 
 # Test pg_tde
 rm -rf /tmp/keyring.per
@@ -46,7 +46,7 @@ ALTER SYSTEM SET pg_tde.wal_encrypt = 'ON';
 EOF
 
 # Enable WAL encryption
-sudo systemctl restart postgresql-17
+sudo systemctl restart postgresql-$PG_MAJOR
 
 sudo -u postgres psql <<EOF
 SELECT pg_tde_verify_key();
@@ -68,7 +68,7 @@ ALTER SYSTEM SET pg_tde.wal_encrypt = 'OFF';
 EOF
 
 # Disable WAL encryption
-sudo systemctl restart postgresql-17
+sudo systemctl restart postgresql-$PG_MAJOR
 
 sudo -u postgres psql <<EOF
 SHOW pg_tde.wal_encrypt;
@@ -76,7 +76,7 @@ DROP EXTENSION pg_tde;
 EOF
 
 # Stop server
-sudo systemctl stop postgresql-17
+sudo systemctl stop postgresql-$PG_MAJOR
 
-# Uninstall PG 17.5
-sudo dnf remove -y percona-postgresql17-contrib percona-postgresql17-server
+# Uninstall PG packages
+sudo dnf remove -y percona-postgresql$PG_MAJOR-contrib percona-postgresql$PG_MAJOR-server

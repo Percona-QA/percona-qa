@@ -73,7 +73,7 @@ wget -q -P "$workdir" "$testing_repo_url"
 
 cd "$workdir"
 tar -xzf "$tarball_name"
-cd percona-postgresql18
+cd percona-postgresql$PG_MAJOR
 
 pkill -9 postgres || true
 if [ -d data ]; then

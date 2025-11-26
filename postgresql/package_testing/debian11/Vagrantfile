@@ -5,6 +5,7 @@ Vagrant.configure("2") do |config|
     path: "provision.sh",
     env: {
       "REPO" => ENV['REPO'],
-      "PG_VERSION" => ENV['PG_VERSION']
+      "PG_VERSION" => ENV['PG_VERSION'],
+      "PG_MAJOR" => ENV['PG_MAJOR']
     }
 end
