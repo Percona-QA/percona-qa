@@ -16,7 +16,7 @@ declare -gA KMIP_CONFIGS=(
     # ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
 
     # Fortanix Setup Configuration
-    # ["fortanix"]="email=saikumar.vs@percona.com,password=TrialTest@123,addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
+    # ["fortanix"]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
