@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Initialize variables
 VERBOSE=false
-CERTS_DIR=""  # Initialize as empty
+CERTS_DIR=""
+VAULT_LICENSE=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -15,6 +17,14 @@ while [[ $# -gt 0 ]]; do
             CERTS_DIR="${1#*=}"
             if [[ -z "$CERTS_DIR" ]]; then
                 echo "Error: --cert-dir= or --certs-dir= requires a directory path"
+                exit 1
+            fi
+            shift
+            ;;
+        --license=*)
+            VAULT_LICENSE="${1#*=}"
+            if [[ -z "$VAULT_LICENSE" ]]; then
+                echo "Error: --license= requires a file path"
                 exit 1
             fi
             shift
@@ -37,8 +47,14 @@ LOG_DIR="${VAULT_BASE}/log"
 CERTS_DIR="${CERTS_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
 SCRIPT_DIR="$(pwd)"
-VAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
 CONTAINER_NAME="kmip_hashicorp"
+DEFAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
+# Set default license path if not provided via argument
+if [[ -z "$VAULT_LICENSE" ]]; then
+    if [[ -f "$DEFAULT_LICENSE" ]]; then
+        VAULT_LICENSE="$DEFAULT_LICENSE"
+    fi
+fi
 
 # Create all necessary directories, and provide permissions for Docker container access.
 mkdir -p "${CONFIG_DIR}" "${DATA_DIR}" "${LOG_DIR}" "${CERTS_DIR}"
@@ -48,14 +64,17 @@ sudo chown -R 100:1000 "${LOG_DIR}"
 sudo chown -R 100:1000 "${CERTS_DIR}"
 
 # Ensure license file exists
-echo "[INFO] Checking for license in working directory..."
+echo "[INFO] Checking for license file..."
 
-if [[ ! -f "${VAULT_LICENSE}" ]]; then
-    echo "[ERROR] License file 'vault.hclic' not found in:"
-    echo "  ${SCRIPT_DIR}"
-    echo "[INFO] Please place the license file here and retry"
+if [[ -z "$VAULT_LICENSE" ]] || [[ ! -f "$VAULT_LICENSE" ]]; then
+    echo "[ERROR] License file not found"
+    echo "[INFO] Please provide a license file either:"
+    echo "  1. Pass the license path with: --license=/path/to/vault.hclic"
+    echo "  2. Place 'vault.hclic' in the script directory: ${SCRIPT_DIR}"
     exit 1
 fi
+
+echo "[INFO] Using license from: ${VAULT_LICENSE}"
 
 create_vault_hcl() {
   if [[ -f "${VAULT_HCL}" ]]; then
@@ -93,15 +112,15 @@ start_vault_container() {
 
   case "${container_status}" in
     running)
-      echo "[INFO] Vault container already running"
+      echo "[INFO] HashiCorp Vault container already running"
       return 0
       ;;
     exited)
-      echo "[INFO] Starting existing Vault container"
+      echo "[INFO] Starting existing HashiCorp Vault container"
       docker start "${CONTAINER_NAME}" >/dev/null
       ;;
     *)
-      echo "[INFO] Launching new Vault container"
+      echo "[INFO] Launching new HashiCorp Vault container"
       docker run -d \
         --name "${CONTAINER_NAME}" \
         -e VAULT_DISABLE_MLOCK=true \
@@ -197,7 +216,7 @@ configure_kmip() {
 }
 
 verify_kmip_connection() {
-  echo "[INFO] Verifying KMIP connection..."
+  echo "[INFO] Verifying HashiCorp KMIP connection..."
   local output
   local timeout=10  # seconds
 
@@ -224,9 +243,9 @@ main() {
   configure_kmip
   verify_kmip_connection
 
-  echo "[INFO] Vault Enterprise deployment successful"
+  echo "[INFO] HashiCorp Vault Enterprise deployment successful"
   if [ "$VERBOSE" = true ]; then
-    echo "[INFO] KMIP setup completed successfully!"
+    echo "[INFO] HashiCorp KMIP setup completed successfully!"
     echo "[INFO] Files created within $CERTS_DIR:"
     echo "[INFO]  - Private key: $CERTS_DIR/client_key.pem"
     echo "[INFO]  - Certificate: $CERTS_DIR/client_certificate.pem"
