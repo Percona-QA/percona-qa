@@ -15,18 +15,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cert-dir=*|--certs-dir=*)
             CERTS_DIR="${1#*=}"
-            if [[ -z "$CERTS_DIR" ]]; then
-                echo "Error: --cert-dir= or --certs-dir= requires a directory path"
-                exit 1
-            fi
             shift
             ;;
         --license=*)
             VAULT_LICENSE="${1#*=}"
-            if [[ -z "$VAULT_LICENSE" ]]; then
-                echo "Error: --license= requires a file path"
-                exit 1
-            fi
             shift
             ;;
         -*)
@@ -39,8 +31,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Base directory under $HOME
-VAULT_BASE="${HOME}/vault"
+# If Cert Dir is not provide use $HOME as default path
+if [[ -z "$CERTS_DIR" ]]; then
+    CERTS_DIR=${HOME}
+fi
+
+# Base directory under $CERTS_DIR argument path
+VAULT_BASE="${CERTS_DIR}/vault"
 CONFIG_DIR="${VAULT_BASE}/config"
 DATA_DIR="${VAULT_BASE}/data"
 LOG_DIR="${VAULT_BASE}/log"
