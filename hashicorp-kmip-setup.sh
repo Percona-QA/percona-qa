@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Initialize variables
 VERBOSE=false
-CERTS_DIR=""
+CERTS_HOME_DIR=""
 VAULT_LICENSE=""
 
 # Parse arguments
@@ -14,7 +14,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --cert-dir=*|--certs-dir=*)
-            CERTS_DIR="${1#*=}"
+            CERTS_HOME_DIR="${1#*=}"
             shift
             ;;
         --license=*)
@@ -31,17 +31,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# If Cert Dir is not provide use $HOME as default path
-if [[ -z "$CERTS_DIR" ]]; then
-    CERTS_DIR=${HOME}
+# If Cert Dir is not provided use $HOME as default path
+# A bit hacky, but used by wrappers.
+if [[ -z "$CERTS_HOME_DIR" ]] || [[ ! -d "$CERTS_HOME_DIR" ]] ; then
+    VAULT_BASE="${HOME}/vault"
+else
+    VAULT_BASE="${CERTS_HOME_DIR}/vault"
 fi
 
-# Base directory under $CERTS_DIR argument path
-VAULT_BASE="${CERTS_DIR}/vault"
 CONFIG_DIR="${VAULT_BASE}/config"
 DATA_DIR="${VAULT_BASE}/data"
 LOG_DIR="${VAULT_BASE}/log"
-CERTS_DIR="${CERTS_DIR:-${VAULT_BASE}/certs}"
+CERTS_DIR="${CERTS_HOME_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
 SCRIPT_DIR="$(pwd)"
 CONTAINER_NAME="kmip_hashicorp"
