@@ -4,7 +4,7 @@ start_kmip_server() {
   sudo pkill -9 kmip
   # Start KMIP server
   sleep 5
-  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
+  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip satyapercona/kmip:latest
   if [ -d /tmp/certs ]; then
       echo "certs directory exists"
       rm -rf /tmp/certs
