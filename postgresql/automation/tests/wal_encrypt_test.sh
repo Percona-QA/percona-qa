@@ -1,24 +1,29 @@
 #!/bin/bash
 
-PGDATA=$INSTALL_DIR/data
-LOG_FILE=$PGDATA/server.log
 DB_NAME=postgres
 
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/start_server.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/enable_tde.sh"
+# Old server cleanup
+old_server_cleanup $PGDATA
 
 # Create data directory
-initialize_server
+initialize_server $PGDATA $PORT
 
 # Start PG server and enable TDE
-start_server
-enable_tde
+enable_pg_tde $PGDATA
+start_pg $PGDATA $PORT
+
+echo "Install pg_tde extension and create server key"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "CREATE EXTENSION pg_tde;"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('table_key','global_keyring');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_set_key_using_global_key_provider('table_key','global_keyring');"
 
 echo "Enabling WAL encryption..."
 $INSTALL_DIR/bin/psql -d $DB_NAME -c"ALTER SYSTEM SET pg_tde.wal_encrypt='ON';"
-$INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE restart
-PG_PID=$(lsof -ti :5432)
+$INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $PGLOG restart
+PG_PID=$(lsof -ti :$PORT)
 echo "WAL encryption enabled."
 
 # Fetch all WAL-related vars (excluding unset ones)
@@ -57,9 +62,8 @@ TEST_VALUE="${test_values[$RANDOM_VAR]:-42}"  # Fallback value
 echo "Setting $RANDOM_VAR to $TEST_VALUE..."
 
 $INSTALL_DIR/bin/psql -d "$DB_NAME" -c "ALTER SYSTEM SET $RANDOM_VAR = '$TEST_VALUE';"
-#$INSTALL_DIR/bin/psql -d "$DB_NAME" -c "ALTER SYSTEM SET wal_sender_timeout = 60000;"
-$INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE restart
-PG_PID=$(lsof -ti :5432)
+$INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $PGLOG restart
+PG_PID=$(lsof -ti :$PORT)
 
 echo "$RANDOM_VAR set. Running some operations..."
 
@@ -71,7 +75,7 @@ echo "Simulating crash with kill -9"
 kill -9 $PG_PID
 
 echo "Starting PostgreSQL..."
-$INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
+$INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $PGLOG start
 PG_PID=$(lsof -ti :5432)
 
 echo "Checking recovery..."

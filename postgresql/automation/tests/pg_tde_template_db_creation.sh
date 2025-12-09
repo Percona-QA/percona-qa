@@ -1,10 +1,5 @@
 #!/bin/bash
 
-PGDATA=$INSTALL_DIR/data
-LOG_FILE=$INSTALL_DIR/server.log
-
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
-
 # Output formatting
 log() { echo -e "\n===> $1\n"; }
 
@@ -20,8 +15,10 @@ check_pg_tde() {
 run_pg_tde_function_test() {
     db=$1
     log "Testing pg_tde functionality in $db"
+    rm /tmp/mykey.per || true
     $INSTALL_DIR/bin/psql -d "$db" <<EOF
 -- Clean up if exists
+CREATE EXTENSION pg_tde;
 SELECT pg_tde_add_database_key_provider_file('keyring_file','/tmp/mykey.per');
 SELECT pg_tde_create_key_using_database_key_provider('key1','keyring_file');
 SELECT pg_tde_set_key_using_database_key_provider('key1','keyring_file');
@@ -37,8 +34,11 @@ start_server() {
 }
 
 # Actual testing starts here...
-initialize_server
-start_server
+old_server_cleanup $PGDATA
+initialize_server $PGDATA $PORT
+enable_pg_tde $PGDATA
+start_pg $PGDATA $PORT
+
 # Cleanup
 log "Dropping existing test databases and templates if any"
 for db in testdb1 testdb2 testdb3 custom_template; do
