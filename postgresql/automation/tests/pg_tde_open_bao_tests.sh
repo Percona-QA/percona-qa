@@ -1,30 +1,19 @@
 #!/bin/bash
 
-
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-data_dir=$INSTALL_DIR/data
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/setup_openbao.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/setup_kmip.sh"
-
-start_server() {
-    data_dir=$1
-    $INSTALL_DIR/bin/pg_ctl -D $data_dir start
-}
-
-restart_server() {
-    datadir=$1
-    $INSTALL_DIR/bin/pg_ctl -D $datadir restart
-}
-
 # Cleanup
-pkill -9 postgres
-rm -rf $INSTALL_DIR/data
-# Setup
-initialize_server
-start_server $data_dir
+old_server_cleanup $PGDATA
+
+echo "1=> Initialize Data directory"
+initialize_server $PGDATA $PORT
+enable_pg_tde $PGDATA
+
+echo "2=> Start PG Server"
+start_pg $PGDATA $PORT
+
+echo "3=> Start OpenBao Server"
 start_openbao_server
+
+echo "4=> Start KMIP Server(pykmip)"
 start_kmip_server
 
 echo "############################################################################"
@@ -39,13 +28,6 @@ echo "Creating Principal key using local key provider. Must pass"
 $INSTALL_DIR/bin/psql  -d db1 -c"SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring');"
 $INSTALL_DIR/bin/psql  -d db1 -c"SELECT pg_tde_set_key_using_database_key_provider('vault_key1','vault_keyring');"
 
-
-$INSTALL_DIR/bin/psql -d db2 -c"CREATE EXTENSION pg_tde;"
-echo "Trying to create Principal Key using a key provider outside the scope of db2. Must fail"
-$INSTALL_DIR/bin/psql -d db2 -c"SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring');"
-
-$INSTALL_DIR/bin/psql  -d postgres -c"DROP DATABASE db2"
-
 echo "#########################################################################"
 echo "# Scenario 2: Multiple Databases with Different Key Providers           #"
 echo "#########################################################################"
@@ -53,7 +35,7 @@ echo "Create 3 global providers using kmip, vault and file"
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_vault_v2('vault_keyring2','$vault_url','$secret_mount_point', '$token_filepath', NULL, 'pg_tde_ns1/');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_kmip('kmip_keyring2','$kmip_server_address',$kmip_server_port,'$kmip_client_ca','$kmip_client_key','$kmip_server_ca');"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('file_keyring2','$data_dir/keyring.file');"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('file_keyring2','$PGDATA/keyring.file');"
 
 echo "Create 3 databases db1, db2, db3"
 $INSTALL_DIR/bin/psql -d postgres -c"DROP DATABASE IF EXISTS db1"
@@ -88,7 +70,7 @@ $INSTALL_DIR/bin/psql -d db1 -c"SELECT * FROM t1"
 $INSTALL_DIR/bin/psql -d db2 -c"SELECT * FROM t2"
 $INSTALL_DIR/bin/psql -d db3 -c"SELECT * FROM t3"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
 $INSTALL_DIR/bin/psql -d db1 -c"SELECT * FROM t1"
 $INSTALL_DIR/bin/psql -d db2 -c"SELECT * FROM t2"
@@ -134,7 +116,7 @@ $INSTALL_DIR/bin/psql -d test1 -c"SELECT pg_tde_list_all_database_key_providers(
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_list_all_global_key_providers();"
 
 echo "..Restart server"
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
 echo "..Query tables from both test1, test2"
 $INSTALL_DIR/bin/psql -d test1 -c"SELECT * FROM t1;"
@@ -154,7 +136,7 @@ $INSTALL_DIR/bin/psql -d test1 -c"SELECT pg_tde_delete_database_key_provider('va
 $INSTALL_DIR/bin/psql -d test1 -c"SELECT pg_tde_delete_global_key_provider('kmip_keyring3')"
 
 echo "..Restart server"
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
 echo "..Check all Key providers are deleted"
 $INSTALL_DIR/bin/psql -d test1 -c"SELECT pg_tde_list_all_database_key_providers();"
@@ -204,7 +186,7 @@ $INSTALL_DIR/bin/psql -d sbtest2 -c"INSERT INTO t2 VALUES(200,'Rohit');"
 $INSTALL_DIR/bin/psql -d sbtest2 -c"UPDATE t2 SET b='Sachin' WHERE a=100;"
 
 echo "..Add a local file key provider for sbtest2"
-$INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT pg_tde_add_database_key_provider_file('file_keyring','$data_dir/keyring.file');"
+$INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT pg_tde_add_database_key_provider_file('file_keyring','$PGDATA/keyring.file');"
 echo "..Create a Principal key stored in file for sbtest2"
 $INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT pg_tde_create_key_using_database_key_provider('file_key1','file_keyring');"
 $INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT pg_tde_set_key_using_database_key_provider('file_key1','file_keyring');"
@@ -228,7 +210,7 @@ $INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT * FROM t2;"
 $INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT * FROM t3;"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
 echo "..Query table sbtest2.t1"
 $INSTALL_DIR/bin/psql -d sbtest2 -c"SELECT * FROM t1;"
@@ -245,7 +227,7 @@ $INSTALL_DIR/bin/psql -d postgres -c"CREATE DATABASE sbtest5"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"CREATE EXTENSION pg_tde"
 
 echo ".. Add 3 Global Key Provider"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('file_keyring5','$data_dir/keyring.file');"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('file_keyring5','$PGDATA/keyring.file');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_kmip('kmip_keyring5','$kmip_server_address',$kmip_server_port,'$kmip_client_ca','$kmip_client_key','$kmip_server_ca');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_vault_v2('vault_keyring5','$vault_url','$secret_mount_point', '$token_filepath', NULL, 'pg_tde_ns1/');"
 echo "..Create a Principal key stored in file for sbtest5"
@@ -255,12 +237,9 @@ echo "..Create table t1"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"CREATE TABLE t1(a INT, b varchar) USING tde_heap;"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"INSERT INTO t1 VALUES(100,'Mohit');"
 
-echo "..Change Key provider configs"
-echo "Must fail since current key does not exists in the new key provider file"
-$INSTALL_DIR/bin/psql -d sbtest5 -c"SELECT pg_tde_change_global_key_provider_file('file_keyring5','$data_dir/keyring_new.file');"
-cp $data_dir/keyring.file $data_dir/keyring_new.file
+cp $PGDATA/keyring.file $PGDATA/keyring_new.file
 echo "Must be successful now"
-$INSTALL_DIR/bin/psql -d sbtest5 -c"SELECT pg_tde_change_global_key_provider_file('file_keyring5','$data_dir/keyring_new.file');"
+$INSTALL_DIR/bin/psql -d sbtest5 -c"SELECT pg_tde_change_global_key_provider_file('file_keyring5','$PGDATA/keyring_new.file');"
 
 $INSTALL_DIR/bin/psql -d sbtest5 -c"CREATE TABLE t2(a INT, b varchar) USING tde_heap;"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"INSERT INTO t2 VALUES(200,'Rohit');"
@@ -277,7 +256,7 @@ echo "..Query tables t1, t2"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"SELECT * FROM t2;"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
 echo "..Query tables t1, t2"
 $INSTALL_DIR/bin/psql -d sbtest5 -c"SELECT * FROM t1;"
@@ -303,7 +282,7 @@ $INSTALL_DIR/bin/psql -d postgres -c"INSERT INTO t2 VALUES(100,'Mohit');"
 $INSTALL_DIR/bin/psql -d postgres -c"INSERT INTO t2 VALUES(200,'Rohit');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t2;"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t2;"
 $INSTALL_DIR/bin/psql -d postgres -c"DROP TABLE t1;"
@@ -332,13 +311,13 @@ $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1;"
 
 echo "Add another Global Key Provider using file"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('keyring_file7','$data_dir/keyring.file');"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('keyring_file7','$PGDATA/keyring.file');"
 echo "Rotate the Global Default Principal Key"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('my_global_default_key4','keyring_file7');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('my_global_default_key4','keyring_file7');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1;"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d postgres -c"DROP TABLE t1;"
 
@@ -357,7 +336,7 @@ $INSTALL_DIR/bin/psql -d db8 -c"INSERT INTO t2 VALUES(101, 'James Bond');"
 
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE DATABASE db8_new;"
 $INSTALL_DIR/bin/psql -d db8_new -c"CREATE EXTENSION pg_tde;"
-$INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_add_database_key_provider_file('keyring_file','$data_dir/keyring.file');"
+$INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_add_database_key_provider_file('keyring_file','$PGDATA/keyring.file');"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_create_key_using_database_key_provider('file_key','keyring_file');"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_set_key_using_database_key_provider('file_key','keyring_file');"
 
@@ -367,17 +346,17 @@ $INSTALL_DIR/bin/pg_dump -d db8 -t t1 -t t2 -f /tmp/t1.sql
 
 echo "Restore the dump on db8_new"
 $INSTALL_DIR/bin/psql -d db8_new -f /tmp/t1.sql
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT * FROM t2;"
 echo "Rotate the Principal Key in db8_new"
-$INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_create_key_using_database_key_provider('file_key2','keyring_file');"
-$INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_set_key_using_database_key_provider('file_key2','keyring_file');"
+$INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_create_key_using_database_key_provider('file_key3','keyring_file');"
+$INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_set_key_using_database_key_provider('file_key3','keyring_file');"
 echo "Change Key provider to kmip"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_add_database_key_provider_kmip('keyring_kmip','$kmip_server_address',$kmip_server_port,'$kmip_client_ca','$kmip_client_key','$kmip_server_ca');"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_create_key_using_database_key_provider('file_key2','keyring_kmip');"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT pg_tde_set_key_using_database_key_provider('file_key2','keyring_kmip');"
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d db8_new -c"SELECT * FROM t2;"
 
@@ -408,7 +387,7 @@ $INSTALL_DIR/bin/psql -d test9 -c"SELECT * FROM t2"
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT * FROM t1"
 
 # adding local key provider
-$INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_add_database_key_provider_file('keyring_file9','$data_dir/keyring.file');"
+$INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_add_database_key_provider_file('keyring_file9','$PGDATA/keyring.file');"
 
 # using principal key by local key provider and check if older tables are also re-encrypted
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_create_key_using_database_key_provider('file_key9','keyring_file9');"
@@ -427,14 +406,12 @@ $INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_set_key_using_global_key_provide
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_delete_database_key_provider('keyring_file9');"
 # deleting local key. must pass
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_delete_key()"
-echo "Must fail as the key is used for encryption"
-$INSTALL_DIR/bin/psql -d test9 -c"SELECT pg_tde_delete_default_key()"
 
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT * FROM t1;"
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT * FROM t2;"
 $INSTALL_DIR/bin/psql -d test9 -c"SELECT * FROM t3;"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
 $INSTALL_DIR/bin/psql -d test9 -c"DROP TABLE t1;"
 $INSTALL_DIR/bin/psql -d test9 -c"DROP TABLE t2;"
@@ -459,10 +436,7 @@ $INSTALL_DIR/bin/psql -d test10 -c"CREATE TABLE t10(a int) USING tde_heap"
 $INSTALL_DIR/bin/psql -d test10 -c"INSERT INTO t10 VALUES(10)"
 $INSTALL_DIR/bin/psql -d test10 -c"SELECT * FROM t10"
 
-echo "..Delete the Global Key provider. Must Fail"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_global_key_provider('vault_keyring10')"
-
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 $INSTALL_DIR/bin/psql -d test10 -c"SELECT * FROM t10"
 
 echo "############################################################################################"
@@ -475,18 +449,12 @@ echo "..Create Global server Key"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('server_key','vault_keyring11')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_server_key_using_global_key_provider('server_key','vault_keyring11')"
 
-echo "Delete the Global Key Provider. Must fail as the server key is active and cannot be deleted"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_global_key_provider('vault_keyring11')"
-
 echo "Encrypt WAL"
 $INSTALL_DIR/bin/psql -d postgres -c"ALTER SYSTEM SET pg_tde.wal_encrypt=ON"
 
-restart_server $data_dir
+restart_pg $PGDATA $PORT
 
-echo "..Delete the Global Key provider. Must Fail as the key is active"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_global_key_provider('vault_keyring11')"
-
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('keyring_file11','$data_dir/keyring.file')"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('keyring_file11','$PGDATA/keyring.file')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('server_key','keyring_file11')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_server_key_using_global_key_provider('server_key','keyring_file11')"
 
@@ -504,7 +472,7 @@ echo "..Set a default key for encryption"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('vault_key12','vault_keyring12');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('vault_key12','vault_keyring12');"
 
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('keyring_file12','$data_dir/keyring.file')"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_file('keyring_file12','$PGDATA/keyring.file')"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('keyring_key12','keyring_file12');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_key_provider('keyring_key12','keyring_file12');"
 

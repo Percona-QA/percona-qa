@@ -1,15 +1,14 @@
 #!/bin/bash
 
 # Config
-PG_CTL=$INSTALL_DIR/bin/pg_ctl
-INITDB=$INSTALL_DIR/bin/initdb
 PSQL=$INSTALL_DIR/bin/psql
 PG_TDE_RESETWAL=$INSTALL_DIR/bin/pg_tde_resetwal
-PORT=5432
+SYSBENCH=$(command -v sysbench)
 SYSBENCH_TABLES=10
 SYSBENCH_THREADS=5
 DURATION=20
 LUA_SCRIPT=/usr/share/sysbench/oltp_write_only.lua   # Adjust if different
+KEYFILE="/tmp/keyring.per"
 
 rotate_wal_key(){
     duration=$1
@@ -18,8 +17,8 @@ rotate_wal_key(){
     while [ $SECONDS -lt $end_time ]; do
        RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
        echo "Rotating master key: principal_key_test$RAND_KEY"
-       $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
-       $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
+       $PSQL -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
+       $PSQL -d postgres -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','global_provider');"
     done
 }
 
@@ -27,47 +26,34 @@ rotate_wal_key(){
 for iter in {1..3}; do
     echo -e "\n================= Iteration $iter =================\n"
 
-    DATA_DIR=$INSTALL_DIR/pg_tde_resetwal_test_data_$iter
-    LOGFILE=$DATA_DIR/server.log
+    DATA_DIR=$RUN_DIR/pg_tde_resetwal_datadir_$iter
 
     # Cleanup
-    PID=$(lsof -ti :$PORT)
-    if [ -n "$PID" ]; then
-        echo "Killing existing PostgreSQL on port $PORT"
-        kill -9 $PID || true
-    fi
-    rm -rf "$DATA_DIR" /tmp/keyring.per
+    old_server_cleanup $DATA_DIR
+    rm -rf $KEYFILE
 
     echo "=> Initialise Data directory"
-    "$INITDB" -D "$DATA_DIR" > /dev/null
+    initialize_server $DATA_DIR $PORT
+    enable_pg_tde $DATA_DIR
 
-    # PostgreSQL configuration
-    echo "shared_preload_libraries = 'pg_tde'" >> $DATA_DIR/postgresql.conf
-    echo "default_table_access_method = 'tde_heap'" >> $DATA_DIR/postgresql.conf
-    #echo "io_method = 'sync'" >> $DATA_DIR/postgresql.conf
-    echo "port = $PORT" >> $DATA_DIR/postgresql.conf
-
-    echo "=> Starting PostgreSQL"
-    $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" start
-    sleep 2
+    start_pg $DATA_DIR $PORT
 
     echo "=> Creating TDE keys"
     $PSQL -d postgres -p $PORT -c "CREATE EXTENSION pg_tde;"
-    $PSQL -d postgres -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_provider', '/tmp/keyring.per');"
+    $PSQL -d postgres -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_provider', '$KEYFILE');"
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key', 'global_provider');"
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('database_key', 'global_provider');"
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key', 'global_provider');"
     $PSQL -d postgres -p $PORT -c "SELECT pg_tde_set_key_using_global_key_provider('database_key', 'global_provider');"
-    $PSQL -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt=OFF;"
+    $PSQL -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 
-    echo "=> Restarting PostgreSQL with WAL encryption"
-    $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" restart
-    sleep 2
+    restart_pg $DATA_DIR $PORT
+
     echo "=> Rotate WAL key"
     rotate_wal_key 10 >/dev/null 2>&1 &
 
     echo "=> Preparing 50 tables using sysbench"
-    sysbench $LUA_SCRIPT \
+    $SYSBENCH $LUA_SCRIPT \
         --db-driver=pgsql \
         --pgsql-host=127.0.0.1 \
         --pgsql-port=$PORT \
@@ -108,13 +94,13 @@ for iter in {1..3}; do
     $PG_TDE_RESETWAL -D "$DATA_DIR" -f
 
     echo "=> Restarting PostgreSQL after pg_tde_resetwal"
-    $PG_CTL -D "$DATA_DIR" -l "$LOGFILE" start
-    sleep 2
+    restart_pg $DATA_DIR $PORT
+
     echo "=> Rotate WAL key"
     rotate_wal_key 10 > /dev/null 2>&1 &
 
     echo "=> Performing additional writes"
-        sysbench $LUA_SCRIPT \
+        $SYSBENCH $LUA_SCRIPT \
         --db-driver=pgsql \
         --pgsql-host=127.0.0.1 \
         --pgsql-port=$PORT \
@@ -131,8 +117,7 @@ for iter in {1..3}; do
     $PSQL -d postgres -p $PORT -c "SELECT COUNT(*) FROM sbtest4"
 
     echo "=> Stopping PostgreSQL"
-    $PG_CTL -D "$DATA_DIR" stop
-    sleep 2
+    stop_pg $DATA_DIR
 done
 
 echo -e "\n✅ All iterations complete. Check logs and data folders under: $INSTALL_DIR"
