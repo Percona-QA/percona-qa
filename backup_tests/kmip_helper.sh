@@ -11,9 +11,9 @@
 # Global variables
 declare -ga KMIP_CONTAINER_NAMES
 declare -gA KMIP_CONFIGS_DEFAULTS=(
-    [pykmip]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
-    #[hashicorp]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
-    #[fortanix]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
+    #[pykmip]="addr=127.0.0.1,image=satyapercona/kmip:latest,port=5696,name=kmip_pykmip"
+    [hashicorp]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    [fortanix]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
     #[ciphertrust]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
 )
 
@@ -279,10 +279,10 @@ setup_hashicorp() {
         fi
     fi
 
-    echo "Starting Docker KMIP server in (script method): $setup_script"
     # Download first, then execute the hashicorp setup
-    script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
-    wget_exit_code=$?
+    # ToDo Remove before Merge
+    # script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
+    script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/cad02909729f1347fa01079247c0ca03f2e3acab/"$setup_script")
 
     if [ $wget_exit_code -ne 0 ]; then
       echo "Failed to download script (wget exit code: $wget_exit_code)"
@@ -303,16 +303,24 @@ setup_hashicorp() {
       echo "ERROR: Failed to create certificate directory: $cert_dir" >&2
       return 1
     }
+
+    # Check if license file exists
+    if [[ ! -f "$DEFAULT_LICENSE" ]]; then
+      echo "ERROR: License file not found at: $DEFAULT_LICENSE" >&2
+      exit 1
+    fi
+
+    echo "Executing script: $script"
     # Execute the script
-    echo "$script" | bash -s -- --cert-dir="$cert_dir"
+    echo "$script" | bash -s -- --cert-dir="$cert_dir" --license="$DEFAULT_LICENSE"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        echo "Failed to execute script $setup_script, (exit code: $exit_code)"
-        exit 1
+        echo "Failed to execute script $setup_script, (exit code: $exit_code)" >&2
+        return 1
     fi
 
     generate_kmip_config "$type" "$addr" "$port" "$cert_dir" || {
-        echo "Failed to generate KMIP config"; exit 1; }
+        echo "Failed to generate KMIP config" >&2; return 1; }
 
     echo "Hashicorp server started successfully on address $addr and port $port"
     return 0
