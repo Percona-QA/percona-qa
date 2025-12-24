@@ -10,17 +10,19 @@ PSTRESS_BIN=$HOME/pstress/src
 ENCRYPTION=0; COMPRESS=0; ENCRYPT=""; DECRYPT=""; ENCRYPT_KEY=""
 declare -gA KMIP_CONFIGS=(
     # PyKMIP Docker Configuration
-    ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
+    #["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
 
     # Hashicorp Docker Setup Configuration
-    # ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
 
     # Fortanix Setup Configuration
-    # ["fortanix"]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
+    ["fortanix"]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
 )
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
 
 #FIFO variables
 FIFO_STREAM=30

@@ -955,6 +955,13 @@ run_crash_tests_pstress() {
 }
 
 cleanup() {
+  # Prevent re-entrant cleanup on repeated signals (e.g., multiple Ctrl+C)
+  if [ -n "${CLEANUP_RUNNING:-}" ]; then
+    return
+  fi
+  CLEANUP_RUNNING=1
+  trap - INT TERM EXIT
+
   echo "################################## CleanUp #######################################"
   echo "Killing any previously running mysqld process"
   MPID=( $(ps -ef | grep -e mysqld | grep error.log | grep -v grep | awk '{print $2}') )
@@ -981,7 +988,8 @@ cleanup() {
     rm -rf $mysqldir/lib/plugin/component_keyring_file
     echo "..Deleted"
   fi
-  if declare -p KMIP_CONFIGS >/dev/null 2>&1 && declare -f get_kmip_container_names >/dev/null 2>&1; then
+  if [ -z "${KMIP_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1 && declare -f get_kmip_container_names >/dev/null 2>&1; then
+    KMIP_CLEANUP_DONE=1
     echo "Checking for previously started containers..."
     if [ -z "${KMIP_CONTAINER_NAMES+x}" ] || [ ${#KMIP_CONTAINER_NAMES[@]} -eq 0 ]; then
       get_kmip_container_names
@@ -1001,13 +1009,27 @@ cleanup() {
           cleanup_existing_container "$name"
       done
     fi
+  fi  
+
+  # Cleanup KMIP cert directories if KMIP_CONFIGS were used
+  if [ -z "${KMIP_CERT_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1 && declare -f parse_config >/dev/null 2>&1; then
+    KMIP_CERT_CLEANUP_DONE=1
+    kmip_cert_dirs=()
+    for kmip_type in "${!KMIP_CONFIGS[@]}"; do
+      parse_config "$kmip_type"
+      cert_dir="${kmip_config[cert_dir]}"
+      [[ -z "${cert_dir}" ]] && cert_dir="kmip_certs_${kmip_type}"
+      kmip_cert_dirs+=("$HOME/${cert_dir}")
+    done
+
+    for dir in "${kmip_cert_dirs[@]}"; do
+      if [[ -d "$dir" && -n "$HOME" ]]; then
+        echo "Cleaning KMIP cert directory: $dir"
+        sudo rm -rf "$dir"
+      fi
+    done
   fi
 
- # Only cleanup vault directory if it exists
-  if [[ -d "$HOME/vault" && -n "$HOME" ]]; then
-    echo "Cleaning up vault directory..."
-    sudo rm -rf "$HOME/vault"
-  fi
 }
 trap cleanup EXIT INT TERM
 

@@ -149,7 +149,7 @@ generate_kmip_config() {
     local config_file="${cert_dir}/component_keyring_kmip.cnf"
     echo "Generating KMIP config for: ${type}"
 
-    cat > "$config_file" <<EOF
+    sudo tee "$config_file" > /dev/null <<EOF
 {
   "server_addr": "$addr",
   "server_port": "$port",
@@ -281,18 +281,23 @@ setup_hashicorp() {
 
     # Download first, then execute the hashicorp setup
     # ToDo Remove before Merge
-    # script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
-    script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/cad02909729f1347fa01079247c0ca03f2e3acab/"$setup_script")
+   script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
+      --connect-timeout 5 --max-time 30 \
+      https://raw.githubusercontent.com/Percona-QA/percona-qa/cad02909729f1347fa01079247c0ca03f2e3acab/"$setup_script")
+    curl_exit_code=$?
 
-    if [ $wget_exit_code -ne 0 ]; then
-      echo "Failed to download script (wget exit code: $wget_exit_code)"
+    # ToDo Remove before Merge
+    # script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
+    #   --connect-timeout 5 --max-time 30 \
+    #   https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
+
+
+
+    if [ "${curl_exit_code:-1}" -ne 0 ] || [ -z "$script" ]; then
+      echo "Failed to download script after retries (curl exit code: $curl_exit_code)"
       exit 1
     fi
 
-    if [ -z "$script" ]; then
-      echo "Downloaded script is empty"
-      exit 1
-    fi
 
     if [ -d "$cert_dir" ]; then
       echo "Cleaning existing certificate directory: $cert_dir"
@@ -312,7 +317,7 @@ setup_hashicorp() {
 
     echo "Executing script: $script"
     # Execute the script
-    echo "$script" | bash -s -- --cert-dir="$cert_dir" --license="$DEFAULT_LICENSE"
+    echo "$script" | sudo bash -s -- --cert-dir="$cert_dir" --license="$DEFAULT_LICENSE"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Failed to execute script $setup_script, (exit code: $exit_code)" >&2
