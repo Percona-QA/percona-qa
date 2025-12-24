@@ -23,16 +23,21 @@ export PATH="$PATH:$xtrabackup_dir"
 export qascripts="$HOME/percona-qa"
 export logdir="$HOME/backuplogs"
 export mysql_start_timeout=60
-declare -A KMIP_CONFIGS=(
-    # PyKMIP Docker Configuration
-    ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
-
+declare -gA KMIP_CONFIGS=(
     # Hashicorp Docker Setup Configuration
-    # ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+
+    # Fortanix Setup Configuration
+    ["fortanix"]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
+
+    # PyKMIP Docker Configuration
+    #["pykmip"]="addr=127.0.0.1,image=satyapercona/kmip:latest,port=5696,name=kmip_pykmip"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
 )
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
 
 # Set tool variables
 load_tool="pstress" # Set value as pstress/sysbench
@@ -950,6 +955,13 @@ run_crash_tests_pstress() {
 }
 
 cleanup() {
+  # Prevent re-entrant cleanup on repeated signals (e.g., multiple Ctrl+C)
+  if [ -n "${CLEANUP_RUNNING:-}" ]; then
+    return
+  fi
+  CLEANUP_RUNNING=1
+  trap - INT TERM EXIT
+
   echo "################################## CleanUp #######################################"
   echo "Killing any previously running mysqld process"
   MPID=( $(ps -ef | grep -e mysqld | grep error.log | grep -v grep | awk '{print $2}') )
@@ -976,30 +988,42 @@ cleanup() {
     rm -rf $mysqldir/lib/plugin/component_keyring_file
     echo "..Deleted"
   fi
-  echo "Checking for previously started containers..."
-  if [ -z "${KMIP_CONTAINER_NAMES+x}" ] || [ ${#KMIP_CONTAINER_NAMES[@]} -eq 0 ]; then
-  get_kmip_container_names
+  if [ -z "${KMIP_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1 && declare -f get_kmip_container_names >/dev/null 2>&1; then
+    KMIP_CLEANUP_DONE=1
+    echo "Checking for previously started containers..."
+    if [ -z "${KMIP_CONTAINER_NAMES+x}" ] || [ ${#KMIP_CONTAINER_NAMES[@]} -eq 0 ]; then
+      get_kmip_container_names
+    fi
+    containers_found=false
+
+     for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+        if docker ps -aq --filter "name=$name" | grep -q .; then
+          containers_found=true
+          break
+        fi
+     done
+
+    if [[ "$containers_found" == true ]]; then
+      echo "Killing previously started containers if any..."
+      for name in "${KMIP_CONTAINER_NAMES[@]}"; do
+          cleanup_existing_container "$name"
+      done
+    fi
   fi
-  containers_found=false
 
-   for name in "${KMIP_CONTAINER_NAMES[@]}"; do
-      if docker ps -aq --filter "name=$name" | grep -q .; then
-        containers_found=true
-        break
-      fi
-   done
+  # Cleanup KMIP cert directories if KMIP_CONFIGS were used
+  if [ -z "${KMIP_CERT_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1; then
+    KMIP_CERT_CLEANUP_DONE=1
 
-  if [[ "$containers_found" == true ]]; then
-    echo "Killing previously started containers if any..."
-    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
-        cleanup_existing_container "$name"
-    done
-  fi
-
- # Only cleanup vault directory if it exists
-  if [[ -d "$HOME/vault" && -n "$HOME" ]]; then
-    echo "Cleaning up vault directory..."
-    sudo rm -rf "$HOME/vault"
+    # Clean up all directories matching kmip_certs_* pattern
+    if [[ -n "$HOME" && -d "$HOME" ]]; then
+      for dir in "$HOME"/kmip_certs_*; do
+        if [[ -d "$dir" ]]; then
+          echo "Cleaning KMIP cert directory: $dir"
+          sudo rm -rf "$dir"
+        fi
+      done
+    fi
   fi
 }
 trap cleanup EXIT INT TERM
@@ -1061,11 +1085,6 @@ for tsuitelist in $*; do
       fi
       ;;
     Kmip_Encryption_tests)
-      if ! source ./kmip_helper.sh; then
-        echo "ERROR: Failed to load KMIP helper library"
-        exit 1
-      fi
-      init_kmip_configs
       run_kmip_component_tests "pagetracking"
       echo "###################################################################################"
       ;;
