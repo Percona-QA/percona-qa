@@ -315,7 +315,6 @@ setup_hashicorp() {
       exit 1
     fi
 
-    echo "Executing script: $script"
     # Execute the script
     echo "$script" | sudo bash -s -- --cert-dir="$cert_dir" --license="$DEFAULT_LICENSE"
     exit_code=$?

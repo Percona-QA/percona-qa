@@ -1009,27 +1009,22 @@ cleanup() {
           cleanup_existing_container "$name"
       done
     fi
-  fi  
-
-  # Cleanup KMIP cert directories if KMIP_CONFIGS were used
-  if [ -z "${KMIP_CERT_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1 && declare -f parse_config >/dev/null 2>&1; then
-    KMIP_CERT_CLEANUP_DONE=1
-    kmip_cert_dirs=()
-    for kmip_type in "${!KMIP_CONFIGS[@]}"; do
-      parse_config "$kmip_type"
-      cert_dir="${kmip_config[cert_dir]}"
-      [[ -z "${cert_dir}" ]] && cert_dir="kmip_certs_${kmip_type}"
-      kmip_cert_dirs+=("$HOME/${cert_dir}")
-    done
-
-    for dir in "${kmip_cert_dirs[@]}"; do
-      if [[ -d "$dir" && -n "$HOME" ]]; then
-        echo "Cleaning KMIP cert directory: $dir"
-        sudo rm -rf "$dir"
-      fi
-    done
   fi
 
+  # Cleanup KMIP cert directories if KMIP_CONFIGS were used
+  if [ -z "${KMIP_CERT_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1; then
+    KMIP_CERT_CLEANUP_DONE=1
+
+    # Clean up all directories matching kmip_certs_* pattern
+    if [[ -n "$HOME" && -d "$HOME" ]]; then
+      for dir in "$HOME"/kmip_certs_*; do
+        if [[ -d "$dir" ]]; then
+          echo "Cleaning KMIP cert directory: $dir"
+          sudo rm -rf "$dir"
+        fi
+      done
+    fi
+  fi
 }
 trap cleanup EXIT INT TERM
 
@@ -1090,11 +1085,6 @@ for tsuitelist in $*; do
       fi
       ;;
     Kmip_Encryption_tests)
-      if ! source ./kmip_helper.sh; then
-        echo "ERROR: Failed to load KMIP helper library"
-        exit 1
-      fi
-      init_kmip_configs
       run_kmip_component_tests "pagetracking"
       echo "###################################################################################"
       ;;
