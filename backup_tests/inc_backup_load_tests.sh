@@ -1050,6 +1050,8 @@ if [ "$#" -lt 1 ]; then
     echo "   $0 Normal_and_Encryption_tests Page_Tracking_tests"
     echo " "
     echo "4. Logs are available at: $logdir"
+    # Do not call Cleanup for help exit
+    CLEANUP_RUNNING=1
     exit 1
 fi
 
