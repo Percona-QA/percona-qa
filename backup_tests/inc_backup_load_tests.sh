@@ -1009,8 +1009,22 @@ cleanup() {
           cleanup_existing_container "$name"
       done
     fi
-  fi  
+  fi
 
+  # Cleanup KMIP cert directories if KMIP_CONFIGS were used
+  if [ -z "${KMIP_CERT_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1; then
+    KMIP_CERT_CLEANUP_DONE=1
+
+    # Clean up all directories matching kmip_certs_* pattern
+    if [[ -n "$HOME" && -d "$HOME" ]]; then
+      for dir in "$HOME"/kmip_certs_*; do
+        if [[ -d "$dir" ]]; then
+          echo "Cleaning KMIP cert directory: $dir"
+          sudo rm -rf "$dir"
+        fi
+      done
+    fi
+  fi
 }
 trap cleanup EXIT INT TERM
 
@@ -1036,8 +1050,6 @@ if [ "$#" -lt 1 ]; then
     echo "   $0 Normal_and_Encryption_tests Page_Tracking_tests"
     echo " "
     echo "4. Logs are available at: $logdir"
-    # Dont Run cleanup on exit for help
-    CLEANUP_RUNNING=1
     exit 1
 fi
 
