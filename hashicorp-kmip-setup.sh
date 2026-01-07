@@ -4,46 +4,11 @@ set -euo pipefail
 # Initialize variables
 VERBOSE=false
 CERTS_HOME_DIR=""
-
-# Help function
-show_help() {
-    cat <<EOF
-Usage: $0 [OPTIONS]
-
-Setup HashiCorp Vault Enterprise with KMIP support.
-
-REQUIRED ENVIRONMENT VARIABLES:
-    HASHICORP_LICENSE    Path to the HashiCorp Vault Enterprise license file (vault.hclic)
-
-OPTIONS:
-    -h, --help          Show this help message and exit
-    -v, --verbose       Enable verbose output
-    --cert-dir=DIR      Directory where certificates will be stored (default: \$HOME/vault/certs)
-    --certs-dir=DIR     Alias for --cert-dir
-
-EXAMPLES:
-    # Set license file via environment variable
-    export HASHICORP_LICENSE=/path/to/vault.hclic
-    $0
-
-    # With custom certificate directory
-    export HASHICORP_LICENSE=/path/to/vault.hclic
-    $0 --cert-dir=/custom/path/certs
-
-    # Verbose mode
-    export HASHICORP_LICENSE=/path/to/vault.hclic
-    $0 --verbose
-
-EOF
-}
+VAULT_LICENSE=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -h|--help)
-            show_help
-            exit 0
-            ;;
         -v|--verbose)
             VERBOSE=true
             shift
@@ -52,9 +17,12 @@ while [[ $# -gt 0 ]]; do
             CERTS_HOME_DIR="${1#*=}"
             shift
             ;;
+        --license=*)
+            VAULT_LICENSE="${1#*=}"
+            shift
+            ;;
         -*)
-            echo "[ERROR] Unknown option: $1"
-            echo "Use --help for usage information"
+            echo "Unknown option: $1"
             exit 1
             ;;
         *)
@@ -76,10 +44,15 @@ DATA_DIR="${VAULT_BASE}/data"
 LOG_DIR="${VAULT_BASE}/log"
 CERTS_DIR="${CERTS_HOME_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
+SCRIPT_DIR="$(pwd)"
 CONTAINER_NAME="kmip_hashicorp"
-
-# Get license file from environment variable
-VAULT_LICENSE="${HASHICORP_LICENSE:-}"
+DEFAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
+# Set default license path if not provided via argument
+if [[ -z "$VAULT_LICENSE" ]]; then
+    if [[ -f "$DEFAULT_LICENSE" ]]; then
+        VAULT_LICENSE="$DEFAULT_LICENSE"
+    fi
+fi
 
 # Create all necessary directories, and provide permissions for Docker container access.
 mkdir -p "${CONFIG_DIR}" "${DATA_DIR}" "${LOG_DIR}" "${CERTS_DIR}"
@@ -91,18 +64,11 @@ sudo chown -R 100:1000 "${CERTS_DIR}"
 # Ensure license file exists
 echo "[INFO] Checking for license file..."
 
-if [[ -z "$VAULT_LICENSE" ]]; then
-    echo "[ERROR] HASHICORP_LICENSE environment variable is not set"
-    echo "[INFO] Please set the HASHICORP_LICENSE environment variable to the path of your license file:"
-    echo "  export HASHICORP_LICENSE=/path/to/vault.hclic"
-    echo "[INFO] Use --help for more information"
-    exit 1
-fi
-
-if [[ ! -f "$VAULT_LICENSE" ]]; then
-    echo "[ERROR] License file not found at: ${VAULT_LICENSE}"
-    echo "[INFO] Please ensure HASHICORP_LICENSE points to a valid license file:"
-    echo "  export HASHICORP_LICENSE=/path/to/vault.hclic"
+if [[ -z "$VAULT_LICENSE" ]] || [[ ! -f "$VAULT_LICENSE" ]]; then
+    echo "[ERROR] License file not found"
+    echo "[INFO] Please provide a license file either:"
+    echo "  1. Pass the license path with: --license=/path/to/vault.hclic"
+    echo "  2. Place 'vault.hclic' in the script directory: ${SCRIPT_DIR}"
     exit 1
 fi
 
