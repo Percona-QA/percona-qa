@@ -283,7 +283,7 @@ setup_hashicorp() {
     # ToDo Remove before Merge
    script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
       --connect-timeout 5 --max-time 30 \
-      https://raw.githubusercontent.com/Percona-QA/percona-qa/cad02909729f1347fa01079247c0ca03f2e3acab/"$setup_script")
+      https://raw.githubusercontent.com/Percona-QA/percona-qa/498b6acaaa7c1a06b64717287409cbb2e9f2dfb8/"$setup_script")
     curl_exit_code=$?
 
     # ToDo Remove before Merge
@@ -309,14 +309,23 @@ setup_hashicorp() {
       return 1
     }
 
+    # Get license file from environment variable
+    local license_file="${HASHICORP_LICENSE:-}"
+    if [[ -z "$license_file" ]]; then
+      echo "ERROR: HASHICORP_LICENSE environment variable must be set for HashiCorp KMIP Provider!!" >&2
+      echo "Please set it to the path of your HashiCorp Vault Enterprise license file:" >&2
+      echo "  export HASHICORP_LICENSE=/path/to/vault.hclic" >&2
+      exit 1
+    fi
+
     # Check if license file exists
-    if [[ ! -f "$DEFAULT_LICENSE" ]]; then
-      echo "ERROR: License file not found at: $DEFAULT_LICENSE" >&2
+    if [[ ! -f "$license_file" ]]; then
+      echo "ERROR: License file not found at: $license_file" >&2
       exit 1
     fi
 
     # Execute the script
-    echo "$script" | sudo bash -s -- --cert-dir="$cert_dir" --license="$DEFAULT_LICENSE"
+    echo "$script" | sudo bash -s -- --cert-dir="$cert_dir" --license="$license_file"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Failed to execute script $setup_script, (exit code: $exit_code)" >&2
@@ -335,14 +344,17 @@ setup_fortanix() {
     local container_name="${kmip_config[name]}"
     local addr="${kmip_config[addr]}"
     local port="${kmip_config[port]}"
-    local email="${kmip_config[email]}"
-    local password="${kmip_config[password]}"
+    local email="${FORTANIX_EMAIL:-}"
+    local password="${FORTANIX_PASSWORD:-}"
     local setup_script="${kmip_config[setup_script]}"
     local cert_dir="${HOME}/${kmip_config[cert_dir]}"
 
-    # Check if both variables are set and not empty
+    # Check if both environment variables are set and not empty
     if [[ -z "$email" || -z "$password" ]]; then
-      echo "Error: Both email and password must be set in Config or Script for Fortanix KMIP Provider!!" >&2
+      echo "ERROR: Both FORTANIX_EMAIL and FORTANIX_PASSWORD environment variables must be set for Fortanix KMIP Provider!!" >&2
+      echo "Please set them to your Fortanix credentials:" >&2
+      echo "  export FORTANIX_EMAIL=your-email@example.com" >&2
+      echo "  export FORTANIX_PASSWORD=your-password" >&2
       exit 1
     fi
 

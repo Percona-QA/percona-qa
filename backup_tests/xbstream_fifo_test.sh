@@ -21,8 +21,6 @@ declare -gA KMIP_CONFIGS=(
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
 )
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
 
 #FIFO variables
 FIFO_STREAM=30
@@ -417,6 +415,42 @@ fi
 echo "..Successful"
 }
 
+# Help function
+show_help() {
+    echo "This script tests FIFO xbstream functionality with various backup scenarios"
+    echo ""
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help    Show this help message"
+    echo ""
+    echo "Test Scenarios:"
+    echo "  1. Full Backup and Restore"
+    echo "  2. Incremental Backup"
+    echo "  3. Compressed Backup"
+    echo "  4. Test with partition tables"
+    echo "  5. Test with encrypted tables (keyring file)"
+    echo "  6. Test with encrypted tables (component keyring KMIP)"
+    echo "  7. Test with encrypted backup"
+    echo ""
+    echo "KMIP Provider Requirements:"
+    echo "  For HashiCorp KMIP Provider:"
+    echo "    export HASHICORP_LICENSE=/path/to/vault.hclic"
+    echo ""
+    echo "  For Fortanix KMIP Provider:"
+    echo "    export FORTANIX_EMAIL=your-email@example.com"
+    echo "    export FORTANIX_PASSWORD=your-password"
+    echo ""
+    echo "Note: The script will test all configured KMIP providers in KMIP_CONFIGS"
+    echo "      Make sure to set the appropriate environment variables before running"
+    exit 0
+}
+
+# Check for help argument
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    show_help
+fi
+
 #Actual test begins here..
 start_minio
 echo "###################################################"
@@ -626,37 +660,84 @@ ENCRYPTION=1
 stop_server
 rm -rf $DATADIR
 
+echo "=>KMIP Environment Variables Check:"
+echo "   For HashiCorp KMIP Provider, ensure HASHICORP_LICENSE is set:"
+echo "     export HASHICORP_LICENSE=/path/to/vault.hclic"
+echo "   For Fortanix KMIP Provider, ensure FORTANIX_EMAIL and FORTANIX_PASSWORD are set:"
+echo "     export FORTANIX_EMAIL=your-email@example.com"
+echo "     export FORTANIX_PASSWORD=your-password"
+echo ""
+
 if ! source ./kmip_helper.sh; then
     echo "ERROR: Failed to load KMIP helper library"
     exit 1
 fi
 init_kmip_configs
 for vault_type in "${!KMIP_CONFIGS[@]}"; do
+  echo "###############################################################################"
+  echo "# 6. Test FIFO xbstream: Test with encrypted tables w/ component keyring kmip ($vault_type) #"
+  echo "###############################################################################"
+  
+  # Create separate log directory for this vault type
+  LOGDIR="${HOME}/6_${vault_type}"
+  if [ -d $LOGDIR ]; then
+    rm -rf $LOGDIR/*
+  else
+    mkdir $LOGDIR
+  fi
+  
   echo "Testing Encryption with $vault_type..."
+  
+  # Cleanup before each vault type test
+  stop_server 2>/dev/null || true
+  rm -rf $DATADIR
+  if [ -d $BACKUP_DIR ]; then
+    rm -rf $BACKUP_DIR/*
+  fi
+  
+  # Setup datadir for this vault type
   init_datadir "keyring_kmip" $vault_type
+  
+  # Run the full test cycle for this vault type
+  start_server
+  echo "=>Run pstress load"
+  pstress_run_load
+
+  incremental_backup_and_restore "keyring_kmip"
+  echo "=>Shutting down MySQL server"
+  stop_server
+  echo "..Successful"
+
+  echo "=>Taking backup of original datadir"
+  backup_suffix="bk6_${vault_type}"
+  if [ ! -d ${DATADIR}_${backup_suffix} ]; then
+    mv $DATADIR ${DATADIR}_${backup_suffix}
+  else
+    rm -rf ${DATADIR}_${backup_suffix}
+    mv $DATADIR ${DATADIR}_${backup_suffix}
+  fi
+  echo "..Successful"
+
+  echo "Copy the backup in datadir"
+  $XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.log 2>&1
+  start_server
+  
+  echo "Completed test for $vault_type"
+  echo ""
 done
 
-start_server
-echo "=>Run pstress load"
-pstress_run_load
-
-incremental_backup_and_restore "keyring_kmip"
-echo "=>Shutting down MySQL server"
-stop_server
-echo "..Successful"
-
-echo "=>Taking backup of original datadir"
-if [ ! -d ${DATADIR}_bk6 ]; then
-  mv $DATADIR ${DATADIR}_bk6
-else
-  rm -rf ${DATADIR}_bk6
-  mv $DATADIR ${DATADIR}_bk6
+# Cleanup KMIP-related files after all KMIP tests complete
+# This prevents test 7 from trying to use KMIP keyring when KMIP servers are no longer running
+echo "=>Cleaning up KMIP configuration files..."
+if [ -n "$(ls "$PS_DIR"/lib/plugin/component_keyring*.cnf 2>/dev/null)" ]; then
+  rm -f "$PS_DIR"/lib/plugin/component_keyring*.cnf
+  echo "..Removed KMIP keyring configuration files"
 fi
-echo "..Successful"
 
-echo "Copy the backup in datadir"
-$XTRABACKUP_DIR/bin/xtrabackup --no-defaults --copy-back --target_dir=$BACKUP_DIR/full --datadir=$DATADIR --core-file > $LOGDIR/copy_back6.log 2>&1
-start_server
+if [ -f "$PS_DIR/bin/mysqld.my" ]; then
+  rm -f "$PS_DIR/bin/mysqld.my"
+  echo "..Removed mysqld.my configuration file"
+fi
 
 echo "#######################################################"
 echo "# 7. Test FIFO xbstream: Test with encrypted backup   #"

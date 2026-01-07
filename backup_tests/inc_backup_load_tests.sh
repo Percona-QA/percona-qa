@@ -36,9 +36,6 @@ declare -gA KMIP_CONFIGS=(
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
 )
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
-
 # Set tool variables
 load_tool="pstress" # Set value as pstress/sysbench
 num_tables=25 # This will make 50 tables on the database tt_1, tt_1_p, .. tt_25, tt_25_p
@@ -1010,7 +1007,7 @@ cleanup() {
       done
     fi
   fi
-
+  
   # Cleanup KMIP cert directories if KMIP_CONFIGS were used
   if [ -z "${KMIP_CERT_CLEANUP_DONE:-}" ] && declare -p KMIP_CONFIGS >/dev/null 2>&1; then
     KMIP_CERT_CLEANUP_DONE=1
@@ -1026,7 +1023,6 @@ cleanup() {
     fi
   fi
 }
-trap cleanup EXIT INT TERM
 
 ## Main ##
 
@@ -1042,6 +1038,11 @@ if [ "$#" -lt 1 ]; then
     echo "   Test Suites: "
     echo "   Normal_and_Encryption_tests"
     echo "   Kmip_Encryption_tests"
+    echo "      Note: For HashiCorp KMIP Provider, set HASHICORP_LICENSE environment variable:"
+    echo "        export HASHICORP_LICENSE=/path/to/vault.hclic"
+    echo "      Note: For Fortanix KMIP Provider, set FORTANIX_EMAIL and FORTANIX_PASSWORD:"
+    echo "        export FORTANIX_EMAIL=your-email@example.com"
+    echo "        export FORTANIX_PASSWORD=your-password"
     echo "   Kms_Encryption_tests"
     echo "   Rocksdb_tests"
     echo "   Page_Tracking_tests"
@@ -1050,10 +1051,11 @@ if [ "$#" -lt 1 ]; then
     echo "   $0 Normal_and_Encryption_tests Page_Tracking_tests"
     echo " "
     echo "4. Logs are available at: $logdir"
-    # Do not call Cleanup for help exit
-    CLEANUP_RUNNING=1
     exit 1
 fi
+
+# Set trap only after we've validated arguments (not showing help)
+trap cleanup EXIT INT TERM
 
 if [ ! -d $logdir ]; then
   mkdir $logdir
