@@ -37,11 +37,11 @@ init_kmip_configs() {
 # Cleanup existing Docker container
 cleanup_existing_container() {
     local container_name="$1"
-    local container_id=$(docker ps -aq --filter "name=$container_name")
+    local container_id=$(sudo docker ps -aq --filter "name=$container_name")
 
     [ -z "$container_id" ] && return 0
 
-    if ! docker rm -f "$container_id" >/dev/null 2>&1; then
+    if ! sudo docker rm -f "$container_id" >/dev/null 2>&1; then
         return 1
     fi
     sleep 5  # Allow port to be released
@@ -212,7 +212,7 @@ setup_pykmip() {
 
     # 3. Start container
     echo "Starting container... "
-    if ! docker run -d \
+    if ! sudo docker run -d \
         --name "$container_name" \
         --security-opt seccomp=unconfined \
         --cap-add=NET_ADMIN \
@@ -221,15 +221,16 @@ setup_pykmip() {
         echo "Failed"
         return 1
     fi
-    echo "Started (ID: $(docker inspect --format '{{.Id}}' "$container_name"))"
+    echo "Started (ID: $(sudo docker inspect --format '{{.Id}}' "$container_name"))"
 
     sleep 10
 
-    docker cp "$container_name":/opt/certs/root_certificate.pem $cert_dir/root_certificate.pem >/dev/null 2>&1
-    docker cp "$container_name":/opt/certs/client_key_jane_doe.pem $cert_dir/client_key.pem >/dev/null 2>&1
-    docker cp "$container_name":/opt/certs/client_certificate_jane_doe.pem $cert_dir/client_certificate.pem >/dev/null 2>&1
-
-    sleep 5
+    sudo docker cp "$container_name":/opt/certs/root_certificate.pem $cert_dir/root_certificate.pem >/dev/null 2>&1
+    sudo docker cp "$container_name":/opt/certs/client_key_jane_doe.pem $cert_dir/client_key.pem >/dev/null 2>&1
+    sudo docker cp "$container_name":/opt/certs/client_certificate_jane_doe.pem $cert_dir/client_certificate.pem >/dev/null 2>&1
+    
+    # Fix ownership of copied files so they're accessible to the user
+    sudo chown -R "$USER:$USER" "$cert_dir" 2>/dev/null || true
 
     # Post-startup configuration
     echo "Generating KMIP configuration..."

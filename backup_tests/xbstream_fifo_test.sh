@@ -10,7 +10,7 @@ PSTRESS_BIN=$HOME/pstress/src
 ENCRYPTION=0; COMPRESS=0; ENCRYPT=""; DECRYPT=""; ENCRYPT_KEY=""
 declare -gA KMIP_CONFIGS=(
     # PyKMIP Docker Configuration
-    #["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
+    #["pykmip"]="addr=127.0.0.1,image=satyapercona/kmip:latest,port=5696,name=kmip_pykmip"
 
     # Hashicorp Docker Setup Configuration
     ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
@@ -60,7 +60,7 @@ cleanup_exit() {
    get_kmip_container_names
    echo "Checking for previously started containers..."
    for name in "${KMIP_CONTAINER_NAMES[@]}"; do
-      if docker ps -aq --filter "name=$name" | grep -q .; then
+      if sudo docker ps -aq --filter "name=$name" | grep -q .; then
         containers_found=true
         break
       fi
@@ -93,13 +93,13 @@ trap cleanup_exit EXIT INT TERM
 
 start_minio() {
     # Check if MinIO is already running
-    if docker ps --filter "name=minio" --filter "status=running" | grep -q minio; then
+    if sudo docker ps --filter "name=minio" --filter "status=running" | grep -q minio; then
         echo "MinIO is already running."
     else
         # Check if a stopped container exists
-        if docker ps -a --filter "name=minio" | grep -q minio; then
+        if sudo docker ps -a --filter "name=minio" | grep -q minio; then
             echo "Found stopped MinIO container. Starting it..."
-            docker start minio
+            sudo docker start minio
         else
             if [ -d "$HOME/minio/data" ]; then
                 rm -rf "$HOME/minio/data"/*
@@ -107,7 +107,7 @@ start_minio() {
                 mkdir -p "$HOME/minio/data"
             fi
             echo "No MinIO container found. Creating and starting one..."
-            docker run -d \
+            sudo docker run -d \
                 -p 9000:9000 \
                 -p 9001:9001 \
                 --name minio \
@@ -130,7 +130,7 @@ start_minio() {
     done
 
     echo -n "\n MinIO failed to become ready in time."
-    docker logs minio
+    sudo docker logs minio
     exit 1
 }
 

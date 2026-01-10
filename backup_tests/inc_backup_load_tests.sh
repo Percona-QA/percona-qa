@@ -994,7 +994,7 @@ cleanup() {
     containers_found=false
 
      for name in "${KMIP_CONTAINER_NAMES[@]}"; do
-        if docker ps -aq --filter "name=$name" | grep -q .; then
+        if sudo docker ps -aq --filter "name=$name" | grep -q .; then
           containers_found=true
           break
         fi
