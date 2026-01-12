@@ -281,17 +281,11 @@ setup_hashicorp() {
     fi
 
     # Download first, then execute the hashicorp setup
-    # ToDo Remove before Merge
-   script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
-      --connect-timeout 5 --max-time 30 \
-      https://raw.githubusercontent.com/Percona-QA/percona-qa/0ea934913f83f1a41a3a0149aaa12519c0fab493/"$setup_script")
+    script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
+        --connect-timeout 5 --max-time 30 \
+        https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
+        
     curl_exit_code=$?
-
-    # ToDo Remove before Merge
-    # script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
-    #   --connect-timeout 5 --max-time 30 \
-    #   https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
-
 
 
     if [ "${curl_exit_code:-1}" -ne 0 ] || [ -z "$script" ]; then
