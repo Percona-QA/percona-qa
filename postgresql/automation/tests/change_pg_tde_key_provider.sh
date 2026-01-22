@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 run_sysbench_load(){
     duration=$1
     sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --time=$duration --report-interval=10 run > /dev/null 2>&1

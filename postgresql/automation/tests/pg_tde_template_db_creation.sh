@@ -3,12 +3,23 @@
 # Output formatting
 log() { echo -e "\n===> $1\n"; }
 
-check_pg_tde() {
+check_pg_tde_present() {
     db=$1
     if $INSTALL_DIR/bin/psql -d "$db" -tAc "SELECT extname FROM pg_extension WHERE extname='pg_tde';" | grep -q 'pg_tde'; then
         echo "✅ pg_tde is present in $db"
     else
         echo "❌ pg_tde is NOT present in $db"
+	      return 1
+    fi
+}
+
+check_pg_tde_not_present() {
+    db=$1
+    if ! $INSTALL_DIR/bin/psql -d "$db" -tAc "SELECT extname FROM pg_extension WHERE extname='pg_tde';" | grep -q 'pg_tde'; then
+        echo "✅ pg_tde is NOT present in $db"
+    else
+        echo "❌ pg_tde is present in $db (unexpected)"
+        return 1
     fi
 }
 
@@ -18,7 +29,6 @@ run_pg_tde_function_test() {
     rm /tmp/mykey.per || true
     $INSTALL_DIR/bin/psql -d "$db" <<EOF
 -- Clean up if exists
-CREATE EXTENSION pg_tde;
 SELECT pg_tde_add_database_key_provider_file('keyring_file','/tmp/mykey.per');
 SELECT pg_tde_create_key_using_database_key_provider('key1','keyring_file');
 SELECT pg_tde_set_key_using_database_key_provider('key1','keyring_file');
@@ -28,16 +38,12 @@ SELECT * FROM enc_test;
 EOF
 }
 
-start_server() {
-    $INSTALL_DIR/bin/pg_ctl -D $PGDATA -l $LOG_FILE start
-    $INSTALL_DIR/bin/psql -d template1 -c 'CREATE EXTENSION pg_tde;'
-}
-
 # Actual testing starts here...
 old_server_cleanup $PGDATA
 initialize_server $PGDATA $PORT
 enable_pg_tde $PGDATA
 start_pg $PGDATA $PORT
+$INSTALL_DIR/bin/psql -d template1 -c 'CREATE EXTENSION pg_tde;'
 
 # Cleanup
 log "Dropping existing test databases and templates if any"
@@ -47,16 +53,16 @@ done
 
 log "Step 1: Create DB from template1 (pg_tde installed)"
 $INSTALL_DIR/bin/createdb testdb1
-check_pg_tde testdb1
+check_pg_tde_present testdb1
 
 log "Step 2: Create DB from template0 (pg_tde should NOT be present)"
 $INSTALL_DIR/bin/createdb testdb2 --template=template0
-check_pg_tde testdb2
+check_pg_tde_not_present testdb2
 
 log "Step 3: Create custom template with pg_tde"
 $INSTALL_DIR/bin/createdb custom_template
 $INSTALL_DIR/bin/createdb testdb3 --template=custom_template
-check_pg_tde testdb3
+check_pg_tde_present testdb3
 
 log "Step 4: Functional test - Run pg_tde functions in testdb1"
 run_pg_tde_function_test testdb1
@@ -67,12 +73,12 @@ $INSTALL_DIR/bin/psql -d testdb1 -c "DROP EXTENSION pg_tde;" || echo "✅ Drop f
 log "Step 6: Create DB as non-superuser"
 $INSTALL_DIR/bin/createuser limited_user --no-superuser
 $INSTALL_DIR/bin/createdb testdb4 --owner=limited_user
-check_pg_tde testdb4
+check_pg_tde_present testdb4
 
 log "Step 7: Remove pg_tde from template1 and create a new DB (testdb5)"
 $INSTALL_DIR/bin/psql -d template1 -c "DROP EXTENSION IF EXISTS pg_tde;"
 $INSTALL_DIR/bin/createdb testdb5
-check_pg_tde testdb5
+check_pg_tde_not_present testdb5
 
 log "Step 8: Check system catalogs in testdb1"
 $INSTALL_DIR/bin/psql -d testdb1 -c "SELECT * FROM pg_extension WHERE extname='pg_tde';"

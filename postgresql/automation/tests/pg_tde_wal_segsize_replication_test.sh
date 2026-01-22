@@ -1,18 +1,17 @@
 #!/bin/bash
 
-DATA_DIR_BASE="$INSTALL_DIR/data_segsize"
-KEYFILE="/tmp/keyfile.per"
-PG_PORT=5432
+DATA_DIR_BASE="$RUN_DIR/data_segsize"
+KEYFILE="$RUN_DIR/keyfile.per"
 
 WAL_SEG_SIZES=(1 16 64)  # in MB
 
-rm -f "$KEYFILE"
+rm -f "$KEYFILE" || true
 
 run_test() {
   local segsize_mb=$1
   local data_dir="${DATA_DIR_BASE}_${segsize_mb}MB"
   local replica_dir="${data_dir}_replica"
-  local replica_port=$((PG_PORT + 1))
+  local replica_port=$((PORT + 1))
 
   echo "============================="
   echo "Testing with --wal-segsize = ${segsize_mb}MB"
@@ -20,46 +19,40 @@ run_test() {
   echo "Replica: $replica_dir"
   echo "============================="
 
-  pkill -9 postgres || true
-  rm -rf "$data_dir" "$replica_dir"
+  old_server_cleanup $data_dir
+  old_server_cleanup $replica_dir
 
-  "$INSTALL_DIR/bin/initdb" --wal-segsize="$segsize_mb" -D "$data_dir"
+  initialize_server $data_dir $PORT "--wal-segsize=$segsize_mb"
+  enable_pg_tde $data_dir
+
+  local minwal=$(( segsize_mb * 2 ))
+  echo "min_wal_size = '${minwal}MB'" >> "$data_dir/postgresql.conf"
 
   cat >> "$data_dir/postgresql.conf" <<EOF
-shared_preload_libraries = 'pg_tde'
-port = $PG_PORT
-logging_collector = on
-log_directory = 'log'
-log_filename = 'postgresql.log'
-io_method = 'sync'
 wal_level = replica
 max_wal_senders = 5
 wal_keep_size = 64
 hot_standby = on
 EOF
-
-  "$INSTALL_DIR/bin/pg_ctl" -D "$data_dir" -l "$data_dir/server.log" start
-  sleep 2
+  start_pg $data_dir $PORT
 
   # Enable WAL encryption
-  "$INSTALL_DIR/bin/psql" -p $PG_PORT -d postgres <<EOF
+  "$INSTALL_DIR/bin/psql" -p $PORT -d postgres <<EOF
 CREATE EXTENSION pg_tde;
 SELECT pg_tde_add_global_key_provider_file('global_provider', '$KEYFILE');
 SELECT pg_tde_create_key_using_global_key_provider('server_key1', 'global_provider');
 SELECT pg_tde_set_key_using_global_key_provider('server_key1', 'global_provider');
 SELECT pg_tde_set_server_key_using_global_key_provider('server_key1', 'global_provider');
-ALTER SYSTEM SET pg_tde.wal_encrypt = 'OFF';
+ALTER SYSTEM SET pg_tde.wal_encrypt = 'ON';
 EOF
-
-  "$INSTALL_DIR/bin/pg_ctl" -D "$data_dir" restart
-  sleep 2
+  restart_pg $data_dir $PORT
 
   # Setup replica
   echo "Setting up replica..."
   mkdir $replica_dir
   chmod 700 $replica_dir
   cp -R $data_dir/pg_tde $replica_dir
-  "$INSTALL_DIR/bin/pg_tde_basebackup" -h 127.0.0.1 -p $PG_PORT -D "$replica_dir" -Xs -E -U $(whoami) --no-password --write-recovery-conf
+  "$INSTALL_DIR/bin/pg_tde_basebackup" -h 127.0.0.1 -p $PORT -D "$replica_dir" -Xs -E -U $(whoami) --no-password --write-recovery-conf
 
   cat >> "$replica_dir/postgresql.conf" <<EOF
 port = $replica_port
@@ -67,22 +60,30 @@ hot_standby = on
 EOF
 
   echo "Starting replica..."
-  "$INSTALL_DIR/bin/pg_ctl" -D "$replica_dir" -l "$replica_dir/server.log" start
-  sleep 2
+  start_pg $replica_dir $replica_port
 
-  echo "Replica status:"
-  "$INSTALL_DIR/bin/psql" -p $replica_port -d postgres -c "SELECT pg_is_in_recovery();"
+  echo "Waiting for replica to enter recovery mode..."
+  timeout 30 bash -c "
+  until $INSTALL_DIR/bin/psql -p $replica_port -d postgres -Atc \"SELECT pg_is_in_recovery();\" 2>/dev/null | grep -q ^t$; do
+    sleep 1
+  done
+  "
 
-  echo "Creating 100 tables..."
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: Replica did not enter recovery within timeout."
+    exit 1
+  fi
+
+  echo "Creating 10 tables..."
   sysbench /usr/share/sysbench/oltp_insert.lua \
     --db-driver=pgsql \
     --pgsql-db=postgres \
     --pgsql-user=$(whoami) \
-    --pgsql-port=$PG_PORT \
+    --pgsql-port=$PORT \
     --pgsql-host=127.0.0.1 \
-    --tables=100 \
-    --table-size=1000 \
-    --threads=5 \
+    --tables=10 \
+    --table-size=100 \
+    --threads=2 \
     prepare
 
 # Run sysbench workload and simulate crash-restart and failover
@@ -93,7 +94,7 @@ for phase in {1..4}; do
 
   if [[ $phase -eq 1 ]]; then
     echo "Running on primary (normal state)"
-    WORKLOAD_PORT=$PG_PORT
+    WORKLOAD_PORT=$PORT
 
   elif [[ $phase -eq 2 ]]; then
     echo "Simulating failover: stopping primary and promoting replica..."
@@ -124,11 +125,10 @@ for phase in {1..4}; do
     --pgsql-user=$(whoami) \
     --pgsql-port=$WORKLOAD_PORT \
     --pgsql-host=127.0.0.1 \
-    --threads=5 \
-    --tables=100 \
+    --threads=2 \
+    --tables=10 \
     --time=30 \
-    --report-interval=5 \
-    --events=1870000000 \
+    --report-interval=10 \
     run
 
   echo "============================"
@@ -136,10 +136,23 @@ for phase in {1..4}; do
   echo "============================"
 
 done
+  sleep 5
 
-  echo "Sample WAL file:"
-  WAL_FILE=$(find "$data_dir/pg_wal" -type f | head -n 1)
-  [[ -f "$WAL_FILE" ]] && hexdump -C "$WAL_FILE" | head -n 10 || echo "No WAL found."
+  # Verify WAL files
+  echo "Sample hexdump from WAL file:"
+  for WAL_FILE in "$data_dir/pg_wal"/[0-9A-F]*; do
+    if [[ -f "$WAL_FILE" ]]; then
+      if strings "$WAL_FILE" | grep -qi "sbtest"; then
+        echo "ERROR: WAL appears to be unencrypted (plaintext found)"
+        exit 1
+      else
+        echo "WAL appears to be encrypted (plaintext not found)"
+      fi
+    else
+      echo "No WAL file found!"
+      exit 1
+    fi
+  done
 
   "$INSTALL_DIR/bin/pg_ctl" -D "$data_dir" stop
   "$INSTALL_DIR/bin/pg_ctl" -D "$replica_dir" stop

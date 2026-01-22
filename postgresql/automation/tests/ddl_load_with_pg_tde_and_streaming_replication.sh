@@ -172,16 +172,6 @@ old_server_cleanup $REPLICA_DATA
 echo "1=>Create Data Directory"
 initialize_server $PRIMARY_DATA $PRIMARY_PORT
 
-cat > "$PRIMARY_DATA/postgresql.conf" <<SQL
-port=$PRIMARY_PORT
-listen_addresses='*'
-io_method = 'sync'
-logging_collector = on
-log_directory = '$PRIMARY_DATA'
-log_filename = 'server.log'
-log_statement = 'all'
-SQL
-
 cat >> "$PRIMARY_DATA/pg_hba.conf" <<SQL
 # Allow replication connections
 host replication repuser 127.0.0.1/32 trust

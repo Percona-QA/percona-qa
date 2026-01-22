@@ -8,12 +8,9 @@ set -e
 WRAPPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELPER_DIR="$(realpath "$WRAPPER_DIR/../helper_scripts")"
 TEST_DIR="$(realpath "$WRAPPER_DIR/../tests")"
-LOG_DIR="$(realpath "$WRAPPER_DIR/../test_logs")"
 
 export WRAPPER_DIR
 export HELPER_DIR
-export LOG_DIR
-
 
 ############################################
 # Argument Parsing
@@ -25,7 +22,8 @@ while [[ $# -gt 0 ]]; do
     --server_branch) SERVER_BRANCH="$2"; shift;;
     --pg_tde_branch) PG_TDE_BRANCH="$2"; shift;;
     --server_build_path) SERVER_BUILD_PATH="$2"; shift;;
-    --testname) TESTNAME="$2"; shift;;  # NEW
+    --testname) TESTNAME="$2"; shift;;
+    --skip-test) SKIP_LIST="$2"; shift;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -33,6 +31,14 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+############################################
+# Process Skip List
+############################################
+SKIPLIST=()
+if [[ -n "$SKIP_LIST" ]]; then
+    IFS=',' read -ra SKIPLIST <<< "$SKIP_LIST"
+fi
 
 ############################################
 # Load env + common functions
@@ -45,10 +51,41 @@ source "$WRAPPER_DIR/env.sh" \
   "$SERVER_BUILD_PATH" \
   "$TESTNAME"
 
+############################################
+# Dependency Checks
+############################################
+check_dependency() {
+    local bin="$1"
+    if ! command -v "$bin" >/dev/null 2>&1; then
+        echo "❌ ERROR: Required utility '$bin' not installed."
+        MISSING+=("$bin")
+    fi
+}
+
+MISSING=()
+check_dependency sysbench
+check_dependency unzip
+check_dependency tar
+check_dependency jq
+check_dependency go
+
+if (( ${#MISSING[@]} > 0 )); then
+    echo ""
+    echo "Missing dependencies: ${MISSING[*]}"
+    echo "Install them and retry."
+    exit 1
+fi
+
 source "$WRAPPER_DIR/common.sh"
 source "$HELPER_DIR/setup_vault.sh"
 source "$HELPER_DIR/setup_openbao.sh"
 source "$HELPER_DIR/setup_kmip.sh"
+
+############################################
+# Prepare Run Directory
+############################################
+rm -rf "$RUN_DIR"
+mkdir -p "$RUN_DIR"
 
 ############################################
 # Test List Construction
@@ -72,6 +109,27 @@ else
 fi
 
 ############################################
+# Filter out skipped tests
+############################################
+if (( ${#SKIPLIST[@]} > 0 )); then
+    FILTERED=()
+    for t in "${TESTS[@]}"; do
+        base=$(basename "$t")
+        skip=false
+        for s in "${SKIPLIST[@]}"; do
+            if [[ "$base" == "$s" ]]; then
+                skip=true
+                break
+            fi
+        done
+        if ! $skip; then
+            FILTERED+=("$t")
+        fi
+    done
+    TESTS=("${FILTERED[@]}")
+fi
+
+############################################
 # Print Banner
 ############################################
 echo "==============================================="
@@ -81,11 +139,10 @@ echo "pg_tde Version:    $PG_TDE_VERSION"
 echo "Server Branch:     $SERVER_BRANCH"
 echo "pg_tde Branch:     $PG_TDE_BRANCH"
 echo "Server Build path: $SERVER_BUILD_PATH"
-
 echo "==============================================="
 
 ############################################
-# Prepare log folder
+# Prepare Log Directory
 ############################################
 rm -rf "$LOG_DIR"
 mkdir -p "$LOG_DIR"
@@ -116,7 +173,7 @@ for testscript in "${TESTS[@]}"; do
 
     if (( exitcode == 0 )); then
         echo "✅ PASS: $testname"
-	echo "   Log: $LOGFILE"
+        echo "   Log: $LOGFILE"
     else
         echo "❌ FAIL: $testname"
         echo "   Log: $LOGFILE"

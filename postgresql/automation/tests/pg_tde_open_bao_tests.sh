@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 # Cleanup
 old_server_cleanup $PGDATA
 

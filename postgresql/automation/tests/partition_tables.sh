@@ -1,19 +1,15 @@
 #!/bin/bash
 
 # Set variable
-PGDATA=$INSTALL_DIR/data
-LOG_FILE=$PGDATA/server.log
 DB_NAME="sbtest"
 PARTITION_PARENT="partitioned_table"
 TOTAL_PARTITIONS=5
 TABLESPACE_NAME="extern_tbsp"
+
+# Cleanup
 rm -rf /tmp/$TABLESPACE_NAME
 mkdir -p /tmp/$TABLESPACE_NAME
 chmod 700 /tmp/$TABLESPACE_NAME
-
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/start_server.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/enable_tde.sh"
 
 # Create a tablespace (if it doesn't exist)
 create_tablespace() {
@@ -51,7 +47,9 @@ create_partitioned_table() {
 
 # Function to rename random objects
 rename_objects() {
-    while true; do
+    local duration=$1
+    local end=$((SECONDS + duration))
+    while [ $SECONDS -lt $end ]; do
         sleep 2
         TABLE=$($INSTALL_DIR/bin/psql -d $DB_NAME -Atc "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '$PARTITION_PARENT%' ORDER BY random() LIMIT 1;")
         if [ -n "$TABLE" ]; then
@@ -64,7 +62,9 @@ rename_objects() {
 
 # Function to move tables to a different tablespace
 move_to_tablespace() {
-    while true; do
+    local duration=$1
+    local end=$((SECONDS + duration))
+    while [ $SECONDS -lt $end ]; do
         sleep 3
         TABLE=$($INSTALL_DIR/bin/psql -d $DB_NAME -Atc "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '$PARTITION_PARENT%' ORDER BY random() LIMIT 1;")
         if [ -n "$TABLE" ]; then
@@ -81,7 +81,9 @@ move_to_tablespace() {
 
 # Function to TRUNCATE a random table
 truncate_table() {
-    while true; do
+    local duration=$1
+    local end=$((SECONDS + duration))
+    while [ $SECONDS -lt $end ]; do
         sleep 20
         TABLE=$($INSTALL_DIR/bin/psql -d $DB_NAME -Atc "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '$PARTITION_PARENT%' ORDER BY random() LIMIT 1;")
         if [ -n "$TABLE" ]; then
@@ -92,7 +94,9 @@ truncate_table() {
 }
 
 run_dml() {
-    while true; do
+    local duration=$1
+    local end=$((SECONDS + duration))
+    while [ $SECONDS -lt $end ]; do
         sleep 3
         RANDOM_UID=$((RANDOM % 1000 + 1))
         TABLE=$($INSTALL_DIR/bin/psql -d $DB_NAME -Atc "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '$PARTITION_PARENT%' ORDER BY random() LIMIT 1;")
@@ -105,19 +109,23 @@ run_dml() {
 
 # Function to REINDEX a random table
 reindex_table() {
-    while true; do
-        sleep 2
-        TABLE=$($INSTALL_DIR/bin/psql  -d $DB_NAME -Atc "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '$PARTITION_PARENT%' ORDER BY random() LIMIT 1;")
-        if [ -n "$TABLE" ]; then
-            $INSTALL_DIR/bin/psql -d $DB_NAME -c "REINDEX TABLE $TABLE;"
-            echo "Reindexed table: $TABLE"
-        fi
-    done
+   local duration=$1
+   local end=$((SECONDS + duration))
+   while [ $SECONDS -lt $end ]; do
+       sleep 2
+       TABLE=$($INSTALL_DIR/bin/psql  -d $DB_NAME -Atc "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '$PARTITION_PARENT%' ORDER BY random() LIMIT 1;")
+       if [ -n "$TABLE" ]; then
+          $INSTALL_DIR/bin/psql -d $DB_NAME -c "REINDEX TABLE $TABLE;"
+          echo "Reindexed table: $TABLE"
+       fi
+   done
 }
 
 # Function to run maintenance tasks
 run_maintenance() {
-    while true; do
+    local duration=$1
+    local end=$((SECONDS + duration))
+    while [ $SECONDS -lt $end ]; do
         sleep 10
         echo "Running VACUUM FULL and CHECKPOINT"
         $INSTALL_DIR/bin/psql  -d $DB_NAME -c "VACUUM FULL;"
@@ -125,7 +133,7 @@ run_maintenance() {
     done
 }
 
-crash_server() {
+crash_server_with_wal_encrypt_flip() {
     value=$([ $(( RANDOM % 2 )) -eq 0 ] && echo "on" || echo "off")
     echo "Altering WAL encryption to use $value..."
     $INSTALL_DIR/bin/psql  -d sbtest -c "ALTER SYSTEM SET pg_tde.wal_encrypt = '$value';"
@@ -133,32 +141,47 @@ crash_server() {
     kill -9 $PG_PID
 }
 
-# Create initial setup
-initialize_server
-start_server
-PG_PID=$(lsof -ti :5432)
+# Actual test starts here...
+
+# Old server cleanup
+old_server_cleanup $PGDATA
+
+# Create data directory
+initialize_server $PGDATA $PORT
+
+# Start PG server and enable TDE
+enable_pg_tde $PGDATA
+start_pg $PGDATA $PORT
+PG_PID=$(lsof -ti :$PORT)
+
 $INSTALL_DIR/bin/createdb $DB_NAME
-enable_tde
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "CREATE EXTENSION pg_tde;"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key','global_keyring');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('table_key','global_keyring');"
+$INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c "SELECT pg_tde_set_key_using_global_key_provider('table_key','global_keyring');"
+
 create_tablespace
 create_partitioned_table
 
 # Run parallel SQLs
-rename_objects &
+rename_objects 60 > /dev/null 2>&1 &
 RENAME_PID=$!
 
-run_maintenance &
+run_maintenance 60 > /dev/null 2>&1 &
 MAINT_PID=$!
 
-move_to_tablespace  &
+move_to_tablespace 60 > /dev/null 2>&1 &
 MOVE_PID=$!
 
-truncate_table &
+truncate_table 60 > /dev/null 2>&1 &
 TRUNC_PID=$!
 
-reindex_table &
+reindex_table 60 > /dev/null 2>&1 &
 REINDEX_PID=$!
 
-run_dml &
+run_dml 60 > /dev/null 2>&1 &
 DML_PID=$!
 
 $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT COUNT(*) FROM $PARTITION_PARENT"
@@ -166,11 +189,12 @@ $INSTALL_DIR/bin/psql  -d $DB_NAME -c "SELECT COUNT(*) FROM $PARTITION_PARENT"
 for i in {1..2}; do
     # Let the SQLs run for sometime
     sleep 20
-    crash_server
+    crash_server_with_wal_encrypt_flip
     sleep 1
-    start_server
-    PG_PID=$(lsof -ti :5432)
+    start_pg $PGDATA $PORT
+    PG_PID=$(lsof -ti :$PORT)
+
+    wait
 done
 
-kill -9 $DML_PID $REINDEX_PID $TRUNC_PID $MOVE_PID $MAINT_PID $RENAME_PID
 echo "DDL stress test completed."
