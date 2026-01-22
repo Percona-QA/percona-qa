@@ -9,7 +9,7 @@ check_pg_tde_present() {
         echo "✅ pg_tde is present in $db"
     else
         echo "❌ pg_tde is NOT present in $db"
-	return 1
+	      return 1
     fi
 }
 

@@ -128,7 +128,6 @@ crash_server() {
     local PID=$1
     echo "Killing the Server with PID=$PID..."
     kill -9 $PID
-    sleep 5
 }
 
 alter_encrypt_unencrypt_tables(){

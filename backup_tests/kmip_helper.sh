@@ -10,34 +10,38 @@
 
 # Global variables
 declare -ga KMIP_CONTAINER_NAMES
-declare -gA KMIP_CONFIGS 2>/dev/null || true  # 1. Safely declare the global array (no error if already exists)
+declare -gA KMIP_CONFIGS_DEFAULTS=(
+    #[pykmip]="addr=127.0.0.1,image=satyapercona/kmip:latest,port=5696,name=kmip_pykmip"
+    [hashicorp]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    [fortanix]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
+    #[ciphertrust]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
+)
 
 # Initialize default configurations if not already set
 init_kmip_configs() {
-    # Check if array is empty without triggering nounset errors
+    # If KMIP_CONFIGS not set in main script, initialize with defaults
     if [[ -z "${KMIP_CONFIGS[*]-}" ]]; then
-        KMIP_CONFIGS=(
-                # PyKMIP Docker Configuration
-                ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
-
-                # Hashicorp Docker Setup Configuration
-                ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
-
-                # API Configuration
-                # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
-                )
-        echo "Initialized default KMIP configurations" >&2
+        declare -gA KMIP_CONFIGS=()
     fi
+
+    # Apply defaults for all keys defined in main script if not set
+    for key in "${!KMIP_CONFIGS[@]}"; do
+        if [[ -z "${KMIP_CONFIGS[$key]}" ]]; then
+            KMIP_CONFIGS[$key]="${KMIP_CONFIGS_DEFAULTS[$key]}"
+        fi
+    done
+
+    echo "KMIP configurations initialized from Defaults" >&2
 }
 
 # Cleanup existing Docker container
 cleanup_existing_container() {
     local container_name="$1"
-    local container_id=$(docker ps -aq --filter "name=$container_name")
+    local container_id=$(sudo docker ps -aq --filter "name=$container_name")
 
     [ -z "$container_id" ] && return 0
 
-    if ! docker rm -f "$container_id" >/dev/null 2>&1; then
+    if ! sudo docker rm -f "$container_id" >/dev/null 2>&1; then
         return 1
     fi
     sleep 5  # Allow port to be released
@@ -145,7 +149,7 @@ generate_kmip_config() {
     local config_file="${cert_dir}/component_keyring_kmip.cnf"
     echo "Generating KMIP config for: ${type}"
 
-    cat > "$config_file" <<EOF
+    sudo tee "$config_file" > /dev/null <<EOF
 {
   "server_addr": "$addr",
   "server_port": "$port",
@@ -208,7 +212,7 @@ setup_pykmip() {
 
     # 3. Start container
     echo "Starting container... "
-    if ! docker run -d \
+    if ! sudo docker run -d \
         --name "$container_name" \
         --security-opt seccomp=unconfined \
         --cap-add=NET_ADMIN \
@@ -217,15 +221,16 @@ setup_pykmip() {
         echo "Failed"
         return 1
     fi
-    echo "Started (ID: $(docker inspect --format '{{.Id}}' "$container_name"))"
+    echo "Started (ID: $(sudo docker inspect --format '{{.Id}}' "$container_name"))"
 
     sleep 10
 
-    docker cp "$container_name":/opt/certs/root_certificate.pem $cert_dir/root_certificate.pem >/dev/null 2>&1
-    docker cp "$container_name":/opt/certs/client_key_jane_doe.pem $cert_dir/client_key.pem >/dev/null 2>&1
-    docker cp "$container_name":/opt/certs/client_certificate_jane_doe.pem $cert_dir/client_certificate.pem >/dev/null 2>&1
-
-    sleep 5
+    sudo docker cp "$container_name":/opt/certs/root_certificate.pem $cert_dir/root_certificate.pem >/dev/null 2>&1
+    sudo docker cp "$container_name":/opt/certs/client_key_jane_doe.pem $cert_dir/client_key.pem >/dev/null 2>&1
+    sudo docker cp "$container_name":/opt/certs/client_certificate_jane_doe.pem $cert_dir/client_certificate.pem >/dev/null 2>&1
+    
+    # Fix ownership of copied files so they're accessible to the user
+    sudo chown -R "$USER:$USER" "$cert_dir" 2>/dev/null || true
 
     # Post-startup configuration
     echo "Generating KMIP configuration..."
@@ -275,9 +280,95 @@ setup_hashicorp() {
         fi
     fi
 
-    echo "Starting Docker KMIP server in (script method): $setup_script"
     # Download first, then execute the hashicorp setup
-    script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
+    script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
+        --connect-timeout 5 --max-time 30 \
+        https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
+        
+    curl_exit_code=$?
+
+
+    if [ "${curl_exit_code:-1}" -ne 0 ] || [ -z "$script" ]; then
+      echo "Failed to download script after retries (curl exit code: $curl_exit_code)"
+      exit 1
+    fi
+
+
+    if [ -d "$cert_dir" ]; then
+      echo "Cleaning existing certificate directory: $cert_dir"
+      rm -rf "$cert_dir"/* 2>/dev/null
+    fi
+
+    mkdir -p "$cert_dir" || {
+      echo "ERROR: Failed to create certificate directory: $cert_dir" >&2
+      return 1
+    }
+
+    # Get license file from environment variable
+    local license_file="${HASHICORP_LICENSE:-}"
+    if [[ -z "$license_file" ]]; then
+      echo "ERROR: HASHICORP_LICENSE environment variable must be set for HashiCorp KMIP Provider!!" >&2
+      echo "Please set it to the path of your HashiCorp Vault Enterprise license file:" >&2
+      echo "  export HASHICORP_LICENSE=/path/to/vault.hclic" >&2
+      exit 1
+    fi
+
+    # Check if license file exists
+    if [[ ! -f "$license_file" ]]; then
+      echo "ERROR: License file not found at: $license_file" >&2
+      exit 1
+    fi
+
+    # Execute the script
+    echo "$script" | sudo bash -s -- --cert-dir="$cert_dir" --license="$license_file"
+    exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        echo "Failed to execute script $setup_script, (exit code: $exit_code)" >&2
+        return 1
+    fi
+
+    generate_kmip_config "$type" "$addr" "$port" "$cert_dir" || {
+        echo "Failed to generate KMIP config" >&2; return 1; }
+
+    echo "Hashicorp server started successfully on address $addr and port $port"
+    return 0
+}
+
+setup_fortanix() {
+    local type="fortanix"
+    local container_name="${kmip_config[name]}"
+    local addr="${kmip_config[addr]}"
+    local port="${kmip_config[port]}"
+    local email="${FORTANIX_EMAIL:-}"
+    local password="${FORTANIX_PASSWORD:-}"
+    local setup_script="${kmip_config[setup_script]}"
+    local cert_dir="${HOME}/${kmip_config[cert_dir]}"
+
+    # Check if both environment variables are set and not empty
+    if [[ -z "$email" || -z "$password" ]]; then
+      echo "ERROR: Both FORTANIX_EMAIL and FORTANIX_PASSWORD environment variables must be set for Fortanix KMIP Provider!!" >&2
+      echo "Please set them to your Fortanix credentials:" >&2
+      echo "  export FORTANIX_EMAIL=your-email@example.com" >&2
+      echo "  export FORTANIX_PASSWORD=your-password" >&2
+      exit 1
+    fi
+
+    echo "Checking port availability... "
+    if validate_port_available "$port"; then
+        echo "Available"
+    else
+        echo "Unavailable"
+        echo "Port $port is in use by:"
+        lsof -i :"$port"
+        return 1
+    fi
+
+    echo "Starting Fortanix KMIP server in (script method): $setup_script"
+    # Download first, then execute the fortanix setup script
+    script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/8ab34a4da257070518825fcdf8ae547f99705597/"$setup_script")
+
+    # To-Do Remove B4 Merge
+    # script=$(wget -qO- https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
     wget_exit_code=$?
 
     if [ $wget_exit_code -ne 0 ]; then
@@ -290,27 +381,16 @@ setup_hashicorp() {
       exit 1
     fi
 
-    if [ -d "$cert_dir" ]; then
-      echo "Cleaning existing certificate directory: $cert_dir"
-      rm -rf "$cert_dir"/* 2>/dev/null
-    fi
+    mkdir -p "$cert_dir" || true
 
-    mkdir -p "$cert_dir" || {
-      echo "ERROR: Failed to create certificate directory: $cert_dir" >&2
-      return 1
-    }
-    # Execute the script
-    echo "$script" | bash -s -- --cert-dir="$cert_dir"
+    # Execute the Python script from a variable
+    echo "$script" | python3 - --cert-dir="$cert_dir" --email="$email" --password="$password"
     exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Failed to execute script $setup_script, (exit code: $exit_code)"
-        exit 1
-    fi
 
     generate_kmip_config "$type" "$addr" "$port" "$cert_dir" || {
         echo "Failed to generate KMIP config"; exit 1; }
 
-    echo "Hashicorp server started successfully on address $addr and port $port"
+    echo "Fortanix server started successfully on address $addr and port $port"
     return 0
 }
 
@@ -330,6 +410,7 @@ start_kmip_server() {
     case "$type" in
         pykmip)     setup_pykmip ;;
         hashicorp)  setup_hashicorp ;;
+        fortanix)  setup_fortanix ;;
         ciphertrust) setup_cipher_api ;;
         *)          echo "Unsupported KMIP Type: $type"; return 1 ;;
     esac

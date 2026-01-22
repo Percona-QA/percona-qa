@@ -1,26 +1,68 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Initialize variables
 VERBOSE=false
-CERTS_DIR=""  # Initialize as empty
+CERTS_HOME_DIR=""
+VAULT_LICENSE=""
+
+# Help function
+show_help() {
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+Setup HashiCorp Vault Enterprise with KMIP support.
+
+OPTIONS:
+    -h, --help          Show this help message and exit
+    -v, --verbose       Enable verbose output
+    --cert-dir=DIR      Directory where certificates will be stored (default: \$HOME/vault/certs)
+                        If DIR is provided, vault data will be stored under DIR/vault/
+    --certs-dir=DIR     Alias for --cert-dir
+    --license=FILE      Path to the HashiCorp Vault Enterprise license file (vault.hclic) (REQUIRED)
+
+LICENSE FILE:
+    The script requires a HashiCorp Vault Enterprise license file. You must provide it using:
+    --license=/path/to/vault.hclic
+
+EXAMPLES:
+    # Specify license file (required)
+    $0 --license=/path/to/vault.hclic
+
+    # With custom certificate directory
+    $0 --license=/path/to/vault.hclic --cert-dir=/custom/path/certs
+
+    # Verbose mode with license file
+    $0 --verbose --license=/path/to/vault.hclic
+
+    # Combine options
+    $0 --cert-dir=/custom/path --license=/path/to/vault.hclic --verbose
+
+EOF
+}
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
         -v|--verbose)
             VERBOSE=true
             shift
             ;;
         --cert-dir=*|--certs-dir=*)
-            CERTS_DIR="${1#*=}"
-            if [[ -z "$CERTS_DIR" ]]; then
-                echo "Error: --cert-dir= or --certs-dir= requires a directory path"
-                exit 1
-            fi
+            CERTS_HOME_DIR="${1#*=}"
+            shift
+            ;;
+        --license=*)
+            VAULT_LICENSE="${1#*=}"
             shift
             ;;
         -*)
-            echo "Unknown option: $1"
+            echo "[ERROR] Unknown option: $1"
+            echo "Use --help for usage information"
             exit 1
             ;;
         *)
@@ -29,15 +71,19 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Base directory under $HOME
-VAULT_BASE="${HOME}/vault"
+# If Cert Dir is not provided use $HOME as default path
+# A bit hacky, but used by wrappers.
+if [[ -z "$CERTS_HOME_DIR" ]] || [[ ! -d "$CERTS_HOME_DIR" ]] ; then
+    VAULT_BASE="${HOME}/vault"
+else
+    VAULT_BASE="${CERTS_HOME_DIR}/vault"
+fi
+
 CONFIG_DIR="${VAULT_BASE}/config"
 DATA_DIR="${VAULT_BASE}/data"
 LOG_DIR="${VAULT_BASE}/log"
-CERTS_DIR="${CERTS_DIR:-${VAULT_BASE}/certs}"
+CERTS_DIR="${CERTS_HOME_DIR:-${VAULT_BASE}/certs}"
 VAULT_HCL="${CONFIG_DIR}/vault.hcl"
-SCRIPT_DIR="$(pwd)"
-VAULT_LICENSE="${SCRIPT_DIR}/vault.hclic"
 CONTAINER_NAME="kmip_hashicorp"
 
 # Create all necessary directories, and provide permissions for Docker container access.
@@ -48,14 +94,23 @@ sudo chown -R 100:1000 "${LOG_DIR}"
 sudo chown -R 100:1000 "${CERTS_DIR}"
 
 # Ensure license file exists
-echo "[INFO] Checking for license in working directory..."
+echo "[INFO] Checking for license file..."
 
-if [[ ! -f "${VAULT_LICENSE}" ]]; then
-    echo "[ERROR] License file 'vault.hclic' not found in:"
-    echo "  ${SCRIPT_DIR}"
-    echo "[INFO] Please place the license file here and retry"
+if [[ -z "$VAULT_LICENSE" ]]; then
+    echo "[ERROR] --license option is required"
+    echo "[INFO] Please provide the license file path using: --license=/path/to/vault.hclic"
+    echo "[INFO] Use --help for more information"
     exit 1
 fi
+
+if [[ ! -f "$VAULT_LICENSE" ]]; then
+    echo "[ERROR] License file not found at: ${VAULT_LICENSE}"
+    echo "[INFO] Please ensure the license file path is correct"
+    echo "[INFO] Use --help for more information"
+    exit 1
+fi
+
+echo "[INFO] Using license from: ${VAULT_LICENSE}"
 
 create_vault_hcl() {
   if [[ -f "${VAULT_HCL}" ]]; then
@@ -93,15 +148,15 @@ start_vault_container() {
 
   case "${container_status}" in
     running)
-      echo "[INFO] Vault container already running"
+      echo "[INFO] HashiCorp Vault container already running"
       return 0
       ;;
     exited)
-      echo "[INFO] Starting existing Vault container"
+      echo "[INFO] Starting existing HashiCorp Vault container"
       docker start "${CONTAINER_NAME}" >/dev/null
       ;;
     *)
-      echo "[INFO] Launching new Vault container"
+      echo "[INFO] Launching new HashiCorp Vault container"
       docker run -d \
         --name "${CONTAINER_NAME}" \
         -e VAULT_DISABLE_MLOCK=true \
@@ -197,7 +252,7 @@ configure_kmip() {
 }
 
 verify_kmip_connection() {
-  echo "[INFO] Verifying KMIP connection..."
+  echo "[INFO] Verifying HashiCorp KMIP connection..."
   local output
   local timeout=10  # seconds
 
@@ -224,9 +279,9 @@ main() {
   configure_kmip
   verify_kmip_connection
 
-  echo "[INFO] Vault Enterprise deployment successful"
+  echo "[INFO] HashiCorp Vault Enterprise deployment successful"
   if [ "$VERBOSE" = true ]; then
-    echo "[INFO] KMIP setup completed successfully!"
+    echo "[INFO] HashiCorp KMIP setup completed successfully!"
     echo "[INFO] Files created within $CERTS_DIR:"
     echo "[INFO]  - Private key: $CERTS_DIR/client_key.pem"
     echo "[INFO]  - Certificate: $CERTS_DIR/client_certificate.pem"

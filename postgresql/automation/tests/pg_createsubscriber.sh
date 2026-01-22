@@ -121,10 +121,6 @@ initialize_server $PRIMARY_DATA $PRIMARY_PORT
 
 cat >> "$PRIMARY_DATA/postgresql.conf" <<SQL
 wal_level=logical
-logging_collector = on
-log_directory = '$PRIMARY_DATA'
-log_filename = 'server.log'
-log_statement = 'all'
 SQL
 
 cat >> "$PRIMARY_DATA/pg_hba.conf" <<SQL
