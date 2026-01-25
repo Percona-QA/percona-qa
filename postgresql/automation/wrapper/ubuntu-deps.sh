@@ -37,6 +37,8 @@ DEPS=(
     zlib1g-dev
     zstd
     unzip
+    sysbench
+    #golang-go
     # Build pg_tde
     libcurl4-openssl-dev
     # Test

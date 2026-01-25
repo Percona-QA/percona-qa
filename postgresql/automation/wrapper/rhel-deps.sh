@@ -53,6 +53,8 @@ DEPS=(
     jq
     liburing
     liburing-devel
+    sysbench
+    #go-toolset
 )
 
 sudo dnf update -y
