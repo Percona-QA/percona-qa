@@ -5,7 +5,7 @@ set -e
 start_vault_server() {
     vault_dir="${HELPER_DIR}/vault"
     config_file="$vault_dir/keyring_vault_ps.cnf"
-    token_file="/tmp/token_file"
+    token_file="$RUN_DIR/token_file"
 
     echo "=> Killing any running Vault processes..."
     killall vault > /dev/null 2>&1 || true

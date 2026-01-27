@@ -109,22 +109,8 @@ cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
 $PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PRIMARY_PORT -U $REPL_USER
 
 # Configure Replica Server
-cat >> "$REPLICA_DATA/postgresql.conf" <<EOF
-port = $REPLICA_PORT
-shared_preload_libraries = 'pg_tde'
-default_table_access_method = 'tde_heap'
-io_method = 'sync'
-wal_level = replica
-wal_compression = on
-wal_log_hints = on
-wal_keep_size = 512MB
-max_replication_slots = 2
-max_wal_senders = 2
-listen_addresses = 'localhost'
-logging_collector = on
-log_directory = '$REPLICA_DATA'
-log_filename = 'server.log'
-EOF
+write_postgresql_conf "$REPLICA_DATA" "$REPLICA_PORT" "replica"
+enable_pg_tde $REPLICA_DATA
 rm -f $REPLICA_DATA/server.log
 
 echo "# Step 4: Start Replica Server"

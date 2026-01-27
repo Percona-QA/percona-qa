@@ -82,6 +82,7 @@ $INSTALL_DIR/bin/psql -d "$DB_NAME" -c "INSERT INTO test_wal_crash(txt) SELECT m
 echo "Simulating crash..."
 PG_PID=$(lsof -ti :$PORT)
 kill -9 "$PG_PID"
+sleep 5
 
 echo "Starting PostgreSQL..."
 start_pg $PGDATA $PORT

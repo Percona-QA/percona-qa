@@ -1,12 +1,9 @@
 #!/bin/bash
 
-# Arguments passed from wrapper
-export SERVER_VERSION="$1"
-export PG_TDE_VERSION="$2"
-export SERVER_BRANCH="$3"
-export PG_TDE_BRANCH="$4"
-export SERVER_BUILD_PATH="$5"
-export PG_TDE_BUILD_PATH="$6"
+# Arguments passed from wrapper(test_runner.sh)
+export SERVER_BUILD_PATH="$1"
+export TESTNAME="$2"
+export IO_METHOD="${3:-sync}"
 
 # Build install location
 export INSTALL_DIR="$SERVER_BUILD_PATH"

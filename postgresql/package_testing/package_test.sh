@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Use REPO=testing | release to test the packages on testing repo or release repo
-export REPO=release
-export PG_VERSION=18.1
+export REPO=testing
+export PG_VERSION=18.2
 export PG_MAJOR=$(echo "$PG_VERSION" | cut -d. -f1)
 
 for os in debian11 debian12 ol8 ol9 ubuntu22 ubuntu24; do

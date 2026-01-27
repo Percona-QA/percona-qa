@@ -84,7 +84,19 @@ if [[ -z ${PRODUCT} ]]; then
 fi
 
 if [[ -z ${BUILD_ARCH} ]]; then
-  BUILD_ARCH="x86_64"
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64)
+      BUILD_ARCH="x86_64"
+      ;;
+    aarch64 | arm64)
+      BUILD_ARCH="aarch64"
+      ;;
+    *)
+      echo "Unsupported architecture: $ARCH"
+      exit 1
+      ;;
+  esac
 fi
 
 if [[ -z ${DISTRIBUTION} ]]; then

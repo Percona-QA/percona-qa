@@ -1,18 +1,17 @@
 #!/bin/bash
 
-set -e
+set -e 
 
 start_openbao_server() {
 # -------------------------------
 # CONFIGURATION
 # -------------------------------
 OPENBAO_URL="https://github.com/openbao/openbao/archive/refs/tags/v2.5.0-beta20251125.tar.gz"
-TARBALL="openbao-2.5.0-beta20251125.tar.gz"
-DIR="openbao-2.5.0-beta20251125"
+TARBALL="$RUN_DIR/openbao-2.5.0-beta20251125.tar.gz"
 
 vault_url="http://127.0.0.1:8200"
 secret_mount_point="pg_tde"
-token_filepath="/tmp/bao_token_file"
+token_filepath="$RUN_DIR/bao_token_file"
 
 echo "[INFO] Cleaning up any existing OpenBao processes..."
 
@@ -46,14 +45,18 @@ echo "[INFO] Downloading OpenBao..."
 curl -L "$OPENBAO_URL" -o "$TARBALL"
 
 echo "[INFO] Extracting..."
-tar -xzf "$TARBALL"
+tar -xzf $TARBALL -C $RUN_DIR
+NAME=$(basename "$TARBALL" | sed 's/\.tar\.gz$//')
 
-cd "$DIR"
+cd "$RUN_DIR/$NAME"
 
 # -------------------------------
 # BUILD OPENBAO
 # -------------------------------
 echo "[INFO] Building OpenBao..."
+git init -q
+git add . -A >/dev/null 2>&1
+git -c user.name="CI Builder" -c user.email="ci-builder@example.com" commit -q -m "imported source"
 make
 
 # -------------------------------

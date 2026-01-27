@@ -17,13 +17,10 @@ export HELPER_DIR
 ############################################
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --server_version) SERVER_VERSION="$2"; shift;;
-    --pg_tde_version) PG_TDE_VERSION="$2"; shift;;
-    --server_branch) SERVER_BRANCH="$2"; shift;;
-    --pg_tde_branch) PG_TDE_BRANCH="$2"; shift;;
     --server_build_path) SERVER_BUILD_PATH="$2"; shift;;
     --testname) TESTNAME="$2"; shift;;
-    --skip-test) SKIP_LIST="$2"; shift;;
+    --skip_test) SKIP_LIST="$2"; shift;;
+    --io_method) IO_METHOD="$2"; shift;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -44,12 +41,9 @@ fi
 # Load env + common functions
 ############################################
 source "$WRAPPER_DIR/env.sh" \
-  "$SERVER_VERSION" \
-  "$PG_TDE_VERSION" \
-  "$SERVER_BRANCH" \
-  "$PG_TDE_BRANCH" \
   "$SERVER_BUILD_PATH" \
-  "$TESTNAME"
+  "$TESTNAME" \
+  "$IO_METHOD"
 
 ############################################
 # Dependency Checks
@@ -134,11 +128,8 @@ fi
 ############################################
 echo "==============================================="
 echo "Starting pg_tde Test Suite"
-echo "Server Version:    $SERVER_VERSION"
-echo "pg_tde Version:    $PG_TDE_VERSION"
-echo "Server Branch:     $SERVER_BRANCH"
-echo "pg_tde Branch:     $PG_TDE_BRANCH"
 echo "Server Build path: $SERVER_BUILD_PATH"
+echo "IO_METHOD: $IO_METHOD"
 echo "==============================================="
 
 ############################################

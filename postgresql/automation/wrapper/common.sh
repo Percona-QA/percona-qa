@@ -46,6 +46,21 @@ restart_pg() {
     echo "PostgreSQL restarted successfully."
 }
 
+crash_pg() {
+    local PGDATA=$1
+    local PORT=$2
+    local PID=$(head -1 "$PGDATA/postmaster.pid")
+    kill -9 "$PID"
+
+    while kill -0 "$PID" 2>/dev/null; do
+        sleep 1
+    done
+
+    rm -f "$PGDATA/postmaster.pid"
+    rm -f "$RUN_DIR/.s.PGSQL.$PORT"
+}
+
+
 ###################################
 # Enable pg_tde Extension
 ###################################
@@ -59,6 +74,40 @@ enable_pg_tde() {
 }
 
 ###################################
+# Write postgresql.conf
+###################################
+write_postgresql_conf() {
+    local PGDATA=$1
+    local PORT=$2
+    local ROLE="${3:-primary}"   # primary | replica
+
+    cat > "$PGDATA/postgresql.conf" <<EOF
+port = $PORT
+unix_socket_directories = '$RUN_DIR'
+listen_addresses = '*'
+io_method = '$IO_METHOD'
+logging_collector = on
+log_directory = '$PGDATA'
+log_filename = 'server.log'
+log_statement = 'all'
+default_table_access_method = 'tde_heap'
+max_wal_senders = 5
+EOF
+
+    if [[ "$ROLE" == "replica" ]]; then
+        cat >> "$PGDATA/postgresql.conf" <<EOF
+wal_level = replica
+wal_compression = on
+wal_log_hints = on
+wal_keep_size = 512MB
+max_replication_slots = 2
+max_wal_senders = 5
+EOF
+    fi
+}
+
+
+###################################
 # Initialize a fresh cluster
 ###################################
 initialize_server() {
@@ -66,22 +115,11 @@ initialize_server() {
     local PORT=$2
     local EXTRA_ARG="${3:-}"
 
-    echo "Initializing PostgreSQL clusteri at $PGDATA..."
+    echo "Initializing PostgreSQL cluster at $PGDATA..."
 
-    rm -rf "$PGDATA"
-    "$INSTALL_DIR/bin/initdb" $EXTRA_ARG -D "$PGDATA" > "$RUN_DIR/initdb.log" 2>&1
-    cat > "$PGDATA/postgresql.conf" <<SQL
-port=$PORT
-unix_socket_directories = '$RUN_DIR'
-listen_addresses='*'
-io_method = 'sync'
-logging_collector = on
-log_directory = '$PGDATA'
-log_filename = 'server.log'
-log_statement = 'all'
-default_table_access_method = 'tde_heap'
-SQL
-
+    rm -rf "$PGDATA" || true
+    $INSTALL_DIR/bin/initdb $EXTRA_ARG -D "$PGDATA" > "$RUN_DIR/initdb.log" 2>&1
+    write_postgresql_conf "$PGDATA" "$PORT" "primary"
     echo "Cluster initialized at $PGDATA"
 }
 
@@ -97,5 +135,5 @@ old_server_cleanup() {
     fi
 
     sleep 5
-    rm -rf $PGDATA
+    rm -rf -- "$PGDATA"
 }

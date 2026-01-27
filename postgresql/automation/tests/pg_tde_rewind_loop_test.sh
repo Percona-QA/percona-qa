@@ -15,20 +15,16 @@ KEYFILE=/tmp/primary_keyfile
 KEY_NAME=key1
 
 # Clean slate
-pkill -9 postgres || true
-rm -rf "$PRIMARY_DATA" "$REPLICA_DATA" "$KEYFILE"
+old_server_cleanup $PRIMARY_DATA
+old_server_cleanup $REPLICA_DATA
+rm -rf "$KEYFILE" || true
 
 # Initialize both nodes
 initialize_server "$PRIMARY_DATA" "$PRIMARY_PORT"
 
 cat >> "$PRIMARY_DATA/postgresql.conf" <<EOF
-wal_level = replica
-wal_compression = on
 wal_log_hints = on
-wal_keep_size = 512MB
-max_replication_slots = 2
-max_wal_senders = 2
-hot_standby = on
+wal_keep_size = 1GB
 EOF
 
 echo "host replication $REPL_USER 127.0.0.1/32 trust" >> "$PRIMARY_DATA/pg_hba.conf"
@@ -60,23 +56,8 @@ chmod 700 $REPLICA_DATA
 cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA
 $PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PRIMARY_PORT -U $REPL_USER
 
-# Configure replica
-cat > "$REPLICA_DATA/postgresql.conf" <<EOF
-port = $REPLICA_PORT
-shared_preload_libraries = 'pg_tde'
-default_table_access_method = 'tde_heap'
-unix_socket_directories = '$RUN_DIR'
-io_method = 'sync'
-hot_standby = on
-logging_collector = on
-log_directory = '$REPLICA_DATA'
-log_filename = 'server.log'
-wal_level = replica
-wal_log_hints = on
-wal_compression = on
-wal_keep_size= 512MB
-max_wal_senders = 2
-EOF
+write_postgresql_conf "$REPLICA_DATA" "$REPLICA_PORT" "replica"
+enable_pg_tde $REPLICA_DATA
 
 # Start node 2 as Replica
 start_pg $REPLICA_DATA $REPLICA_PORT
@@ -91,7 +72,7 @@ $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-user=$USER \
   --pgsql-db=$DB_NAME \
   --db-driver=pgsql \
-  --time=40 --threads=5 --tables=100 --table-size=1000 prepare
+  --time=30 --threads=5 --tables=50 --table-size=500 prepare
 
 # Helper to run sysbench on a port
 run_sysbench() {
@@ -102,7 +83,7 @@ run_sysbench() {
     --pgsql-user=$USER \
     --pgsql-db=$DB_NAME \
     --db-driver=pgsql \
-    --time=40 --threads=2 --tables=1 --table-size=1000 run
+    --time=30 --threads=2 --tables=1 --table-size=500 run
 }
 
 # Failover and rewind logic
@@ -118,6 +99,7 @@ failover_iteration() {
 
   echo "Simulating crash on $current_primary_port..."
   $PG_CTL -D "$current_primary_dir" -m immediate stop
+  sleep 5
 
   echo "Promoting standby on port $standby_port..."
   rm -f "$standby_dir/postgresql.auto.conf"

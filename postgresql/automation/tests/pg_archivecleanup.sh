@@ -20,7 +20,6 @@ enable_pg_tde $PGDATA
 echo "wal_level = replica" >> "$PGDATA/postgresql.conf"
 echo "max_wal_senders = 5" >> "$PGDATA/postgresql.conf"
 echo "wal_compression = on" >> "$PGDATA/postgresql.conf"
-echo "io_method = 'sync'" >> "$PGDATA/postgresql.conf"
 echo "archive_mode = on" >> "$PGDATA/postgresql.conf"
 echo "archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'" >> "$PGDATA/postgresql.conf"
 

@@ -2,8 +2,6 @@
 
 EXPORT_DIR=$RUN_DIR/vault_export
 
-# Actual test begins here...
-
 old_server_cleanup $PGDATA
 initialize_server $PGDATA $PORT
 enable_pg_tde $PGDATA
@@ -24,26 +22,17 @@ mkdir -p $EXPORT_DIR
 export VAULT_ADDR=$vault_url
 export VAULT_TOKEN=$token
 
-# Read list from vault
-$HELPER_DIR/vault/vault kv list -format=json -tls-skip-verify $secret_mount_point/ | jq -r '.[]' | while read -r key; do
+# Read list from vault and Export Keys
+$vault_dir/vault kv list -format=json -tls-skip-verify $secret_mount_point/ | jq -r '.[]' | while read -r key; do
 echo "Exporting secret/$key"
-$HELPER_DIR/vault/vault kv get -format=json -tls-skip-verify "$secret_mount_point/$key" > "$EXPORT_DIR/$key.json"
+$vault_dir/vault kv get -format=json -tls-skip-verify "$secret_mount_point/$key" > "$EXPORT_DIR/$key.json"
 done
 
-# Start a fresh Vault server, old keys are lost
+# Restart new Vault server with new Token
 start_vault_server
-cp $token_file $RUN_DIR/token_file2
-# Open Bug PG-2124
-#rm $token_file
 
-echo "Restarting PG server"
-restart_pg $PGDATA $PORT
-if ! $INSTALL_DIR/bin/psql -d postgres -c "SELECT * FROM t1" ; then
-    echo "Expected failure - ERROR: key \"local_key\" not found in key provider \"local_vault_provider\""
-else
-    echo "ERROR: Query unexpectedly succeeded"
-    exit 1
-fi
+echo "Stop PG server"
+stop_pg $PGDATA
 
 export VAULT_ADDR=$vault_url
 export VAULT_TOKEN=$token
@@ -59,17 +48,14 @@ for file in "$EXPORT_DIR"/*.json; do
     secret_data=$(jq -r '.data.data | to_entries[] | "\(.key)=\(.value)"' "$file")
 
     # Import cleanly with key=value pairs
-    $HELPER_DIR/vault/vault kv put -tls-skip-verify "$secret_mount_point/$key_name" $secret_data
+    $vault_dir/vault kv put -tls-skip-verify "$secret_mount_point/$key_name" $secret_data
 done
 
 echo "✅ Import complete."
 
-#if ! $INSTALL_DIR/bin/psql -d postgres -c "SELECT * FROM t1" ; then
-#    echo "Expected failure - ERROR: key \"local_key\" not found in key provider \"local_vault_provider\""
-#else
-#    echo "ERROR: Query unexpectedly succeeded"
-#    exit 1
-#fi
+CMD="$INSTALL_DIR/bin/pg_tde_change_key_provider -D '$PGDATA' 5 local_vault_provider vault-v2 '$vault_url' '$secret_mount_point' '$token_file' '$vault_ca'"
+echo "Running: $CMD"
+eval "$CMD"
 
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_change_database_key_provider_vault_v2('local_vault_provider', '$vault_url', '$secret_mount_point', '$RUN_DIR/token_file2', '$vault_ca')"
+start_pg $PGDATA $PORT
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT * FROM t1"

@@ -11,8 +11,8 @@ LUA_SCRIPT=/usr/share/sysbench/oltp_write_only.lua   # Adjust if different
 KEYFILE="/tmp/keyring.per"
 
 rotate_wal_key(){
-    duration=$1
-    end_time=$((SECONDS + duration))
+    local duration=$1
+    local end_time=$((SECONDS + duration))
 
     while [ $SECONDS -lt $end_time ]; do
        RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
@@ -50,7 +50,7 @@ for iter in {1..3}; do
     restart_pg $DATA_DIR $PORT
 
     echo "=> Rotate WAL key"
-    rotate_wal_key 10 >/dev/null 2>&1 &
+    rotate_wal_key 10 > $RUN_DIR/sysbench.log 2>&1 &
 
     echo "=> Preparing 50 tables using sysbench"
     $SYSBENCH $LUA_SCRIPT \
@@ -65,10 +65,10 @@ for iter in {1..3}; do
 
     $PSQL -d postgres -p $PORT -c "CHECKPOINT;"
     echo "=> Rotate WAL key"
-    rotate_wal_key 10 > /dev/null 2>&1 &
+    rotate_wal_key 10 >> $RUN_DIR/sysbench.log 2>&1 &
 
     echo "=> Starting heavy sysbench write load for $DURATION seconds"
-    sysbench $LUA_SCRIPT \
+    $SYSBENCH $LUA_SCRIPT \
         --db-driver=pgsql \
         --pgsql-host=127.0.0.1 \
         --pgsql-port=$PORT \
@@ -77,7 +77,7 @@ for iter in {1..3}; do
         --tables=$SYSBENCH_TABLES \
         --threads=$SYSBENCH_THREADS \
         --time=100 \
-        run &
+        run >> $RUN_DIR/sysbench.log &
 
     SYSBENCH_PID=$!
     sleep $DURATION
@@ -86,18 +86,18 @@ for iter in {1..3}; do
     echo "=> Killing PostgreSQL server after $DURATION seconds"
     PID=$(lsof -ti :$PORT)
     kill -9 $PID
-    sleep 2
+    sleep 5
 
     rm -f $DATA_DIR/postmaster.pid
 
     echo "=> Running pg_tde_resetwal"
     $PG_TDE_RESETWAL -D "$DATA_DIR" -f
 
-    echo "=> Restarting PostgreSQL after pg_tde_resetwal"
-    restart_pg $DATA_DIR $PORT
+    echo "=> Starting PostgreSQL after pg_tde_resetwal"
+    start_pg $DATA_DIR $PORT
 
     echo "=> Rotate WAL key"
-    rotate_wal_key 10 > /dev/null 2>&1 &
+    rotate_wal_key 10 >>$RUN_DIR/sysbench.log 2>&1 &
 
     echo "=> Performing additional writes"
         $SYSBENCH $LUA_SCRIPT \
@@ -109,7 +109,7 @@ for iter in {1..3}; do
         --tables=$SYSBENCH_TABLES \
         --threads=$SYSBENCH_THREADS \
         --time=30 \
-        run
+        run >> $RUN_DIR/sysbench.log 2>&1
 
     $PSQL -d postgres -p $PORT -c "SELECT COUNT(*) FROM sbtest1"
     $PSQL -d postgres -p $PORT -c "SELECT COUNT(*) FROM sbtest2"
@@ -119,6 +119,3 @@ for iter in {1..3}; do
     echo "=> Stopping PostgreSQL"
     stop_pg $DATA_DIR
 done
-
-echo -e "\n✅ All iterations complete. Check logs and data folders under: $INSTALL_DIR"
-
