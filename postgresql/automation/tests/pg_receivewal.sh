@@ -121,6 +121,7 @@ done
 
 # Stop pg_receivewal
 kill $PG_RECEIVEWAL_PID
+sleep 5
 rm -f "$PGPASSFILE"
 
 echo "=== DONE: Completed 5 recovery iterations across timelines ==="

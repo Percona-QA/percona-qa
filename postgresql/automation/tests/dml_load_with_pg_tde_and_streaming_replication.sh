@@ -1,9 +1,7 @@
 #!/bin/bash
 
-set -euo pipefail
-
 # Set variable
-DB_NAME=mohit
+DB_NAME=testdb
 TABLES=5
 
 alter_encrypt_unencrypt_tables(){
@@ -32,9 +30,9 @@ rotate_wal_key(){
 
 run_sysbench_load(){
     time=$1
-    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$TABLES --time=$time --report-interval=1 --events=1870000000 run &
-    sysbench /usr/share/sysbench/oltp_delete.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$TABLES --time=$time --table-size=1000 &
-    sysbench /usr/share/sysbench/oltp_update_index.lua --pgsql-user=mohit.joshi --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$TABLES --time=$time --table-size=1000 &
+    sysbench /usr/share/sysbench/oltp_read_write.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$TABLES --time=$time --report-interval=1 --events=1870000000 run &
+    sysbench /usr/share/sysbench/oltp_delete.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$TABLES --time=$time --table-size=1000 &
+    sysbench /usr/share/sysbench/oltp_update_index.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$TABLES --time=$time --table-size=1000 &
 
 }
 
@@ -66,12 +64,14 @@ crash_replica_server() {
     REPLICA_PID=$( lsof -ti :$REPLICA_PORT)
     echo "Killing the Replica Server with PID=$REPLICA_PID..."
     kill -9 $REPLICA_PID
+    sleep 5
 }
 
 crash_primary_server() {
     PRIMARY_PID=$( lsof -ti :$PRIMARY_PORT)
     echo "Killing the Primary Server with PID=$PRIMARY_PID"
     kill -9 $PRIMARY_PID
+    sleep 5
 }
 
 create_keys_and_insert_data() {

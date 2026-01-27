@@ -53,7 +53,7 @@ sleep 3
 
 echo "=== Step 6: Simulate initial crash ==="
 pkill -9 postgres
-sleep 2
+sleep 5
 
 for i in {1..4}; do
     echo "=== Recovery iteration $i ==="
@@ -91,7 +91,7 @@ for i in {1..4}; do
 
     echo "=== Simulate crash after iteration $i ==="
     pkill -9 postgres
-    sleep 2
+    sleep 5
 done
 
 echo "=== DONE: Completed 4 recovery iterations across timelines ==="

@@ -94,7 +94,7 @@ echo "Create a Publication on the primary server"
 $INSTALL_DIR/bin/psql -d $PRIMARY_DB -p $PRIMARY_PORT -c"CREATE PUBLICATION mypub for all tables;"
 
 echo "Create a Subscription on the secondary server"
-$INSTALL_DIR/bin/psql -d $REPLICA_DB -p $REPLICA_PORT -c"CREATE SUBSCRIPTION mysub connection 'dbname=$PRIMARY_DB host=localhost user=mohit.joshi port=$PRIMARY_PORT' publication mypub;"
+$INSTALL_DIR/bin/psql -d $REPLICA_DB -p $REPLICA_PORT -c"CREATE SUBSCRIPTION mysub connection 'dbname=$PRIMARY_DB host=localhost user=$(whoami) port=$PRIMARY_PORT' publication mypub;"
 
 echo "Wait for sometime to sync data"
 sleep 10

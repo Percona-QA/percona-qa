@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
     --pg_tde_branch) PG_TDE_BRANCH="$2"; shift;;
     --server_build_path) SERVER_BUILD_PATH="$2"; shift;;
     --testname) TESTNAME="$2"; shift;;
-    --skip-test) SKIP_LIST="$2"; shift;;
+    --skip_test) SKIP_LIST="$2"; shift;;
     *)
       echo "Unknown argument: $1"
       exit 1

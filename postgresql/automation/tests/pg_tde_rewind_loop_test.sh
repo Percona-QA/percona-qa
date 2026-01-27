@@ -16,6 +16,7 @@ KEY_NAME=key1
 
 # Clean slate
 pkill -9 postgres || true
+sleep 5
 rm -rf "$PRIMARY_DATA" "$REPLICA_DATA" "$KEYFILE"
 
 # Initialize both nodes
@@ -118,6 +119,7 @@ failover_iteration() {
 
   echo "Simulating crash on $current_primary_port..."
   $PG_CTL -D "$current_primary_dir" -m immediate stop
+  sleep 5
 
   echo "Promoting standby on port $standby_port..."
   rm -f "$standby_dir/postgresql.auto.conf"

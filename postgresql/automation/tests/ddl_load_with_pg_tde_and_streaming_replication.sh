@@ -1,8 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-#source "$WRAPPER_DIR/common.sh"
-
 # Set variable
 DB_NAME="sbtest"
 TABLE_PREFIX="ddl_test"
@@ -128,6 +125,7 @@ crash_server() {
     local PID=$1
     echo "Killing the Server with PID=$PID..."
     kill -9 $PID
+    sleep 5
 }
 
 alter_encrypt_unencrypt_tables(){
@@ -225,16 +223,17 @@ for i in {1..5}; do
     echo "#####################################"
     echo "# TRIAL $i                          #"
     echo "#####################################"
-    add_column 60 > /dev/null 2>&1 &
-    drop_column 60 > /dev/null 2>&1 &
-    create_index 60 > /dev/null 2>&1 &
-    drop_index 60 > /dev/null 2>&1 &
-    alter_encrypt_unencrypt_tables 60 > /dev/null 2>&1 &
-    rotate_master_key 60 > /dev/null 2>&1 &
-    compress_wal 60 > /dev/null 2>&1 &
+    add_column 30 > /dev/null 2>&1 &
+    drop_column 30 > /dev/null 2>&1 &
+    create_index 30 > /dev/null 2>&1 &
+    drop_index 30 > /dev/null 2>&1 &
+    alter_encrypt_unencrypt_tables 30 > /dev/null 2>&1 &
+    rotate_master_key 30 > /dev/null 2>&1 &
+    compress_wal 30 > /dev/null 2>&1 &
 
-    sleep 30
+    sleep 10
     crash_server $PID_PRIMARY
+    sleep 3
     start_pg $PRIMARY_DATA $PRIMARY_PORT
     PID_PRIMARY=$(lsof -ti :$PRIMARY_PORT)
 

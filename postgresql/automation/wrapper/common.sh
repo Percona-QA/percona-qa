@@ -46,6 +46,21 @@ restart_pg() {
     echo "PostgreSQL restarted successfully."
 }
 
+crash_pg() {
+    local PGDATA=$1
+    local PORT=$2
+    local PID=$(head -1 "$PGDATA/postmaster.pid")
+    kill -9 "$PID"
+
+    while kill -0 "$PID" 2>/dev/null; do
+        sleep 1
+    done
+
+    rm -f "$PGDATA/postmaster.pid"
+    rm -f "$RUN_DIR/.s.PGSQL.$PORT"
+}
+
+
 ###################################
 # Enable pg_tde Extension
 ###################################
@@ -66,7 +81,7 @@ initialize_server() {
     local PORT=$2
     local EXTRA_ARG="${3:-}"
 
-    echo "Initializing PostgreSQL clusteri at $PGDATA..."
+    echo "Initializing PostgreSQL cluster at $PGDATA..."
 
     rm -rf "$PGDATA"
     "$INSTALL_DIR/bin/initdb" $EXTRA_ARG -D "$PGDATA" > "$RUN_DIR/initdb.log" 2>&1
