@@ -121,13 +121,6 @@ run_maintenance() {
   done
 }
 
-crash_server() {
-    local PID=$1
-    echo "Killing the Server with PID=$PID..."
-    kill -9 $PID
-    sleep 5
-}
-
 alter_encrypt_unencrypt_tables(){
   local duration="$1"
   local end=$((SECONDS + duration))
@@ -226,10 +219,9 @@ for i in {1..5}; do
     compress_wal 30 > /dev/null 2>&1 &
 
     sleep 10
-    crash_server $PID_PRIMARY
+    crash_pg $PRIMARY_DATA $PRIMARY_PORT
     sleep 3
     start_pg $PRIMARY_DATA $PRIMARY_PORT
-    PID_PRIMARY=$(lsof -ti :$PRIMARY_PORT)
 
     wait
 done

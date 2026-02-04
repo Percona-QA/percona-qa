@@ -49,11 +49,19 @@ restart_pg() {
 crash_pg() {
     local PGDATA=$1
     local PORT=$2
+    local TIMEOUT=60
     local PID=$(head -1 "$PGDATA/postmaster.pid")
     kill -9 "$PID"
 
-    while kill -0 "$PID" 2>/dev/null; do
+    # Wait for ALL postgres processes using this datadir to exit
+    while pgrep -f "$PGDATA" >/dev/null; do
         sleep 1
+        TIMEOUT=$((TIMEOUT - 1))
+        if [ $TIMEOUT -le 0 ]; then
+            echo "ERROR: postgres processes still running after crash"
+            pgrep -af "$PGDATA"
+            return 1
+        fi
     done
 
     rm -f "$PGDATA/postmaster.pid"

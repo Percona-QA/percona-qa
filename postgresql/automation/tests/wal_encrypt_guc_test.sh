@@ -80,9 +80,7 @@ $INSTALL_DIR/bin/psql -d "$DB_NAME" -c "CREATE TABLE test_wal_crash(id SERIAL PR
 $INSTALL_DIR/bin/psql -d "$DB_NAME" -c "INSERT INTO test_wal_crash(txt) SELECT md5(random()::text) FROM generate_series(1,5000);"
 
 echo "Simulating crash..."
-PG_PID=$(lsof -ti :$PORT)
-kill -9 "$PG_PID"
-sleep 5
+crash_pg $PGDATA $PORT
 
 echo "Starting PostgreSQL..."
 start_pg $PGDATA $PORT

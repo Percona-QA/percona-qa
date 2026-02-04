@@ -60,20 +60,6 @@ rotate_master_key(){
     done
 }
 
-crash_replica_server() {
-    REPLICA_PID=$( lsof -ti :$REPLICA_PORT)
-    echo "Killing the Replica Server with PID=$REPLICA_PID..."
-    kill -9 $REPLICA_PID
-    sleep 5
-}
-
-crash_primary_server() {
-    PRIMARY_PID=$( lsof -ti :$PRIMARY_PORT)
-    echo "Killing the Primary Server with PID=$PRIMARY_PID"
-    kill -9 $PRIMARY_PID
-    sleep 5
-}
-
 create_keys_and_insert_data() {
     $INSTALL_DIR/bin/psql -d postgres -p $PRIMARY_PORT -c"CREATE DATABASE $DB_NAME;"
     $INSTALL_DIR/bin/psql  -d $DB_NAME -p $PRIMARY_PORT -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
@@ -140,12 +126,12 @@ pid5=$!
 
 for i in $(seq 1 3); do
     sleep 30
-    crash_replica_server
+    crash_pg $REPLICA_DATA $REPLICA_PORT
     sleep 30
     echo "Restarting Replica Server"
     restart_pg $REPLICA_DATA $REPLICA_PORT
     sleep 15
-    crash_primary_server
+    crash_pg $PRIMARY_DATA $PRIMARY_PORT
     sleep 30
     echo "Restarting Primary Server"
     restart_pg $PRIMARY_DATA $PRIMARY_PORT

@@ -137,9 +137,7 @@ crash_server_with_wal_encrypt_flip() {
     value=$([ $(( RANDOM % 2 )) -eq 0 ] && echo "on" || echo "off")
     echo "Altering WAL encryption to use $value..."
     $INSTALL_DIR/bin/psql  -d sbtest -c "ALTER SYSTEM SET pg_tde.wal_encrypt = '$value';"
-    echo "Killing the Server with PID=$PG_PID..."
-    kill -9 $PG_PID
-    sleep 5
+    crash_pg $PGDATA $PORT
 }
 
 # Actual test starts here...

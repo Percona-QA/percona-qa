@@ -52,8 +52,7 @@ done
 sleep 3
 
 echo "=== Step 6: Simulate initial crash ==="
-pkill -9 postgres
-sleep 5
+crash_pg $PGDATA $PORT
 
 for i in {1..4}; do
     echo "=== Recovery iteration $i ==="
@@ -90,8 +89,7 @@ for i in {1..4}; do
     "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_is_encrypted('t1');"
 
     echo "=== Simulate crash after iteration $i ==="
-    pkill -9 postgres
-    sleep 5
+    crash_pg $PGDATA $PORT
 done
 
 echo "=== DONE: Completed 4 recovery iterations across timelines ==="

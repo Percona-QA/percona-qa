@@ -82,13 +82,7 @@ for iter in {1..3}; do
     SYSBENCH_PID=$!
     sleep $DURATION
 
-
-    echo "=> Killing PostgreSQL server after $DURATION seconds"
-    PID=$(lsof -ti :$PORT)
-    kill -9 $PID
-    sleep 5
-
-    rm -f $DATA_DIR/postmaster.pid
+    crash_pg $DATA_DIR $PORT
 
     echo "=> Running pg_tde_resetwal"
     $PG_TDE_RESETWAL -D "$DATA_DIR" -f
