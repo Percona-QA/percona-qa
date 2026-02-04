@@ -3,7 +3,7 @@
 # Arguments passed from wrapper(test_runner.sh)
 export SERVER_BUILD_PATH="$1"
 export TESTNAME="$2"
-export IO_METHOD="${3:-sync}"
+export IO_METHOD="${3:-worker}"
 
 # Build install location
 export INSTALL_DIR="$SERVER_BUILD_PATH"

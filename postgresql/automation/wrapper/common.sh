@@ -81,6 +81,10 @@ enable_pg_tde() {
     echo "Added shared_preload_libraries = 'pg_tde'"
 }
 
+get_pg_major_version() {
+    $INSTALL_DIR/bin/postgres --version | awk '{print $3}' | cut -d. -f1
+}
+
 ###################################
 # Write postgresql.conf
 ###################################
@@ -88,12 +92,12 @@ write_postgresql_conf() {
     local PGDATA=$1
     local PORT=$2
     local ROLE="${3:-primary}"   # primary | replica
+    local PG_MAJOR=$(get_pg_major_version)
 
     cat > "$PGDATA/postgresql.conf" <<EOF
 port = $PORT
 unix_socket_directories = '$RUN_DIR'
 listen_addresses = '*'
-io_method = '$IO_METHOD'
 logging_collector = on
 log_directory = '$PGDATA'
 log_filename = 'server.log'
@@ -101,6 +105,11 @@ log_statement = 'all'
 default_table_access_method = 'tde_heap'
 max_wal_senders = 5
 EOF
+
+    # io_method exists only in PG 18+
+    if [[ "$PG_MAJOR" -ge 18 ]]; then
+        echo "io_method = '$IO_METHOD'" >> "$PGDATA/postgresql.conf"
+    fi
 
     if [[ "$ROLE" == "replica" ]]; then
         cat >> "$PGDATA/postgresql.conf" <<EOF
@@ -139,7 +148,7 @@ old_server_cleanup() {
     local PG_PIDS=$(lsof -ti:5432 -ti :5433 -ti :5434 2>/dev/null) || true
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
-        kill -9 $PG_PIDS
+        kill -9 $PG_PIDS || true
     fi
 
     sleep 5
