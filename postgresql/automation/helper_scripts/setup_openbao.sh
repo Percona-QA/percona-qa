@@ -56,7 +56,7 @@ cd "$RUN_DIR/$NAME"
 echo "[INFO] Building OpenBao..."
 git init -q
 git add . -A >/dev/null 2>&1
-git -c user.name="CI Builder" -c user.email="ci-builder@example.com" commit -q -m "imported source"
+git -c user.name="CI Builder" -c user.email="ci-builder@example.com" commit --allow-empty -q -m "imported source"
 make
 
 # -------------------------------
@@ -111,4 +111,15 @@ echo "========================================"
 #echo "Root Token:            $ROOT_TOKEN"
 #echo "Root Token:            $ROOT_TOKEN"
 echo ""
+}
+
+create_bao_token() {
+  local POLICY_NAME=$1
+  local POLICY_FILE=$2
+  local TOKEN_FILE=$3
+
+  ./bin/bao policy write "$POLICY_NAME" "$POLICY_FILE"
+
+  TOKEN=$(./bin/bao token create -policy="$POLICY_NAME" -no-default-policy -format=json | jq -r .auth.client_token)
+  echo "$TOKEN" > "$TOKEN_FILE"
 }

@@ -1,10 +1,10 @@
 #!/bin/bash
 
-set -euo pipefail
+KEYFILE="$RUN_DIR/keyring.per"
 
 # Cleanup from previous runs
 old_server_cleanup $PGDATA
-rm -rf "$ARCHIVE_DIR" "$BACKUP_DIR" "${PGDATA}_bk" "/tmp/keyring.per"
+rm -rf "$ARCHIVE_DIR" "$BACKUP_DIR" "${PGDATA}_bk" "$KEYFILE"
 mkdir -p "$ARCHIVE_DIR"
 
 initialize_server $PGDATA $PORT
@@ -19,7 +19,7 @@ start_pg $PGDATA $PORT
 
 echo "=== Step 3: Create extension, keys, and table ==="
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "CREATE EXTENSION pg_tde;"
-"$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_provider', '/tmp/keyring.per');"
+"$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_provider', '$KEYFILE');"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key', 'global_provider');"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('database_key', 'global_provider');"
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_key', 'global_provider');"

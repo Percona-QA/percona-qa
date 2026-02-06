@@ -34,3 +34,18 @@ start_vault_server() {
 
     echo ".. Vault server started"
 }
+
+create_token() {
+  local POLICY_NAME=$1
+  local POLICY_FILE=$2
+  local TOKEN_FILE=$3
+
+  export VAULT_ADDR="$vault_url"
+  export VAULT_TOKEN="$token"
+  export VAULT_SKIP_VERIFY=true
+
+  $HELPER_DIR/vault/vault policy write "$POLICY_NAME" "$POLICY_FILE"
+
+  TOKEN=$($HELPER_DIR/vault/vault token create -policy="$POLICY_NAME" -no-default-policy -format=json | jq -r .auth.client_token)
+  echo "$TOKEN" > "$TOKEN_FILE"
+}
