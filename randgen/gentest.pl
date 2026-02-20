@@ -95,7 +95,8 @@ my $opt_result = GetOptions($options,
                             'logfile=s',
                             'logconf=s',
                             'report-tt-logdir=s',
-                            'querytimeout=i');
+                            'querytimeout=i',
+                            'post-gendata-sql=s');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -147,7 +148,9 @@ my $config = GenTest::Properties->new(
               'report-tt-logdir',
               'debug_server',
               'querytimeout',
-              'multi-master'],
+              'multi-master',
+              'post-gendata-sql',
+              'basedir'],
     help => \&help);
 
 help() if !$opt_result || $config->help;
@@ -184,7 +187,7 @@ $0 - Testing via random query generation. Options:
                       first --dsn must be to MySQL or Drizzle
         --debug-server: Use mysqld-debug server
         --gendata   : Execute gendata-old.pl in order to populate tables with simple data (default NO)
-        --gendata=s : Execute gendata.pl in order to populate tables with data 
+        --gendata=s : Execute gendata.pl in order to populate tables with data
                       using the argument as specification file to gendata.pl
         --engine    : Table engine to use when creating tables with gendata (default: no ENGINE for CREATE TABLE)
         --threads   : Number of threads to spawn (default $DEFAULT_THREADS)
@@ -203,10 +206,10 @@ $0 - Testing via random query generation. Options:
         --mask-level: How many levels deep the mask is applied (default 1)
         --rows      : Number of rows to generate for each table in gendata.pl, unless specified in the ZZ file
         --varchar-length: maximum length of strings (deault 1) in gendata.pl
-        --views     : Pass --views to gendata-old.pl or gendata.pl. Optionally specify view type (algorithm) as option value. 
+        --views     : Pass --views to gendata-old.pl or gendata.pl. Optionally specify view type (algorithm) as option value.
                            Different values can be provided to two servers through --views1 | --views2
         --filter    : ......
-        --sqltrace  : Print all generated SQL statements. 
+        --sqltrace  : Print all generated SQL statements.
                       Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
         --no-err-filter:  Do not suppress error messages.  Output all error messages encountered.
         --start-dirty: Do not generate data (use existing database(s))
@@ -230,11 +233,11 @@ EOF
 sub backwardCompatability {
     my ($options) = @_;
     if (defined $options->{dsn}) {
-        croak ("Do not combine --dsn and --dsnX") 
+        croak ("Do not combine --dsn and --dsnX")
             if defined $options->{dsn1} or
             defined $options->{dsn2} or
             defined $options->{dsn3};
-        
+
     } else {
         my @dsns;
         foreach my $i (1..3) {
@@ -245,15 +248,15 @@ sub backwardCompatability {
         }
         $options->{dsn} = \@dsns;
     }
-    
-    # debug server options array is constructed. 
+
+    # debug server options array is constructed.
     if (defined $options->{debug_server}) {
         push (@debug_server,1);
     } else {
         # hack to workaround, Getopt seems to undef not defined values.
         push (@debug_server,undef);
-    }    
-    
+    }
+
     if (grep (/,/,@{$options->{reporters}})) {
         my $newreporters = [];
         map {push(@$newreporters,split(/,/,$_))} @{$options->{reporters}};
@@ -275,7 +278,7 @@ sub backwardCompatability {
     if (not defined $options->{generator}) {
         $options->{generator} = 'FromGrammar';
     }
-    
+
     if (defined $options->{sqltrace}) {
         my $sqltrace = $options->{sqltrace};
         # --sqltrace may have a string value (optional).
@@ -304,9 +307,9 @@ sub backwardCompatability {
     # --views1 and --views2 will only be used for the corresponding server
     #   and have higher priority than --views
 
-    my @views = ( 
-        defined $options->{views1} ? $options->{views1} : $options->{views}, 
-        defined $options->{views2} ? $options->{views2} : $options->{views}  
+    my @views = (
+        defined $options->{views1} ? $options->{views1} : $options->{views},
+        defined $options->{views2} ? $options->{views2} : $options->{views}
     );
     $options->{views} = \@views;
     delete $options->{views1};

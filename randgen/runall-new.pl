@@ -64,7 +64,7 @@ my $database = 'test';
 my @dsns;
 
 my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
-    $engine, $help, $debug, @validators, @reporters, @transformers, 
+    $engine, $help, $debug, @validators, @reporters, @transformers,
     $grammar_file, $skip_recursive_rules,
     @redefine_files, $seed, $mask, $mask_level, $mem, $rows,
     $varchar_len, $xml_output, $valgrind, @valgrind_options, @views,
@@ -72,7 +72,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
     $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
-    $skip_gendata, $skip_shutdown, $galera);
+    $skip_gendata, $skip_shutdown, $galera, $post_gendata_sql);
 
 my $gendata=''; ## default simple gendata
 
@@ -144,7 +144,8 @@ my $opt_result = GetOptions(
         'no-mask' => \$no_mask,
 	'skip_shutdown' => \$skip_shutdown,
 	'skip-shutdown' => \$skip_shutdown,
-	'galera=s' => \$galera
+	'galera=s' => \$galera,
+	'post-gendata-sql=s' => \$post_gendata_sql
     );
 
 if (defined $logfile && defined $logger) {
@@ -176,12 +177,12 @@ if (!$opt_result) {
 }
 
 if (defined $sqltrace) {
-    # --sqltrace may have a string value (optional). 
+    # --sqltrace may have a string value (optional).
     # Allowed values for --sqltrace:
     my %sqltrace_legal_values = (
         'MarkErrors'    => 1  # Prefixes invalid SQL statements for easier post-processing
     );
-    
+
     if (length($sqltrace) > 0) {
         # A value is given, check if it is legal.
         if (not exists $sqltrace_legal_values{$sqltrace}) {
@@ -230,10 +231,10 @@ say("master_port : $ports[0] slave_port : $ports[1] ports : @ports MTR_BUILD_THR
 #
 
 if (
-	($vardirs[1] ne '') && 
+	($vardirs[1] ne '') &&
 	($basedirs[1] eq '')
     ) {
-	$basedirs[1] = $basedirs[0];	
+	$basedirs[1] = $basedirs[0];
 }
 
 
@@ -242,25 +243,25 @@ foreach my $dir (cwd(), @basedirs) {
     if (defined $dir) {
         my $bzrinfo = GenTest::BzrInfo->new(
             dir => $dir
-            ); 
+            );
         my $revno = $bzrinfo->bzrRevno();
         my $revid = $bzrinfo->bzrRevisionId();
-        
+
         if ((defined $revno) && (defined $revid)) {
             say("$dir Revno: $revno");
             say("$dir Revision-Id: $revid");
         } else {
             say($dir.' does not look like a bzr branch, cannot get revision info.');
-        } 
+        }
     }
 }
 
 
 if (
-	($mysqld_options[1] ne '') && 
+	($mysqld_options[1] ne '') &&
 	($basedirs[1] eq '')
     ) {
-	$basedirs[1] = $basedirs[0];	
+	$basedirs[1] = $basedirs[0];
 }
 
 #
@@ -295,9 +296,9 @@ my $rplsrv;
 if ($rpl_mode ne '') {
     my @options;
     push @options, lc("--$engine") if defined $engine && (lc($engine) ne lc('myisam') && lc($engine) ne lc('memory'));
-    
+
     push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
-    
+
     if (defined $mysqld_options[0]) {
         push @options, @{$mysqld_options[0]};
     }
@@ -313,9 +314,9 @@ if ($rpl_mode ne '') {
                                                valgrind_options => \@valgrind_options,
                                                general_log => 1,
                                                start_dirty => $start_dirty);
-    
+
     my $status = $rplsrv->startServer();
-    
+
     if ($status > DBSTATUS_OK) {
         stopServers();
         if (osWindows()) {
@@ -327,7 +328,7 @@ if ($rpl_mode ne '') {
         }
         croak("Could not start replicating server pair");
     }
-    
+
     $dsns[0] = $rplsrv->master->dsn($database);
     $dsns[1] = undef; ## passed to gentest. No dsn for slave!
     $server[0] = $rplsrv->master;
@@ -355,9 +356,9 @@ if ($rpl_mode ne '') {
 		start_dirty => $start_dirty,
 		node_count => length($galera)
 	);
-    
+
 	my $status = $rplsrv->startServer();
-    
+
 	if ($status > DBSTATUS_OK) {
 		stopServers();
 
@@ -381,12 +382,12 @@ if ($rpl_mode ne '') {
     }
     foreach my $server_id (0..1) {
         next if $basedirs[$server_id] eq '';
-        
+
         my @options;
         push @options, lc("--$engine") if defined $engine && (lc($engine) ne lc('myisam') && lc($engine) ne lc('memory'));
-        
+
         push @options, "--sql-mode=no_engine_substitution" if join(' ', @ARGV_saved) !~ m{sql-mode}io;
-        
+
         if (defined $mysqld_options[$server_id]) {
             push @options, @{$mysqld_options[$server_id]};
         }
@@ -399,9 +400,9 @@ if ($rpl_mode ne '') {
                                                            valgrind_options => \@valgrind_options,
                                                            server_options => \@options,
                                                            general_log => 1);
-        
+
         my $status = $server[$server_id]->startServer;
-        
+
         if ($status > DBSTATUS_OK) {
             stopServers();
             if (osWindows()) {
@@ -414,14 +415,14 @@ if ($rpl_mode ne '') {
 
         if (
             ($server_id == 0) ||
-            ($rpl_mode eq '') 
+            ($rpl_mode eq '')
             ) {
             # Create default test database.
             $server[$server_id]->dbh()->do("CREATE DATABASE IF NOT EXISTS $database");
 
             $dsns[$server_id] = $server[$server_id]->dsn($database);
         }
-    
+
         if ((defined $dsns[$server_id]) && (defined $engine)) {
             my $dbh = DBI->connect($dsns[$server_id], undef, undef, { mysql_multi_statements => 1, RaiseError => 1 } );
             $dbh->do("SET GLOBAL storage_engine = '$engine'");
@@ -432,7 +433,7 @@ if ($rpl_mode ne '') {
 
 
 #
-# Wait for user interaction before continuing, allowing the user to attach 
+# Wait for user interaction before continuing, allowing the user to attach
 # a debugger to the server process(es).
 # Will print a message and ask the user to press a key to continue.
 # User is responsible for actually attaching the debugger if so desired.
@@ -497,7 +498,9 @@ my $gentestProps = GenTest::Properties->new(
               'debug_server',
               'report-tt-logdir',
               'servers',
-              'multi-master']
+              'multi-master',
+              'post-gendata-sql',
+              'basedir']
     );
 
 my @gentest_options;
@@ -520,7 +523,7 @@ if ($#transformers == 0 and $transformers[0] =~ m/,/) {
 ## For backward compatibility
 
 # if --views[=<value>] is defined, it will be used for both servers.
-# --views1 and --views2 will only be used for the corresponding server 
+# --views1 and --views2 will only be used for the corresponding server
 #   and have priority over --views
 
 if (defined $views[0]) {
@@ -582,6 +585,8 @@ $gentestProps->property('multi-master', 1) if (defined $galera and scalar(@dsns)
 # Pass debug server if used.
 $gentestProps->debug_server(\@debug_server) if @debug_server;
 $gentestProps->servers(\@server) if @server;
+$gentestProps->property('post-gendata-sql', $post_gendata_sql) if defined $post_gendata_sql;
+$gentestProps->property('basedir', $basedirs[0]) if defined $basedirs[0] && $basedirs[0] ne '';
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -592,7 +597,7 @@ my $gentest_result = $gentest->run();
 say("GenTest exited with exit status ".status2text($gentest_result)." ($gentest_result)");
 
 # If Gentest produced any failure then exit with its failure code,
-# otherwise if the test is replication/with two servers compare the 
+# otherwise if the test is replication/with two servers compare the
 # server dumps for any differences else if there are no failures exit with success.
 if ( $gentest_result != 0 ) {
     exit_test($gentest_result);
@@ -604,24 +609,24 @@ if ( $gentest_result != 0 ) {
         if ($rpl_mode ne '') {
             $rplsrv->waitForSlaveSync;
         }
-        
+
         my @dump_files;
-        
+
         foreach my $i (0..$#server) {
             $dump_files[$i] = tmpdir()."server_".abs($$)."_".$i.".dump";
-            
+
             my $dump_result = $server[$i]->dumpdb($database,$dump_files[$i]);
             exit_test($dump_result >> 8) if $dump_result > 0;
         }
-        
+
         say("Comparing SQL dumps...");
         my $diff_result = system("diff -u $dump_files[0] $dump_files[1]");
         $diff_result = $diff_result >> 8;
-        
+
         if ($diff_result == 0) {
             say("No differences were found between servers.");
         }
-        
+
         foreach my $dump_file (@dump_files) {
             unlink($dump_file);
         }
@@ -650,12 +655,12 @@ sub stopServers {
 
 
 sub help {
-    
+
 	print <<EOF
 Copyright (c) 2010,2011 Oracle and/or its affiliates. All rights reserved. Use is subject to license terms.
 
 $0 - Run a complete random query generation test, including server start with replication and master/slave verification
-    
+
     Options related to one standalone MySQL server:
 
     --basedir   : Specifies the base directory of the stand-alone MySQL installation;
@@ -682,7 +687,7 @@ $0 - Run a complete random query generation test, including server start with re
     --galera    : Galera topology, presented as a string of 'm' or 's' (master or slave).
                   The test flow will be executed on each "master". "Slaves" will only be updated through Galera replication
     --vardir1   : Optional.
-    --vardir2   : Optional. 
+    --vardir2   : Optional.
     --engine    : Table engine to use when creating tables with gendata (default no ENGINE in CREATE TABLE);
     --threads   : Number of threads to spawn (default $default_threads);
     --queries   : Number of queries to execute per thread (default $default_queries);
@@ -690,7 +695,7 @@ $0 - Run a complete random query generation test, including server start with re
     --validator : The validators to use
     --reporter  : The reporters to use
     --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
-    --querytimeout: The timeout to use for the QueryTimeout reporter 
+    --querytimeout: The timeout to use for the QueryTimeout reporter
     --gendata   : Generate data option. Passed to gentest.pl
     --logfile   : Generates rqg output log at the path specified.(Requires the module Log4Perl)
     --seed      : PRNG seed. Passed to gentest.pl
@@ -698,7 +703,7 @@ $0 - Run a complete random query generation test, including server start with re
     --mask-level: Grammar mask level. Passed to gentest.pl
     --notnull   : Generate all fields with NOT NULL
     --rows      : No of rows. Passed to gentest.pl
-    --sqltrace  : Print all generated SQL statements. 
+    --sqltrace  : Print all generated SQL statements.
                   Optional: Specify --sqltrace=MarkErrors to mark invalid statements.
     --varchar-length: length of strings. passed to gentest.pl
     --xml-outputs: Passed to gentest.pl

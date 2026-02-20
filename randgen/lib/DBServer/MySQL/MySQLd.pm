@@ -1,4 +1,4 @@
-# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved. 
+# Copyright (c) 2010, 2012, Oracle and/or its affiliates. All rights reserved.
 # Copyright (c) 2013, Monty Program Ab.
 # Use is subject to license terms.
 #
@@ -71,7 +71,7 @@ use constant MYSQLD_WINDOWS_PROCESS_STILLALIVE => 259;
 
 sub new {
     my $class = shift;
-    
+
     my $self = $class->SUPER::new({'basedir' => MYSQLD_BASEDIR,
                                    'sourcedir' => MYSQLD_SOURCEDIR,
                                    'vardir' => MYSQLD_VARDIR,
@@ -82,29 +82,29 @@ sub new {
                                    'general_log' => MYSQLD_GENERAL_LOG,
                                    'valgrind' => MYSQLD_VALGRIND,
                                    'valgrind_options' => MYSQLD_VALGRIND_OPTIONS},@_);
-    
+
     croak "No valgrind support on windows" if osWindows() and $self->[MYSQLD_VALGRIND];
-    
+
     if (not defined $self->[MYSQLD_VARDIR]) {
         $self->[MYSQLD_VARDIR] = "mysql-test/var";
     }
-    
+
     if (osWindows()) {
         ## Use unix-style path's since that's what Perl expects...
         $self->[MYSQLD_BASEDIR] =~ s/\\/\//g;
         $self->[MYSQLD_VARDIR] =~ s/\\/\//g;
         $self->[MYSQLD_DATADIR] =~ s/\\/\//g;
     }
-    
+
     if (not $self->_absPath($self->vardir)) {
         $self->[MYSQLD_VARDIR] = $self->basedir."/".$self->vardir;
     }
-    
+
     # Default tmpdir for server.
     $self->[MYSQLD_TMPDIR] = $self->vardir."/tmp";
 
     $self->[MYSQLD_DATADIR] = $self->[MYSQLD_VARDIR]."/data";
-    
+
     # Use mysqld-debug server if --debug-server option used.
     if ($self->[MYSQLD_DEBUG_SERVER]) {
         # Catch excpetion, dont exit contine search for other mysqld if debug.
@@ -113,13 +113,13 @@ sub new {
                                                   osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
                                                   osWindows()?"mysqld-debug.exe":"mysqld-debug");
         };
-        # If mysqld-debug server is not found, use mysqld server if built as debug.        
+        # If mysqld-debug server is not found, use mysqld server if built as debug.
         if (!$self->[MYSQLD_MYSQLD]) {
             $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
                                                   osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
-                                                  osWindows()?"mysqld.exe":"mysqld");     
+                                                  osWindows()?"mysqld.exe":"mysqld");
             if ($self->[MYSQLD_MYSQLD] && $self->serverType($self->[MYSQLD_MYSQLD]) !~ /Debug/) {
-                croak "--debug-server needs a mysqld debug server, the server found is $self->[MYSQLD_SERVER_TYPE]"; 
+                croak "--debug-server needs a mysqld debug server, the server found is $self->[MYSQLD_SERVER_TYPE]";
             }
         }
     }else {
@@ -135,7 +135,7 @@ sub new {
                                                   osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
                                                   osWindows()?"mysqld-debug.exe":"mysqld-debug");
         }
-        
+
         $self->serverType($self->[MYSQLD_MYSQLD]);
     }
 
@@ -160,44 +160,48 @@ sub new {
             }
         }
     }
-   
-    ## Use valgrind suppression file available in mysql-test path. 
-    $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
-                                                             osWindows()?["share/mysql-test","mysql-test"]:["share/mysql-test","mysql-test"],
-                                                             "valgrind.supp");
-    
-    foreach my $file ("mysql_system_tables.sql", 
+
+    ## Use valgrind suppression file available in mysql-test path, but only when valgrind is requested.
+    if ($self->[MYSQLD_VALGRIND]) {
+        $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
+                                                                 osWindows()?["share/mysql-test","mysql-test"]:["share/mysql-test","mysql-test"],
+                                                                 "valgrind.supp");
+    } else {
+        $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = undef;
+    }
+
+    foreach my $file ("mysql_system_tables.sql",
                       "mysql_performance_tables.sql",
-                      "mysql_system_tables_data.sql", 
+                      "mysql_system_tables_data.sql",
                       "mysql_test_data_timezone.sql",
                       "fill_help_tables.sql") {
-        my $script = 
+        my $script =
              eval { $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
                           ["scripts","share/mysql","share"], $file) };
         push(@{$self->[MYSQLD_BOOT_SQL]},$script) if $script;
     }
-    
-    $self->[MYSQLD_MESSAGES] = 
-       $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir], 
+
+    $self->[MYSQLD_MESSAGES] =
+       $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
                        ["sql/share","share/mysql","share"], "english/errmsg.sys");
 
     $self->[MYSQLD_CHARSETS] =
-        $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir], 
+        $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
                         ["sql/share/charsets","share/mysql/charsets","share/charsets"], "Index.xml");
-                         
-    
-    #$self->[MYSQLD_LIBMYSQL] = 
-    #   $self->_findDir([$self->basedir], 
-    #                   osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
+
+
+    #$self->[MYSQLD_LIBMYSQL] =
+    #   $self->_findDir([$self->basedir],
+    #                   osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"],
     #                   osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
-    
+
     $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
                                "--datadir=".$self->datadir,
                                $self->_messages,
                                "--character-sets-dir=".$self->[MYSQLD_CHARSETS],
                                "--default-storage-engine=innodb",
                                "--log_error_verbosity=1",
-                               "--tmpdir=".$self->tmpdir];    
+                               "--tmpdir=".$self->tmpdir];
 
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data for MySQL " .$self->version ." at ".$self->datadir);
@@ -231,7 +235,7 @@ sub tmpdir {
 
 sub port {
     my ($self) = @_;
-    
+
     if (defined $self->[MYSQLD_PORT]) {
         return $self->[MYSQLD_PORT];
     } else {
@@ -284,10 +288,10 @@ sub valgrind_suppressionfile {
 sub serverType {
     my ($self, $mysqld) = @_;
     $self->[MYSQLD_SERVER_TYPE] = "Release";
-    
+
     my $command="$mysqld --version";
     my $result=`$command 2>&1`;
-    
+
     $self->[MYSQLD_SERVER_TYPE] = "Debug" if ($result =~ /debug/sig);
     return $self->[MYSQLD_SERVER_TYPE];
 }
@@ -320,14 +324,14 @@ sub createMysqlBase  {
     mkpath($self->vardir);
     mkpath($self->tmpdir);
     mkpath($self->datadir);
-    
+
     my $init_options = [
         "--no-defaults",
         "--initialize-insecure",  # Creates root user without password
         "--datadir=" . $self->datadir,
         "--basedir=" . $self->basedir
     ];
-    
+
     ## 4. Initialize database
     my $exit_code;
     my $initlog;
@@ -375,12 +379,12 @@ sub startServer {
     if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
         $command = $command." ".join(' ',@{$self->[MYSQLD_SERVER_OPTIONS]});
     }
-    # If we don't remove the existing pidfile, 
+    # If we don't remove the existing pidfile,
     # the server will be considered started too early, and further flow can fail
     unlink($self->pidfile);
-    
+
     my $errorlog = $self->vardir."/".MYSQLD_ERRORLOG_FILE;
-    
+
     if (osWindows) {
         my $proc;
         my $exe = $self->binary;
@@ -418,7 +422,11 @@ sub startServer {
             if (defined $self->[MYSQLD_VALGRIND_OPTIONS]) {
                 $val_opt = join(' ',@{$self->[MYSQLD_VALGRIND_OPTIONS]});
             }
-            $command = "valgrind --time-stamp=yes --leak-check=yes --suppressions=".$self->valgrind_suppressionfile." ".$val_opt." ".$command;
+            my $valgrind_cmd = "valgrind --time-stamp=yes --leak-check=yes";
+            if (defined $self->valgrind_suppressionfile && $self->valgrind_suppressionfile ne '') {
+                $valgrind_cmd .= " --suppressions=".$self->valgrind_suppressionfile;
+            }
+            $command = "$valgrind_cmd $val_opt ".$command;
         }
         $self->printInfo;
         say("Starting MySQL ".$self->version.": $command");
@@ -450,13 +458,13 @@ sub startServer {
             exec("$command > \"$errorlog\"  2>&1") || croak("Could not start mysql server");
         }
     }
-    
+
     return $self->dbh ? DBSTATUS_OK : DBSTATUS_FAILURE;
 }
 
 sub kill {
     my ($self) = @_;
-    
+
     if (osWindows()) {
         if (defined $self->[MYSQLD_WINDOWS_PROCESS]) {
             $self->[MYSQLD_WINDOWS_PROCESS]->Kill(0);
@@ -485,7 +493,7 @@ sub kill {
 
 sub term {
     my ($self) = @_;
-    
+
     if (osWindows()) {
         ### Not for windows
         say("Don't know how to do SIGTERM on Windows");
@@ -513,7 +521,7 @@ sub term {
 
 sub crash {
     my ($self) = @_;
-    
+
     if (osWindows()) {
         ## How do i do this?????
         $self->kill; ## Temporary
@@ -527,7 +535,7 @@ sub crash {
     # clean up when the server is not alive.
     unlink $self->socketfile if -e $self->socketfile;
     unlink $self->pidfile if -e $self->pidfile;
- 
+
 }
 
 sub corefile {
@@ -564,7 +572,7 @@ sub binary {
 
 sub stopServer {
     my ($self) = @_;
-    
+
     if (defined $self->[MYSQLD_DBH]) {
         say("Stopping server on port ".$self->port);
         ## Use dbh routine to ensure reconnect in case connection is
@@ -614,7 +622,7 @@ sub running {
 
 sub _find {
     my($self, $bases, $subdir, @names) = @_;
-    
+
     foreach my $base (@$bases) {
         foreach my $s (@$subdir) {
         	foreach my $n (@names) {
@@ -628,7 +636,7 @@ sub _find {
         $paths .= join(",",map {"'".$base."/".$_."'"} @$subdir).",";
     }
     my $names = join(" or ", @names );
-    croak "Cannot find '$names' in $paths"; 
+    croak "Cannot find '$names' in $paths";
 }
 
 sub dsn {
@@ -667,7 +675,7 @@ sub dbh {
 
 sub _findDir {
     my($self, $bases, $subdir, $name) = @_;
-    
+
     foreach my $base (@$bases) {
         foreach my $s (@$subdir) {
             my $path  = $base."/".$s."/".$name;
@@ -683,9 +691,9 @@ sub _findDir {
 
 sub _absPath {
     my ($self, $path) = @_;
-    
+
     if (osWindows()) {
-        return 
+        return
             $path =~ m/^[A-Z]:[\/\\]/i;
     } else {
         return $path =~ m/^\//;
@@ -698,21 +706,21 @@ sub version {
     if (not defined $self->[MYSQLD_VERSION]) {
         my $ver;
         if (osWindows) {
-            my $conf = $self->_find([$self->basedir], 
+            my $conf = $self->_find([$self->basedir],
                                     ['scripts',
                                      'bin',
-                                     'sbin'], 
+                                     'sbin'],
                                     'mysql_config.pl');
             ## This will not work if there is no perl installation,
             ## but without perl, RQG won't work either :-)
             $ver = `perl $conf --version`;
         } else {
-            my $conf = $self->_find([$self->basedir], 
+            my $conf = $self->_find([$self->basedir],
                                     ['scripts',
                                      'bin',
-                                     'sbin'], 
+                                     'sbin'],
                                     'mysql_config');
-            
+
             $ver = `sh "$conf" --version`;
         }
         chop($ver);
@@ -756,10 +764,10 @@ sub _logOptions {
     my ($self) = @_;
 
     if ($self->_olderThan(5,1,29)) {
-        return ["--log=".$self->logfile]; 
+        return ["--log=".$self->logfile];
     } else {
         if ($self->[MYSQLD_GENERAL_LOG]) {
-            return ["--general-log", "--general-log-file=".$self->logfile]; 
+            return ["--general-log", "--general-log-file=".$self->logfile];
         } else {
             return ["--general-log-file=".$self->logfile];
         }
@@ -768,7 +776,7 @@ sub _logOptions {
 
 sub _olderThan {
     my ($self,$b1,$b2,$b3) = @_;
-    
+
     my ($v1, $v2, $v3) = $self->versionNumbers;
 
     my $b = $b1*1000 + $b2 * 100 + $b3;
