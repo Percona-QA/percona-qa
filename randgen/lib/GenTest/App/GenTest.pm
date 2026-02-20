@@ -29,6 +29,7 @@ use File::Basename;
 use File::Path 'mkpath';
 use File::Copy;
 use File::Spec;
+use Cwd;
 
 use GenTest;
 use GenTest::Properties;
@@ -146,6 +147,9 @@ sub run {
 
     my $gendata_result = $self->doGenData();
     return $gendata_result if $gendata_result != STATUS_OK;
+
+    my $post_gendata_result = $self->doPostGendataSQL();
+    return $post_gendata_result if $post_gendata_result != STATUS_OK;
 
     $self->[GT_TEST_START] = time();
     $self->[GT_TEST_END] = $self->[GT_TEST_START] + $self->config->duration;
@@ -498,6 +502,700 @@ sub doGenData {
     }
 
     return STATUS_OK;
+}
+
+sub _extractDSNInfo {
+    my ($self, $dsn) = @_;
+    
+    # Parse DSN format: dbi:mysql:host=127.0.0.1:port=19300:user=root:database=test
+    # Also handle socket connections: dbi:mysql:host=127.0.0.1:port=19300:mysql_socket=/tmp/socket.sock
+    my %info = ();
+    
+    if ($dsn =~ /dbi:mysql:/i) {
+        # Extract host
+        if ($dsn =~ /:host=([^:]+)/i) {
+            $info{host} = $1;
+        }
+        
+        # Extract port
+        if ($dsn =~ /:port=([^:]+)/i) {
+            $info{port} = $1;
+        }
+        
+        # Extract user
+        if ($dsn =~ /:user=([^:]+)/i) {
+            $info{user} = $1;
+        }
+        
+        # Extract database
+        if ($dsn =~ /:database=([^:]+)/i) {
+            $info{database} = $1;
+        }
+        
+        # Extract socket (mysql_socket parameter)
+        if ($dsn =~ /:mysql_socket=([^:]+)/i) {
+            $info{socket} = $1;
+        }
+        
+        # Extract password if present (for completeness, though RQG typically uses root with no password)
+        if ($dsn =~ /:password=([^:]+)/i) {
+            $info{password} = $1;
+        }
+    } else {
+        return undef;  # Not a MySQL DSN
+    }
+    
+    return \%info;
+}
+
+sub _findMySQLClient {
+    my $self = shift;
+    
+    # Try to get basedir from RQG_MYSQL_BASE environment variable first
+    my $basedir;
+    if (defined $ENV{RQG_MYSQL_BASE}) {
+        $basedir = $ENV{RQG_MYSQL_BASE};
+    } else {
+        # Try to get basedir from config if available (wrapper scripts may pass it via config)
+        if (defined $self->config && defined $self->config->property('basedir')) {
+            $basedir = $self->config->property('basedir');
+        }
+    }
+    
+    # If basedir is available, use MySQLd.pm's _find method (same as lines 118-120 and 144-146)
+    if (defined $basedir) {
+        require DBServer::MySQL::MySQLd;
+        
+        # Create a minimal MySQLd object to use its _find method
+        my $mysql_client;
+        eval {
+            my $mysqld = DBServer::MySQL::MySQLd->new(
+                basedir => $basedir,
+                start_dirty => 1  # Skip database initialization
+            );
+            
+            # Use the same _find pattern as MySQLd.pm uses for mysqldump (lines 144-146)
+            my @search_paths = osWindows() 
+                ? ("client/Debug", "client/RelWithDebInfo", "client/Release", "bin")
+                : ("client", "bin");
+            my $mysql_binary = osWindows() ? "mysql.exe" : "mysql";
+            
+            $mysql_client = $mysqld->_find(
+                [$mysqld->basedir],
+                \@search_paths,
+                $mysql_binary
+            );
+        };
+        
+        # If _find croaks or fails, $mysql_client will be undef
+        if ($@) {
+            $mysql_client = undef;
+        }
+        
+        if (defined $mysql_client && -f $mysql_client && -x $mysql_client) {
+            say("DEBUG: Found mysql client: $mysql_client") if rqg_debug();
+            return $mysql_client;
+        }
+    }
+    
+    say("WARNING: Could not find mysql client binary");
+    return undef;
+}
+
+sub doPostGendataSQL {
+    my $self = shift;
+
+    return STATUS_OK if not defined $self->config->property('post-gendata-sql');
+    return STATUS_OK if defined $self->config->property('start-dirty');
+
+    my $sql_file = $self->config->property('post-gendata-sql');
+    
+    # Check if file exists
+    if (not -e $sql_file) {
+        say("ERROR: Post-gendata SQL file not found: $sql_file");
+        return STATUS_ENVIRONMENT_FAILURE;
+    }
+    
+    # Resolve absolute path
+    my $abs_sql_file = File::Spec->rel2abs($sql_file);
+    
+    say("Executing post-gendata SQL from file: $abs_sql_file");
+    
+    # Find MySQL client binary
+    my $mysql_client = $self->_findMySQLClient();
+    if (not defined $mysql_client) {
+        say("ERROR: Could not find mysql client binary");
+        return STATUS_ENVIRONMENT_FAILURE;
+    }
+    
+    my $i = -1;
+    foreach my $dsn (@{$self->config->dsn}) {
+        $i++;
+        next if $dsn eq '';
+        
+        # Extract connection info from DSN
+        my $dsn_info = $self->_extractDSNInfo($dsn);
+        if (not defined $dsn_info) {
+            say("ERROR: Failed to parse DSN: $dsn");
+            return STATUS_ENVIRONMENT_FAILURE;
+        }
+        
+        # Build mysql client command arguments
+        my @mysql_args = (
+            '--user=' . ($dsn_info->{user} || 'root'),
+            '--force',      # Continue on errors
+            '--binary-mode', # Handle binary data
+            '--silent'       # Suppress query results (only show errors/warnings)
+        );
+        
+        # Add password (RQG typically uses root with no password)
+        push @mysql_args, '--password=' . ($dsn_info->{password} || '');
+        
+        # Determine connection method (socket preferred over host/port)
+        my $socket_path;
+        if (defined $dsn_info->{socket} && -S $dsn_info->{socket}) {
+            $socket_path = $dsn_info->{socket};
+        } elsif (defined $dsn_info->{port}) {
+            # Check standard socket locations
+            for my $sock (
+                "/tmp/RQGmysql." . $dsn_info->{port} . ".sock",
+                "/var/run/mysqld/mysqld.sock",
+                "/tmp/mysql.sock"
+            ) {
+                if (-S $sock) {
+                    $socket_path = $sock;
+                    last;
+                }
+            }
+        }
+        
+        if ($socket_path) {
+            push @mysql_args, '--socket=' . $socket_path;
+        } else {
+            push @mysql_args, '--host=' . ($dsn_info->{host} || '127.0.0.1');
+            push @mysql_args, '--port=' . ($dsn_info->{port} || '3306');
+        }
+        
+        # Add database if specified (optional - can be set in SQL file with USE)
+        push @mysql_args, '--database=' . $dsn_info->{database} if defined $dsn_info->{database};
+        
+        # Get basedir (build directory) - needed for out-of-source builds
+        # Components need to be found relative to the build directory
+        my $basedir;
+        if (defined $ENV{RQG_MYSQL_BASE}) {
+            $basedir = $ENV{RQG_MYSQL_BASE};
+        } elsif (defined $self->config && defined $self->config->property('basedir')) {
+            $basedir = $self->config->property('basedir');
+        }
+        
+        # Add --plugin-dir to mysql client if basedir is available and plugin directory exists
+        # This helps with component installation in out-of-source builds
+        if (defined $basedir && -d $basedir) {
+            my $plugin_dir = File::Spec->catdir($basedir, "lib", "plugin");
+            $plugin_dir = File::Spec->rel2abs($plugin_dir);
+            if (-d $plugin_dir) {
+                push @mysql_args, '--plugin-dir=' . $plugin_dir;
+                say("DEBUG: Added --plugin-dir=$plugin_dir to mysql client command") if rqg_debug();
+            }
+        }
+        
+        # Get SQL file directory for SOURCE command path resolution
+        my $sql_file_dir = dirname($abs_sql_file);
+        
+        # Build command array
+        my @mysql_cmd_array = ($mysql_client, @mysql_args);
+        
+        # Change to SQL file's directory so SOURCE commands with relative paths work correctly
+        my $original_dir = Cwd::getcwd();
+        chdir($sql_file_dir) or do {
+            say("WARNING: Could not change to directory '$sql_file_dir', continuing anyway");
+        };
+        
+        # Pre-process SQL file to handle SOURCE commands
+        # Parse SOURCE commands and inline the content to avoid mysql readline buffer limits
+        my $processed_sql_content = $self->_processSQLFileWithSources($abs_sql_file, {});
+        if (not defined $processed_sql_content) {
+            say("ERROR: Failed to process SQL file with SOURCE commands");
+            chdir($original_dir) if defined $original_dir;
+            return STATUS_ENVIRONMENT_FAILURE;
+        }
+        
+        # Write processed SQL to a temporary file
+        my $temp_sql_file = File::Spec->catfile($sql_file_dir, ".rqg_post_gendata_$$.sql");
+        open(my $temp_fh, '>', $temp_sql_file) or do {
+            say("ERROR: Unable to create temporary SQL file '$temp_sql_file': $!");
+            chdir($original_dir) if defined $original_dir;
+            return STATUS_ENVIRONMENT_FAILURE;
+        };
+        print $temp_fh $processed_sql_content;
+        close($temp_fh);
+        
+        # Handle sqltrace if enabled - cache SQL splitting results to avoid redundant operations
+        my $sqltrace_enabled = $self->config->sqltrace;
+        my @statements = ();
+        my @sql_lines = ();
+        my %delimiter_lines = ();
+        
+        if ($sqltrace_enabled) {
+            # Split SQL into statements once and cache the result
+            @statements = $self->_splitSQLStatementsSimple($processed_sql_content);
+            # Cache split lines for processed SQL content
+            @sql_lines = split(/\n/, $processed_sql_content);
+            
+            # Pre-filter statements once to avoid repeated regex checks
+            @statements = grep { $_ !~ /^\s*$/ && $_ !~ /^\s*DELIMITER\s+/i } @statements;
+            
+            # Build delimiter lines hash for O(1) lookup
+            my $line_num = 1;
+            foreach my $line (@sql_lines) {
+                my $line_trimmed = $line;
+                $line_trimmed =~ s/^\s+|\s+$//g;
+                if ($line_trimmed =~ /^DELIMITER\s+/i) {
+                    $delimiter_lines{$line_num} = 1;
+                }
+                $line_num++;
+            }
+        }
+        
+        # Handle sqltrace if enabled (non-MarkErrors mode logs before execution)
+        if ($sqltrace_enabled && $sqltrace_enabled ne 'MarkErrors') {
+            # Use cached @statements instead of re-splitting
+            foreach my $statement (@statements) {
+                
+                # Clean up statement - remove any trailing delimiters (|, ;, etc.)
+                $statement =~ s/[|;]\s*$//;
+                
+                # Format query for sqltrace (exactly like executor does)
+                my $trace_query;
+                if ($statement =~ m{(procedure|function)}sgio) {
+                    my $stmt_clean = $statement;
+                    $stmt_clean =~ s/\$\$;/\$\$|/g;
+                    $trace_query = "DELIMITER |\n$stmt_clean|\nDELIMITER ";
+                } else {
+                    $trace_query = $statement;
+                }
+                
+                print "$trace_query;\n";
+            }
+        }
+        
+        # Execute mysql client with file input redirection
+        # Use simple shell redirection: mysql [args] < file.sql 2>&1
+        # The --silent flag suppresses query results, so we only get errors/warnings
+        
+        # Build command with proper quoting to avoid shell injection
+        my $cmd_str = join(' ', map { 
+            my $arg = $_;
+            # Quote arguments containing spaces or special shell characters
+            ($arg =~ /[^\w=\-\/\.]/) ? do {
+                $arg =~ s/'/'"'"'/g;  # Escape single quotes for shell
+                "'$arg'";
+            } : $arg;
+        } @mysql_cmd_array);
+        
+        # Add file redirection: < temp_file 2>&1 to capture stderr
+        $cmd_str .= " < " . quotemeta($temp_sql_file) . " 2>&1";
+        
+        # Execute command and capture output (stderr redirected to stdout)
+        my $output = `$cmd_str`;
+        my $exit_code = $? >> 8;
+        
+        # Parse output for errors and handle sqltrace MarkErrors mode
+        if ($sqltrace_enabled && $sqltrace_enabled eq 'MarkErrors') {
+            # Parse mysql output for errors - collect error messages with line numbers
+            my @error_lines = split(/\n/, $output);
+            my @errors = ();
+            foreach my $line (@error_lines) {
+                if ($line =~ /^ERROR\s+(\d+)\s+\([^)]+\)\s+at\s+line\s+(\d+):/i) {
+                    push @errors, { errno => $1, line => $2 };
+                }
+            }
+            
+            # Use cached @statements and @sql_lines instead of recomputing
+            my %line_to_stmt = ();  # Maps line number (1-based) to statement index
+            
+            # For each statement, find its position in the SQL content
+            # and map all lines in that range to the statement index
+            # Use cached @statements (already filtered)
+            my $stmt_idx = 0;
+            my $search_pos = 0;
+            foreach my $statement (@statements) {
+                # Get first significant line of statement for matching
+                my @stmt_lines = split(/\n/, $statement);
+                my $first_line = $stmt_lines[0];
+                $first_line =~ s/^\s+|\s+$//g;
+                next if $first_line eq '';
+                
+                # Find this line in the SQL content (starting from where we left off)
+                my $found_pos = index($processed_sql_content, $first_line, $search_pos);
+                if ($found_pos != -1) {
+                    # Calculate line number
+                    my $before_match = substr($processed_sql_content, 0, $found_pos);
+                    my $stmt_start_line = ($before_match =~ tr/\n/\n/) + 1;
+                    
+                    # Count lines in this statement (approximate)
+                    my $stmt_line_count = @stmt_lines;
+                    # Add some buffer for multi-line statements and delimiter lines
+                    my $stmt_end_line = $stmt_start_line + $stmt_line_count + 5;
+                    
+                    # Map all lines in this range to this statement index
+                    # But skip DELIMITER lines using O(1) hash lookup
+                    for (my $l = $stmt_start_line; $l <= $stmt_end_line && $l <= @sql_lines; $l++) {
+                        # Skip if this is a DELIMITER line (O(1) lookup instead of O(n) search)
+                        if (!exists $delimiter_lines{$l}) {
+                            $line_to_stmt{$l} = $stmt_idx;
+                        }
+                    }
+                    
+                    $search_pos = $found_pos + length($first_line);
+                }
+                $stmt_idx++;
+            }
+            
+            # Build error_statements map: statement index -> error number
+            # Be conservative: only mark if error line maps to a statement
+            my %error_statements = ();
+            foreach my $error (@errors) {
+                my $error_line = $error->{line};
+                if (exists $line_to_stmt{$error_line}) {
+                    my $err_stmt_idx = $line_to_stmt{$error_line};
+                    # Only mark if not already marked (keep first error)
+                    if (not exists $error_statements{$err_stmt_idx}) {
+                        $error_statements{$err_stmt_idx} = $error->{errno};
+                    }
+                }
+            }
+            
+            # Track statistics for debug output
+            my $total_statements = @statements;
+            my $failed_statements = 0;
+            
+            # Log all statements with error marking (statements are already pre-filtered)
+            my $stmt_idx = 0;
+            foreach my $statement (@statements) {
+                $failed_statements++ if exists $error_statements{$stmt_idx};
+                
+                # Clean up statement - remove any trailing delimiters (|, ;, etc.)
+                $statement =~ s/[|;]\s*$//;
+                
+                # Format query for sqltrace
+                my $trace_query;
+                if ($statement =~ m{(procedure|function)}sgio) {
+                    # Convert $$; to $$| for DELIMITER format (in case there are any)
+                    my $stmt_clean = $statement;
+                    $stmt_clean =~ s/\$\$;/\$\$|/g;
+                    $trace_query = "DELIMITER |\n$stmt_clean|\nDELIMITER ";
+                } else {
+                    $trace_query = $statement;
+                }
+                
+                # Log with error prefix if this statement has an error
+                if (exists $error_statements{$stmt_idx}) {
+                    $trace_query =~ s/\n/\n# [sqltrace]    /g;
+                    print '# [sqltrace] ERROR '.$error_statements{$stmt_idx}.": $trace_query;\n";
+                } else {
+                    print "$trace_query;\n";
+                }
+                $stmt_idx++;
+            }
+            
+            # Print execution statistics if debug is enabled
+            if (rqg_debug() && $total_statements > 0) {
+                my $success_statements = $total_statements - $failed_statements;
+                say("DEBUG: Post-gendata SQL execution: $total_statements statements executed, $success_statements succeeded, $failed_statements failed");
+            }
+        } elsif (rqg_debug() && $output) {
+            # Print output only if debug is enabled (and not in MarkErrors mode)
+            # With --silent flag, mysql only outputs errors/warnings, so print all output
+            print $output;
+            
+            # Count statements and errors for statistics (non-MarkErrors mode)
+            if ($sqltrace_enabled && $sqltrace_enabled ne 'MarkErrors') {
+                # Use cached @statements (already filtered)
+                my $total_statements = @statements;
+                my @error_lines = grep { /^ERROR\s+\d+/i } split(/\n/, $output);
+                my $failed_statements = @error_lines;
+                my $success_statements = $total_statements - $failed_statements;
+                say("DEBUG: Post-gendata SQL execution: $total_statements statements executed, $success_statements succeeded, $failed_statements failed");
+            }
+        }
+        
+        # Clean up temporary file
+        unlink($temp_sql_file) if -e $temp_sql_file;
+        
+        # Restore original directory
+        chdir($original_dir) if defined $original_dir;
+        
+        if ($exit_code != 0) {
+            # MySQL client returns non-zero on errors, but --force allows continuation
+            # Check if it's a connection error (exit code 1) vs SQL errors (exit code 1 but different)
+            # For now, just log a warning and continue
+            say("WARNING: MySQL client exited with code $exit_code for DSN: $dsn");
+            # Don't fail the entire operation - --force flag allows continuation on SQL errors
+            # Only fail on connection errors (which we can't easily distinguish)
+        }
+        
+        # For multi-master setup, e.g. Galera, we only need to execute once
+        return STATUS_OK if $self->config->property('multi-master');
+    }
+
+    return STATUS_OK;
+}
+
+sub _processSQLFileWithSources {
+    my ($self, $sql_file, $visited) = @_;
+    
+    # Initialize visited files hash to prevent circular includes
+    $visited = {} if not defined $visited;
+    
+    # Check if file exists
+    if (not -e $sql_file) {
+        say("ERROR: SQL file not found: $sql_file");
+        return undef;
+    }
+    
+    # Resolve absolute path
+    my $abs_file = File::Spec->rel2abs($sql_file);
+    
+    # Check for circular includes
+    if (exists $visited->{$abs_file}) {
+        say("WARNING: Circular include detected for file: $abs_file, skipping");
+        return '';
+    }
+    $visited->{$abs_file} = 1;
+    
+    # Read the file
+    open(my $fh, '<', $abs_file) or do {
+        say("ERROR: Unable to open SQL file '$abs_file': $!");
+        return undef;
+    };
+    
+    my @lines = <$fh>;
+    close($fh);
+    
+    my $file_dir = dirname($abs_file);
+    my @processed_lines;
+    
+    # Process each line, looking for SOURCE commands
+    for (my $i = 0; $i < @lines; $i++) {
+        my $line = $lines[$i];
+        
+        # Check for SOURCE command (case-insensitive, with optional semicolon)
+        # Matches: SOURCE /path/to/file.sql; or SOURCE /path/to/file.sql
+        # Also handles: \. /path/to/file.sql (alternative syntax)
+        # Supports quoted paths: SOURCE '/path with spaces/file.sql'
+        if ($line =~ /^\s*(?:SOURCE|source|\\.)\s+(['"]?)([^'";\n]+)\1\s*;?\s*$/i) {
+            my $source_file = $2;
+            $source_file =~ s/^\s+|\s+$//g;  # Trim whitespace
+            
+            # Resolve relative paths relative to current file's directory
+            if (not File::Spec->file_name_is_absolute($source_file)) {
+                $source_file = File::Spec->catfile($file_dir, $source_file);
+            }
+            $source_file = File::Spec->rel2abs($source_file);
+            
+            # Recursively process the SOURCE file
+            my $source_content = $self->_processSQLFileWithSources($source_file, $visited);
+            if (not defined $source_content) {
+                say("ERROR: Failed to process SOURCE file: $source_file");
+                return undef;
+            }
+            
+            # Replace SOURCE line with the content of the sourced file
+            # Add a newline before and after to maintain proper line structure
+            push @processed_lines, $source_content;
+            push @processed_lines, "\n" if $source_content ne '' && $source_content !~ /\n$/;
+        } else {
+            # Regular line, keep as-is
+            push @processed_lines, $line;
+        }
+    }
+    
+    return join('', @processed_lines);
+}
+
+sub _splitSQLStatementsSimple {
+    my ($self, $sql_content) = @_;
+    
+    # SQL statement splitting for sqltrace logging
+    # Handles DELIMITER blocks, strings, and dollar-quoted blocks
+    my @statements = ();
+    my $current_statement = '';
+    my $in_single_quote = 0;
+    my $in_double_quote = 0;
+    my $in_dollar_quote = 0;
+    my $dollar_tag = '';
+    my $current_delimiter = ';';
+    my $prev_char = '';
+    my @lines = split(/\n/, $sql_content);
+    
+    for (my $line_idx = 0; $line_idx < @lines; $line_idx++) {
+        my $line = $lines[$line_idx];
+        my $line_len = length($line);
+        
+        # Check for DELIMITER command at start of line
+        if ($line =~ /^\s*DELIMITER\s+(\S+)\s*$/i || $line =~ /^\s*DELIMITER\s*$/i) {
+            # Save current statement if any
+            if ($current_statement =~ /\S/) {
+                my $stmt = $current_statement;
+                $stmt =~ s/^\s+|\s+$//g;
+                if ($stmt ne '') {
+                    push @statements, $stmt;
+                }
+                $current_statement = '';
+            }
+            
+            # Update delimiter
+            my $new_delimiter = $1 || ';';
+            $current_delimiter = $new_delimiter;
+            $in_single_quote = 0;
+            $in_double_quote = 0;
+            $in_dollar_quote = 0;
+            $dollar_tag = '';
+            $prev_char = '';
+            next;  # Skip DELIMITER line
+        }
+        
+        # Process line character by character
+        for (my $i = 0; $i < $line_len; $i++) {
+            my $char = substr($line, $i, 1);
+            
+            # Handle dollar-quoted strings ($$ ... $$)
+            if (!$in_single_quote && !$in_double_quote && !$in_dollar_quote && $char eq '$') {
+                # Look for matching $ to form tag
+                my $next_dollar = index($line, '$', $i + 1);
+                if ($next_dollar != -1) {
+                    $dollar_tag = substr($line, $i, $next_dollar - $i + 1);
+                    $in_dollar_quote = 1;
+                    $current_statement .= $dollar_tag;
+                    $i = $next_dollar;
+                    $prev_char = '$';
+                    next;
+                }
+            }
+            
+            if ($in_dollar_quote) {
+                # Check if we hit the closing dollar tag
+                if ($char eq '$' && $i + length($dollar_tag) - 1 < $line_len) {
+                    my $possible_end = substr($line, $i, length($dollar_tag));
+                    if ($possible_end eq $dollar_tag) {
+                        $current_statement .= $dollar_tag;
+                        $i += length($dollar_tag) - 1;
+                        $in_dollar_quote = 0;
+                        $dollar_tag = '';
+                        $prev_char = '$';
+                        next;
+                    }
+                }
+                $current_statement .= $char;
+                $prev_char = $char;
+                next;
+            }
+            
+            # Handle single quotes
+            if (!$in_double_quote && $char eq "'") {
+                # Check for escaped quote
+                if ($prev_char eq '\\') {
+                    my $backslash_count = 0;
+                    my $check_pos = $i - 1;
+                    while ($check_pos >= 0 && substr($line, $check_pos, 1) eq '\\') {
+                        $backslash_count++;
+                        $check_pos--;
+                    }
+                    if ($backslash_count % 2 == 1) {
+                        $current_statement .= $char;
+                        $prev_char = $char;
+                        next;
+                    }
+                }
+                $in_single_quote = !$in_single_quote;
+                $current_statement .= $char;
+                $prev_char = $char;
+                next;
+            }
+            
+            # Handle double quotes
+            if (!$in_single_quote && $char eq '"') {
+                # Check for escaped quote
+                if ($prev_char eq '\\') {
+                    my $backslash_count = 0;
+                    my $check_pos = $i - 1;
+                    while ($check_pos >= 0 && substr($line, $check_pos, 1) eq '\\') {
+                        $backslash_count++;
+                        $check_pos--;
+                    }
+                    if ($backslash_count % 2 == 1) {
+                        $current_statement .= $char;
+                        $prev_char = $char;
+                        next;
+                    }
+                }
+                $in_double_quote = !$in_double_quote;
+                $current_statement .= $char;
+                $prev_char = $char;
+                next;
+            }
+            
+            # Check for statement terminator (current delimiter)
+            # Also check if the entire line is just the delimiter (common pattern)
+            if ($current_delimiter ne ';' && $line =~ /^\s*\Q$current_delimiter\E\s*$/) {
+                # Entire line is just the delimiter - end current statement
+                my $stmt = $current_statement;
+                $stmt =~ s/^\s+|\s+$//g;
+                if ($stmt ne '') {
+                    push @statements, $stmt;
+                }
+                $current_statement = '';
+                $prev_char = '';
+                next;  # Skip this line (it's just the delimiter)
+            }
+            
+            my $delimiter_len = length($current_delimiter);
+            if ($i + $delimiter_len <= $line_len) {
+                my $possible_delimiter = substr($line, $i, $delimiter_len);
+                if ($possible_delimiter eq $current_delimiter && 
+                    !$in_single_quote && !$in_double_quote && !$in_dollar_quote) {
+                    # Found delimiter - check if it's at end of line or followed by whitespace
+                    my $after_delim = substr($line, $i + $delimiter_len);
+                    if ($after_delim =~ /^\s*$/) {
+                        # Don't include the delimiter in the statement - it will be added back in sqltrace formatting
+                        my $stmt = $current_statement;
+                        $stmt =~ s/^\s+|\s+$//g;
+                        if ($stmt ne '') {
+                            push @statements, $stmt;
+                        }
+                        $current_statement = '';
+                        $prev_char = '';
+                        $i += $delimiter_len - 1;  # Skip past delimiter
+                        next;
+                    }
+                }
+            }
+            
+            $current_statement .= $char;
+            $prev_char = $char;
+        }
+        
+        # Add newline if not at end of file
+        if ($line_idx < @lines - 1) {
+            $current_statement .= "\n";
+        }
+    }
+    
+    # Add remaining statement (but filter out DELIMITER commands)
+    if ($current_statement =~ /\S/) {
+        my $stmt = $current_statement;
+        $stmt =~ s/^\s+|\s+$//g;
+        # Don't add DELIMITER commands as statements
+        if ($stmt ne '' && $stmt !~ /^\s*DELIMITER\s+/i) {
+            push @statements, $stmt;
+        }
+    }
+    
+    # Final filter: remove any DELIMITER commands that might have slipped through
+    @statements = grep { $_ !~ /^\s*DELIMITER\s+/i } @statements;
+    
+    return @statements;
 }
 
 sub initSeed {
