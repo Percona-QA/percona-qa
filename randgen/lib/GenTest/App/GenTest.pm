@@ -508,38 +508,15 @@ sub _extractDSNInfo {
     my ($self, $dsn) = @_;
     
     # Parse DSN format: dbi:mysql:host=127.0.0.1:port=19300:user=root:database=test
-    # Also handle socket connections: dbi:mysql:host=127.0.0.1:port=19300:mysql_socket=/tmp/socket.sock
+    # Values may contain colons (e.g. IPv6 host=::1, password=foo:bar). Capture each value
+    # as everything until the next :key= or end of string so we don't break on colons.
     my %info = ();
     
-    if ($dsn =~ /dbi:mysql:/i) {
-        # Extract host
-        if ($dsn =~ /:host=([^:]+)/i) {
-            $info{host} = $1;
-        }
-        
-        # Extract port
-        if ($dsn =~ /:port=([^:]+)/i) {
-            $info{port} = $1;
-        }
-        
-        # Extract user
-        if ($dsn =~ /:user=([^:]+)/i) {
-            $info{user} = $1;
-        }
-        
-        # Extract database
-        if ($dsn =~ /:database=([^:]+)/i) {
-            $info{database} = $1;
-        }
-        
-        # Extract socket (mysql_socket parameter)
-        if ($dsn =~ /:mysql_socket=([^:]+)/i) {
-            $info{socket} = $1;
-        }
-        
-        # Extract password if present (for completeness, though RQG typically uses root with no password)
-        if ($dsn =~ /:password=([^:]+)/i) {
-            $info{password} = $1;
+    if ($dsn =~ /dbi:mysql:(.+)/is) {
+        my $params = $1;
+        my $key_re = qr/(?:host|port|user|database|password)/i;
+        while ($params =~ /(?:^|:)($key_re)=(.*?)(?=:$key_re=|$)/gs) {
+            $info{lc($1)} = $2;
         }
     } else {
         return undef;  # Not a MySQL DSN
@@ -648,33 +625,12 @@ sub doPostGendataSQL {
             '--silent'       # Suppress query results (only show errors/warnings)
         );
         
-        # Add password (RQG typically uses root with no password)
-        push @mysql_args, '--password=' . ($dsn_info->{password} || '');
+        # Add password only when DSN specifies one (not required; RQG typically uses root with no password)
+        push @mysql_args, '--password=' . $dsn_info->{password} if defined $dsn_info->{password};
         
-        # Determine connection method (socket preferred over host/port)
-        my $socket_path;
-        if (defined $dsn_info->{socket} && -S $dsn_info->{socket}) {
-            $socket_path = $dsn_info->{socket};
-        } elsif (defined $dsn_info->{port}) {
-            # Check standard socket locations
-            for my $sock (
-                "/tmp/RQGmysql." . $dsn_info->{port} . ".sock",
-                "/var/run/mysqld/mysqld.sock",
-                "/tmp/mysql.sock"
-            ) {
-                if (-S $sock) {
-                    $socket_path = $sock;
-                    last;
-                }
-            }
-        }
-        
-        if ($socket_path) {
-            push @mysql_args, '--socket=' . $socket_path;
-        } else {
-            push @mysql_args, '--host=' . ($dsn_info->{host} || '127.0.0.1');
-            push @mysql_args, '--port=' . ($dsn_info->{port} || '3306');
-        }
+        # Connect via TCP (host/port) only
+        push @mysql_args, '--host=' . ($dsn_info->{host} || '127.0.0.1');
+        push @mysql_args, '--port=' . ($dsn_info->{port} || '3306');
         
         # Add database if specified (optional - can be set in SQL file with USE)
         push @mysql_args, '--database=' . $dsn_info->{database} if defined $dsn_info->{database};
