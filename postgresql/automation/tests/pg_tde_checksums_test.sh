@@ -3,18 +3,17 @@
 # Configuration
 TEST_DIR="$RUN_DIR/pg_checksum_test"
 PGDATA="$TEST_DIR/data"
-LOGFILE="$TEST_DIR/test.log"
 PORT=55532 # Port for the server
 KEYFILE="$TEST_DIR/checksum_test_keyring.file"
+IO_METHOD="${IO_METHOD:-worker}"
 
 
 # Cleanup previous runs
-rm -rf "$TEST_DIR"
+rm -rf "$TEST_DIR"  || true
 mkdir -p "$TEST_DIR"
 
 echo "1. Initializing cluster with checksums enabled..."
-$INSTALL_DIR/bin/initdb -k -D "$PGDATA" --set shared_preload_libraries=pg_tde > /dev/null 2>&1
-
+$INSTALL_DIR/bin/initdb -k -D "$PGDATA" --set shared_preload_libraries=pg_tde --set io_method=$IO_METHOD > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "Error: initdb failed."
     exit 1
@@ -43,23 +42,23 @@ echo "4. Starting the server"
 start_pg $PGDATA $PORT
 
 echo "5. Enable and update the pg_tde extension"
-psql -d postgres -p $PORT -c "CREATE EXTENSION pg_tde;"
-psql -d postgres -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_keyring','$KEYFILE');"
-psql -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
-psql -d postgres -p $PORT -c "SELECT pg_tde_set_default_key_using_global_key_provider('wal_key','global_keyring');"
-psql -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt='ON';"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "CREATE EXTENSION pg_tde;"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "SELECT pg_tde_add_global_key_provider_file('global_keyring','$KEYFILE');"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "SELECT pg_tde_create_key_using_global_key_provider('wal_key','global_keyring');"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "SELECT pg_tde_set_default_key_using_global_key_provider('wal_key','global_keyring');"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "ALTER SYSTEM SET pg_tde.wal_encrypt='ON';"
 restart_pg $PGDATA $PORT
 
 echo "6. Create test tables (encrypted and unencrypted)"
-psql -d postgres -p $PORT -c "CREATE TABLE test(id INT, val TEXT) USING tde_heap;"
-psql -d postgres -p $PORT -c "INSERT INTO test VALUES (1, 'before corruption');"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "CREATE TABLE test(id INT, val TEXT) USING tde_heap;"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "INSERT INTO test VALUES (1, 'before corruption');"
 echo "6.1 Create unencrypted table test1"
-psql -d postgres -p $PORT -c "CREATE TABLE test1(id INT, val TEXT)USING heap;"
-psql -d postgres -p $PORT -c "INSERT INTO test1 VALUES (1, 'before corruption');"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "CREATE TABLE test1(id INT, val TEXT)USING heap;"
+ $INSTALL_DIR/bin/psql -d postgres -p $PORT -c "INSERT INTO test1 VALUES (1, 'before corruption');"
 
 # Get database OID and table relfilenode for corruption test (while server is up)
-DB_OID=$(psql -d postgres -p $PORT -t -A -c "SELECT oid FROM pg_database WHERE datname = 'postgres';")
-ENCRYPTED_RELFILENODE=$(psql -d postgres -p $PORT -t -A -c "SELECT relfilenode FROM pg_class WHERE relname = 'test';")
+DB_OID=$($INSTALL_DIR/bin/psql -d postgres -p $PORT -t -A -c "SELECT oid FROM pg_database WHERE datname = 'postgres';")
+ENCRYPTED_RELFILENODE=$($INSTALL_DIR/bin/psql -d postgres -p $PORT -t -A -c "SELECT relfilenode FROM pg_class WHERE relname = 'test';")
 UNENCRYPTED_RELFILENODE=$(psql -d postgres -p $PORT -t -A -c "SELECT relfilenode FROM pg_class WHERE relname = 'test1';")
 ENCRYPTED_DATA_FILE="$PGDATA/base/$DB_OID/$ENCRYPTED_RELFILENODE"
 UNENCRYPTED_DATA_FILE="$PGDATA/base/$DB_OID/$UNENCRYPTED_RELFILENODE"
