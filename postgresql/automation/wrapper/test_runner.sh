@@ -168,6 +168,21 @@ for testscript in "${TESTS[@]}"; do
     else
         echo "❌ FAIL: $testname"
         echo "   Log: $LOGFILE"
+	
+	echo "Saving failed test artifacts..."
+	FAIL_SAVE_DIR="$FAILED_DIR/${testname%.sh}_$(date +%Y%m%d_%H%M%S)"
+	mkdir -p "$FAIL_SAVE_DIR"
+	
+        # Copy PGDATA(s) if exist
+        [[ -d "$PGDATA" ]] && cp -r "$PGDATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
+        [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
+        [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
+        [[ -d "$ARCHIVE_DIR" ]] && cp -r "$ARCHIVE_DIR" "$FAIL_SAVE_DIR/" 2>/dev/null || true
+
+        # Copy test log
+        cp "$LOGFILE" "$FAIL_SAVE_DIR/"
+
+        echo "Artifacts saved at: $FAIL_SAVE_DIR"
     fi
 done
 

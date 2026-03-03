@@ -9,7 +9,7 @@ export IO_METHOD="${3:-worker}"
 export INSTALL_DIR="$SERVER_BUILD_PATH"
 
 # Global variables
-export RUN_DIR=/tmp/pgtest
+export RUN_DIR="/tmp/pgtest"
 export PGDATA="$RUN_DIR/data"
 export PRIMARY_DATA=$RUN_DIR/primary_data
 export REPLICA_DATA=$RUN_DIR/replica_data
@@ -31,3 +31,4 @@ export REPLICA_PORT=5434
 export LOG_DIR="$RUN_DIR/test_logs"
 export ARCHIVE_DIR="$RUN_DIR/wal_archive"
 export BACKUP_DIR="$RUN_DIR/base_backup"
+export FAILED_DIR="$RUN_DIR/failed_tests"
