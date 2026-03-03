@@ -4,11 +4,11 @@
 # Start PostgreSQL
 ###################################
 start_pg() {
-    local PGDATA=$1
-    local PORT=$2
+    local PGDATA=${1:-$PGDATA}
+    local PORT="${2:-$PGPORT}"
     echo "Starting PostgreSQL..."
 
-    "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" -w start
+    "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" -w start -o "-p $PORT"
 
     if ! "$INSTALL_DIR/bin/pg_isready" -p "$PORT" -t 5 > /dev/null; then
         echo "❌ PostgreSQL failed to start"
@@ -32,11 +32,11 @@ stop_pg() {
 # Restart PostgreSQL
 ###################################
 restart_pg() {
-    local PGDATA=$1
-    local PORT=$2
+    local PGDATA=${1:-$PGDATA}
+    local PORT="${2:-$PGPORT}"
     echo "Restarting PostgreSQL..."
 
-    "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" restart
+    "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" restart -o "-p $PORT"
 
     if ! "$INSTALL_DIR/bin/pg_isready" -p "$PORT" -t 60 > /dev/null; then
         echo "❌ PostgreSQL restart failed"
@@ -48,7 +48,7 @@ restart_pg() {
 
 crash_pg() {
     local PGDATA=$1
-    local PORT=$2
+    local PORT="${2:-$PGPORT}"
     local TIMEOUT=60
     local PID=$(head -1 "$PGDATA/postmaster.pid")
     kill -9 "$PID"
@@ -73,7 +73,7 @@ crash_pg() {
 # Enable pg_tde Extension
 ###################################
 enable_pg_tde() {
-    local PGDATA=$1
+    local PGDATA=${1:-$PGDATA}
     echo "=== Enabling pg_tde extension ==="
 
     # 1. Add pg_tde to shared_preload_libraries
@@ -89,8 +89,8 @@ get_pg_major_version() {
 # Write postgresql.conf
 ###################################
 write_postgresql_conf() {
-    local PGDATA=$1
-    local PORT=$2
+    local PGDATA=${1:-$PGDATA}
+    local PORT=${2:-$PGPORT}
     local ROLE="${3:-primary}"   # primary | replica
     local PG_MAJOR=$(get_pg_major_version)
 
@@ -128,8 +128,8 @@ EOF
 # Initialize a fresh cluster
 ###################################
 initialize_server() {
-    local PGDATA=$1
-    local PORT=$2
+    local PGDATA=${1:-$PGDATA}
+    local PORT=${2:-$PGPORT}
     local EXTRA_ARG="${3:-}"
 
     echo "Initializing PostgreSQL cluster at $PGDATA..."
@@ -144,8 +144,8 @@ initialize_server() {
 # Previous Server cleanup
 # #################################
 old_server_cleanup() {
-    local PGDATA=$1
-    local PG_PIDS=$(lsof -ti:5432 -ti :5433 -ti :5434 2>/dev/null) || true
+    local PGDATA=${1:-$PGDATA}
+    local PG_PIDS=$(lsof -ti:${PGPORT:-5432} -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
         kill -9 $PG_PIDS || true
