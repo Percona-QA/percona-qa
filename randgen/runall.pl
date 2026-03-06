@@ -72,7 +72,7 @@ my ($gendata, $skip_gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $start_dirty, $filter, $build_thread, $testname, $report_xml_tt,
     $report_xml_tt_type, $report_xml_tt_dest, $notnull, $sqltrace,
     $lcov, $transformers, $logfile, $logconf, $report_tt_logdir,$querytimeout,
-    $short_column_names, $strict_fields, $freeze_time, $wait_debugger);
+    $short_column_names, $strict_fields, $freeze_time, $wait_debugger, $post_gendata_sql);
 
 my $threads = my $default_threads = 10;
 my $queries = my $default_queries = 1000;
@@ -136,7 +136,8 @@ my $opt_result = GetOptions(
     'logconf=s' => \$logconf,
     'report-tt-logdir=s' => \$report_tt_logdir,
     'querytimeout=i' => \$querytimeout,
-    'wait-for-debugger' => \$wait_debugger
+    'wait-for-debugger' => \$wait_debugger,
+    'post-gendata-sql=s' => \$post_gendata_sql
 );
 
 if ( osWindows() && !$debug )
@@ -538,6 +539,8 @@ push @gentest_options, "--logfile=$logfile" if defined $logfile;
 push @gentest_options, "--logconf=$logconf" if defined $logconf;
 push @gentest_options, "--report-tt-logdir=$report_tt_logdir" if defined $report_tt_logdir;
 push @gentest_options, "--querytimeout=$querytimeout" if defined $querytimeout;
+push @gentest_options, "--post-gendata-sql=$post_gendata_sql" if defined $post_gendata_sql;
+push @gentest_options, "--basedir=$basedirs[0]" if defined $basedirs[0] && $basedirs[0] ne '';
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -595,6 +598,8 @@ $0 - Run a complete random query generation test, including server start with re
     --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
     --querytimeout: The timeout to use for the QueryTimeout reporter
     --gendata   : Generate data option. Passed to gentest.pl
+    --post-gendata-sql: Execute SQL commands from a file after data generation completes
+                      but before grammar execution starts. The SQL will execute on all DSNs. Passed to gentest.pl
     --logfile   : Generates rqg output log at the path specified.(Requires the module Log4Perl)
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl

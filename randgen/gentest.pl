@@ -95,7 +95,8 @@ my $opt_result = GetOptions($options,
                             'logfile=s',
                             'logconf=s',
                             'report-tt-logdir=s',
-                            'querytimeout=i');
+                            'querytimeout=i',
+                            'post-gendata-sql=s');
 backwardCompatability($options);
 my $config = GenTest::Properties->new(
     options => $options,
@@ -147,7 +148,9 @@ my $config = GenTest::Properties->new(
               'report-tt-logdir',
               'debug_server',
               'querytimeout',
-              'multi-master'],
+              'multi-master',
+              'post-gendata-sql',
+              'basedir'],
     help => \&help);
 
 help() if !$opt_result || $config->help;

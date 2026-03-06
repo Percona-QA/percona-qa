@@ -72,7 +72,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
     $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
-    $skip_gendata, $skip_shutdown, $galera);
+    $skip_gendata, $skip_shutdown, $galera, $post_gendata_sql);
 
 my $gendata=''; ## default simple gendata
 
@@ -144,7 +144,8 @@ my $opt_result = GetOptions(
         'no-mask' => \$no_mask,
 	'skip_shutdown' => \$skip_shutdown,
 	'skip-shutdown' => \$skip_shutdown,
-	'galera=s' => \$galera
+	'galera=s' => \$galera,
+	'post-gendata-sql=s' => \$post_gendata_sql
     );
 
 if (defined $logfile && defined $logger) {
@@ -497,7 +498,9 @@ my $gentestProps = GenTest::Properties->new(
               'debug_server',
               'report-tt-logdir',
               'servers',
-              'multi-master']
+              'multi-master',
+              'post-gendata-sql',
+              'basedir']
     );
 
 my @gentest_options;
@@ -582,6 +585,8 @@ $gentestProps->property('multi-master', 1) if (defined $galera and scalar(@dsns)
 # Pass debug server if used.
 $gentestProps->debug_server(\@debug_server) if @debug_server;
 $gentestProps->servers(\@server) if @server;
+$gentestProps->property('post-gendata-sql', $post_gendata_sql) if defined $post_gendata_sql;
+$gentestProps->property('basedir', $basedirs[0]) if defined $basedirs[0] && $basedirs[0] ne '';
 
 # Push the number of "worker" threads into the environment.
 # lib/GenTest/Generator/FromGrammar.pm will generate a corresponding grammar element.
@@ -692,6 +697,8 @@ $0 - Run a complete random query generation test, including server start with re
     --transformer: The transformers to use (turns on --validator=transformer). Accepts comma separated list
     --querytimeout: The timeout to use for the QueryTimeout reporter 
     --gendata   : Generate data option. Passed to gentest.pl
+    --post-gendata-sql: Execute SQL commands from a file after data generation completes
+                      but before grammar execution starts. The SQL will execute on all DSNs. Passed to gentest.pl
     --logfile   : Generates rqg output log at the path specified.(Requires the module Log4Perl)
     --seed      : PRNG seed. Passed to gentest.pl
     --mask      : Grammar mask. Passed to gentest.pl

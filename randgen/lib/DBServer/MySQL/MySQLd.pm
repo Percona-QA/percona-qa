@@ -161,10 +161,14 @@ sub new {
         }
     }
    
-    ## Use valgrind suppression file available in mysql-test path. 
-    $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
-                                                             osWindows()?["share/mysql-test","mysql-test"]:["share/mysql-test","mysql-test"],
-                                                             "valgrind.supp");
+    ## Use valgrind suppression file available in mysql-test path, but only when valgrind is requested.
+    if ($self->[MYSQLD_VALGRIND]) {
+        $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
+                                                                 osWindows()?["share/mysql-test","mysql-test"]:["share/mysql-test","mysql-test"],
+                                                                 "valgrind.supp");
+    } else {
+        $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = undef;
+    }
     
     foreach my $file ("mysql_system_tables.sql", 
                       "mysql_performance_tables.sql",
@@ -418,7 +422,11 @@ sub startServer {
             if (defined $self->[MYSQLD_VALGRIND_OPTIONS]) {
                 $val_opt = join(' ',@{$self->[MYSQLD_VALGRIND_OPTIONS]});
             }
-            $command = "valgrind --time-stamp=yes --leak-check=yes --suppressions=".$self->valgrind_suppressionfile." ".$val_opt." ".$command;
+            my $valgrind_cmd = "valgrind --time-stamp=yes --leak-check=yes";
+            if (defined $self->valgrind_suppressionfile && $self->valgrind_suppressionfile ne '') {
+                $valgrind_cmd .= " --suppressions=".$self->valgrind_suppressionfile;
+            }
+            $command = "$valgrind_cmd $val_opt ".$command;
         }
         $self->printInfo;
         say("Starting MySQL ".$self->version.": $command");
