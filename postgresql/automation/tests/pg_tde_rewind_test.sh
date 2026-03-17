@@ -207,9 +207,6 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 #######################################
 echo "Creating table and inserting data on primary"
 
-$PSQL -p $PRIMARY_PORT -d postgres -c "CREATE TABLE t1(id INT) USING tde_heap;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "INSERT INTO t1 VALUES (1),(2),(3);"
-
 $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-host=localhost \
   --pgsql-port=$PRIMARY_PORT \
@@ -233,8 +230,6 @@ sleep 3
 # Step 5: Diverging writes on replica
 #######################################
 echo "Inserting more data on promoted replica"
-
-$PSQL -p $REPLICA_PORT -d postgres -c "INSERT INTO t1 VALUES (4),(5),(6);"
 
 $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-host=localhost \
@@ -273,7 +268,13 @@ start_pg $PRIMARY_DATA $PRIMARY_PORT
 #######################################
 echo "Querying table after rewind"
 
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT * FROM t1 ORDER BY id;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT * FROM sbtest10 LIMIT 5;"
+count=$($PSQL -p $PRIMARY_PORT -d postgres -t -A -c "SELECT count(*) FROM sbtest10;")
+
+if [[ "$count" -gt 0 ]]; then
+    echo "Validation passed: sbtest10 has $count rows"
+else
+    echo "ERROR: sbtest10 is empty or query failed"
+    exit 1
+fi
 
 echo "Test completed"
