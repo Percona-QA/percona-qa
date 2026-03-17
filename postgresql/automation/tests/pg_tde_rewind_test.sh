@@ -4,7 +4,9 @@
 PG_TDE_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
 PG_TDE_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PSQL="$INSTALL_DIR/bin/psql"
+PG_CTL="$INSTALL_DIR/bin/pg_ctl"
 KEYFILE="$RUN_DIR/primary_keyfile"
+SYSBENCH=$(command -v sysbench)
 
 REPL_USER=repl_user
 REPL_PASS=repl_pass
@@ -154,3 +156,125 @@ else
     echo "ERROR:Replication Failed!"
     exit 1
 fi
+
+# Adding testcase for PG-2234
+
+echo "Cleaning old directories"
+old_server_cleanup $PRIMARY_DATA
+old_server_cleanup $REPLICA_DATA
+rm -rf $KEYFILE || true
+
+#######################################
+# Step 1: Initialize primary
+#######################################
+echo "Initializing primary"
+
+initialize_server $PRIMARY_DATA $PRIMARY_PORT
+enable_pg_tde $PRIMARY_DATA
+
+echo "wal_level=replica" >> $PRIMARY_DATA/postgresql.conf
+echo "max_wal_senders=10" >> $PRIMARY_DATA/postgresql.conf
+echo "default_table_access_method=tde_heap" >> $PRIMARY_DATA/postgresql.conf
+
+echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
+echo "host all all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
+
+start_pg $PRIMARY_DATA $PRIMARY_PORT
+
+$PSQL -p $PRIMARY_PORT -d postgres -c "CREATE EXTENSION pg_tde;"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
+
+# Restarting due to Open Bug PG-2258
+restart_pg $PRIMARY_DATA $PRIMARY_PORT
+
+#######################################
+# Step 2: Create replica via basebackup
+#######################################
+echo "Creating replica using pg_basebackup"
+mkdir $REPLICA_DATA
+chmod 700 $REPLICA_DATA
+cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+$PG_TDE_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
+
+echo "port=$REPLICA_PORT" >> $REPLICA_DATA/postgresql.conf
+
+start_pg $REPLICA_DATA $REPLICA_PORT
+
+#######################################
+# Step 3: Create table on primary
+#######################################
+echo "Creating table and inserting data on primary"
+
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua \
+  --pgsql-host=localhost \
+  --pgsql-port=$PRIMARY_PORT \
+  --pgsql-user=$USER \
+  --pgsql-db=postgres \
+  --db-driver=pgsql \
+  --time=30 --threads=5 --tables=50 --table-size=500 prepare
+
+echo "Checkpoint on primary"
+$PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"
+
+#######################################
+# Step 4: Promote replica
+#######################################
+echo "Promoting replica"
+
+$PG_CTL -D $REPLICA_DATA promote
+sleep 3
+
+#######################################
+# Step 5: Diverging writes on replica
+#######################################
+echo "Inserting more data on promoted replica"
+
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua \
+  --pgsql-host=localhost \
+  --pgsql-port=$REPLICA_PORT \
+  --pgsql-user=$USER \
+  --pgsql-db=postgres \
+  --db-driver=pgsql \
+  --time=30 --threads=5 --tables=50 --table-size=500 run
+
+#######################################
+# Step 6: Shutdown both
+#######################################
+echo "Stopping primary and replica"
+
+$PG_CTL -D $PRIMARY_DATA stop -m fast
+$PG_CTL -D $REPLICA_DATA stop -m fast
+
+#######################################
+# Step 7: Run pg_rewind
+#######################################
+echo "Running pg_rewind"
+
+$PG_TDE_REWIND \
+  --target-pgdata=$PRIMARY_DATA \
+  --source-pgdata=$REPLICA_DATA
+
+#######################################
+# Step 8: Start rewound primary
+#######################################
+echo "Starting rewound primary"
+
+start_pg $PRIMARY_DATA $PRIMARY_PORT
+
+#######################################
+# Step 9: Verify data
+#######################################
+echo "Querying table after rewind"
+
+count=$($PSQL -p $PRIMARY_PORT -d postgres -t -A -c "SELECT count(*) FROM sbtest10;")
+
+if [[ "$count" -gt 0 ]]; then
+    echo "Validation passed: sbtest10 has $count rows"
+else
+    echo "ERROR: sbtest10 is empty or query failed"
+    exit 1
+fi
+
+echo "Test completed"
