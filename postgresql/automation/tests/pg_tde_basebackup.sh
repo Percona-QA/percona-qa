@@ -142,3 +142,51 @@ if [ $mismatch -ne 0 ]; then
 else
     echo "All table row counts match between primary and secondary."
 fi
+
+# Additional testcase for bug found PG-2258
+# Trying to setup Replica using pg_tde_basebackup with default key
+# wal_encryption=OFF
+# No encrypted database objects created
+# No server restart
+
+echo "Cleaning old directories"
+old_server_cleanup $PRIMARY_DATA
+old_server_cleanup $REPLICA_DATA
+rm -rf $KEYFILE || true
+
+#######################################
+# Step 1: Initialize primary
+#######################################
+echo "Initializing primary"
+
+initialize_server $PRIMARY_DATA $PRIMARY_PORT
+enable_pg_tde $PRIMARY_DATA
+
+echo "wal_level=replica" >> $PRIMARY_DATA/postgresql.conf
+echo "max_wal_senders=10" >> $PRIMARY_DATA/postgresql.conf
+echo "default_table_access_method=tde_heap" >> $PRIMARY_DATA/postgresql.conf
+
+echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
+echo "host all all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
+
+start_pg $PRIMARY_DATA $PRIMARY_PORT
+
+$PSQL -p $PRIMARY_PORT -d postgres -c "CREATE EXTENSION pg_tde;"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
+
+#######################################
+# Step 2: Create replica via basebackup
+#######################################
+echo "Creating replica using pg_basebackup"
+mkdir $REPLICA_DATA
+chmod 700 $REPLICA_DATA
+cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+$PG_TDE_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
+
+echo "port=$REPLICA_PORT" >> $REPLICA_DATA/postgresql.conf
+
+start_pg $REPLICA_DATA $REPLICA_PORT
+
+echo "Test completed"
