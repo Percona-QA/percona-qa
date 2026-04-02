@@ -154,3 +154,18 @@ old_server_cleanup() {
     sleep 5
     rm -rf -- "$PGDATA"
 }
+
+install_pgbackrest() {
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update
+        wget -q https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+        sudo dpkg -i percona-release_latest.generic_all.deb
+        sudo percona-release enable-only ppg-18
+        sudo apt-get update -y
+        sudo apt-get install -y percona-pgbackrest
+    elif [ -f /etc/redhat-release ]; then
+	wget -q https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+	sudo percona-release enable-only ppg-18
+	sudo yum install -y percona-pgbackrest
+    fi
+}
