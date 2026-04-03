@@ -4,9 +4,13 @@
 export SERVER_BUILD_PATH="$1"
 export TESTNAME="$2"
 export IO_METHOD="${3:-worker}"
+# Optional: old PostgreSQL installation for cross-version upgrade tests (e.g. PG-17 -> PG-18).
+# Defaults to SERVER_BUILD_PATH when not supplied (same-version upgrade path).
+export OLD_SERVER_BUILD_PATH="${4:-$SERVER_BUILD_PATH}"
 
-# Build install location
+# Build install locations
 export INSTALL_DIR="$SERVER_BUILD_PATH"
+export OLD_INSTALL_DIR="$OLD_SERVER_BUILD_PATH"
 
 # Global variables
 export RUN_DIR="/tmp/pgtest"

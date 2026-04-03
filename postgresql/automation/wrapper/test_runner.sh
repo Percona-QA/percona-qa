@@ -18,6 +18,7 @@ export HELPER_DIR
 while [[ $# -gt 0 ]]; do
   case $1 in
     --server_build_path) SERVER_BUILD_PATH="$2"; shift;;
+    --old_server_build_path) OLD_SERVER_BUILD_PATH="$2"; shift;;
     --testname) TESTNAME="$2"; shift;;
     --skip_test) SKIP_LIST="$2"; shift;;
     --io_method) IO_METHOD="$2"; shift;;
@@ -43,7 +44,8 @@ fi
 source "$WRAPPER_DIR/env.sh" \
   "$SERVER_BUILD_PATH" \
   "$TESTNAME" \
-  "$IO_METHOD"
+  "$IO_METHOD" \
+  "${OLD_SERVER_BUILD_PATH:-}"
 
 ############################################
 # Dependency Checks
