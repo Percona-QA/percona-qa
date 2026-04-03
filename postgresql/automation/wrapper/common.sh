@@ -85,6 +85,39 @@ get_pg_major_version() {
     $INSTALL_DIR/bin/postgres --version | awk '{print $3}' | cut -d. -f1
 }
 
+# Return the major version from an arbitrary PostgreSQL bin directory.
+# Usage: get_pg_major_version_from_dir /path/to/pgsql/bin
+get_pg_major_version_from_dir() {
+    local bin_dir="$1"
+    "$bin_dir/postgres" --version | awk '{print $3}' | cut -d. -f1
+}
+
+# Start a PostgreSQL cluster using a specific binary directory.
+# Useful for cross-version upgrade tests where old and new binaries differ.
+# Usage: start_pg_with_dir /old/pgsql/bin /pgdata 5435
+start_pg_with_dir() {
+    local bin_dir="$1"
+    local pgdata="$2"
+    local port="$3"
+    echo "Starting PostgreSQL (${bin_dir}) at $pgdata on port $port..."
+    "$bin_dir/pg_ctl" -D "$pgdata" -w start -o "-p $port"
+    if ! "$bin_dir/pg_isready" -p "$port" -t 60 > /dev/null; then
+        echo "❌ PostgreSQL failed to start (dir=$bin_dir, port=$port)"
+        return 1
+    fi
+    echo "PostgreSQL started."
+}
+
+# Stop a PostgreSQL cluster using a specific binary directory.
+# Usage: stop_pg_with_dir /old/pgsql/bin /pgdata
+stop_pg_with_dir() {
+    local bin_dir="$1"
+    local pgdata="$2"
+    echo "Stopping PostgreSQL ($pgdata)..."
+    "$bin_dir/pg_ctl" -D "$pgdata" stop
+    echo "PostgreSQL stopped."
+}
+
 ###################################
 # Write postgresql.conf
 ###################################
@@ -145,7 +178,8 @@ initialize_server() {
 # #################################
 old_server_cleanup() {
     local PGDATA=${1:-$PGDATA}
-    local PG_PIDS=$(lsof -ti:${PGPORT:-5432} -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
+    local PORT=${2:-$PGPORT}
+    local PG_PIDS=$(lsof -ti:$PORT -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
         kill -9 $PG_PIDS || true
