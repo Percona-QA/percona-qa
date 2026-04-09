@@ -3,12 +3,13 @@
 #############################################
 # CONFIG
 #############################################
-KEYFILE="/tmp/keyring.file"
+KEYFILE="$RUN_DIR/keyring.file"
 KEY_ROTATION=${KEY_ROTATION:-1}
 CRASH_MODE=${CRASH_MODE:-1}
 TABLESPACE_TEST=${TABLESPACE_TEST:-1}
-TABLESPACE_FILE="/tmp/ts1"
-TABLESPACE_FILE_REPL="/tmp/ts1_replica"
+CHANGE_KEY_PROVIDER=${CHANGE_KEY_PROVIDER:-1}
+TABLESPACE_FILE="$RUN_DIR/ts1_primary"
+TABLESPACE_FILE_REPL="$RUN_DIR/ts1_replica"
 SYSBENCH=$(command -v sysbench)
 
 #############################################
@@ -25,8 +26,13 @@ PSQL="$INSTALL_DIR/bin/psql"
 echo "Cleaning environment"
 old_server_cleanup $PRIMARY_DATA
 old_server_cleanup $REPLICA_DATA
-rm -rf $ARCHIVE_DIR $KEYFILE $TABLESPACE_FILE $TABLESPACE_FILE_REPL || true
-mkdir -p $ARCHIVE_DIR
+rm -rf "$ARCHIVE_DIR" "$KEYFILE" "$TABLESPACE_FILE" "$TABLESPACE_FILE_REPL" || true
+mkdir -p "$ARCHIVE_DIR"
+
+#############################################
+# START VAULT SERVER
+# ###########################################
+start_vault_server
 
 #############################################
 # INIT PRIMARY
@@ -37,7 +43,6 @@ enable_pg_tde $PRIMARY_DATA
 
 cat >> $PRIMARY_DATA/postgresql.conf <<EOF
 wal_level=replica
-max_wal_senders=10
 archive_mode=on
 archive_command='cp %p $ARCHIVE_DIR/%f'
 restore_command='cp $ARCHIVE_DIR/%f %p'
@@ -48,11 +53,15 @@ echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
 start_pg $PRIMARY_DATA $PRIMARY_PORT
 
 $PSQL -p $PRIMARY_PORT -d postgres -c "CREATE EXTENSION pg_tde;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_global_key_provider_file('global_file_provider','$KEYFILE');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_database_key_provider_file('local_file_provider','$KEYFILE');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_database_key_provider_vault_v2('local_vault_provider','$vault_url','$secret_mount_point','$token_file','$vault_ca');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('key1','global_file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_server_key_using_global_key_provider('key1','global_file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_database_key_provider('key2','local_file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_key_using_database_key_provider('key2','local_file_provider');"
 
-restart_pg $PRIMARY_DATA $PRIMARY_PORT
+#restart_pg $PRIMARY_DATA $PRIMARY_PORT
 
 if [ "$TABLESPACE_TEST" -eq 1 ]; then
   mkdir -p $TABLESPACE_FILE
@@ -65,7 +74,7 @@ fi
 echo "Creating replica"
 mkdir $REPLICA_DATA
 chmod 700 $REPLICA_DATA
-cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+cp -R "$PRIMARY_DATA/pg_tde" "$REPLICA_DATA/"
 
 if [ "$TABLESPACE_TEST" -eq 1 ]; then
   mkdir -p $TABLESPACE_FILE_REPL
@@ -110,11 +119,17 @@ run_test() {
 
   $PSQL -p $PRIMARY_PORT -c "CHECKPOINT;"
 
+  restart_pg $PRIMARY_DATA $PRIMARY_PORT
+  restart_pg $REPLICA_DATA $REPLICA_PORT
+
   ###########################################
   # Promote replica
   ###########################################
   $PG_CTL -D $REPLICA_DATA promote
   sleep 3
+
+  restart_pg $PRIMARY_DATA $PRIMARY_PORT
+  restart_pg $REPLICA_DATA $REPLICA_PORT
 
   echo "Running divergence workload"
 
@@ -195,21 +210,53 @@ run_test() {
         --time=20 run
     ) &
   done
-  wait
 
   ###########################################
   # Key rotation
   ###########################################
   if [ "$KEY_ROTATION" -eq 1 ]; then
-    local duration=20
-    local end_time=$((SECONDS + duration))
+  (
+    duration=20
+    end_time=$((SECONDS + duration))
     while [ $SECONDS -lt $end_time ]; do
-	    local RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
+	    RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
 	    echo "Rotating master key: principal_key_test$RAND_KEY"
-            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_global_key_provider('key$RAND_KEY','file_provider');"
-            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_default_key_using_global_key_provider('key$RAND_KEY','file_provider');"
+            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_database_key_provider('key$RAND_KEY','local_file_provider');"
+            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_key_using_database_key_provider('key$RAND_KEY','local_file_provider');"
+	    RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
+            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_global_key_provider('key$RAND_KEY','global_file_provider');"
+            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('key$RAND_KEY','global_file_provider');"
+	    RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
+	    $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_database_key_provider('key$RAND_KEY','local_vault_provider');"
+	    $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_key_using_database_key_provider('key$RAND_KEY','local_vault_provider');"
     done
+  ) &
   fi
+
+  ############################################
+  # Change Key provider
+  ############################################
+  if [ "$CHANGE_KEY_PROVIDER" -eq 1 ]; then
+  (
+    start_time=20
+    end_time=$((SECONDS + start_time))
+
+    while [ $SECONDS -lt $end_time ]; do
+      provider_type=$([ $(( RANDOM % 2 )) -eq 0 ] && echo "vault_v2" || echo "file")
+      if [ $provider_type == "vault_v2" ]; then
+        provider_name=local_vault_provider
+        provider_config="'$vault_url','$secret_mount_point','$token_file','$vault_ca'"
+      elif [ $provider_type == "file" ]; then
+        provider_name=local_file_provider
+        provider_config="'$KEYFILE'"
+      fi
+      $PSQL -p $REPLICA_PORT -c"SELECT pg_tde_change_database_key_provider_$provider_type('$provider_name',$provider_config)"
+      sleep 1
+    done
+  ) &
+  fi
+
+  wait
 
   ###########################################
   # Tablespace test
@@ -236,14 +283,13 @@ run_test() {
   if [ "$CRASH_MODE" -eq 1 ]; then
     echo "Simulating crash on replica"
 
-    kill -9 $(head -1 $REPLICA_DATA/postmaster.pid)
-    sleep 2
+    crash_pg $REPLICA_DATA
 
     echo "Restarting replica for crash recovery"
     start_pg $REPLICA_DATA $REPLICA_PORT
 
     echo "Stopping replica cleanly after recovery"
-    $PG_CTL -D $REPLICA_DATA stop -m fast
+    stop_pg $REPLICA_DATA
   fi
 
   ###########################################
@@ -254,13 +300,12 @@ run_test() {
   rewind_and_start
 
   ###########################################
-  # Validation (improved)
+  # Validation
   ###########################################
   $PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM t1;"
 
   echo "Deep validation"
-  $PSQL -p $PRIMARY_PORT -c "SET enable_seqscan=off;"
-  $PSQL -p $PRIMARY_PORT -c "SELECT * FROM t1 ORDER BY id LIMIT 10;"
+  $PSQL -p $PRIMARY_PORT -c "SET enable_seqscan=off;SELECT * FROM t1 ORDER BY id LIMIT 10;"
   $PSQL -p $PRIMARY_PORT -c "REINDEX TABLE t1;"
   $PSQL -p $PRIMARY_PORT -c "VACUUM FULL t1;"
 

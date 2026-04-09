@@ -5,7 +5,6 @@ PG_CTL="$INSTALL_DIR/bin/pg_ctl"
 PG_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PG_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
 PSQL="$INSTALL_DIR/bin/psql"
-INITDB="$INSTALL_DIR/bin/initdb"
 
 # Directories
 KEYFILE="/tmp/keyring.file"
@@ -25,7 +24,6 @@ initialize_server $PRIMARY_DATA $PRIMARY_PORT
 enable_pg_tde $PRIMARY_DATA
 
 echo "wal_level=replica" >> $PRIMARY_DATA/postgresql.conf
-echo "max_wal_senders=10" >> $PRIMARY_DATA/postgresql.conf
 echo "archive_mode=on" >> $PRIMARY_DATA/postgresql.conf
 echo "archive_command='cp %p $ARCHIVE_DIR/%f'" >> $PRIMARY_DATA/postgresql.conf
 echo "restore_command='cp $ARCHIVE_DIR/%f %p'" >> $PRIMARY_DATA/postgresql.conf
@@ -50,20 +48,20 @@ chmod 700 $REPLICA_DATA
 cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
 $PG_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
 
-echo "port=$REPLICA_PORT" > $REPLICA_DATA/postgresql.conf
-echo "unix_socket_directories = '$RUN_DIR'" >> $REPLICA_DATA/postgresql.conf
-echo "listen_addresses = '*'" >> $REPLICA_DATA/postgresql.conf
-echo "logging_collector = on" >> $REPLICA_DATA/postgresql.conf
-echo "log_directory = '$REPLICA_DATA'" >> $REPLICA_DATA/postgresql.conf
-echo "log_filename = 'server.log'" >> $REPLICA_DATA/postgresql.conf
-echo "log_statement = 'all'" >> $REPLICA_DATA/postgresql.conf
-echo "default_table_access_method = 'tde_heap'" >> $REPLICA_DATA/postgresql.conf
-echo "max_wal_senders = 5" >> $REPLICA_DATA/postgresql.conf
-echo "io_method = '$IO_METHOD'" >> $REPLICA_DATA/postgresql.conf
-echo "shared_preload_libraries = 'pg_tde'" >> $REPLICA_DATA/postgresql.conf
-echo "max_wal_senders=10" >> $REPLICA_DATA/postgresql.conf
-echo "restore_command='cp $ARCHIVE_DIR/%f %p'" >> $REPLICA_DATA/postgresql.conf
-
+cat > $REPLICA_DATA/postgresql.conf <<EOF
+port=$REPLICA_PORT
+unix_socket_directories = '$RUN_DIR'
+listen_addresses = '*'
+logging_collector = on
+log_directory = '$REPLICA_DATA'
+log_filename = 'server.log'
+log_statement = 'all'
+io_method = '$IO_METHOD'
+shared_preload_libraries = 'pg_tde'
+default_table_access_method = 'tde_heap'
+max_wal_senders=10
+restore_command='cp $ARCHIVE_DIR/%f %p'
+EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT
 
@@ -72,7 +70,7 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 # Step 3: Create table on primary
 #######################################
 echo "Creating table and inserting data on primary"
-$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=`whoami` --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=100 --table-size=1000 prepare
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=100 --table-size=1000 prepare
 $PSQL -p $PRIMARY_PORT -d postgres -c "CREATE TABLE t1(id INT) USING tde_heap;"
 $PSQL -p $PRIMARY_PORT -d postgres -c "INSERT INTO t1 VALUES (1),(2),(3);"
 
@@ -93,7 +91,7 @@ sleep 3
 echo "Inserting more data on promoted replica"
 
 $PSQL -p $REPLICA_PORT -d postgres -c "INSERT INTO t1 VALUES (4),(5),(6);"
-$SYSBENCH /usr/share/sysbench/oltp_read_write.lua --pgsql-user=`whoami` --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$REPLICA_PORT --threads=5 --tables=100 --time=60 --report-interval=10 run
+$SYSBENCH /usr/share/sysbench/oltp_read_write.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$REPLICA_PORT --threads=5 --tables=100 --time=60 --report-interval=10 run
 
 #######################################
 # Step 6: Shutdown both
@@ -125,13 +123,14 @@ start_pg $PRIMARY_DATA $PRIMARY_PORT
 #######################################
 # Step 9: Verify data
 #######################################
-echo "Querying table after rewind"
-
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest1;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest2;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest10;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest15;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest20;"
-$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest25;"
+echo "Querying table randomly after rewind"
+for i in {1..10}; do
+  RANDOM_TABLE=$((RANDOM % 100 + 1))
+  COUNT=$($PSQL -p $PRIMARY_PORT -d postgres -At -c "SELECT count(*) FROM sbtest${RANDOM_TABLE};")
+  if [ "$COUNT" -lt 0 ]; then
+    echo "FAIL: sbtest$RANDOM_TABLE count $COUNT < 0"
+    exit 1
+  fi
+done
 
 echo "Test completed"
