@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "percona-pg-automation"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    "pytest>=7.4",
+    "pytest-xdist>=3.0",     # parallel execution
+    "pytest-timeout>=2.1",   # per-test timeouts
+    "pytest-html>=4.0",      # HTML reports
+    "psutil>=5.9",           # process management
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short --strict-markers"
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+timeout = 600   # 10-minute default per test
+
+markers = [
+    "encryption: pg_tde table and WAL encryption tests",
+    "replication: streaming and logical replication tests",
+    "backup: pgBackRest backup and restore tests",
+    "upgrade: pg_upgrade major-version upgrade tests",
+    "recovery: crash recovery, pg_rewind, and WAL tests",
+    "bug: bug reproduction tests (PG-XXXX)",
+    "slow: tests that take more than 5 minutes",
+    "vault: tests that require a running HashiCorp Vault / OpenBao instance",
+    "kmip: tests that require a running KMIP server",
+    "docker: tests that require Docker",
+    "pg16: tests that require PostgreSQL 16",
+    "pg17: tests that require PostgreSQL 17",
+    "pg18: tests that require PostgreSQL 18+",
+]
