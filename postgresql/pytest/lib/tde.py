@@ -139,7 +139,6 @@ class TdeManager:
 
         # Legacy API fallback (older pg_tde releases)
         fn = self._first_func([
-            "pg_tde_set_global_principal_key",
             "pg_tde_set_server_principal_key",
             "pg_tde_set_principal_key",
         ])
