@@ -2,12 +2,30 @@
 import configparser
 import logging
 import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
 from typing import Optional
 
 log = logging.getLogger(__name__)
+
+
+def pgbackrest_installed() -> bool:
+    """Return True if the pgbackrest binary is on PATH and responds to ``version``."""
+    exe = shutil.which("pgbackrest")
+    if not exe:
+        return False
+    try:
+        r = subprocess.run(
+            [exe, "version"],
+            capture_output=True,
+            timeout=30,
+            text=True,
+        )
+        return r.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 
 class BackupManager:

@@ -25,7 +25,8 @@ timeout = 600   # 10-minute default per test
 markers = [
     "encryption: pg_tde table and WAL encryption tests",
     "replication: streaming and logical replication tests",
-    "backup: pgBackRest backup and restore tests",
+    "backup: backup and PITR tests (including pg_basebackup)",
+    "pgbackrest: tests that require the pgbackrest CLI",
     "upgrade: pg_upgrade major-version upgrade tests",
     "recovery: crash recovery, pg_rewind, and WAL tests",
     "bug: bug reproduction tests (PG-XXXX)",

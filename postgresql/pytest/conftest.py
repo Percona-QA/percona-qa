@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from lib.backup import pgbackrest_installed
+
 # ── port allocator ──────────────────────────────────────────────────────────
 
 _port_lock = threading.Lock()
@@ -36,8 +38,8 @@ def allocate_port() -> int:
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--install-dir",
-        default=os.environ.get("INSTALL_DIR", "/usr/lib/postgresql/17"),
-        help="Path to the PostgreSQL installation (e.g. /opt/percona/pg17)",
+        default=os.environ.get("INSTALL_DIR", "/usr/lib/postgresql/18"),
+        help="Path to the PostgreSQL installation (e.g. /opt/percona/pg18)",
     )
     parser.addoption(
         "--run-dir",
@@ -136,8 +138,10 @@ def pytest_collection_modifyitems(config, items):
     skip_vault = pytest.mark.skip(reason="--vault-addr not provided")
     skip_upgrade = pytest.mark.skip(reason="--old-install-dir not provided")
     skip_docker = pytest.mark.skip(reason="docker not found in PATH")
+    skip_pgbackrest = pytest.mark.skip(reason="pgbackrest not installed or not on PATH")
 
     docker_available = shutil.which("docker") is not None
+    pgbr_ok = pgbackrest_installed()
 
     for item in items:
         if "vault" in item.keywords and not vault_addr:
@@ -146,3 +150,5 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_upgrade)
         if "docker" in item.keywords and not docker_available:
             item.add_marker(skip_docker)
+        if "pgbackrest" in item.keywords and not pgbr_ok:
+            item.add_marker(skip_pgbackrest)

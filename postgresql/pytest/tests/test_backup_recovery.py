@@ -74,6 +74,7 @@ class TestPgBaseBackup:
 
 @pytest.mark.slow
 class TestPgBackRest:
+    @pytest.mark.pgbackrest
     def test_full_backup_and_restore(self, primary_cluster: PgCluster, tmp_path: Path,
                                      install_dir: Path, io_method: str):
         primary_cluster.execute("CREATE TABLE pgbr_test (id INT, data TEXT)")
@@ -107,6 +108,7 @@ class TestPgBackRest:
         assert count == "5000"
         restored.stop()
 
+    @pytest.mark.pgbackrest
     def test_incremental_backup(self, primary_cluster: PgCluster, tmp_path: Path):
         bm = BackupManager(stanza="incr_test", repo_path=str(tmp_path / "repo"))
         bm.write_config(
@@ -127,6 +129,7 @@ class TestPgBackRest:
         info = bm.info()
         assert "incr" in info.lower()
 
+    @pytest.mark.pgbackrest
     def test_backup_with_tde(self, tde_primary: PgCluster, tmp_path: Path):
         tde_primary.execute("CREATE TABLE tde_pgbr_test (id INT, secret TEXT)")
         tde_primary.execute(
