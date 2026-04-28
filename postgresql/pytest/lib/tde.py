@@ -112,40 +112,49 @@ class TdeManager:
         dbname: str = "postgres",
     ) -> None:
         """
-        Create and activate encryption keys.
-
-        Current Percona pg_tde API (two-step per key):
-          pg_tde_create_key_using_global_key_provider(key, provider)
-          pg_tde_set_server_key_using_global_key_provider(key, provider)  -- WAL / server
-          pg_tde_set_key_using_global_key_provider(key, provider)         -- per-database tables
+        Create and activate encryption keys (Percona pg_tde API):
+          1. pg_tde_create_key_using_global_key_provider(key, provider)
+          2. pg_tde_set_server_key_using_global_key_provider(key, provider)  -- WAL key
+          3. pg_tde_set_key_using_global_key_provider(key, provider)         -- table key
         """
         create_fn = self._first_func(["pg_tde_create_key_using_global_key_provider"])
         server_fn = self._first_func(["pg_tde_set_server_key_using_global_key_provider"])
         db_fn = self._first_func(["pg_tde_set_key_using_global_key_provider"])
 
-        if create_fn and (server_fn or db_fn):
+        if create_fn and server_fn and db_fn:
+            # Preferred: explicit server + database keys (matches Percona docs)
             self.cluster.execute(
                 f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
             )
-            if server_fn:
-                self.cluster.execute(
-                    f"SELECT {server_fn}('{key_name}'::text, '{provider_name}'::text)"
-                )
-            if db_fn:
-                self.cluster.execute(
-                    f"SELECT {db_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
-                )
+            self.cluster.execute(
+                f"SELECT {server_fn}('{key_name}'::text, '{provider_name}'::text)"
+            )
+            self.cluster.execute(
+                f"SELECT {db_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
+            )
             return
 
-        # Legacy API fallback (older pg_tde releases)
+        # Fallback: set_default covers both server and database in some builds
+        set_default_fn = self._first_func(["pg_tde_set_default_key_using_global_key_provider"])
+        if create_fn and set_default_fn:
+            self.cluster.execute(
+                f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
+            )
+            self.cluster.execute(
+                f"SELECT {set_default_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
+            )
+            return
+
+        # Legacy API (older pg_tde releases)
         fn = self._first_func([
+            "pg_tde_set_global_principal_key",
             "pg_tde_set_server_principal_key",
             "pg_tde_set_principal_key",
         ])
         if fn is None:
             raise RuntimeError(
-                f"No pg_tde set_principal_key function found. "
-                f"Available: {self.available_functions()}"
+                "No pg_tde set_principal_key-style function found in pg_proc. "
+                f"Installed pg_tde functions: {self.available_functions()}"
             )
         nargs = self._nargs(fn)
         if nargs == 1:
@@ -165,29 +174,37 @@ class TdeManager:
         server_fn = self._first_func(["pg_tde_set_server_key_using_global_key_provider"])
         db_fn = self._first_func(["pg_tde_set_key_using_global_key_provider"])
 
-        if create_fn and (server_fn or db_fn):
+        if create_fn and server_fn and db_fn:
             self.cluster.execute(
                 f"SELECT {create_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
             )
-            if server_fn:
-                self.cluster.execute(
-                    f"SELECT {server_fn}('{new_key_name}'::text, '{provider_name}'::text)"
-                )
-            if db_fn:
-                self.cluster.execute(
-                    f"SELECT {db_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
-                )
+            self.cluster.execute(
+                f"SELECT {server_fn}('{new_key_name}'::text, '{provider_name}'::text)"
+            )
+            self.cluster.execute(
+                f"SELECT {db_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
+            )
             return
 
-        # Legacy API fallback
+        set_default_fn = self._first_func(["pg_tde_set_default_key_using_global_key_provider"])
+        if create_fn and set_default_fn:
+            self.cluster.execute(
+                f"SELECT {create_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
+            )
+            self.cluster.execute(
+                f"SELECT {set_default_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
+            )
+            return
+
         fn = self._first_func([
             "pg_tde_rotate_principal_key",
             "pg_tde_rotate_global_principal_key",
         ])
         if fn is None:
             raise RuntimeError(
-                f"No pg_tde rotate_principal_key function found. "
-                f"Available: {self.available_functions()}"
+                "No pg_tde rotate_principal_key function found (modern builds use "
+                "create_key + set_default_key). "
+                f"Installed pg_tde functions: {self.available_functions()}"
             )
         nargs = self._nargs(fn)
         if nargs == 0:
@@ -231,27 +248,46 @@ class TdeManager:
             dbname,
         )
 
-    def list_key_providers(self) -> int:
-        """Return the count of registered key providers."""
-        for fn in (
-            "pg_tde_list_key_providers",
-            "pg_tde_key_providers",
-            "pg_tde_list_global_key_providers",
-        ):
+    def list_key_providers(self, *, scope: str = "global") -> int:
+        """Return the count of registered key providers (global or database-local).
+
+        Current pg_tde exposes ``pg_tde_list_all_global_key_providers`` /
+        ``pg_tde_list_all_database_key_providers`` (see Percona docs); older builds
+        used shorter names.
+        """
+        if scope == "database":
+            candidates = (
+                "pg_tde_list_all_database_key_providers",
+                "pg_tde_list_database_key_providers",
+                "pg_tde_key_providers",
+            )
+        else:
+            candidates = (
+                "pg_tde_list_all_global_key_providers",
+                "pg_tde_list_global_key_providers",
+                "pg_tde_list_key_providers",
+                "pg_tde_key_providers",
+            )
+        for fn in candidates:
             if self._has_func(fn):
                 result = self.cluster.fetchone(f"SELECT COUNT(*) FROM {fn}()")
                 return int(result) if result else 0
         return 0
 
     def principal_key_name(self) -> Optional[str]:
+        # Current pg_tde: *_key_info(); older builds used principal_key_info names.
         for fn in (
-            "pg_tde_get_key_info",
             "pg_tde_key_info",
+            "pg_tde_default_key_info",
+            "pg_tde_server_key_info",
             "pg_tde_principal_key_info",
+            "pg_tde_get_key_info",
             "pg_tde_get_principal_key_info",
         ):
             if self._has_func(fn):
-                return self.cluster.fetchone(f"SELECT key_name FROM {fn}()")
+                row = self.cluster.fetchone(f"SELECT key_name FROM {fn}()")
+                if row:
+                    return row
         return None
 
     # ── basebackup with TDE ───────────────────────────────────────────────
