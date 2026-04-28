@@ -80,7 +80,7 @@ class TestPgRewind:
         primary.execute("INSERT INTO rewind_base SELECT generate_series(1,100)")
 
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         # Promote standby; standby becomes new primary
         standby.promote()
@@ -101,7 +101,7 @@ class TestPgRewind:
         primary.wait_ready(timeout=60)
 
         repl2 = ReplicationManager(standby, primary)
-        assert repl2.wait_for_catchup(timeout=60)
+        repl2.assert_catchup(timeout=60)
         count = primary.fetchone("SELECT COUNT(*) FROM rewind_base")
         assert count == "200"
 
@@ -116,7 +116,7 @@ class TestPgRewind:
         primary.execute("VACUUM FULL rewind_large")
 
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=60)
+        repl.assert_catchup(timeout=60)
 
         standby.promote()
         standby.wait_ready(timeout=30)
@@ -164,7 +164,7 @@ class TestRelfilenodeReuse:
         primary.execute("CREATE DATABASE conflict_db TEMPLATE template_reuse")
 
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         # Drop the template and recreate with same name (relfilenode reuse scenario)
         primary.execute("DROP DATABASE template_reuse")
@@ -173,7 +173,7 @@ class TestRelfilenodeReuse:
         primary.execute("INSERT INTO public.new_data SELECT generate_series(1,50)",
                         dbname="template_reuse")
 
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         # Standby must be able to query both databases
         count = standby.fetchone("SELECT COUNT(*) FROM public.new_data", dbname="template_reuse")
@@ -193,14 +193,14 @@ class TestRelfilenodeReuse:
         primary.execute("INSERT INTO reuse_tbl SELECT generate_series(1,100)", dbname="reuse_enc")
 
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         primary.execute("DROP DATABASE reuse_enc")
         primary.execute("CREATE DATABASE reuse_enc TEMPLATE template0")
         primary.execute("CREATE TABLE new_tbl (id INT)", dbname="reuse_enc")
         primary.execute("INSERT INTO new_tbl SELECT generate_series(1,50)", dbname="reuse_enc")
 
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
         count = standby.fetchone("SELECT COUNT(*) FROM new_tbl", dbname="reuse_enc")
         assert count == "50"
 

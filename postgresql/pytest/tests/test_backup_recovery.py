@@ -156,7 +156,7 @@ class TestPgBackRest:
 
         from lib import ReplicationManager
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         # Simulate primary failure; promote standby
         primary.stop()
@@ -179,7 +179,7 @@ class TestPgBackRest:
         primary.wait_ready(timeout=60)
 
         repl2 = ReplicationManager(standby, primary)
-        assert repl2.wait_for_catchup(timeout=60)
+        repl2.assert_catchup(timeout=60)
         count = primary.fetchone("SELECT COUNT(*) FROM ha_test")
         assert count == "2000"
 

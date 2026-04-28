@@ -2,7 +2,7 @@
 import shutil
 import time
 from pathlib import Path
-from typing import Generator, Tuple
+from typing import Generator, List, Tuple
 
 import pytest
 
@@ -10,16 +10,36 @@ from conftest import allocate_port
 from lib import PgCluster, TdeManager, ReplicationManager
 
 
+# ── internal helper ───────────────────────────────────────────────────────────
+
+def _dump_logs_on_failure(request, clusters: List[PgCluster]) -> None:
+    """Print server logs for every cluster when the test has failed or errored."""
+    rep = getattr(request.node, "rep_call", None)
+    if rep is None or rep.passed:
+        return
+    for c in clusters:
+        log_text = c.read_log(last_n=40)
+        if not log_text:
+            continue
+        sep = "─" * 70
+        print(f"\n{sep}")
+        print(f"  PostgreSQL server log │ {c.data_dir.name}  port={c.port}")
+        print(sep)
+        print(log_text)
+        print(sep)
+
+
 # ── factory fixture ───────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def pg_factory(install_dir: Path, tmp_path: Path, io_method: str):
+def pg_factory(install_dir: Path, tmp_path: Path, io_method: str, request):
     """
     Factory that creates isolated PgCluster instances for a test.
     All clusters are stopped and their data directories removed on teardown.
+    Server logs for every cluster are printed automatically on failure.
     """
-    clusters = []
+    clusters: List[PgCluster] = []
 
     def _make(
         name: str = "pg",
@@ -34,6 +54,8 @@ def pg_factory(install_dir: Path, tmp_path: Path, io_method: str):
         return cluster
 
     yield _make
+
+    _dump_logs_on_failure(request, clusters)
 
     for c in clusters:
         try:
@@ -63,7 +85,7 @@ def primary_cluster(pg_factory) -> Generator[PgCluster, None, None]:
 def tde_primary(pg_factory) -> Generator[PgCluster, None, None]:
     """A primary cluster with pg_tde fully set up (file key provider)."""
     cluster = pg_factory("tde_primary")
-    cluster.initdb()
+    cluster.initdb(extra_args=["--no-data-checksums"])
     cluster.write_default_config("primary")
     cluster.add_hba_entry("local all all trust")
     cluster.add_hba_entry("host  all all 127.0.0.1/32 trust")
@@ -87,7 +109,6 @@ def replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, Non
     primary = pg_factory("primary")
     standby = pg_factory("standby")
 
-    # init and configure primary
     primary.initdb()
     primary.write_default_config("primary")
     primary.configure({"wal_level": "replica", "max_wal_senders": "5", "hot_standby": "on"})
@@ -97,7 +118,6 @@ def replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, Non
     primary.add_hba_entry("host  replication all 127.0.0.1/32 trust")
     primary.start()
 
-    # create standby via basebackup
     repl = ReplicationManager(primary, standby)
     repl.create_standby_from_backup()
     standby.write_default_config("replica")
@@ -121,7 +141,7 @@ def tde_replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None,
     primary = pg_factory("tde_primary")
     standby = pg_factory("tde_standby")
 
-    primary.initdb()
+    primary.initdb(extra_args=["--no-data-checksums"])
     primary.write_default_config("primary")
     primary.configure({"wal_level": "replica", "max_wal_senders": "5", "hot_standby": "on"})
     primary.add_hba_entry("local all all trust")
@@ -137,7 +157,6 @@ def tde_replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None,
     tde.add_global_key_provider_file()
     tde.set_global_principal_key()
 
-    # create encrypted standby
     repl = ReplicationManager(primary, standby)
     repl.create_standby_from_backup(use_tde_basebackup=True)
     standby.write_default_config("replica")

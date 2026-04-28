@@ -121,6 +121,14 @@ def two_free_ports():
 # ── skip helpers ─────────────────────────────────────────────────────────────
 
 
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Attach the per-phase result to the item so fixtures can read it."""
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, f"rep_{call.when}", rep)
+
+
 def pytest_collection_modifyitems(config, items):
     vault_addr = config.getoption("--vault-addr")
     old_dir = config.getoption("--old-install-dir")

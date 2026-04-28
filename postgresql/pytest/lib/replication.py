@@ -93,6 +93,26 @@ class ReplicationManager:
         log.warning("Standby did not reach %s within %ds", target_lsn, timeout)
         return False
 
+    def assert_catchup(self, timeout: int = 60) -> None:
+        """Like wait_for_catchup() but raises AssertionError with full diagnostics on timeout."""
+        if self.wait_for_catchup(timeout):
+            return
+        primary_lsn  = self.primary.fetchone("SELECT pg_current_wal_lsn()") or "unknown"
+        receive_lsn  = self.standby.fetchone("SELECT pg_last_wal_receive_lsn()") or "None"
+        replay_lsn   = self.standby.fetchone("SELECT pg_last_wal_replay_lsn()") or "None"
+        senders      = self.primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication") or "0"
+        in_recovery  = self.standby.fetchone("SELECT pg_is_in_recovery()") or "unknown"
+        raise AssertionError(
+            f"Standby did not catch up within {timeout}s\n"
+            f"  Primary LSN     : {primary_lsn}\n"
+            f"  Standby receive : {receive_lsn}\n"
+            f"  Standby replay  : {replay_lsn}\n"
+            f"  WAL senders     : {senders}\n"
+            f"  In recovery     : {in_recovery}\n"
+            f"\nPrimary log (last 20 lines):\n{self.primary.read_log(20)}"
+            f"\nStandby log (last 20 lines):\n{self.standby.read_log(20)}"
+        )
+
     def replication_lag_bytes(self) -> Optional[int]:
         row = self.primary.fetchone(
             "SELECT sent_lsn - replay_lsn FROM pg_stat_replication LIMIT 1"

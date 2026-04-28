@@ -74,7 +74,7 @@ class TestKeyManagement:
 
     def test_multiple_key_providers(self, pg_factory):
         cluster = pg_factory("multi_kp")
-        cluster.initdb()
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
         tde = TdeManager(cluster)
@@ -143,9 +143,10 @@ class TestWalEncryption:
 
 
 class TestChecksums:
-    def test_data_checksums_with_tde(self, pg_factory):
+    def test_tde_requires_checksums_disabled(self, pg_factory):
+        """TDE is not compatible with data checksums — initdb must use --no-data-checksums."""
         cluster = pg_factory("checksum_tde")
-        cluster.initdb(extra_args=["--data-checksums"])
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
         tde = TdeManager(cluster)
@@ -160,11 +161,13 @@ class TestChecksums:
         count = cluster.fetchone("SELECT COUNT(*) FROM cs_test")
         assert count == "1000"
         result = cluster.fetchone("SHOW data_checksums")
-        assert result == "on"
+        assert result == "off", (
+            f"TDE cluster must have data checksums disabled, got: {result!r}"
+        )
 
     def test_no_checksums_with_tde(self, pg_factory):
         cluster = pg_factory("nochecksum_tde")
-        cluster.initdb()
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
         tde = TdeManager(cluster)

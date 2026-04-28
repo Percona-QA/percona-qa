@@ -157,7 +157,11 @@ class PgCluster:
             if self.is_ready():
                 return
             time.sleep(1)
-        raise TimeoutError(f"PostgreSQL on port {self.port} did not become ready in {timeout}s")
+        raise TimeoutError(
+            f"PostgreSQL on port {self.port} did not become ready in {timeout}s\n"
+            f"Data dir : {self.data_dir}\n"
+            f"Server log (last 20 lines):\n{self.read_log(last_n=20)}"
+        )
 
     def destroy(self) -> None:
         try:

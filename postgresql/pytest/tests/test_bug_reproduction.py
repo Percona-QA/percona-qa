@@ -55,7 +55,7 @@ class TestPG1805:
 
     def _setup_tde_cluster(self, pg_factory):
         cluster = pg_factory("pg1805")
-        cluster.initdb()
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
         tde = TdeManager(cluster)
@@ -155,7 +155,7 @@ class TestPG1806:
         tsp_dir.mkdir()
 
         cluster = pg_factory("pg1806")
-        cluster.initdb()
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
 
@@ -227,7 +227,7 @@ class TestPG1806:
         tsp_dir.mkdir()
 
         cluster = pg_factory("pg1806_replica_wal")
-        cluster.initdb()
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
         tde = TdeManager(cluster)
@@ -267,7 +267,7 @@ class TestPG1806:
         tsp_dir.mkdir()
 
         cluster = pg_factory("pg1806_default_threshold")
-        cluster.initdb()
+        cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config()
         cluster.add_hba_entry("local all all trust")
         tde = TdeManager(cluster)

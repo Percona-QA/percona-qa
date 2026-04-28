@@ -27,19 +27,27 @@ class TestStreamingReplication:
     def test_standby_is_in_recovery(self, replica_pair: Tuple[PgCluster, PgCluster]):
         _, standby = replica_pair
         result = standby.fetchone("SELECT pg_is_in_recovery()")
-        assert result == "t"
+        assert result == "t", (
+            f"Standby (port {standby.port}) should be in recovery mode but "
+            f"pg_is_in_recovery() returned: {result!r}"
+        )
 
     def test_primary_has_wal_sender(self, replica_pair: Tuple[PgCluster, PgCluster]):
-        primary, _ = replica_pair
-        count = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
-        assert int(count) >= 1
+        primary, standby = replica_pair
+        count = int(primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication"))
+        assert count >= 1, (
+            f"Expected at least 1 WAL sender on primary (port {primary.port}), "
+            f"got {count}. Standby (port {standby.port}) may not have connected.\n"
+            f"Standby in_recovery: {standby.fetchone('SELECT pg_is_in_recovery()')}\n"
+            f"Standby receive LSN: {standby.fetchone('SELECT pg_last_wal_receive_lsn()')}"
+        )
 
     def test_data_replicates_to_standby(self, replica_pair: Tuple[PgCluster, PgCluster]):
         primary, standby = replica_pair
         primary.execute("CREATE TABLE repl_test (id INT, val TEXT)")
         primary.execute("INSERT INTO repl_test SELECT i, md5(i::text) FROM generate_series(1,1000) i")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
         repl.assert_row_counts_match("repl_test")
 
     def test_ddl_replicates_to_standby(self, replica_pair: Tuple[PgCluster, PgCluster]):
@@ -47,7 +55,7 @@ class TestStreamingReplication:
         primary.execute("CREATE TABLE ddl_repl (id SERIAL, data JSONB)")
         primary.execute("CREATE INDEX ddl_repl_data_idx ON ddl_repl USING gin(data)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
         # Index should exist on standby
         idx = standby.fetchone(
             "SELECT indexname FROM pg_indexes WHERE tablename='ddl_repl' AND indexname='ddl_repl_data_idx'"
@@ -62,7 +70,7 @@ class TestStreamingReplication:
             "INSERT INTO large_repl SELECT i, md5(i::text) FROM generate_series(1,500000) i"
         )
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=120)
+        repl.assert_catchup(timeout=120)
         repl.assert_row_counts_match("large_repl")
 
 
@@ -77,14 +85,14 @@ class TestTdeStreamingReplication:
             "INSERT INTO enc_repl SELECT i, md5(i::text) FROM generate_series(1,1000) i"
         )
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=60)
+        repl.assert_catchup(timeout=60)
         repl.assert_row_counts_match("enc_repl")
 
     def test_primary_table_is_encrypted_standby_reflects(self, tde_replica_pair: Tuple[PgCluster, PgCluster]):
         primary, standby = tde_replica_pair
         primary.execute("CREATE TABLE enc_check (id INT)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
         tde_standby = TdeManager(standby)
         assert tde_standby.is_table_encrypted("enc_check")
 
@@ -93,13 +101,13 @@ class TestTdeStreamingReplication:
         primary.execute("CREATE TABLE pre_rotation (id INT)")
         primary.execute("INSERT INTO pre_rotation SELECT generate_series(1,500)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         tde = TdeManager(primary)
         tde.rotate_principal_key("post_rotation_key")
 
         primary.execute("INSERT INTO pre_rotation SELECT generate_series(501,1000)")
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
         repl.assert_row_counts_match("pre_rotation")
 
     def test_wal_encryption_with_replication(self, tde_replica_pair: Tuple[PgCluster, PgCluster]):
@@ -109,7 +117,7 @@ class TestTdeStreamingReplication:
         primary.execute("CREATE TABLE wal_enc_repl (id INT)")
         primary.execute("INSERT INTO wal_enc_repl SELECT generate_series(1,1000)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=60)
+        repl.assert_catchup(timeout=60)
         repl.assert_row_counts_match("wal_enc_repl")
 
     @pytest.mark.slow
@@ -122,7 +130,7 @@ class TestTdeStreamingReplication:
         primary.execute("UPDATE dml_load SET data = 'updated' WHERE id % 2 = 0")
         primary.execute("DELETE FROM dml_load WHERE id % 10 = 0")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=120)
+        repl.assert_catchup(timeout=120)
         repl.assert_row_counts_match("dml_load")
 
 
@@ -135,7 +143,7 @@ class TestPromoteAndRewind:
         primary.execute("CREATE TABLE pre_promote (id INT)")
         primary.execute("INSERT INTO pre_promote SELECT generate_series(1,100)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         standby.promote()
         standby.wait_ready(timeout=30)
@@ -151,7 +159,7 @@ class TestPromoteAndRewind:
         primary.execute("CREATE TABLE rewind_test (id INT)")
         primary.execute("INSERT INTO rewind_test SELECT generate_series(1,100)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         # Promote standby; primary diverges
         standby.promote()
@@ -168,7 +176,11 @@ class TestPromoteAndRewind:
         primary.start()
         primary.wait_ready(timeout=30)
         result = primary.fetchone("SELECT pg_is_in_recovery()")
-        assert result == "t"
+        assert result == "t", (
+            f"After pg_rewind, old primary (port {primary.port}) should be a standby "
+            f"(in_recovery=t) but got: {result!r}\n"
+            f"Server log:\n{primary.read_log(20)}"
+        )
 
     def test_tde_rewind(self, tde_replica_pair: Tuple[PgCluster, PgCluster]):
         primary, standby = tde_replica_pair
@@ -178,7 +190,7 @@ class TestPromoteAndRewind:
         primary.execute("CREATE TABLE tde_rewind_t (id INT)")
         primary.execute("INSERT INTO tde_rewind_t SELECT generate_series(1,100)")
         repl = ReplicationManager(primary, standby)
-        assert repl.wait_for_catchup(timeout=30)
+        repl.assert_catchup(timeout=30)
 
         standby.promote()
         standby.wait_ready(timeout=30)

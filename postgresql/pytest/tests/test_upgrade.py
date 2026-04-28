@@ -192,7 +192,7 @@ class TestUpgradeExtensions:
         old_port = allocate_port()
         old_cluster = PgCluster(tmp_path / "tde_old", old_port, old_install_dir,
                                 socket_dir=tmp_path, io_method=io_method)
-        old_cluster.initdb()
+        old_cluster.initdb(extra_args=["--no-data-checksums"])
         old_cluster.write_default_config()
         old_cluster.add_hba_entry("local all all trust")
         tde = TdeManager(old_cluster)
@@ -208,7 +208,7 @@ class TestUpgradeExtensions:
         new_port = allocate_port()
         new_data = tmp_path / "tde_new"
         new_cluster = PgCluster(new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method)
-        new_cluster.initdb()
+        new_cluster.initdb(extra_args=["--no-data-checksums"])
         new_cluster.stop(check=False)
 
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path)
