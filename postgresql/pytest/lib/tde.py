@@ -50,6 +50,20 @@ class TdeManager:
 
     # ── key providers ─────────────────────────────────────────────────────
 
+    def _first_func(self, candidates: list) -> Optional[str]:
+        """Return the first function name from candidates that exists in pg_proc."""
+        for fn in candidates:
+            if self._nargs(fn) >= 0:
+                return fn
+        return None
+
+    def available_functions(self) -> list:
+        """Return all pg_tde function names visible in pg_proc (useful for debugging)."""
+        rows = self.cluster.fetchall(
+            "SELECT proname FROM pg_proc WHERE proname LIKE 'pg_tde%' ORDER BY proname"
+        )
+        return rows
+
     def add_global_key_provider_file(
         self,
         provider_name: str = "file_provider",
@@ -57,13 +71,18 @@ class TdeManager:
         *,
         in_place: bool = True,
     ) -> None:
-        fn = "pg_tde_add_global_key_provider_file"
+        fn = self._first_func([
+            "pg_tde_add_global_key_provider_file",
+            "pg_tde_add_key_provider_file",
+        ])
+        if fn is None:
+            raise RuntimeError("No pg_tde add_key_provider_file function found in pg_proc")
         nargs = self._nargs(fn)
         if nargs == 3:
-            sql = f"SELECT {fn}('{provider_name}', '{keyfile}', {'true' if in_place else 'false'})"
+            sql = (f"SELECT {fn}('{provider_name}'::text, '{keyfile}'::text, "
+                   f"{'true' if in_place else 'false'})")
         else:
-            # 2-argument form — most common in recent releases
-            sql = f"SELECT {fn}('{provider_name}', '{keyfile}')"
+            sql = f"SELECT {fn}('{provider_name}'::text, '{keyfile}'::text)"
         self.cluster.execute(sql)
 
     def add_global_key_provider_vault(
@@ -74,10 +93,16 @@ class TdeManager:
         vault_token: str = "",
         ca_path: str = "",
     ) -> None:
-        fn = "pg_tde_add_global_key_provider_vault_v2"
-        if not self._has_func(fn):
-            fn = "pg_tde_add_global_key_provider_vault"
-        sql = f"SELECT {fn}('{provider_name}', '{vault_url}', '{secret_mount_point}', '{vault_token}', '{ca_path}')"
+        fn = self._first_func([
+            "pg_tde_add_global_key_provider_vault_v2",
+            "pg_tde_add_global_key_provider_vault",
+            "pg_tde_add_key_provider_vault_v2",
+            "pg_tde_add_key_provider_vault",
+        ])
+        if fn is None:
+            raise RuntimeError("No pg_tde add_key_provider_vault function found in pg_proc")
+        sql = (f"SELECT {fn}('{provider_name}'::text, '{vault_url}'::text, "
+               f"'{secret_mount_point}'::text, '{vault_token}'::text, '{ca_path}'::text)")
         self.cluster.execute(sql)
 
     def set_global_principal_key(
@@ -86,12 +111,34 @@ class TdeManager:
         provider_name: str = "file_provider",
         dbname: str = "postgres",
     ) -> None:
-        fn = "pg_tde_set_global_principal_key"
+        # Current pg_tde (Percona docs): create key at the global provider, then set it as default.
+        create_fn = self._first_func(["pg_tde_create_key_using_global_key_provider"])
+        set_default_fn = self._first_func(["pg_tde_set_default_key_using_global_key_provider"])
+        if create_fn and set_default_fn:
+            sql_create = (
+                f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)"
+            )
+            sql_set = (
+                f"SELECT {set_default_fn}('{key_name}'::text, '{provider_name}'::text)"
+            )
+            self.cluster.execute(sql_create, dbname)
+            self.cluster.execute(sql_set, dbname)
+            return
+
+        fn = self._first_func([
+            "pg_tde_set_global_principal_key",
+            "pg_tde_set_server_principal_key",
+            "pg_tde_set_principal_key",
+            "pg_tde_set_key_using_global_key_provider",
+            "pg_tde_set_server_key_using_global_key_provider",
+        ])
+        if fn is None:
+            raise RuntimeError("No pg_tde set_principal_key function found in pg_proc")
         nargs = self._nargs(fn)
         if nargs == 1:
-            sql = f"SELECT {fn}('{key_name}')"
+            sql = f"SELECT {fn}('{key_name}'::text)"
         else:
-            sql = f"SELECT {fn}('{key_name}', '{provider_name}')"
+            sql = f"SELECT {fn}('{key_name}'::text, '{provider_name}'::text)"
         self.cluster.execute(sql, dbname)
 
     def rotate_principal_key(
@@ -100,14 +147,32 @@ class TdeManager:
         provider_name: str = "file_provider",
         dbname: str = "postgres",
     ) -> None:
-        fn = "pg_tde_rotate_principal_key"
+        create_fn = self._first_func(["pg_tde_create_key_using_global_key_provider"])
+        set_default_fn = self._first_func(["pg_tde_set_default_key_using_global_key_provider"])
+        if create_fn and set_default_fn:
+            self.cluster.execute(
+                f"SELECT {create_fn}('{new_key_name}'::text, '{provider_name}'::text)",
+                dbname,
+            )
+            self.cluster.execute(
+                f"SELECT {set_default_fn}('{new_key_name}'::text, '{provider_name}'::text)",
+                dbname,
+            )
+            return
+
+        fn = self._first_func([
+            "pg_tde_rotate_principal_key",
+            "pg_tde_rotate_global_principal_key",
+        ])
+        if fn is None:
+            raise RuntimeError("No pg_tde rotate_principal_key function found in pg_proc")
         nargs = self._nargs(fn)
         if nargs == 0:
             sql = f"SELECT {fn}()"
         elif nargs == 1:
-            sql = f"SELECT {fn}('{new_key_name}')"
+            sql = f"SELECT {fn}('{new_key_name}'::text)"
         else:
-            sql = f"SELECT {fn}('{new_key_name}', '{provider_name}')"
+            sql = f"SELECT {fn}('{new_key_name}'::text, '{provider_name}'::text)"
         self.cluster.execute(sql, dbname)
 
     # ── WAL encryption ────────────────────────────────────────────────────
@@ -132,7 +197,7 @@ class TdeManager:
     def is_table_encrypted(self, table: str, dbname: str = "postgres") -> bool:
         for fn in ("pg_tde_is_encrypted", "pg_tde_is_encrypted_rel"):
             if self._has_func(fn):
-                val = self.cluster.fetchone(f"SELECT {fn}('{table}')", dbname)
+                val = self.cluster.fetchone(f"SELECT {fn}('{table}'::text)", dbname)
                 return val in ("t", "true", "on", "1")
         return False
 
