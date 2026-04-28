@@ -1,5 +1,6 @@
 """Test-level fixtures: ready-to-use cluster objects for every test module."""
 import shutil
+import time
 from pathlib import Path
 from typing import Generator, Tuple
 
@@ -103,6 +104,14 @@ def replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, Non
     standby.start()
     standby.wait_ready()
 
+    # wait_ready() only checks TCP; also wait for WAL sender to appear
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        count = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
+        if count and int(count) >= 1:
+            break
+        time.sleep(1)
+
     yield primary, standby
 
 
@@ -134,5 +143,13 @@ def tde_replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None,
     standby.write_default_config("replica")
     standby.start()
     standby.wait_ready()
+
+    # wait_ready() only checks TCP; also wait for WAL sender to appear
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        count = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
+        if count and int(count) >= 1:
+            break
+        time.sleep(1)
 
     yield primary, standby

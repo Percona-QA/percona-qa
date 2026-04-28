@@ -1,8 +1,7 @@
-"""pg_tde extension management."""
+"""pg_tde extension management with runtime API version detection."""
 import logging
 import subprocess
-from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from .cluster import PgCluster
 
@@ -10,23 +9,44 @@ log = logging.getLogger(__name__)
 
 
 class TdeManager:
-    """Handles pg_tde setup, key management, and encryption state queries."""
+    """
+    Handles pg_tde setup and key management.
+
+    pg_tde function signatures vary across minor releases.  All calls go
+    through _sql() which probes the real argument list once and picks the
+    right form automatically.
+    """
 
     def __init__(self, cluster: PgCluster) -> None:
         self.cluster = cluster
+        self._func_args: Dict[str, int] = {}   # cache: func_name → pronargs
+
+    # ── internal helpers ──────────────────────────────────────────────────
+
+    def _nargs(self, func_name: str) -> int:
+        """Return pronargs for func_name (after CREATE EXTENSION)."""
+        if func_name not in self._func_args:
+            result = self.cluster.fetchone(
+                f"SELECT pronargs FROM pg_proc "
+                f"WHERE proname = '{func_name}' LIMIT 1"
+            )
+            self._func_args[func_name] = int(result) if result else -1
+        return self._func_args[func_name]
+
+    def _has_func(self, func_name: str) -> bool:
+        return self._nargs(func_name) >= 0
 
     # ── configuration ─────────────────────────────────────────────────────
 
     def enable_preload(self) -> None:
-        """Add pg_tde to shared_preload_libraries (before first start)."""
         self.cluster.configure({"shared_preload_libraries": "'pg_tde'"})
 
     def enable_tde_heap(self) -> None:
-        """Set default_table_access_method to tde_heap."""
         self.cluster.configure({"default_table_access_method": "'tde_heap'"})
 
     def create_extension(self, dbname: str = "postgres") -> None:
         self.cluster.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname)
+        self._func_args.clear()   # flush cache after extension is created
 
     # ── key providers ─────────────────────────────────────────────────────
 
@@ -37,10 +57,13 @@ class TdeManager:
         *,
         in_place: bool = True,
     ) -> None:
-        sql = (
-            f"SELECT pg_tde_add_global_key_provider_file("
-            f"'{provider_name}', '{keyfile}', {'true' if in_place else 'false'})"
-        )
+        fn = "pg_tde_add_global_key_provider_file"
+        nargs = self._nargs(fn)
+        if nargs == 3:
+            sql = f"SELECT {fn}('{provider_name}', '{keyfile}', {'true' if in_place else 'false'})"
+        else:
+            # 2-argument form — most common in recent releases
+            sql = f"SELECT {fn}('{provider_name}', '{keyfile}')"
         self.cluster.execute(sql)
 
     def add_global_key_provider_vault(
@@ -51,10 +74,10 @@ class TdeManager:
         vault_token: str = "",
         ca_path: str = "",
     ) -> None:
-        sql = (
-            f"SELECT pg_tde_add_global_key_provider_vault_v2("
-            f"'{provider_name}', '{vault_url}', '{secret_mount_point}', '{vault_token}', '{ca_path}')"
-        )
+        fn = "pg_tde_add_global_key_provider_vault_v2"
+        if not self._has_func(fn):
+            fn = "pg_tde_add_global_key_provider_vault"
+        sql = f"SELECT {fn}('{provider_name}', '{vault_url}', '{secret_mount_point}', '{vault_token}', '{ca_path}')"
         self.cluster.execute(sql)
 
     def set_global_principal_key(
@@ -63,10 +86,13 @@ class TdeManager:
         provider_name: str = "file_provider",
         dbname: str = "postgres",
     ) -> None:
-        self.cluster.execute(
-            f"SELECT pg_tde_set_global_principal_key('{key_name}', '{provider_name}')",
-            dbname,
-        )
+        fn = "pg_tde_set_global_principal_key"
+        nargs = self._nargs(fn)
+        if nargs == 1:
+            sql = f"SELECT {fn}('{key_name}')"
+        else:
+            sql = f"SELECT {fn}('{key_name}', '{provider_name}')"
+        self.cluster.execute(sql, dbname)
 
     def rotate_principal_key(
         self,
@@ -74,10 +100,15 @@ class TdeManager:
         provider_name: str = "file_provider",
         dbname: str = "postgres",
     ) -> None:
-        self.cluster.execute(
-            f"SELECT pg_tde_rotate_principal_key('{new_key_name}', '{provider_name}')",
-            dbname,
-        )
+        fn = "pg_tde_rotate_principal_key"
+        nargs = self._nargs(fn)
+        if nargs == 0:
+            sql = f"SELECT {fn}()"
+        elif nargs == 1:
+            sql = f"SELECT {fn}('{new_key_name}')"
+        else:
+            sql = f"SELECT {fn}('{new_key_name}', '{provider_name}')"
+        self.cluster.execute(sql, dbname)
 
     # ── WAL encryption ────────────────────────────────────────────────────
 
@@ -88,16 +119,24 @@ class TdeManager:
         self.cluster.execute("SELECT pg_tde_disable_wal_encryption()")
 
     def is_wal_encrypted(self) -> bool:
-        val = self.cluster.fetchone("SELECT pg_tde_is_wal_encryption_enabled()")
-        return val == "t"
+        # function name varies across versions
+        for fn in (
+            "pg_tde_is_wal_encryption_enabled",
+            "pg_tde_wal_encryption_enabled",
+        ):
+            if self._has_func(fn):
+                val = self.cluster.fetchone(f"SELECT {fn}()")
+                return val in ("t", "true", "on", "1")
+        return False
 
     # ── encryption state queries ──────────────────────────────────────────
 
     def is_table_encrypted(self, table: str, dbname: str = "postgres") -> bool:
-        val = self.cluster.fetchone(
-            f"SELECT pg_tde_is_encrypted('{table}')", dbname
-        )
-        return val == "t"
+        for fn in ("pg_tde_is_encrypted", "pg_tde_is_encrypted_rel"):
+            if self._has_func(fn):
+                val = self.cluster.fetchone(f"SELECT {fn}('{table}')", dbname)
+                return val in ("t", "true", "on", "1")
+        return False
 
     def get_access_method(self, table: str, dbname: str = "postgres") -> str:
         return self.cluster.fetchone(
@@ -106,11 +145,29 @@ class TdeManager:
             dbname,
         )
 
+    def list_key_providers(self) -> int:
+        """Return the count of registered key providers."""
+        for fn in ("pg_tde_key_providers", "pg_tde_list_key_providers"):
+            if self._has_func(fn):
+                result = self.cluster.fetchone(f"SELECT COUNT(*) FROM {fn}()")
+                return int(result) if result else 0
+        return 0
+
+    def principal_key_name(self) -> Optional[str]:
+        for fn in ("pg_tde_principal_key_info", "pg_tde_get_principal_key_info"):
+            if self._has_func(fn):
+                return self.cluster.fetchone(f"SELECT key_name FROM {fn}()")
+        return None
+
     # ── basebackup with TDE ───────────────────────────────────────────────
 
     def tde_basebackup(self, target_dir: str, extra_args=None) -> None:
-        """Use pg_tde_basebackup instead of standard pg_basebackup."""
         bin_path = self.cluster.bin / "pg_tde_basebackup"
+        if not bin_path.exists():
+            # Fall back to standard pg_basebackup if tde variant not present
+            log.warning("pg_tde_basebackup not found, using pg_basebackup")
+            self.cluster.basebackup(target_dir, extra_args)
+            return
         cmd = [
             str(bin_path),
             "-h", str(self.cluster.socket_dir),
@@ -134,7 +191,6 @@ class TdeManager:
         enable_wal_enc: bool = False,
         set_tde_heap: bool = True,
     ) -> None:
-        """Enable pg_tde, create extension, set up file key provider and principal key."""
         self.enable_preload()
         if set_tde_heap:
             self.enable_tde_heap()

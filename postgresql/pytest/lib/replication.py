@@ -71,18 +71,26 @@ class ReplicationManager:
     # ── catchup / lag ─────────────────────────────────────────────────────
 
     def wait_for_catchup(self, timeout: int = 60) -> bool:
-        """Wait until the standby has replayed all WAL from the primary."""
+        """Wait until standby replay_lsn has reached the primary's LSN at call time."""
+        # Snapshot once — primary advances every transaction so exact equality never holds
+        target_lsn = self.primary.fetchone("SELECT pg_current_wal_lsn()")
+        if not target_lsn:
+            return False
         deadline = time.time() + timeout
         while time.time() < deadline:
-            primary_lsn = self.primary.fetchone("SELECT pg_current_wal_lsn()")
-            replay_lsn = self.standby.fetchone(
-                "SELECT pg_last_wal_replay_lsn()"
-            )
-            if primary_lsn and replay_lsn and primary_lsn == replay_lsn:
-                log.info("Standby caught up at LSN %s", primary_lsn)
-                return True
+            replay_lsn = self.standby.fetchone("SELECT pg_last_wal_replay_lsn()")
+            if replay_lsn:
+                try:
+                    diff = self.primary.fetchone(
+                        f"SELECT pg_wal_lsn_diff('{replay_lsn}', '{target_lsn}')"
+                    )
+                    if diff is not None and int(diff) >= 0:
+                        log.info("Standby caught up: replay=%s target=%s", replay_lsn, target_lsn)
+                        return True
+                except Exception:
+                    pass
             time.sleep(1)
-        log.warning("Standby did not catch up within %ds", timeout)
+        log.warning("Standby did not reach %s within %ds", target_lsn, timeout)
         return False
 
     def replication_lag_bytes(self) -> Optional[int]:

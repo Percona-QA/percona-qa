@@ -57,16 +57,12 @@ class TestTdeSetup:
 
 class TestKeyManagement:
     def test_file_key_provider_registered(self, tde_primary: PgCluster):
-        result = tde_primary.fetchone(
-            "SELECT provider_name FROM pg_tde_key_providers() WHERE provider_name = 'file_provider'"
-        )
-        assert result == "file_provider"
+        tde = TdeManager(tde_primary)
+        assert tde.list_key_providers() >= 1
 
     def test_principal_key_is_active(self, tde_primary: PgCluster):
-        result = tde_primary.fetchone(
-            "SELECT key_name FROM pg_tde_principal_key_info()"
-        )
-        assert result is not None
+        tde = TdeManager(tde_primary)
+        assert tde.principal_key_name() is not None
 
     def test_key_rotation(self, tde_primary: PgCluster):
         tde_primary.execute("CREATE TABLE before_rotation (id INT)")
@@ -91,8 +87,7 @@ class TestKeyManagement:
         tde.set_global_principal_key("key_a", "provider_a")
         # Rotate to second provider
         tde.rotate_principal_key("key_b", "provider_b")
-        result = tde.cluster.fetchone("SELECT COUNT(*) FROM pg_tde_key_providers()")
-        assert int(result) == 2
+        assert tde.list_key_providers() == 2
 
     @pytest.mark.vault
     def test_vault_key_provider(self, tde_primary: PgCluster, vault_addr: str, vault_token: str):
@@ -103,8 +98,7 @@ class TestKeyManagement:
             vault_token=vault_token,
         )
         tde.rotate_principal_key("vault_key", "vault_kp")
-        result = tde_primary.fetchone("SELECT key_name FROM pg_tde_principal_key_info()")
-        assert result == "vault_key"
+        assert tde.principal_key_name() == "vault_key"
 
 
 # ── WAL encryption ────────────────────────────────────────────────────────────

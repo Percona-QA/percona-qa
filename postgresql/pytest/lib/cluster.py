@@ -178,8 +178,16 @@ class PgCluster:
             "-c", sql,
             "--no-align", "--tuples-only", "-q",
         ]
-        result = self._run(cmd, capture=True)
-        return result.stdout.strip()
+        try:
+            result = self._run(cmd, capture=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"psql failed (port={self.port}, db={dbname})\n"
+                f"SQL : {sql}\n"
+                f"OUT : {e.stdout.strip()}\n"
+                f"ERR : {e.stderr.strip()}"
+            ) from e
 
     def execute_file(self, sql_file: str, dbname: str = "postgres") -> str:
         cmd = [

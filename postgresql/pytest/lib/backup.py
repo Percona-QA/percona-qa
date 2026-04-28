@@ -28,6 +28,7 @@ class BackupManager:
         retention_full: int = 2,
     ) -> None:
         self.repo_path.mkdir(parents=True, exist_ok=True)
+        self.conf_path.parent.mkdir(parents=True, exist_ok=True)
         cfg = configparser.ConfigParser()
         cfg["global"] = {
             "repo1-path": str(self.repo_path),

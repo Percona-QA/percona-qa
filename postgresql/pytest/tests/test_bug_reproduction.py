@@ -87,11 +87,16 @@ class TestPG1805:
         cluster.start()
         cluster.wait_ready()
 
-        # After recovery, an UNLOGGED table is re-initialised from its init fork.
-        # The fix ensures the identity sequence block is also properly re-initialised.
-        cluster.execute("INSERT INTO unlogged_identity (val) VALUES ('after_recovery')")
+        # After recovery the UNLOGGED table is re-initialised from its init fork.
+        # PG-1805 fix: the identity sequence block must also be re-initialised cleanly.
+        try:
+            cluster.execute("INSERT INTO unlogged_identity (val) VALUES ('after_recovery')")
+        except RuntimeError as e:
+            pytest.fail(
+                f"PG-1805 NOT FIXED: INSERT failed after crash recovery on unlogged "
+                f"table with IDENTITY column.\n{e}\nServer log:\n{cluster.read_log()}"
+            )
         count = cluster.fetchone("SELECT COUNT(*) FROM unlogged_identity")
-        # The pre-crash row is lost (unlogged), but the post-recovery insert must succeed.
         assert count == "1", (
             "Expected exactly one row after recovery — if 0 rows or an error, PG-1805 is not fixed"
         )
@@ -193,12 +198,24 @@ class TestPG1806:
 
         # Immediate shutdown simulates a dirty crash
         cluster.stop(mode="immediate")
-        cluster.start()
-        cluster.wait_ready()
+        try:
+            cluster.start()
+            cluster.wait_ready()
+        except Exception as e:
+            pytest.fail(
+                f"PG-1806 NOT FIXED: cluster failed to start after crash recovery.\n"
+                f"{e}\nServer log:\n{cluster.read_log()}"
+            )
 
         # Both tables must be fully accessible after recovery
-        count_a = cluster.fetchone("SELECT COUNT(*) FROM tbl_a")
-        count_b = cluster.fetchone("SELECT COUNT(*) FROM tbl_b")
+        try:
+            count_a = cluster.fetchone("SELECT COUNT(*) FROM tbl_a")
+            count_b = cluster.fetchone("SELECT COUNT(*) FROM tbl_b")
+        except RuntimeError as e:
+            pytest.fail(
+                f"PG-1806 NOT FIXED: query failed after crash recovery.\n"
+                f"{e}\nServer log:\n{cluster.read_log()}"
+            )
         assert count_a == "1000", f"tbl_a corrupted after crash: {count_a} rows"
         assert count_b == "500", f"tbl_b corrupted after crash: {count_b} rows"
         # Index must be usable

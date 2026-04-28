@@ -99,6 +99,7 @@ class TestPgBackRest:
 
         restored = PgCluster(restore_dir, restore_port, install_dir,
                              socket_dir=tmp_path, io_method=io_method)
+        restored.write_default_config()
         restored.add_hba_entry("local all all trust")
         restored.start()
         restored.wait_ready()
@@ -216,6 +217,7 @@ class TestPitr:
 
         restored = PgCluster(restore_dir, restore_port, install_dir,
                              socket_dir=tmp_path, io_method=io_method)
+        restored.write_default_config()
         recovery_conf = restore_dir / "postgresql.auto.conf"
         with recovery_conf.open("a") as f:
             f.write(f"recovery_target_time = '{pitr_time}'\n")
@@ -261,6 +263,7 @@ class TestPitr:
 
         restored = PgCluster(restore_dir, restore_port, install_dir,
                              socket_dir=tmp_path, io_method=io_method)
+        restored.write_default_config()
         auto_conf = restore_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
             f.write(f"recovery_target_time = '{pitr_time}'\n")
