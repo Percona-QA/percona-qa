@@ -2,12 +2,20 @@
 import shutil
 import time
 from pathlib import Path
-from typing import Generator, List, Tuple
+from typing import Dict, Generator, List, Tuple
 
 import pytest
 
 from conftest import allocate_port
 from lib import PgCluster, TdeManager, ReplicationManager
+
+# Settings that must be present in postgresql.conf for every TDE cluster.
+# Passed via write_default_config(extra_params=...) so they are written
+# atomically and never overwritten by a subsequent write_default_config call.
+_TDE_PARAMS: Dict[str, str] = {
+    "shared_preload_libraries": "'pg_tde'",
+    "default_table_access_method": "'tde_heap'",
+}
 
 
 # ── internal helper ───────────────────────────────────────────────────────────
@@ -86,14 +94,11 @@ def tde_primary(pg_factory) -> Generator[PgCluster, None, None]:
     """A primary cluster with pg_tde fully set up (file key provider)."""
     cluster = pg_factory("tde_primary")
     cluster.initdb(extra_args=["--no-data-checksums"])
-    cluster.write_default_config("primary")
+    cluster.write_default_config("primary", extra_params=_TDE_PARAMS)
     cluster.add_hba_entry("local all all trust")
     cluster.add_hba_entry("host  all all 127.0.0.1/32 trust")
-
-    tde = TdeManager(cluster)
-    tde.enable_preload()
-    tde.enable_tde_heap()
     cluster.start()
+    tde = TdeManager(cluster)
     tde.create_extension()
     tde.add_global_key_provider_file()
     tde.set_global_principal_key()
@@ -142,24 +147,21 @@ def tde_replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None,
     standby = pg_factory("tde_standby")
 
     primary.initdb(extra_args=["--no-data-checksums"])
-    primary.write_default_config("primary")
+    primary.write_default_config("primary", extra_params=_TDE_PARAMS)
     primary.configure({"wal_level": "replica", "max_wal_senders": "5", "hot_standby": "on"})
     primary.add_hba_entry("local all all trust")
     primary.add_hba_entry("local replication all trust")
     primary.add_hba_entry("host  all all 127.0.0.1/32 trust")
     primary.add_hba_entry("host  replication all 127.0.0.1/32 trust")
-
-    tde = TdeManager(primary)
-    tde.enable_preload()
-    tde.enable_tde_heap()
     primary.start()
+    tde = TdeManager(primary)
     tde.create_extension()
     tde.add_global_key_provider_file()
     tde.set_global_principal_key()
 
     repl = ReplicationManager(primary, standby)
     repl.create_standby_from_backup(use_tde_basebackup=True)
-    standby.write_default_config("replica")
+    standby.write_default_config("replica", extra_params=_TDE_PARAMS)
     standby.start()
     standby.wait_ready()
 

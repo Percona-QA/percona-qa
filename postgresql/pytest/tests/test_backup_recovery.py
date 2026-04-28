@@ -171,7 +171,7 @@ class TestPgBackRest:
         shutil.rmtree(primary.data_dir)
         tde_new_primary = TdeManager(standby)
         tde_new_primary.tde_basebackup(str(primary.data_dir))
-        primary.write_default_config("replica")
+        primary.write_default_config("replica", extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         # Update primary_conninfo to point to new primary
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:

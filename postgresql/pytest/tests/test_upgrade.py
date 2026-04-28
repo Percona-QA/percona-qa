@@ -193,11 +193,10 @@ class TestUpgradeExtensions:
         old_cluster = PgCluster(tmp_path / "tde_old", old_port, old_install_dir,
                                 socket_dir=tmp_path, io_method=io_method)
         old_cluster.initdb(extra_args=["--no-data-checksums"])
-        old_cluster.write_default_config()
+        old_cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'"})
         old_cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(old_cluster)
-        tde.enable_preload()
         old_cluster.start()
+        tde = TdeManager(old_cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_upgrade.per")
         tde.set_global_principal_key()
@@ -209,13 +208,12 @@ class TestUpgradeExtensions:
         new_data = tmp_path / "tde_new"
         new_cluster = PgCluster(new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method)
         new_cluster.initdb(extra_args=["--no-data-checksums"])
+        new_cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'"})
         new_cluster.stop(check=False)
 
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path)
         assert result.returncode == 0, f"pg_upgrade with TDE failed:\n{result.stderr}"
 
-        new_tde = TdeManager(new_cluster)
-        new_tde.enable_preload()
         new_cluster.start()
         new_cluster.wait_ready()
         count = new_cluster.fetchone("SELECT COUNT(*) FROM tde_upgrade_data")

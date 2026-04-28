@@ -114,6 +114,7 @@ class TestTdeStreamingReplication:
         primary, standby = tde_replica_pair
         tde = TdeManager(primary)
         tde.enable_wal_encryption()
+        primary.restart()
         primary.execute("CREATE TABLE wal_enc_repl (id INT)")
         primary.execute("INSERT INTO wal_enc_repl SELECT generate_series(1,1000)")
         repl = ReplicationManager(primary, standby)

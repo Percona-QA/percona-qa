@@ -48,7 +48,11 @@ class PgCluster:
             for k, v in params.items():
                 f.write(f"{k} = {v}\n")
 
-    def write_default_config(self, role: str = "primary") -> None:
+    def write_default_config(
+        self,
+        role: str = "primary",
+        extra_params: Optional[Dict[str, str]] = None,
+    ) -> None:
         """Mirror write_postgresql_conf() from common.sh."""
         self.socket_dir.mkdir(parents=True, exist_ok=True)
         params: Dict[str, str] = {
@@ -73,6 +77,8 @@ class PgCluster:
                     "max_replication_slots": "2",
                 }
             )
+        if extra_params:
+            params.update(extra_params)
         self.configure(params, append=False)
 
     def add_hba_entry(self, entry: str) -> None:

@@ -56,12 +56,10 @@ class TestPG1805:
     def _setup_tde_cluster(self, pg_factory):
         cluster = pg_factory("pg1805")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1805.per")
         tde.set_global_principal_key()
@@ -156,12 +154,8 @@ class TestPG1806:
 
         cluster = pg_factory("pg1806")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         # These two GUCs together are the trigger condition for PG-1806
         cluster.configure(
             {
@@ -170,6 +164,7 @@ class TestPG1806:
             }
         )
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806.per")
         tde.set_global_principal_key()
@@ -228,11 +223,8 @@ class TestPG1806:
 
         cluster = pg_factory("pg1806_replica_wal")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         cluster.configure(
             {
                 "wal_level": "replica",
@@ -240,6 +232,7 @@ class TestPG1806:
             }
         )
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806b.per")
         tde.set_global_principal_key()
@@ -268,13 +261,11 @@ class TestPG1806:
 
         cluster = pg_factory("pg1806_default_threshold")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         cluster.configure({"wal_level": "minimal"})  # wal_skip_threshold left at default
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806c.per")
         tde.set_global_principal_key()

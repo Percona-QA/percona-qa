@@ -75,12 +75,10 @@ class TestKeyManagement:
     def test_multiple_key_providers(self, pg_factory):
         cluster = pg_factory("multi_kp")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(provider_name="provider_a", keyfile="/tmp/pg_tde_a.per")
         tde.add_global_key_provider_file(provider_name="provider_b", keyfile="/tmp/pg_tde_b.per")
@@ -108,13 +106,16 @@ class TestWalEncryption:
     def test_enable_wal_encryption(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
+        tde_primary.restart()
         assert tde.is_wal_encrypted()
 
     def test_disable_wal_encryption(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
+        tde_primary.restart()
         assert tde.is_wal_encrypted()
         tde.disable_wal_encryption()
+        tde_primary.restart()
         assert not tde.is_wal_encrypted()
 
     def test_wal_encryption_guc_persists_after_restart(self, tde_primary: PgCluster):
@@ -127,6 +128,7 @@ class TestWalEncryption:
     def test_wal_encryption_with_heavy_dml(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
+        tde_primary.restart()
         tde_primary.execute("CREATE TABLE wal_load (id BIGINT, data TEXT)")
         tde_primary.execute(
             "INSERT INTO wal_load SELECT i, md5(i::text) FROM generate_series(1, 100000) i"
@@ -147,12 +149,10 @@ class TestChecksums:
         """TDE is not compatible with data checksums — initdb must use --no-data-checksums."""
         cluster = pg_factory("checksum_tde")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_cs.per")
         tde.set_global_principal_key()
@@ -168,12 +168,10 @@ class TestChecksums:
     def test_no_checksums_with_tde(self, pg_factory):
         cluster = pg_factory("nochecksum_tde")
         cluster.initdb(extra_args=["--no-data-checksums"])
-        cluster.write_default_config()
+        cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        tde = TdeManager(cluster)
-        tde.enable_preload()
-        tde.enable_tde_heap()
         cluster.start()
+        tde = TdeManager(cluster)
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_ncs.per")
         tde.set_global_principal_key()

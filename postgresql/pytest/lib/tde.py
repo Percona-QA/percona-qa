@@ -113,21 +113,19 @@ class TdeManager:
     # ── WAL encryption ────────────────────────────────────────────────────
 
     def enable_wal_encryption(self) -> None:
-        self.cluster.execute("SELECT pg_tde_enable_wal_encryption()")
+        self.cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = 'on'")
+        self.cluster.execute("SELECT pg_reload_conf()")
 
     def disable_wal_encryption(self) -> None:
-        self.cluster.execute("SELECT pg_tde_disable_wal_encryption()")
+        self.cluster.execute("ALTER SYSTEM RESET pg_tde.wal_encrypt")
+        self.cluster.execute("SELECT pg_reload_conf()")
 
     def is_wal_encrypted(self) -> bool:
-        # function name varies across versions
-        for fn in (
-            "pg_tde_is_wal_encryption_enabled",
-            "pg_tde_wal_encryption_enabled",
-        ):
-            if self._has_func(fn):
-                val = self.cluster.fetchone(f"SELECT {fn}()")
-                return val in ("t", "true", "on", "1")
-        return False
+        try:
+            val = self.cluster.fetchone("SHOW pg_tde.wal_encrypt")
+            return val in ("on", "true", "1", "yes")
+        except RuntimeError:
+            return False
 
     # ── encryption state queries ──────────────────────────────────────────
 
