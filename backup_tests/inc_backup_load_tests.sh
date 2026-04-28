@@ -726,7 +726,7 @@ run_crash_tests_pstress() {
     local test_type="$1"
     local kmip_type="$2"
 
-    if [[ "${test_type}" = "*keyring*" ]]; then
+    if [[ "${test_type}" = *keyring* ]]; then
         echo "Running crash tests with ${load_tool} and mysql running with encryption"
         if [ $VERSION -ge 080000 ]; then
             if [ "$server_type" == "MS" ]; then
@@ -786,7 +786,7 @@ run_crash_tests_pstress() {
     log_date=$(date +"%d_%m_%Y_%M")
 
     cleanup
-    create_keyring_component_files $keyring_type $kmip_type
+    create_keyring_component_files $test_type $kmip_type
     initialize_db
 
     if [ "$test_type" = "rocksdb" ]; then
