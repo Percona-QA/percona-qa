@@ -135,8 +135,8 @@ sub setup_pg_tde_node {
     # Add process ID to ensure parallel safety
     my $pid = $$;
     # Build unique keyring file paths in /tmp
-    my $global_keyring = File::Spec->catfile('/tmp', "global_keyring_${test_name}_${pid}.file");
-    my $local_keyring  = File::Spec->catfile('/tmp', "local_keyring_${test_name}_${pid}.file");
+    my $global_keyring_file = File::Spec->catfile('/tmp', "global_keyring_${test_name}_${pid}.file");
+    my $local_keyring_file  = File::Spec->catfile('/tmp', "local_keyring_${test_name}_${pid}.file");
 
     # Basic pg_tde settings
     $node->append_conf('postgresql.conf',
@@ -154,13 +154,17 @@ sub setup_pg_tde_node {
     $node->safe_psql('postgres',
         'CREATE EXTENSION IF NOT EXISTS pg_tde;');
 
-	# Create global key provider and set server key
+	# Global provider: create key, set default principal, then server (WAL) key
     $node->safe_psql('postgres',
         "SELECT pg_tde_add_global_key_provider_file(
             'global_key_provider', '$global_keyring_file');");
 
     $node->safe_psql('postgres',
         "SELECT pg_tde_create_key_using_global_key_provider(
+            'global_test_key_time', 'global_key_provider');");
+
+    $node->safe_psql('postgres',
+        "SELECT pg_tde_set_default_key_using_global_key_provider(
             'global_test_key_time', 'global_key_provider');");
 
     $node->safe_psql('postgres',

@@ -25,7 +25,7 @@ start_server() {
     $INSTALL_DIR/bin/psql -d sbtest -c"CREATE EXTENSION pg_tde;"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_add_global_key_provider_file('global_keyring','$PGDATA/keyring.file');"
     $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_global_key_provider('key1','global_keyring');"
-    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_global_key_provider('key1','global_keyring');"
+    $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_default_key_using_global_key_provider('key1','global_keyring');"
 }
 
 stop_server() {

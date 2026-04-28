@@ -24,6 +24,7 @@ rotate_wal_key(){
     local RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
     echo "Rotating Global master key: principal_key_test$RAND_KEY"
     $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c "SELECT pg_tde_create_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
+    $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c "SELECT pg_tde_set_default_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
     $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_test$RAND_KEY','local_keyring');" || echo "SQL command failed, continuing..."
     done
 }
@@ -68,6 +69,7 @@ create_keys_and_load() {
   $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_set_key_using_database_key_provider('local_key','local_key_provider');"
   $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_add_global_key_provider_file('global_key_provider','$PRIMARY_DATA/keyring.file');"
   $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_create_key_using_global_key_provider('global_key','global_key_provider');"
+  $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_set_default_key_using_global_key_provider('global_key','global_key_provider');"
   $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 
   echo "Create some tables on Primary Node"

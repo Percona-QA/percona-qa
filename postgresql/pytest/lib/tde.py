@@ -64,6 +64,17 @@ class TdeManager:
         )
         return rows
 
+    def _execute_create_global_key_allow_duplicate(self, sql: str, dbname: str = "postgres") -> None:
+        """Run pg_tde_create_key_using_* ; succeed if the key material already exists in the provider."""
+        try:
+            self.cluster.execute(sql, dbname)
+        except RuntimeError as e:
+            err = str(e).lower()
+            if "already exists" in err:
+                log.debug("pg_tde create_key skipped (already exists): %s", sql[:200])
+                return
+            raise
+
     def add_global_key_provider_file(
         self,
         provider_name: str = "file_provider",
@@ -123,7 +134,7 @@ class TdeManager:
 
         if create_fn and server_fn and db_fn:
             # Preferred: explicit server + database keys (matches Percona docs)
-            self.cluster.execute(
+            self._execute_create_global_key_allow_duplicate(
                 f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
             )
             self.cluster.execute(
@@ -137,7 +148,7 @@ class TdeManager:
         # Fallback: set_default covers both server and database in some builds
         set_default_fn = self._first_func(["pg_tde_set_default_key_using_global_key_provider"])
         if create_fn and set_default_fn:
-            self.cluster.execute(
+            self._execute_create_global_key_allow_duplicate(
                 f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)", dbname
             )
             self.cluster.execute(
@@ -175,7 +186,7 @@ class TdeManager:
         db_fn = self._first_func(["pg_tde_set_key_using_global_key_provider"])
 
         if create_fn and server_fn and db_fn:
-            self.cluster.execute(
+            self._execute_create_global_key_allow_duplicate(
                 f"SELECT {create_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
             )
             self.cluster.execute(
@@ -188,7 +199,7 @@ class TdeManager:
 
         set_default_fn = self._first_func(["pg_tde_set_default_key_using_global_key_provider"])
         if create_fn and set_default_fn:
-            self.cluster.execute(
+            self._execute_create_global_key_allow_duplicate(
                 f"SELECT {create_fn}('{new_key_name}'::text, '{provider_name}'::text)", dbname
             )
             self.cluster.execute(

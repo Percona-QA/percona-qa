@@ -86,6 +86,7 @@ enable_tde_and_set_keys() {
     $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"CREATE EXTENSION IF NOT EXISTS pg_tde;"
     $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_add_global_key_provider_file('global_key_provider','$PRIMARY_DATA/keyring.file');"
     $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_create_key_using_global_key_provider('global_key','global_key_provider');"
+    $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_set_default_key_using_global_key_provider('global_key','global_key_provider');"
     $INSTALL_DIR/bin/psql -d $DB_NAME -p $PORT -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 }
 # Existing functions for workload, rotation, etc. (no change)
