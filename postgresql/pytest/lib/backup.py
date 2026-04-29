@@ -35,6 +35,11 @@ class BackupManager:
         self.stanza = stanza
         self.repo_path = Path(repo_path)
         self.conf_path = Path(f"/tmp/pgtest_pytest/pgbackrest_{stanza}.conf")
+        # Set by write_config(); passed on the CLI so pgBackRest always sees pg1-* (some versions
+        # miss stanza options read only from config files written by ConfigParser).
+        self._pg1_path: Optional[str] = None
+        self._pg1_port: Optional[int] = None
+        self._pg1_socket_path: Optional[str] = None
 
     # ── configuration ─────────────────────────────────────────────────────
 
@@ -45,9 +50,13 @@ class BackupManager:
         pg_socket_path: str,
         retention_full: int = 2,
     ) -> None:
+        self._pg1_path = pg_path
+        self._pg1_port = pg_port
+        self._pg1_socket_path = pg_socket_path
+
         self.repo_path.mkdir(parents=True, exist_ok=True)
         self.conf_path.parent.mkdir(parents=True, exist_ok=True)
-        cfg = configparser.ConfigParser()
+        cfg = configparser.ConfigParser(interpolation=None)
         cfg["global"] = {
             "repo1-path": str(self.repo_path),
             "repo1-retention-full": str(retention_full),
@@ -83,8 +92,15 @@ class BackupManager:
             "pgbackrest",
             f"--config={self.conf_path}",
             f"--stanza={self.stanza}",
-            *args,
         ]
+        # Duplicate stanza pg1-* on the CLI; avoids [037] stanza-create requires option: pg1-path
+        # when the config file alone is not applied as expected.
+        merged = " ".join(str(a) for a in args)
+        if self._pg1_path and "--pg1-path=" not in merged:
+            cmd.append(f"--pg1-path={self._pg1_path}")
+            cmd.append(f"--pg1-port={self._pg1_port}")
+            cmd.append(f"--pg1-socket-path={self._pg1_socket_path}")
+        cmd.extend(args)
         log.debug("pgbackrest: %s", " ".join(cmd))
         return subprocess.run(cmd, check=True, capture_output=True, text=True)
 

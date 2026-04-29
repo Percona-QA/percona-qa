@@ -248,7 +248,7 @@ class TdeManager:
     def is_table_encrypted(self, table: str, dbname: str = "postgres") -> bool:
         for fn in ("pg_tde_is_encrypted", "pg_tde_is_encrypted_rel"):
             if self._has_func(fn):
-                val = self.cluster.fetchone(f"SELECT {fn}('{table}'::text)", dbname)
+                val = self.cluster.fetchone(f"SELECT {fn}('{table}'::regclass)", dbname)
                 return val in ("t", "true", "on", "1")
         return False
 
