@@ -29,7 +29,14 @@ $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "SELECT pg_
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "CREATE TABLE test_enc (k int, PRIMARY KEY (k)) USING tde_heap;"
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "INSERT INTO test_enc (k) VALUES (1), (2);"
 
-ROW_COUNT_BEFORE=$("$OLD_INSTALL_DIR/bin/psql" -p "$OLD_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM test_enc;" 2>/dev/null | tr -d ' ')
+ROW_COUNT_BEFORE=$("$OLD_INSTALL_DIR/bin/psql" -p "$OLD_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM test_enc;" | tr -d ' ')
+
+# Validate result
+if [ -z "$ROW_COUNT_BEFORE" ]; then
+    echo "[FAIL] Could not get row count before upgrade"
+    exit 1
+fi
+
 echo "Rows in test_enc before upgrade: $ROW_COUNT_BEFORE"
 
 echo "3. Stopping old cluster..."
@@ -64,16 +71,22 @@ EOF
 # ──────────────────────────────────────────────────────────
 # Step 4 – Start new cluster and verify data
 # ──────────────────────────────────────────────────────────
-echo ""
 echo "6. Starting new cluster and verifying data..."
 start_pg "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR"
 $NEW_INSTALL_DIR/bin/psql -p "$NEW_PORT" -d postgres -h "$PGHOST" -c "SELECT * FROM test_enc;"
 if [ $? -ne 0 ]; then
     echo "❌ SELECT from test_enc failed on new cluster"
     stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
+    exit 1
 fi
 
-ROW_COUNT_AFTER=$("$NEW_INSTALL_DIR/bin/psql" -p "$NEW_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM test_enc;" 2>/dev/null | tr -d ' ')
+ROW_COUNT_AFTER=$("$NEW_INSTALL_DIR/bin/psql" -p "$NEW_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM test_enc;" | tr -d ' ')
+
+# Validate result
+if [ -z "$ROW_COUNT_AFTER" ]; then
+    echo "[FAIL] Could not get row count after upgrade"
+    exit 1
+fi
 
 if [ "$ROW_COUNT_AFTER" = "$ROW_COUNT_BEFORE" ]; then
     echo "[PASS] Row count verified: $ROW_COUNT_AFTER rows in test_enc after upgrade"

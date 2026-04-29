@@ -48,6 +48,7 @@ echo "[INFO] Extracting..."
 tar -xzf $TARBALL -C $RUN_DIR
 NAME=$(basename "$TARBALL" | sed 's/\.tar\.gz$//')
 
+(
 cd "$RUN_DIR/$NAME"
 
 # -------------------------------
@@ -101,6 +102,7 @@ echo "[INFO] Enabling KV v2 engine at mount '$secret_mount_point'..."
 
 export VAULT_NAMESPACE=pg_tde_ns1
 ./bin/bao secrets enable -version=2 -path="$secret_mount_point" kv
+)
 
 echo ""
 echo "========================================"

@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 set -e
 
@@ -8,13 +8,23 @@ start_kmip_server() {
     sudo pkill -9 kmip || true
   fi
 
-  while docker ps -aq -f name=^kmip$ | grep -q .; do
-    sudo docker rm -f kmip > /dev/null 2>&1 || true
+  # Determine docker command
+  if docker ps >/dev/null 2>&1; then
+      DOCKER="docker"
+  elif sudo -n docker ps >/dev/null 2>&1; then
+      DOCKER="sudo docker"
+  else
+      echo "[FAIL] Docker requires passwordless sudo or user must be in docker group"
+      exit 1
+  fi
+
+  while $DOCKER ps -aq -f name=^kmip$ | grep -q .; do
+    $DOCKER rm -f kmip > /dev/null 2>&1 || true
     sleep 1
   done
 
   # Start KMIP server
-  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
+  $DOCKER run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
   if [ -d /tmp/certs ]; then
       echo "Certs Directory Exists.."
       rm -rf /tmp/certs
@@ -23,9 +33,9 @@ start_kmip_server() {
       echo "Creating Certs Directory"
       mkdir /tmp/certs
   fi
-  sudo docker cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
+  $DOCKER cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
+  $DOCKER cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
+  $DOCKER cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
 
   kmip_server_address="0.0.0.0"
   kmip_server_port=5696
@@ -33,6 +43,20 @@ start_kmip_server() {
   kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
   kmip_server_ca="/tmp/certs/root_certificate.pem"
 
-  # Sleep for 30 sec to fully initialize the KMIP server
-  sleep 30
+  # Wait for KMIP server to be ready
+  echo "Waiting for KMIP server to be ready..."
+
+  for i in {1..60}; do
+      if $DOCKER exec kmip sh -c "nc -z localhost 5696" >/dev/null 2>&1; then
+          echo "KMIP server is ready"
+          break
+      fi
+      sleep 1
+  done
+
+  # fail if not ready
+  if ! $DOCKER exec kmip sh -c "nc -z localhost 5696" >/dev/null 2>&1; then
+      echo "[FAIL] KMIP server did not become ready"
+      exit 1
+  fi
 }
