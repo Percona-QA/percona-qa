@@ -5,7 +5,13 @@
 #
 # Covers: bulk heaps, interleaved scans, UPDATE/DELETE/VACUUM, restart snapshot,
 # range-partitioned tde_heap, TOAST-heavy rows, CTAS + savepoint rollback,
-# TRUNCATE + reload, REINDEX + CLUSTER, index-preferred reads, multi-table scan fan-in.
+# TRUNCATE + reload, REINDEX + CLUSTER, index-preferred reads, multi-table scan fan-in,
+# bulk COPY / wide-row INSERT paths, and sequential scans with working set >> shared_buffers
+# (SMGR encrypt/decrypt off disk when pages are not cached).
+#
+# Performance A/B (manual): compare the same build before/after the SMGR cipher-context change,
+# or two installs, with SMGR_CIPHER_LOG_BULK_TIMING=1 so one cold full-seqscan pass logs wall time.
+# CI here focuses on correctness; tiny shared_buffers + heap_blks_read checks stress the path.
 #
 # Run via postgresql/automation/wrapper/test_runner.sh, for example:
 #   ./wrapper/test_runner.sh --server_build_path /path/to/pg/install --testname test_smgr_cipher_context_reuse.sh
@@ -38,6 +44,8 @@ run_cipher_suite() {
 	initialize_server "$PGDATA" "$PORT"
 	enable_pg_tde "$PGDATA"
 	echo "pg_tde.cipher = '$cipher'" >>"$PGDATA/postgresql.conf"
+	# Keep most encrypted heap pages out of shared buffers so bulk seqscans hit SMGR read/decrypt.
+	echo "shared_buffers = 2MB" >>"$PGDATA/postgresql.conf"
 
 	start_pg "$PGDATA" "$PORT"
 
@@ -205,6 +213,119 @@ SELECT (
 VACUUM ctx_part, ctx_toast, ctx_ctas, ctx_trunc;
 EOSQL2
 
+	log "Running bulk I/O scenarios (wide rows, large seqscans, COPY, cold-cache-oriented passes)..."
+	local bulk_statio_reset_sql=""
+	# Per-table I/O stat reset is PG14+; keep bulk workload on older versions without it.
+	if [[ "$(get_pg_major_version)" -ge 14 ]]; then
+		bulk_statio_reset_sql="
+SELECT pg_stat_reset_single_table_counters(c.oid)
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND c.relname IN ('ctx_bulk_wide', 'ctx_bulk_seq', 'ctx_heap_a', 'ctx_heap_b');
+
+CHECKPOINT;
+"
+	fi
+	# shellcheck disable=SC2016 - ${bulk_statio_reset_sql} is intentional SQL injection from this script
+	"$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres <<EOSQL_BULK
+-- Wide payloads: more heap pages per row count (bulk SMGR encrypt on insert / decrypt on scan).
+CREATE TABLE ctx_bulk_wide (
+	id int PRIMARY KEY,
+	payload text NOT NULL
+) USING tde_heap;
+
+INSERT INTO ctx_bulk_wide
+SELECT i, repeat(md5(i::text), 32)
+FROM generate_series(1, 20000) AS i;
+
+-- Many narrower rows: sequential scan decrypt fan-out.
+CREATE TABLE ctx_bulk_seq (
+	id int PRIMARY KEY,
+	payload text NOT NULL
+) USING tde_heap;
+
+INSERT INTO ctx_bulk_seq
+SELECT i, repeat(chr(48 + (i % 10)), 120)
+FROM generate_series(1, 45000) AS i;
+
+CHECKPOINT;
+${bulk_statio_reset_sql}
+-- Full-table sequential scans with working set >> shared_buffers (pages miss cache, SMGR reads).
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_heap_a;
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_bulk_seq;
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_bulk_wide;
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_heap_b;
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_heap_a;
+
+DO \$\$
+BEGIN
+	FOR _pass IN 1..8 LOOP
+		PERFORM sum(id::bigint), sum(length(payload)::bigint) FROM ctx_bulk_seq;
+		PERFORM sum(id::bigint), sum(length(payload)::bigint) FROM ctx_heap_a;
+		PERFORM sum(id::bigint), sum(length(payload)::bigint) FROM ctx_bulk_wide;
+		PERFORM sum(id::bigint), sum(length(payload)::bigint) FROM ctx_heap_b;
+	END LOOP;
+END \$\$;
+
+VACUUM ctx_bulk_wide, ctx_bulk_seq;
+EOSQL_BULK
+
+	# Server-side COPY into encrypted heap (bulk write / encrypt path).
+	{
+		echo "CREATE TABLE ctx_copy_load (id int PRIMARY KEY, payload text NOT NULL) USING tde_heap;"
+		echo "COPY ctx_copy_load FROM STDIN;"
+		for ((_i = 1; _i <= 4000; _i++)); do
+			printf '%s\t%s\n' "$_i" "$(printf 'c%.0s' {1..128})"
+		done
+		printf '%s\n' '\.'
+	} | "$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres
+
+	if [[ "${SMGR_CIPHER_LOG_BULK_TIMING:-0}" == "1" ]]; then
+		log "SMGR_CIPHER_LOG_BULK_TIMING: cold seqscan pass (wall-clock via psql \\timing)"
+		if [[ "$(get_pg_major_version)" -ge 14 ]]; then
+			"$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres <<'EOSQL_TIME'
+\timing on
+CHECKPOINT;
+SELECT pg_stat_reset_single_table_counters('ctx_bulk_seq'::regclass);
+CHECKPOINT;
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_bulk_seq;
+\timing off
+EOSQL_TIME
+		else
+			"$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres <<'EOSQL_TIME'
+\timing on
+CHECKPOINT;
+SELECT sum(length(payload))::bigint, count(*)::bigint FROM ctx_bulk_seq;
+\timing off
+EOSQL_TIME
+		fi
+	fi
+
+	# After reset + full seqscans, heap blocks should have been read from storage (not buffer-only).
+	if [[ "$(get_pg_major_version)" -ge 14 ]]; then
+		local io_chk
+		io_chk="$("$INSTALL_DIR/bin/psql" -X -Atq -d postgres -v ON_ERROR_STOP=1 -c "
+SELECT COALESCE(bool_and(s.heap_blks_read > 0), false)
+FROM pg_statio_user_tables s
+JOIN pg_class c ON c.oid = s.relid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname IN ('ctx_bulk_seq', 'ctx_heap_a');
+")"
+		if [[ "$io_chk" != "t" ]]; then
+			echo "error: expected heap_blks_read > 0 after bulk cold-oriented scans ($label)" >&2
+			"$INSTALL_DIR/bin/psql" -X -d postgres -c "
+SELECT c.relname, s.heap_blks_read, s.heap_blks_hit
+FROM pg_statio_user_tables s
+JOIN pg_class c ON c.oid = s.relid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname IN ('ctx_bulk_seq', 'ctx_heap_a')
+ORDER BY 1;
+" >&2 || true
+			return 1
+		fi
+	fi
+
 	# --- Heap must be marked encrypted; row values must match (decrypt + logic OK). ---
 	verify_encryption_and_data() {
 		local got
@@ -249,7 +370,9 @@ SELECT COALESCE(
 	 FROM (VALUES
 		('ctx_part'), ('ctx_part_p1'), ('ctx_part_p2'), ('ctx_part_p3'),
 		('ctx_toast'), ('ctx_ctas'), ('ctx_trunc'),
+		('ctx_bulk_wide'), ('ctx_bulk_seq'), ('ctx_copy_load'),
 		('ctx_part_pkey'), ('ctx_toast_pkey'), ('ctx_ctas_pkey'), ('ctx_trunc_pkey'),
+		('ctx_bulk_wide_pkey'), ('ctx_bulk_seq_pkey'), ('ctx_copy_load_pkey'),
 		('ctx_part_p1_pkey'), ('ctx_part_p2_pkey'), ('ctx_part_p3_pkey')
 	 ) v (relname))
 	AND (SELECT count(*) = 12000 FROM ctx_part)
@@ -261,6 +384,10 @@ SELECT COALESCE(
 	AND (SELECT (SELECT payload FROM ctx_ctas WHERE id = 999001) = repeat('S', 128))
 	AND (SELECT count(*) = 501 FROM ctx_ctas)
 	AND (SELECT count(*) = 1 AND max(note) = 'trunc-reload' AND max(n) = 7 FROM ctx_trunc)
+	AND (SELECT count(*) = 20000 AND sum(length(payload)::bigint) = 20480000::bigint FROM ctx_bulk_wide)
+	AND (SELECT count(*) = 45000 AND sum(length(payload)::bigint) = 5400000::bigint FROM ctx_bulk_seq)
+	AND (SELECT count(*) = 4000 AND min(length(payload)) = 128 AND max(length(payload)) = 128 FROM ctx_copy_load)
+	AND (SELECT (SELECT payload FROM ctx_copy_load WHERE id = 1) = repeat('c', 128))
 , false);
 ")"
 		if [[ "$got" != "t" ]]; then
@@ -292,6 +419,12 @@ UNION ALL
 SELECT 'ctas', count(*)::text, sum(id::bigint)::text, sum(length(payload))::text FROM ctx_ctas
 UNION ALL
 SELECT 'trunc', count(*)::text, sum(n::bigint)::text, sum(length(note))::text FROM ctx_trunc
+UNION ALL
+SELECT 'bulk_wide', count(*)::text, sum(id::bigint)::text, sum(length(payload))::text FROM ctx_bulk_wide
+UNION ALL
+SELECT 'bulk_seq', count(*)::text, sum(id::bigint)::text, sum(length(payload))::text FROM ctx_bulk_seq
+UNION ALL
+SELECT 'copy_load', count(*)::text, sum(id::bigint)::text, sum(length(payload))::text FROM ctx_copy_load
 ORDER BY 1;
 "
 	}
