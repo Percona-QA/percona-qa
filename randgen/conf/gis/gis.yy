@@ -10,18 +10,18 @@ returns:
 
 returns_integer:
 	ST_DIMENSION( geometry ) |
-	SRID( geometry ) |
-	CAST( ST_X( point ) AS INTEGER ) |
-	CAST( ST_Y( point ) AS INTEGER ) |
-	CAST( ST_LENGTH( linestring ) AS INTEGER ) |
-	CAST( ST_NUMPOINTS( linestring ) AS INTEGER ) |
-	CAST( ST_LENGTH( multilinestring ) AS INTEGER ) |
-	CAST( ST_ISCLOSED( multilinestring ) AS INTEGER ) |
-	CAST( ST_AREA( polygon ) AS INTEGER ) |
+	ST_SRID( geometry ) |
+	CAST( ST_X( point ) AS SIGNED ) |
+	CAST( ST_Y( point ) AS SIGNED ) |
+	CAST( ST_LENGTH( linestring ) AS SIGNED ) |
+	CAST( ST_NUMPOINTS( linestring ) AS SIGNED ) |
+	CAST( ST_LENGTH( multilinestring ) AS SIGNED ) |
+	CAST( ST_ISCLOSED( multilinestring ) AS SIGNED ) |
+	CAST( ST_AREA( polygon ) AS SIGNED ) |
 	ST_NUMINTERIORRINGS( polygon ) |
-	CAST( ST_AREA( multipolygon ) AS INTEGER ) |
+	CAST( ST_AREA( multipolygon ) AS SIGNED ) |
 	ST_NUMGEOMETRIES( geometry_collection ) |
-	CAST(ST_DISTANCE( geometry , geometry ) AS INTEGER );
+	CAST(ST_DISTANCE( geometry , geometry ) AS SIGNED );
 
 returns_bool:
 #	MBRContains( geometry , geometry ) |
@@ -42,41 +42,41 @@ returns_bool:
 	ST_TOUCHES( geometry , geometry ) ;
 
 returns_string:
-	/*executor1 ASTEXT( */ /*executor2 ST_ASEWKT( */ geometry ) |
-	GeometryType( geometry );
+	ST_AsText( geometry ) |
+	ST_GeometryType( geometry );
 
 point:
-	/*executor1 POINTFROMTEXT(' */ /*executor2 ST_POINTFROMTEXT(' */ point_wkt ') |
-	/*executor1 POINTFROMTEXT(' */ /*executor2 ST_POINTFROMTEXT(' */ point_wkt ') |
-	/*executor1 POINTFROMTEXT(' */ /*executor2 ST_POINTFROMTEXT(' */ point_wkt ') |
-	/*executor1 ENDPOINT( */ /*executor2 ST_ENDPOINT( */ linestring ) |
-	/*executor1 POINTN( */ /*executor2 ST_POINTN( */ linestring , returns_integer ) |
-	/*executor1 STARTPOINT( */ /*executor2 ST_STARTPOINT( */ linestring ) ;
+	ST_POINTFROMTEXT(' point_wkt ') |
+	ST_POINTFROMTEXT(' point_wkt ') |
+	ST_POINTFROMTEXT(' point_wkt ') |
+	ST_ENDPOINT( linestring ) |
+	ST_POINTN( linestring , returns_integer ) |
+	ST_STARTPOINT( linestring ) ;
 
 multipoint:
-	/*executor1 MULTIPOINTFROMTEXT(' */ /*executor2 ST_MPOINTFROMTEXT(' */ multipoint_wkt ') ;
+	ST_MPOINTFROMTEXT(' multipoint_wkt ') ;
 
 linestring:
-	/*executor1 LINESTRINGFROMTEXT(' */ /*executor2 ST_LINEFROMTEXT(' */ linestring_wkt ') |
-	/*executor1 LINESTRINGFROMTEXT(' */ /*executor2 ST_LINEFROMTEXT(' */ linestring_wkt ') |
-	/*executor1 EXTERIORRING( */ /*executor2 ST_EXTERIORRING( */ polygon ) |
-	/*executor1 INTERIORRINGN( */ /*executor2 ST_INTERIORRINGN( */ polygon , returns_integer ) ;
+	ST_LINEFROMTEXT(' linestring_wkt ') |
+	ST_LINEFROMTEXT(' linestring_wkt ') |
+	ST_EXTERIORRING( polygon ) |
+	ST_INTERIORRINGN( polygon , returns_integer ) ;
 
 multilinestring:
-	/*executor1 MULTILINESTRINGFROMTEXT(' */ /*executor2 ST_MLINEFROMTEXT(' */ multilinestring_wkt ') ;
+	ST_MLINEFROMTEXT(' multilinestring_wkt ') ;
 	
 polygon:
-	/*executor1 POLYGONFROMTEXT(' */ /*executor2 ST_POLYGONFROMTEXT(' */ polygon_wkt ') |
-	/*executor1 POLYGONFROMTEXT(' */ /*executor2 ST_POLYGONFROMTEXT(' */ polygon_wkt ') |
+	ST_POLYGONFROMTEXT(' polygon_wkt ') |
+	ST_POLYGONFROMTEXT(' polygon_wkt ') |
 	ST_ENVELOPE( geometry_2d ) ;
 
 multipolygon:
-	/*executor1 MULTIPOLYGONFROMTEXT(' */ /*executor2 ST_MPOLYFROMTEXT(' */ multipolygon_wkt ') ;
+	ST_MPOLYFROMTEXT(' multipolygon_wkt ') ;
 
 geometry:
 	geometry_1d | geometry_2d |
-	/*executor1 GEOMETRYFROMTEXT(' */ /*executor2 ST_GEOMETRYFROMTEXT(' */ geometry_wkt ') |
-	/*executor1 GEOMETRYN( */ /*executor2 ST_GEOMETRYN( */ geometry_collection , returns_integer ) |
+	ST_GEOMETRYFROMTEXT(' geometry_wkt ') |
+	ST_GEOMETRYN( geometry_collection , returns_integer ) |
 	geometry_collection ;
 
 geometry_1d:
