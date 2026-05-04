@@ -66,6 +66,15 @@ else
     exit 1
 fi
 
+echo "6a. Verifying data readability after upgrade..."
+
+$NEW_INSTALL_DIR/bin/psql -p "$NEW_PORT" -d postgres -h "$RUN_DIR" -c "SELECT * FROM test_enc_global LIMIT 1;" > /dev/null 2>&1
+
+if [ $? -ne 0 ]; then
+    echo "[FAIL] post-upgrade SELECT failed"
+    exit 1
+fi
+
 stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
 
 echo "=== DONE: GLOBAL provider upgrade test ==="

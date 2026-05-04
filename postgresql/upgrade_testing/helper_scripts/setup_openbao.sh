@@ -45,11 +45,10 @@ echo "[INFO] Downloading OpenBao..."
 curl -L "$OPENBAO_URL" -o "$TARBALL"
 
 echo "[INFO] Extracting..."
-tar -xzf $TARBALL -C $RUN_DIR
+tar -xzf "$TARBALL" -C "$RUN_DIR"
 NAME=$(basename "$TARBALL" | sed 's/\.tar\.gz$//')
 
-(
-cd "$RUN_DIR/$NAME"
+pushd "$RUN_DIR/$NAME" >/dev/null || exit 1
 
 # -------------------------------
 # BUILD OPENBAO
@@ -60,13 +59,14 @@ git add . -A >/dev/null 2>&1
 git -c user.name="CI Builder" -c user.email="ci-builder@example.com" commit --allow-empty -q -m "imported source"
 make
 
+export BAO_BIN="$RUN_DIR/$NAME/bin/bao"
 # -------------------------------
 # START OPENBAO SERVER
 # -------------------------------
 echo "[INFO] Starting OpenBao server in dev mode..."
 
 # run in background and capture output
-./bin/bao server -dev > bao_server.log 2>&1 &
+$BAO_BIN server -dev > bao_server.log 2>&1 &
 
 sleep 3
 
@@ -80,11 +80,11 @@ if [[ -z "$ROOT_TOKEN" ]]; then
     exit 1
 fi
 
-if [ -f $token_filepath ]; then
-  rm -f $token_filepath
+if [ -f "$token_filepath" ]; then
+  rm -f "$token_filepath"
 fi
 
-echo "$ROOT_TOKEN" > $token_filepath
+echo "$ROOT_TOKEN" > "$token_filepath"
 
 # -------------------------------
 # EXPORT ENV VARIABLES
@@ -98,11 +98,12 @@ export VAULT_TOKEN="$ROOT_TOKEN"
 # -------------------------------
 echo "[INFO] Enabling KV v2 engine at mount '$secret_mount_point'..."
 
-./bin/bao namespace create pg_tde_ns1
+$BAO_BIN namespace create pg_tde_ns1
 
 export VAULT_NAMESPACE=pg_tde_ns1
-./bin/bao secrets enable -version=2 -path="$secret_mount_point" kv
-)
+$BAO_BIN secrets enable -version=2 -path="$secret_mount_point" kv
+
+popd >/dev/null
 
 echo ""
 echo "========================================"
@@ -116,12 +117,57 @@ echo ""
 }
 
 create_bao_token() {
-  local POLICY_NAME=$1
-  local POLICY_FILE=$2
-  local TOKEN_FILE=$3
+  local POLICY_NAME="$1"
+  local POLICY_FILE="$2"
+  local TOKEN_FILE="$3"
 
-  ./bin/bao policy write "$POLICY_NAME" "$POLICY_FILE"
+  # -------------------------------
+  # VALIDATIONS
+  # -------------------------------
+  if [[ -z "$BAO_BIN" || ! -x "$BAO_BIN" ]]; then
+    echo "[ERROR] BAO_BIN is not set or not executable"
+    exit 1
+  fi
 
-  TOKEN=$(./bin/bao token create -policy="$POLICY_NAME" -no-default-policy -format=json | jq -r .auth.client_token)
+  if [[ ! -f "$POLICY_FILE" ]]; then
+    echo "[ERROR] Policy file not found: $POLICY_FILE"
+    exit 1
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "[ERROR] jq is required but not installed"
+    exit 1
+  fi
+
+  # -------------------------------
+  # WRITE POLICY
+  # -------------------------------
+  echo "[INFO] Writing policy: $POLICY_NAME"
+  "$BAO_BIN" policy write "$POLICY_NAME" "$POLICY_FILE"
+
+  # -------------------------------
+  # CREATE TOKEN
+  # -------------------------------
+  echo "[INFO] Creating token for policy: $POLICY_NAME"
+
+  local TOKEN
+  TOKEN=$("$BAO_BIN" token create \
+    -policy="$POLICY_NAME" \
+    -no-default-policy \
+    -format=json | jq -r '.auth.client_token')
+
+  # -------------------------------
+  # VALIDATE TOKEN
+  # -------------------------------
+  if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+    echo "[ERROR] Failed to generate token"
+    exit 1
+  fi
+
+  # -------------------------------
+  # SAVE TOKEN
+  # -------------------------------
   echo "$TOKEN" > "$TOKEN_FILE"
+
+  echo "[INFO] Token successfully created at $TOKEN_FILE"
 }

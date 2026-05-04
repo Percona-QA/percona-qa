@@ -179,7 +179,6 @@ for testscript in "${TESTS[@]}"; do
 	
         # Copy PGDATA(s) if exist
         [[ -d "$PGDATA" ]] && cp -r "$PGDATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$ARCHIVE_DIR" ]] && cp -r "$ARCHIVE_DIR" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
         # Copy test log
         cp "$LOGFILE" "$FAIL_SAVE_DIR/"

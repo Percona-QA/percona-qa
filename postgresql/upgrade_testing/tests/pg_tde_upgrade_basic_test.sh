@@ -26,10 +26,19 @@ $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "CREATE EXT
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "SELECT pg_tde_add_database_key_provider_file('key_provider', '$KEYFILE');"
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "SELECT pg_tde_create_key_using_database_key_provider('test-db-key', 'key_provider');"
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "SELECT pg_tde_set_key_using_database_key_provider('test-db-key', 'key_provider');"
+
+# Create Normal encrypted tables
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "CREATE TABLE test_enc (k int, PRIMARY KEY (k)) USING tde_heap;"
 $OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "INSERT INTO test_enc (k) VALUES (1), (2);"
 
+# Create Partitioned encrypted tables
+$OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "CREATE TABLE part_enc (id int) PARTITION BY RANGE(id) USING tde_heap;"
+$OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "CREATE TABLE part_enc_1 PARTITION OF part_enc FOR VALUES FROM (0) TO (100);"
+$OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "CREATE TABLE part_enc_2 PARTITION OF part_enc FOR VALUES FROM (100) TO (200);"
+$OLD_INSTALL_DIR/bin/psql -p "$OLD_PORT" -d postgres -h "$PGHOST" -c "INSERT INTO part_enc VALUES (10),(20),(110),(120);"
+
 ROW_COUNT_BEFORE=$("$OLD_INSTALL_DIR/bin/psql" -p "$OLD_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM test_enc;" | tr -d ' ')
+PARTITION_COUNT_BEFORE=$("$OLD_INSTALL_DIR/bin/psql" -p "$OLD_PORT" -d postgres -h "$RUN_DIR" -t -c "select count(*) from part_enc;" | tr -d ' ')
 
 # Validate result
 if [ -z "$ROW_COUNT_BEFORE" ]; then
@@ -37,7 +46,13 @@ if [ -z "$ROW_COUNT_BEFORE" ]; then
     exit 1
 fi
 
+if [ -z "$PARTITION_COUNT_BEFORE" ]; then
+    echo "[FAIL] Could not get row count before upgrade"
+    exit 1
+fi
+
 echo "Rows in test_enc before upgrade: $ROW_COUNT_BEFORE"
+echo "Rows in test_enc before upgrade: $PARTITION_COUNT_BEFORE"
 
 echo "3. Stopping old cluster..."
 stop_pg "$OLD_PGDATA" "$OLD_INSTALL_DIR"
@@ -68,9 +83,6 @@ port = $NEW_PORT
 wal_level = replica
 EOF
 
-# ──────────────────────────────────────────────────────────
-# Step 4 – Start new cluster and verify data
-# ──────────────────────────────────────────────────────────
 echo "6. Starting new cluster and verifying data..."
 start_pg "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR"
 $NEW_INSTALL_DIR/bin/psql -p "$NEW_PORT" -d postgres -h "$PGHOST" -c "SELECT * FROM test_enc;"
@@ -81,9 +93,15 @@ if [ $? -ne 0 ]; then
 fi
 
 ROW_COUNT_AFTER=$("$NEW_INSTALL_DIR/bin/psql" -p "$NEW_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM test_enc;" | tr -d ' ')
+PARTITION_COUNT_AFTER=$("$NEW_INSTALL_DIR/bin/psql" -p "$NEW_PORT" -d postgres -h "$RUN_DIR" -t -c "SELECT count(*) FROM part_enc;" | tr -d ' ')
 
 # Validate result
 if [ -z "$ROW_COUNT_AFTER" ]; then
+    echo "[FAIL] Could not get row count after upgrade"
+    exit 1
+fi
+
+if [ -z "$PARTITION_COUNT_AFTER" ]; then
     echo "[FAIL] Could not get row count after upgrade"
     exit 1
 fi
@@ -95,6 +113,14 @@ else
     stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
     exit 1
 fi
-stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
+
+if [ "$PARTITION_COUNT_AFTER" = "$PARTITION_COUNT_BEFORE" ]; then
+    echo "[PASS] Row count verified: $PARTITION_COUNT_AFTER rows in test_enc after upgrade"
+    stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
+else
+    echo "[FAIL] Row count mismatch: before=$PARTITION_COUNT_BEFORE after=$PARTITION_COUNT_AFTER"
+    stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
+    exit 1
+fi
 
 echo "=== DONE: pg_tde pg_upgrade test completed ==="
