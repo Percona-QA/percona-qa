@@ -7,7 +7,6 @@ Covers:
              wal_level=minimal, wal_skip_threshold=0
 """
 import os
-import subprocess
 import time
 from pathlib import Path
 
@@ -260,9 +259,9 @@ class TestPG1806:
 
     def test_max_wal_senders_zero_rejected_then_five_recovers(self, pg_factory, tmp_path: Path):
         """
-        Coverage for max_wal_senders edge handling in this bug scenario:
-          1) max_wal_senders=0 is expected to fail startup for this setup
-          2) switching to max_wal_senders=5 must allow normal startup/queries
+        Coverage for max_wal_senders values in this bug scenario:
+          1) max_wal_senders=0 starts and works with wal_level=replica
+          2) switching to max_wal_senders=5 also starts and remains usable
         """
         cluster = pg_factory("pg1806_sender_toggle")
         cluster.initdb(extra_args=["--no-data-checksums"])
@@ -280,12 +279,6 @@ class TestPG1806:
                 "max_wal_senders": "0",
             }
         )
-
-        with pytest.raises(subprocess.CalledProcessError):
-            cluster.start()
-
-        # Rewrite with a valid sender value and confirm cluster is usable.
-        cluster.configure({"max_wal_senders": "5"})
         cluster.start()
         cluster.wait_ready()
 
@@ -295,8 +288,17 @@ class TestPG1806:
         tde.set_global_principal_key()
 
         cluster.execute("CREATE TABLE sender_toggle_tbl (id INT PRIMARY KEY, val TEXT)")
-        cluster.execute("INSERT INTO sender_toggle_tbl VALUES (1, 'ok_after_fix')")
+        cluster.execute("INSERT INTO sender_toggle_tbl VALUES (1, 'ok_with_zero')")
         assert cluster.fetchone("SELECT COUNT(*) FROM sender_toggle_tbl") == "1"
+        assert cluster.fetchone("SHOW max_wal_senders") == "0"
+
+        # Rewrite with sender=5 and validate startup + data access again.
+        cluster.configure({"max_wal_senders": "5"})
+        cluster.restart()
+        cluster.wait_ready()
+        assert cluster.fetchone("SHOW max_wal_senders") == "5"
+        cluster.execute("INSERT INTO sender_toggle_tbl VALUES (2, 'ok_with_five')")
+        assert cluster.fetchone("SELECT COUNT(*) FROM sender_toggle_tbl") == "2"
 
     def test_normal_wal_threshold_not_affected(self, pg_factory, tmp_path: Path):
         """With wal_skip_threshold at its default (non-zero) the bug must not trigger."""
