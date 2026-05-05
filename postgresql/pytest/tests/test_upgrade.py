@@ -1075,6 +1075,7 @@ class TestUpgradeTdeCornerCases:
         keyfile = str(tmp_path / "tde_corner.per")
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         old.start()
@@ -1090,6 +1091,7 @@ class TestUpgradeTdeCornerCases:
 
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         assert result.returncode == 0, f"TDE upgrade failed:\n{result.stderr}"
@@ -1109,6 +1111,7 @@ class TestUpgradeTdeCornerCases:
         keyfile = str(tmp_path / "tde_wal.per")
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         old.start()
@@ -1122,6 +1125,7 @@ class TestUpgradeTdeCornerCases:
 
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         assert result.returncode == 0, f"TDE WAL-encrypted upgrade failed:\n{result.stderr}"
@@ -1140,6 +1144,7 @@ class TestUpgradeTdeCornerCases:
         keyfile = str(tmp_path / "tde_mixed.per")
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         old.start()
@@ -1157,6 +1162,7 @@ class TestUpgradeTdeCornerCases:
 
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         assert result.returncode == 0, result.stderr
@@ -1176,6 +1182,7 @@ class TestUpgradeTdeCornerCases:
         keyfile = str(tmp_path / "tde_multidb.per")
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         old.start()
@@ -1198,6 +1205,7 @@ class TestUpgradeTdeCornerCases:
 
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         assert result.returncode == 0, result.stderr
@@ -1218,6 +1226,7 @@ class TestUpgradeTdeCornerCases:
         keyfile = str(tmp_path / "tde_rotate.per")
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         old.start()
@@ -1231,6 +1240,7 @@ class TestUpgradeTdeCornerCases:
 
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method,
+            extra_initdb=["--no-data-checksums"],
             extra_params={"shared_preload_libraries": "'pg_tde'"},
         )
         assert result.returncode == 0, f"Upgrade after key rotation failed:\n{result.stderr}"

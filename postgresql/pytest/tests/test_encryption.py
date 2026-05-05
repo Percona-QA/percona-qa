@@ -106,21 +106,19 @@ class TestWalEncryption:
     def test_enable_wal_encryption(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
-        tde_primary.restart()
         assert tde.is_wal_encrypted()
 
     def test_disable_wal_encryption(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
-        tde_primary.restart()
         assert tde.is_wal_encrypted()
         tde.disable_wal_encryption()
-        tde_primary.restart()
         assert not tde.is_wal_encrypted()
 
     def test_wal_encryption_guc_persists_after_restart(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
+        # Extra restart to confirm the GUC survives beyond the one done by enable_wal_encryption().
         tde_primary.restart()
         assert tde.is_wal_encrypted()
 
@@ -128,7 +126,6 @@ class TestWalEncryption:
     def test_wal_encryption_with_heavy_dml(self, tde_primary: PgCluster):
         tde = TdeManager(tde_primary)
         tde.enable_wal_encryption()
-        tde_primary.restart()
         tde_primary.execute("CREATE TABLE wal_load (id BIGINT, data TEXT)")
         tde_primary.execute(
             "INSERT INTO wal_load SELECT i, md5(i::text) FROM generate_series(1, 100000) i"
