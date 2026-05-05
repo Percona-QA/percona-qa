@@ -47,7 +47,9 @@ class BackupManager:
     def __init__(self, stanza: str = "test", repo_path: str = "/tmp/pgtest_pytest/pgbackrest") -> None:
         self.stanza = stanza
         self.repo_path = Path(repo_path)
-        self.conf_path = Path(f"/tmp/pgtest_pytest/pgbackrest_{stanza}.conf")
+        # Keep config beside repo1-path (pytest tmp_path), not a shared /tmp dir, so parallel
+        # runs and lock files do not collide and paths stay owned by the test user (avoids [053]).
+        self.conf_path = self.repo_path.parent / f"pgbackrest_{stanza}.conf"
         # Set by write_config(); duplicated on the CLI for backup/stanza-create (some versions
         # miss stanza options from ConfigParser). Do not pass pg1-port/socket on archive-push.
         self._pg1_path: Optional[str] = None
@@ -74,6 +76,8 @@ class BackupManager:
         self.repo_path.mkdir(parents=True, exist_ok=True)
         log_path = self.repo_path / "logs"
         log_path.mkdir(parents=True, exist_ok=True)
+        lock_path = self.repo_path / "lock"
+        lock_path.mkdir(parents=True, exist_ok=True)
         self.conf_path.parent.mkdir(parents=True, exist_ok=True)
         cfg = configparser.ConfigParser(interpolation=None)
         cfg["global"] = {
@@ -81,6 +85,7 @@ class BackupManager:
             "repo1-retention-full": str(retention_full),
             "log-level-console": "info",
             "log-path": str(log_path),
+            "lock-path": str(lock_path),
         }
         cfg[f"stanza:{self.stanza}"] = {
             "pg1-path": pg_path,
@@ -188,6 +193,10 @@ class BackupManager:
         delta: bool = False,
         pg_tde_wal_restore: bool = False,
     ) -> None:
+        dest = Path(target_path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists() and not delta:
+            shutil.rmtree(dest)
         args: List[str] = [f"--pg1-path={target_path}", "restore"]
         if delta:
             args.insert(0, "--delta")
