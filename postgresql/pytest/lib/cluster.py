@@ -94,7 +94,7 @@ class PgCluster:
             "-o", f"-p {self.port} -k {self.socket_dir}",
             "-l", str(log_file),
         ]
-        self._run(cmd, env_override={})
+        self._run(cmd, env_override=self._pgctl_wait_env())
         log.info("PostgreSQL started on port %d", self.port)
 
     def stop(self, mode: str = "fast", timeout: int = 60, check: bool = True) -> None:
@@ -115,7 +115,7 @@ class PgCluster:
             "-o", f"-p {self.port} -k {self.socket_dir}",
             "-l", str(log_file),
         ]
-        self._run(cmd, env_override={})
+        self._run(cmd, env_override=self._pgctl_wait_env())
         log.info("PostgreSQL restarted on port %d", self.port)
 
     def reload(self) -> None:
@@ -294,3 +294,18 @@ class PgCluster:
             text=capture,
             **kwargs,
         )
+
+    def _pgctl_wait_env(self) -> Dict[str, str]:
+        """
+        Ensure pg_ctl -w probes the cluster with stable libpq defaults.
+
+        Without this, ambient shell vars (for example PGDATABASE/PGUSER set to
+        a local login like 'ubuntu') can make pg_ctl report startup failure with:
+        "FATAL: database '<user>' does not exist".
+        """
+        return {
+            "PGHOST": str(self.socket_dir),
+            "PGPORT": str(self.port),
+            "PGUSER": "postgres",
+            "PGDATABASE": "postgres",
+        }
