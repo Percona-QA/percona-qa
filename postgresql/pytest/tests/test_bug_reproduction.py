@@ -161,6 +161,9 @@ class TestPG1806:
             {
                 "wal_level": "minimal",
                 "wal_skip_threshold": "0",
+                # write_default_config() sets max_wal_senders=5; with wal_level=minimal
+                # postgres refuses to start unless replication senders are disabled.
+                "max_wal_senders": "0",
             }
         )
         cluster.start()
@@ -229,6 +232,7 @@ class TestPG1806:
             {
                 "wal_level": "replica",
                 "wal_skip_threshold": "0",
+                "max_wal_senders": "5",
             }
         )
         cluster.start()
@@ -254,6 +258,46 @@ class TestPG1806:
         count = cluster.fetchone("SELECT COUNT(*) FROM rep_tbl")
         assert count == "500"
 
+    def test_max_wal_senders_zero_rejected_then_five_recovers(self, pg_factory, tmp_path: Path):
+        """
+        Coverage for max_wal_senders edge handling in this bug scenario:
+          1) max_wal_senders=0 is expected to fail startup for this setup
+          2) switching to max_wal_senders=5 must allow normal startup/queries
+        """
+        cluster = pg_factory("pg1806_sender_toggle")
+        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.write_default_config(
+            extra_params={
+                "shared_preload_libraries": "'pg_tde'",
+                "default_table_access_method": "'tde_heap'",
+            }
+        )
+        cluster.add_hba_entry("local all all trust")
+        cluster.configure(
+            {
+                "wal_level": "replica",
+                "wal_skip_threshold": "0",
+                "max_wal_senders": "0",
+            }
+        )
+
+        with pytest.raises(subprocess.CalledProcessError):
+            cluster.start()
+
+        # Rewrite with a valid sender value and confirm cluster is usable.
+        cluster.configure({"max_wal_senders": "5"})
+        cluster.start()
+        cluster.wait_ready()
+
+        tde = TdeManager(cluster)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806_sender_toggle.per")
+        tde.set_global_principal_key()
+
+        cluster.execute("CREATE TABLE sender_toggle_tbl (id INT PRIMARY KEY, val TEXT)")
+        cluster.execute("INSERT INTO sender_toggle_tbl VALUES (1, 'ok_after_fix')")
+        assert cluster.fetchone("SELECT COUNT(*) FROM sender_toggle_tbl") == "1"
+
     def test_normal_wal_threshold_not_affected(self, pg_factory, tmp_path: Path):
         """With wal_skip_threshold at its default (non-zero) the bug must not trigger."""
         tsp_dir = tmp_path / "default_tsp"
@@ -263,7 +307,13 @@ class TestPG1806:
         cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        cluster.configure({"wal_level": "minimal"})  # wal_skip_threshold left at default
+        cluster.configure(
+            {
+                "wal_level": "minimal",  # wal_skip_threshold left at default
+                # Keep minimal-wal startup valid with framework defaults.
+                "max_wal_senders": "0",
+            }
+        )
         cluster.start()
         tde = TdeManager(cluster)
         tde.create_extension()
