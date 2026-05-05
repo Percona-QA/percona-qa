@@ -1,4 +1,5 @@
 """Core PostgreSQL cluster lifecycle management."""
+import getpass
 import logging
 import os
 import shutil
@@ -9,6 +10,14 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 log = logging.getLogger(__name__)
+
+
+def libpq_superuser() -> str:
+    """
+    OS user that owns initdb-created clusters in CI (often 'ubuntu'), not always 'postgres'.
+    Respect PGUSER if callers intentionally override it.
+    """
+    return os.environ.get("PGUSER") or getpass.getuser()
 
 
 class PgCluster:
@@ -151,7 +160,13 @@ class PgCluster:
 
     def is_ready(self) -> bool:
         result = subprocess.run(
-            [str(self.bin / "pg_isready"), "-h", str(self.socket_dir), "-p", str(self.port)],
+            [
+                str(self.bin / "pg_isready"),
+                "-h", str(self.socket_dir),
+                "-p", str(self.port),
+                "-U", libpq_superuser(),
+                "-d", "postgres",
+            ],
             capture_output=True,
             timeout=5,
         )
@@ -184,6 +199,7 @@ class PgCluster:
             str(self.bin / "psql"),
             "-h", str(self.socket_dir),
             "-p", str(self.port),
+            "-U", libpq_superuser(),
             "-d", dbname,
             "-c", sql,
             "--no-align", "--tuples-only", "-q",
@@ -204,6 +220,7 @@ class PgCluster:
             str(self.bin / "psql"),
             "-h", str(self.socket_dir),
             "-p", str(self.port),
+            "-U", libpq_superuser(),
             "-d", dbname,
             "-f", sql_file,
         ]
@@ -226,6 +243,7 @@ class PgCluster:
             str(self.bin / "pg_basebackup"),
             "-h", str(self.socket_dir),
             "-p", str(self.port),
+            "-U", libpq_superuser(),
             "-D", target_dir,
             "-R", "--checkpoint=fast",
         ]
@@ -238,7 +256,8 @@ class PgCluster:
             str(self.bin / "pg_rewind"),
             "-D", target_data_dir,
             "--source-server",
-            f"host={self.socket_dir} port={source_server_port} user=postgres dbname=postgres",
+            f"host={self.socket_dir} port={source_server_port} "
+            f"user={libpq_superuser()} dbname=postgres",
         ]
         self._run(cmd, env_override={})
 
@@ -306,6 +325,6 @@ class PgCluster:
         return {
             "PGHOST": str(self.socket_dir),
             "PGPORT": str(self.port),
-            "PGUSER": "postgres",
+            "PGUSER": libpq_superuser(),
             "PGDATABASE": "postgres",
         }

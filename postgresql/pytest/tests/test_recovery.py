@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from lib import PgCluster, TdeManager, ReplicationManager
+from lib.cluster import libpq_superuser
 from conftest import allocate_port
 
 
@@ -94,7 +95,8 @@ class TestPgRewind:
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
             f.write(
-                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} user=postgres'\n"
+                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} "
+                f"user={libpq_superuser()}'\n"
             )
         (primary.data_dir / "standby.signal").touch()
         primary.start()
@@ -130,7 +132,8 @@ class TestPgRewind:
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
             f.write(
-                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} user=postgres'\n"
+                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} "
+                f"user={libpq_superuser()}'\n"
             )
         (primary.data_dir / "standby.signal").touch()
         primary.start()

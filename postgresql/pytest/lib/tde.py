@@ -3,7 +3,7 @@ import logging
 import subprocess
 from typing import Dict, Optional
 
-from .cluster import PgCluster
+from .cluster import PgCluster, libpq_superuser
 
 log = logging.getLogger(__name__)
 
@@ -230,11 +230,12 @@ class TdeManager:
 
     def enable_wal_encryption(self) -> None:
         self.cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = 'on'")
-        self.cluster.execute("SELECT pg_reload_conf()")
+        # pg_tde.wal_encrypt is not reloadable; must restart to take effect.
+        self.cluster.restart()
 
     def disable_wal_encryption(self) -> None:
         self.cluster.execute("ALTER SYSTEM RESET pg_tde.wal_encrypt")
-        self.cluster.execute("SELECT pg_reload_conf()")
+        self.cluster.restart()
 
     def is_wal_encrypted(self) -> bool:
         try:
@@ -314,6 +315,7 @@ class TdeManager:
             str(bin_path),
             "-h", str(self.cluster.socket_dir),
             "-p", str(self.cluster.port),
+            "-U", libpq_superuser(),
             "-D", target_dir,
             "-R", "--checkpoint=fast",
         ]

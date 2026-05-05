@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Optional
 
-from .cluster import PgCluster
+from .cluster import PgCluster, libpq_superuser
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class ReplicationManager:
         conninfo = (
             f"host={self.primary.socket_dir} "
             f"port={self.primary.port} "
-            f"user=postgres "
+            f"user={libpq_superuser()} "
             f"application_name=replica"
         )
         auto_conf = self.standby.data_dir / "postgresql.auto.conf"
@@ -164,7 +164,7 @@ class ReplicationManager:
         conninfo = (
             f"host={self.primary.socket_dir} "
             f"port={self.primary.port} "
-            f"user=postgres "
+            f"user={libpq_superuser()} "
             f"dbname={dbname}"
         )
         self.standby.execute(

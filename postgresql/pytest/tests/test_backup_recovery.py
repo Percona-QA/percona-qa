@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from lib import PgCluster, TdeManager, BackupManager
+from lib.cluster import libpq_superuser
 from lib.backup import PgBaseBackup
 
 
@@ -130,24 +131,62 @@ class TestPgBackRest:
         assert "incr" in info.lower()
 
     @pytest.mark.pgbackrest
-    def test_backup_with_tde(self, tde_primary: PgCluster, tmp_path: Path):
+    def test_backup_with_tde(
+        self,
+        tde_primary: PgCluster,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
+    ):
+        """
+        pgBackRest + pg_tde: WAL encryption on, archive via pg_tde_archive_decrypt,
+        restore via pg_tde_restore_encrypt (Percona walkthrough).
+        """
         tde_primary.execute("CREATE TABLE tde_pgbr_test (id INT, secret TEXT)")
         tde_primary.execute(
             "INSERT INTO tde_pgbr_test SELECT i, md5(i::text) FROM generate_series(1,1000) i"
         )
+
+        TdeManager(tde_primary).enable_wal_encryption()
 
         bm = BackupManager(stanza="tde_test", repo_path=str(tmp_path / "repo"))
         bm.write_config(
             pg_path=str(tde_primary.data_dir),
             pg_port=tde_primary.port,
             pg_socket_path=str(tde_primary.socket_dir),
+            pg_bin=str(tde_primary.bin),
         )
-        bm.configure_postgres(tde_primary)
+        bm.configure_postgres(tde_primary, pg_tde_wal_archiving=True)
         tde_primary.restart()
         bm.stanza_create()
+        tde_primary.execute("CHECKPOINT")
+        tde_primary.execute("SELECT pg_switch_wal()")
         bm.backup()
         info = bm.info()
         assert "full" in info.lower()
+
+        restore_dir = tmp_path / "tde_pgbr_restore"
+        from conftest import allocate_port
+
+        restore_port = allocate_port()
+        bm.restore(str(restore_dir), pg_tde_wal_restore=True)
+
+        restored = PgCluster(
+            restore_dir, restore_port, install_dir, socket_dir=tmp_path, io_method=io_method
+        )
+        restored.write_default_config(
+            extra_params={
+                "shared_preload_libraries": "'pg_tde'",
+                "default_table_access_method": "'tde_heap'",
+            }
+        )
+        restored.add_hba_entry("local all all trust")
+        restored.start()
+        restored.wait_ready(timeout=120)
+
+        count = restored.fetchone("SELECT COUNT(*) FROM tde_pgbr_test")
+        assert count == "1000"
+        restored.stop()
 
     def test_ha_failover_and_rebuild(
         self, tde_replica_pair, tmp_path: Path, install_dir: Path, io_method: str
@@ -176,7 +215,8 @@ class TestPgBackRest:
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
             f.write(
-                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} user=postgres'\n"
+                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} "
+                f"user={libpq_superuser()}'\n"
             )
         primary.start()
         primary.wait_ready(timeout=60)

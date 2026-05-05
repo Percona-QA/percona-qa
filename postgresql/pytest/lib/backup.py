@@ -2,11 +2,12 @@
 import configparser
 import logging
 import os
+import shlex
 import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +30,19 @@ def pgbackrest_installed() -> bool:
 
 
 class BackupManager:
-    """Wraps pgBackRest operations for backup and PITR testing."""
+    """
+    Wraps pgBackRest operations for backup and PITR testing.
+
+    For **pg_tde + WAL encryption**, archive/restore must use Percona's helpers
+    (see Percona walkthrough:
+    https://percona.community/blog/2026/03/10/running-pgbackrest-with-pg_tde-a-practical-percona-walkthrough/):
+
+    - ``pg_tde_archive_decrypt`` wraps ``archive-push`` so WAL is decrypted before pgBackRest.
+    - ``pg_tde_restore_encrypt`` wraps ``archive-get`` so WAL is re-encrypted on restore.
+
+    Pass ``pg_bin`` to ``write_config()`` and set ``pg_tde_wal_archiving`` /
+    ``pg_tde_wal_restore`` on configure/restore when exercising encrypted WAL.
+    """
 
     def __init__(self, stanza: str = "test", repo_path: str = "/tmp/pgtest_pytest/pgbackrest") -> None:
         self.stanza = stanza
@@ -40,6 +53,7 @@ class BackupManager:
         self._pg1_path: Optional[str] = None
         self._pg1_port: Optional[int] = None
         self._pg1_socket_path: Optional[str] = None
+        self._pg_bin: Optional[Path] = None
 
     # ── configuration ─────────────────────────────────────────────────────
 
@@ -49,18 +63,24 @@ class BackupManager:
         pg_port: int,
         pg_socket_path: str,
         retention_full: int = 2,
+        *,
+        pg_bin: Optional[str] = None,
     ) -> None:
         self._pg1_path = pg_path
         self._pg1_port = pg_port
         self._pg1_socket_path = pg_socket_path
+        self._pg_bin = Path(pg_bin) if pg_bin else None
 
         self.repo_path.mkdir(parents=True, exist_ok=True)
+        log_path = self.repo_path / "logs"
+        log_path.mkdir(parents=True, exist_ok=True)
         self.conf_path.parent.mkdir(parents=True, exist_ok=True)
         cfg = configparser.ConfigParser(interpolation=None)
         cfg["global"] = {
             "repo1-path": str(self.repo_path),
             "repo1-retention-full": str(retention_full),
             "log-level-console": "info",
+            "log-path": str(log_path),
         }
         cfg[f"stanza:{self.stanza}"] = {
             "pg1-path": pg_path,
@@ -71,12 +91,61 @@ class BackupManager:
             cfg.write(f)
         log.info("pgBackRest config written to %s", self.conf_path)
 
-    def configure_postgres(self, cluster) -> None:
-        """Add archive settings to the cluster's postgresql.conf."""
-        archive_cmd = (
-            f"pgbackrest --config={self.conf_path} "
-            f"--stanza={self.stanza} archive-push %p"
+    def _inner_pgbackrest_archive_push(self) -> str:
+        """pgBackRest CLI fragment passed to pg_tde_archive_decrypt (see Percona blog)."""
+        return " ".join(
+            [
+                "pgbackrest",
+                shlex.quote(f"--config={self.conf_path}"),
+                shlex.quote(f"--stanza={self.stanza}"),
+                shlex.quote(f"--pg1-path={self._pg1_path}"),
+                shlex.quote(f"--pg1-port={self._pg1_port}"),
+                shlex.quote(f"--pg1-socket-path={self._pg1_socket_path}"),
+                # %% so postgresql.conf keeps a literal %p for pgBackRest after escape rules
+                "archive-push",
+                "%%p",
+            ]
         )
+
+    def _inner_pgbackrest_archive_get(self) -> str:
+        """pgBackRest CLI fragment passed to pg_tde_restore_encrypt (see Percona blog)."""
+        return " ".join(
+            [
+                "pgbackrest",
+                shlex.quote(f"--config={self.conf_path}"),
+                shlex.quote(f"--stanza={self.stanza}"),
+                "archive-get",
+                "%%f",
+                "%%p",
+            ]
+        )
+
+    def configure_postgres(self, cluster, *, pg_tde_wal_archiving: bool = False) -> None:
+        """Add archive settings to the cluster's postgresql.conf."""
+        if pg_tde_wal_archiving:
+            if not self._pg_bin:
+                raise ValueError("write_config(..., pg_bin='...') is required for pg_tde_wal_archiving")
+            decrypt = self._pg_bin / "pg_tde_archive_decrypt"
+            if not decrypt.is_file():
+                raise FileNotFoundError(f"pg_tde_archive_decrypt not found: {decrypt}")
+            # Percona walkthrough: decrypt WAL before pgBackRest archive-push.
+            inner = self._inner_pgbackrest_archive_push()
+            archive_cmd = f"{decrypt} %f %p \"{inner}\""
+        else:
+            # PostgreSQL may invoke archive-push with a *relative* %p (e.g. pg_wal/...).
+            # pgBackRest then requires pg1-path (and friends) on the archive-push CLI.
+            archive_cmd = " ".join(
+                [
+                    "pgbackrest",
+                    shlex.quote(f"--config={self.conf_path}"),
+                    shlex.quote(f"--stanza={self.stanza}"),
+                    shlex.quote(f"--pg1-path={self._pg1_path}"),
+                    shlex.quote(f"--pg1-port={self._pg1_port}"),
+                    shlex.quote(f"--pg1-socket-path={self._pg1_socket_path}"),
+                    "archive-push",
+                    "%p",
+                ]
+            )
         cluster.configure(
             {
                 "archive_mode": "on",
@@ -118,13 +187,23 @@ class BackupManager:
         *,
         recovery_target_time: Optional[str] = None,
         delta: bool = False,
+        pg_tde_wal_restore: bool = False,
     ) -> None:
-        args = [f"--pg1-path={target_path}", "restore"]
+        args: List[str] = [f"--pg1-path={target_path}", "restore"]
         if delta:
             args.insert(0, "--delta")
         if recovery_target_time:
             args.insert(0, f"--recovery-target-time={recovery_target_time}")
             args.insert(0, "--recovery-target-action=promote")
+        if pg_tde_wal_restore:
+            if not self._pg_bin:
+                raise ValueError("write_config(..., pg_bin='...') is required for pg_tde_wal_restore")
+            encrypt = self._pg_bin / "pg_tde_restore_encrypt"
+            if not encrypt.is_file():
+                raise FileNotFoundError(f"pg_tde_restore_encrypt not found: {encrypt}")
+            inner = self._inner_pgbackrest_archive_get()
+            restore_cmd = f"{encrypt} %f %p \"{inner}\""
+            args.insert(0, "--recovery-option=restore_command=" + shlex.quote(restore_cmd))
         self._run(*args)
         log.info("pgBackRest restore completed to %s", target_path)
 
