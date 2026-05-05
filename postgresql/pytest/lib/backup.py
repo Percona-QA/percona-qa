@@ -48,8 +48,8 @@ class BackupManager:
         self.stanza = stanza
         self.repo_path = Path(repo_path)
         self.conf_path = Path(f"/tmp/pgtest_pytest/pgbackrest_{stanza}.conf")
-        # Set by write_config(); passed on the CLI so pgBackRest always sees pg1-* (some versions
-        # miss stanza options read only from config files written by ConfigParser).
+        # Set by write_config(); duplicated on the CLI for backup/stanza-create (some versions
+        # miss stanza options from ConfigParser). Do not pass pg1-port/socket on archive-push.
         self._pg1_path: Optional[str] = None
         self._pg1_port: Optional[int] = None
         self._pg1_socket_path: Optional[str] = None
@@ -93,14 +93,14 @@ class BackupManager:
 
     def _inner_pgbackrest_archive_push(self) -> str:
         """pgBackRest CLI fragment passed to pg_tde_archive_decrypt (see Percona blog)."""
+        # archive-push only accepts pg1-path on the CLI; port/socket belong in the
+        # stanza section of the config file (pgBackRest 2.58+: --pg1-port is invalid here).
         return " ".join(
             [
                 "pgbackrest",
                 shlex.quote(f"--config={self.conf_path}"),
                 shlex.quote(f"--stanza={self.stanza}"),
                 shlex.quote(f"--pg1-path={self._pg1_path}"),
-                shlex.quote(f"--pg1-port={self._pg1_port}"),
-                shlex.quote(f"--pg1-socket-path={self._pg1_socket_path}"),
                 # %% so postgresql.conf keeps a literal %p for pgBackRest after escape rules
                 "archive-push",
                 "%%p",
@@ -133,15 +133,14 @@ class BackupManager:
             archive_cmd = f"{decrypt} %f %p \"{inner}\""
         else:
             # PostgreSQL may invoke archive-push with a *relative* %p (e.g. pg_wal/...).
-            # pgBackRest then requires pg1-path (and friends) on the archive-push CLI.
+            # pgBackRest requires --pg1-path on the archive-push CLI; pg1-port/socket
+            # must not be passed to archive-push (invalid in pgBackRest 2.58+).
             archive_cmd = " ".join(
                 [
                     "pgbackrest",
                     shlex.quote(f"--config={self.conf_path}"),
                     shlex.quote(f"--stanza={self.stanza}"),
                     shlex.quote(f"--pg1-path={self._pg1_path}"),
-                    shlex.quote(f"--pg1-port={self._pg1_port}"),
-                    shlex.quote(f"--pg1-socket-path={self._pg1_socket_path}"),
                     "archive-push",
                     "%p",
                 ]

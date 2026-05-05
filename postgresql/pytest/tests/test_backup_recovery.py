@@ -248,7 +248,7 @@ class TestPitr:
 
         primary_cluster.execute("CREATE TABLE pitr_tbl (id INT)")
         primary_cluster.execute("INSERT INTO pitr_tbl SELECT generate_series(1,100)")
-        pitr_time = primary_cluster.fetchone("SELECT now()")
+        pitr_time = (primary_cluster.fetchone("SELECT now()") or "").strip()
         time.sleep(1)
         primary_cluster.execute("DROP TABLE pitr_tbl")
         primary_cluster.stop()
@@ -262,7 +262,9 @@ class TestPitr:
                              socket_dir=tmp_path, io_method=io_method)
         restored.write_default_config()
         recovery_conf = restore_dir / "postgresql.auto.conf"
-        with recovery_conf.open("a") as f:
+        # Do not append: the copy still carries the primary's postgresql.auto.conf ALTER
+        # SYSTEM lines (archive_command, etc.) which can break recovery on the new port.
+        with recovery_conf.open("w") as f:
             f.write(f"recovery_target_time = '{pitr_time}'\n")
             f.write("recovery_target_action = 'promote'\n")
             f.write(f"restore_command = 'cp {archive_dir}/%f %p'\n")
@@ -293,7 +295,7 @@ class TestPitr:
 
         tde_primary.execute("CREATE TABLE pitr_enc_tbl (id INT)")
         tde_primary.execute("INSERT INTO pitr_enc_tbl SELECT generate_series(1,100)")
-        pitr_time = tde_primary.fetchone("SELECT now()")
+        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
         time.sleep(1)
         tde_primary.execute("DROP TABLE pitr_enc_tbl")
         tde_primary.execute("SELECT pg_switch_wal()")
@@ -306,9 +308,17 @@ class TestPitr:
 
         restored = PgCluster(restore_dir, restore_port, install_dir,
                              socket_dir=tmp_path, io_method=io_method)
-        restored.write_default_config()
+        restored.write_default_config(
+            extra_params={
+                "shared_preload_libraries": "'pg_tde'",
+                "default_table_access_method": "'tde_heap'",
+            }
+        )
         auto_conf = restore_dir / "postgresql.auto.conf"
-        with auto_conf.open("a") as f:
+        with auto_conf.open("w") as f:
+            # Replacing the copied primary auto.conf drops ALTER SYSTEM lines; WAL decrypt
+            # during recovery still requires this (same as TdeManager.enable_wal_encryption).
+            f.write("pg_tde.wal_encrypt = 'on'\n")
             f.write(f"recovery_target_time = '{pitr_time}'\n")
             f.write("recovery_target_action = 'promote'\n")
             f.write(f"restore_command = 'cp {archive_dir}/%f %p'\n")
