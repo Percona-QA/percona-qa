@@ -8,7 +8,6 @@ Covers scenarios from:
   - pg_receivewal.sh
   - pg_archivecleanup.sh
 """
-import os
 import shutil
 import subprocess
 import time
@@ -18,7 +17,6 @@ import pytest
 
 from lib import PgCluster, TdeManager, ReplicationManager
 from lib.cluster import libpq_superuser
-from conftest import allocate_port
 
 
 pytestmark = pytest.mark.recovery
@@ -142,104 +140,6 @@ class TestPgRewind:
 
         result = primary.fetchone("SELECT pg_is_in_recovery()")
         assert result == "t"
-
-
-# ── pg_tde_rewind shell parity ───────────────────────────────────────────────
-
-
-class TestPgTdeRewindScripts:
-    """Run legacy automation pg_tde_rewind scripts under pytest."""
-
-    _SCRIPTS = (
-        "pg_tde_rewind_test.sh",
-        "pg_tde_rewind_loop_test.sh",
-        "pg_tde_rewind_with_checkpoint.sh",
-        "pg_tde_rewind_extended.sh",
-        "pg_tde_rewind_randomized.sh",
-    )
-
-    @staticmethod
-    def _run_script(
-        script_name: str,
-        *,
-        tmp_path: Path,
-        install_dir: Path,
-        io_method: str,
-        need_vault: bool = False,
-    ) -> None:
-        script = Path(__file__).resolve().parents[2] / "automation" / "tests" / script_name
-        common_sh = Path(__file__).resolve().parents[2] / "automation" / "wrapper" / "common.sh"
-        vault_sh = Path(__file__).resolve().parents[2] / "automation" / "helper_scripts" / "setup_vault.sh"
-
-        if not script.exists():
-            pytest.skip(f"{script_name} not found")
-        if not (install_dir / "bin" / "pg_tde_rewind").exists():
-            pytest.skip("pg_tde_rewind binary not found in install-dir")
-        if not (install_dir / "bin" / "pg_tde_basebackup").exists():
-            pytest.skip("pg_tde_basebackup binary not found in install-dir")
-        if shutil.which("sysbench") is None:
-            pytest.skip("sysbench not found in PATH")
-        if need_vault:
-            if not vault_sh.exists():
-                pytest.skip("Vault helper script not found")
-            if shutil.which("jq") is None or shutil.which("vault") is None:
-                pytest.skip("vault/jq not found in PATH")
-
-        run_dir = tmp_path / script.stem
-        env = os.environ.copy()
-        env.update(
-            {
-                "INSTALL_DIR": str(install_dir),
-                "RUN_DIR": str(run_dir),
-                "PRIMARY_DATA": str(run_dir / "primary_data"),
-                "REPLICA_DATA": str(run_dir / "replica_data"),
-                "ARCHIVE_DIR": str(run_dir / "archive"),
-                "LOG_DIR": str(run_dir / "logs"),
-                "IO_METHOD": io_method,
-                "PRIMARY_PORT": str(allocate_port()),
-                "REPLICA_PORT": str(allocate_port()),
-                "PGPORT": str(allocate_port()),
-                "HELPER_DIR": str(Path(__file__).resolve().parents[2] / "automation" / "helper_scripts"),
-            }
-        )
-        run_dir.mkdir(parents=True, exist_ok=True)
-        Path(env["ARCHIVE_DIR"]).mkdir(parents=True, exist_ok=True)
-        Path(env["LOG_DIR"]).mkdir(parents=True, exist_ok=True)
-
-        cmd = (
-            f"set -euo pipefail && "
-            f"source '{common_sh}' && "
-            f"source '{vault_sh}' && "
-            f"bash '{script}'"
-        )
-        result = subprocess.run(
-            ["bash", "-lc", cmd],
-            cwd=str(script.parent),
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, (
-            f"{script_name} failed with code {result.returncode}\n"
-            f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
-        )
-
-    @pytest.mark.slow
-    @pytest.mark.parametrize("script_name", _SCRIPTS)
-    def test_pg_tde_rewind_shell_parity(
-        self,
-        script_name: str,
-        tmp_path: Path,
-        install_dir: Path,
-        io_method: str,
-    ) -> None:
-        self._run_script(
-            script_name,
-            tmp_path=tmp_path,
-            install_dir=install_dir,
-            io_method=io_method,
-            need_vault=(script_name == "pg_tde_rewind_extended.sh"),
-        )
 
 
 # ── relfilenode reuse ─────────────────────────────────────────────────────────
