@@ -110,7 +110,13 @@ VENV_DIR="${SCRIPT_DIR}/.venv"
 
 if [[ ! -d "$VENV_DIR" ]]; then
     info "Creating virtual environment at ${VENV_DIR}"
-    "$PYTHON" -m venv "$VENV_DIR"
+    if ! "$PYTHON" -m venv "$VENV_DIR" 2>/dev/null; then
+        PY_VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        warn "python${PY_VER}-venv not found — installing..."
+        sudo apt-get install -y "python${PY_VER}-venv" || \
+            fail "apt install python${PY_VER}-venv failed. Run manually: sudo apt install python${PY_VER}-venv"
+        "$PYTHON" -m venv "$VENV_DIR" || fail "venv creation failed even after installing python${PY_VER}-venv"
+    fi
     ok "Virtual environment created"
 else
     ok "Virtual environment already exists at ${VENV_DIR}"
@@ -119,13 +125,21 @@ fi
 VENV_PYTHON="${VENV_DIR}/bin/python"
 VENV_PIP="${VENV_DIR}/bin/pip"
 
+# Bootstrap pip if the venv was created without it (common on Ubuntu when
+# python3-pip is not installed — ensurepip provides the fallback).
+if [[ ! -x "$VENV_PIP" ]]; then
+    info "pip not found in venv, bootstrapping with ensurepip..."
+    "$VENV_PYTHON" -m ensurepip --upgrade || \
+        fail "ensurepip failed. Install python3-pip: sudo apt install python3-pip"
+fi
+
 # ── 6. install Python dependencies ────────────────────────────────────────────
 echo ""
 echo "=== 6. Python dependencies ==="
 
-"$VENV_PIP" install --quiet --upgrade pip
-"$VENV_PIP" install --quiet -e "${SCRIPT_DIR}[dev]" 2>/dev/null || \
-"$VENV_PIP" install --quiet \
+"$VENV_PYTHON" -m pip install --quiet --upgrade pip
+"$VENV_PYTHON" -m pip install --quiet -e "${SCRIPT_DIR}[dev]" 2>/dev/null || \
+"$VENV_PYTHON" -m pip install --quiet \
     "pytest>=7.4" \
     "pytest-xdist>=3.0" \
     "pytest-timeout>=2.1" \
