@@ -150,12 +150,13 @@ class TestPG1806:
     def _setup_cluster(self, pg_factory, tmp_path: Path) -> tuple:
         tsp_dir = tmp_path / "extra_tablespace"
         tsp_dir.mkdir()
+        keyfile = str(tmp_path / "pg1806_key.per")
 
         cluster = pg_factory("pg1806")
         cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
-        # These two GUCs together are the trigger condition for PG-1806
+        # Match steps_to_reproduce_pg-1806_wal_optimise.sh / 018_wal_optimize.pl GUCs.
         cluster.configure(
             {
                 "wal_level": "minimal",
@@ -163,37 +164,42 @@ class TestPG1806:
                 # write_default_config() sets max_wal_senders=5; with wal_level=minimal
                 # postgres refuses to start unless replication senders are disabled.
                 "max_wal_senders": "0",
+                "max_prepared_transactions": "1",
+                "wal_log_hints": "on",
             }
         )
         cluster.start()
         tde = TdeManager(cluster)
         tde.create_extension()
-        tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806.per")
+        tde.add_global_key_provider_file(keyfile=keyfile)
         tde.set_global_principal_key()
+        # Bash/Perl repro restarts after key materialisation so defaults apply cleanly.
+        cluster.restart()
+        cluster.wait_ready()
         return cluster, tsp_dir
 
     def test_tablespace_move_and_index_survives_crash(self, pg_factory, tmp_path: Path):
         """
-        The single-transaction combination of ALTER TABLE SET TABLESPACE +
-        CREATE UNIQUE INDEX must not produce invalid pages after recovery.
+        Exact PG-1806 trigger from steps_to_reproduce_pg-1806_wal_optimise.sh: in one
+        transaction, move ``moved`` to the new tablespace and create a unique index on
+        ``originated`` in that same tablespace. After immediate stop/start, both
+        relations must be readable and the index must enforce uniqueness.
         """
         cluster, tsp_dir = self._setup_cluster(pg_factory, tmp_path)
 
         cluster.execute(f"CREATE TABLESPACE extra_tsp LOCATION '{tsp_dir}'")
-        cluster.execute("CREATE TABLE tbl_a (id INT, data TEXT)")
-        cluster.execute("INSERT INTO tbl_a SELECT i, md5(i::text) FROM generate_series(1,1000) i")
-        cluster.execute("CREATE TABLE tbl_b (id INT PRIMARY KEY, val TEXT)")
-        cluster.execute("INSERT INTO tbl_b SELECT i, md5(i::text) FROM generate_series(1,500) i")
+        cluster.execute("CREATE TABLE moved (id INT)")
+        cluster.execute("INSERT INTO moved VALUES (1)")
 
-        # The bug trigger: both operations in one transaction
         cluster.execute(
             "BEGIN;"
-            "ALTER TABLE tbl_a SET TABLESPACE extra_tsp;"
-            "CREATE UNIQUE INDEX tbl_b_val_idx ON tbl_b (val);"
+            "ALTER TABLE moved SET TABLESPACE extra_tsp;"
+            "CREATE TABLE originated (id INT);"
+            "INSERT INTO originated VALUES (1);"
+            "CREATE UNIQUE INDEX ON originated(id) TABLESPACE extra_tsp;"
             "COMMIT;"
         )
 
-        # Immediate shutdown simulates a dirty crash
         cluster.stop(mode="immediate")
         try:
             cluster.start()
@@ -204,24 +210,28 @@ class TestPG1806:
                 f"{e}\nServer log:\n{cluster.read_log()}"
             )
 
-        # Both tables must be fully accessible after recovery
         try:
-            count_a = cluster.fetchone("SELECT COUNT(*) FROM tbl_a")
-            count_b = cluster.fetchone("SELECT COUNT(*) FROM tbl_b")
+            moved_n = cluster.fetchone("SELECT COUNT(*) FROM moved")
         except RuntimeError as e:
             pytest.fail(
-                f"PG-1806 NOT FIXED: query failed after crash recovery.\n"
+                f"PG-1806 NOT FIXED: SELECT from moved failed after recovery.\n"
                 f"{e}\nServer log:\n{cluster.read_log()}"
             )
-        assert count_a == "1000", f"tbl_a corrupted after crash: {count_a} rows"
-        assert count_b == "500", f"tbl_b corrupted after crash: {count_b} rows"
-        # Index must be usable
-        cluster.execute("INSERT INTO tbl_b VALUES (9999, md5('9999'))")
+        assert moved_n == "1", f"expected 1 row in moved, got {moved_n}"
+
+        conflict_id = cluster.fetchone(
+            "INSERT INTO originated VALUES (1) ON CONFLICT (id) DO UPDATE "
+            "SET id = originated.id + 1 RETURNING id"
+        )
+        assert conflict_id == "2", (
+            f"originated unique index not usable after recovery (got {conflict_id!r})"
+        )
 
     def test_wal_level_replica_not_affected(self, pg_factory, tmp_path: Path):
         """With wal_level=replica the bug must never trigger (baseline sanity check)."""
         tsp_dir = tmp_path / "replica_tsp"
         tsp_dir.mkdir()
+        keyfile = str(tmp_path / "pg1806_replica_key.per")
 
         cluster = pg_factory("pg1806_replica_wal")
         cluster.initdb(extra_args=["--no-data-checksums"])
@@ -232,30 +242,40 @@ class TestPG1806:
                 "wal_level": "replica",
                 "wal_skip_threshold": "0",
                 "max_wal_senders": "5",
+                "max_prepared_transactions": "1",
+                "wal_log_hints": "on",
             }
         )
         cluster.start()
         tde = TdeManager(cluster)
         tde.create_extension()
-        tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806b.per")
+        tde.add_global_key_provider_file(keyfile=keyfile)
         tde.set_global_principal_key()
+        cluster.restart()
+        cluster.wait_ready()
 
         cluster.execute(f"CREATE TABLESPACE rep_tsp LOCATION '{tsp_dir}'")
-        cluster.execute("CREATE TABLE rep_tbl (id INT, data TEXT)")
-        cluster.execute("INSERT INTO rep_tbl SELECT i, md5(i::text) FROM generate_series(1,500) i")
-        cluster.execute("CREATE TABLE rep_idx_tbl (id INT PRIMARY KEY, val TEXT)")
-        cluster.execute("INSERT INTO rep_idx_tbl SELECT i, md5(i::text) FROM generate_series(1,200) i")
+        cluster.execute("CREATE TABLE moved (id INT)")
+        cluster.execute("INSERT INTO moved VALUES (1)")
         cluster.execute(
             "BEGIN;"
-            "ALTER TABLE rep_tbl SET TABLESPACE rep_tsp;"
-            "CREATE UNIQUE INDEX rep_idx_tbl_val_idx ON rep_idx_tbl (val);"
+            "ALTER TABLE moved SET TABLESPACE rep_tsp;"
+            "CREATE TABLE originated (id INT);"
+            "INSERT INTO originated VALUES (1);"
+            "CREATE UNIQUE INDEX ON originated(id) TABLESPACE rep_tsp;"
             "COMMIT;"
         )
         cluster.stop(mode="immediate")
         cluster.start()
         cluster.wait_ready()
-        count = cluster.fetchone("SELECT COUNT(*) FROM rep_tbl")
-        assert count == "500"
+        assert cluster.fetchone("SELECT COUNT(*) FROM moved") == "1"
+        assert (
+            cluster.fetchone(
+                "INSERT INTO originated VALUES (1) ON CONFLICT (id) DO UPDATE "
+                "SET id = originated.id + 1 RETURNING id"
+            )
+            == "2"
+        )
 
     def test_max_wal_senders_zero_rejected_then_five_recovers(self, pg_factory, tmp_path: Path):
         """
@@ -263,6 +283,7 @@ class TestPG1806:
           1) max_wal_senders=0 starts and works with wal_level=replica
           2) switching to max_wal_senders=5 also starts and remains usable
         """
+        keyfile = str(tmp_path / "pg1806_sender_toggle_key.per")
         cluster = pg_factory("pg1806_sender_toggle")
         cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config(
@@ -277,6 +298,8 @@ class TestPG1806:
                 "wal_level": "replica",
                 "wal_skip_threshold": "0",
                 "max_wal_senders": "0",
+                "max_prepared_transactions": "1",
+                "wal_log_hints": "on",
             }
         )
         cluster.start()
@@ -284,8 +307,10 @@ class TestPG1806:
 
         tde = TdeManager(cluster)
         tde.create_extension()
-        tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806_sender_toggle.per")
+        tde.add_global_key_provider_file(keyfile=keyfile)
         tde.set_global_principal_key()
+        cluster.restart()
+        cluster.wait_ready()
 
         cluster.execute("CREATE TABLE sender_toggle_tbl (id INT PRIMARY KEY, val TEXT)")
         cluster.execute("INSERT INTO sender_toggle_tbl VALUES (1, 'ok_with_zero')")
@@ -305,6 +330,7 @@ class TestPG1806:
         tsp_dir = tmp_path / "default_tsp"
         tsp_dir.mkdir()
 
+        keyfile = str(tmp_path / "pg1806_default_threshold_key.per")
         cluster = pg_factory("pg1806_default_threshold")
         cluster.initdb(extra_args=["--no-data-checksums"])
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
@@ -314,27 +340,37 @@ class TestPG1806:
                 "wal_level": "minimal",  # wal_skip_threshold left at default
                 # Keep minimal-wal startup valid with framework defaults.
                 "max_wal_senders": "0",
+                "max_prepared_transactions": "1",
+                "wal_log_hints": "on",
             }
         )
         cluster.start()
         tde = TdeManager(cluster)
         tde.create_extension()
-        tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_1806c.per")
+        tde.add_global_key_provider_file(keyfile=keyfile)
         tde.set_global_principal_key()
+        cluster.restart()
+        cluster.wait_ready()
 
         cluster.execute(f"CREATE TABLESPACE def_tsp LOCATION '{tsp_dir}'")
-        cluster.execute("CREATE TABLE def_tbl (id INT, data TEXT)")
-        cluster.execute("INSERT INTO def_tbl SELECT i, md5(i::text) FROM generate_series(1,500) i")
-        cluster.execute("CREATE TABLE def_idx_tbl (id INT PRIMARY KEY, val TEXT)")
-        cluster.execute("INSERT INTO def_idx_tbl SELECT i, md5(i::text) FROM generate_series(1,200) i")
+        cluster.execute("CREATE TABLE moved (id INT)")
+        cluster.execute("INSERT INTO moved VALUES (1)")
         cluster.execute(
             "BEGIN;"
-            "ALTER TABLE def_tbl SET TABLESPACE def_tsp;"
-            "CREATE UNIQUE INDEX def_idx_tbl_val_idx ON def_idx_tbl (val);"
+            "ALTER TABLE moved SET TABLESPACE def_tsp;"
+            "CREATE TABLE originated (id INT);"
+            "INSERT INTO originated VALUES (1);"
+            "CREATE UNIQUE INDEX ON originated(id) TABLESPACE def_tsp;"
             "COMMIT;"
         )
         cluster.stop(mode="immediate")
         cluster.start()
         cluster.wait_ready()
-        count = cluster.fetchone("SELECT COUNT(*) FROM def_tbl")
-        assert count == "500"
+        assert cluster.fetchone("SELECT COUNT(*) FROM moved") == "1"
+        assert (
+            cluster.fetchone(
+                "INSERT INTO originated VALUES (1) ON CONFLICT (id) DO UPDATE "
+                "SET id = originated.id + 1 RETURNING id"
+            )
+            == "2"
+        )
