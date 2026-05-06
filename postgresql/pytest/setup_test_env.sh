@@ -159,8 +159,13 @@ export PATH="${INSTALL_DIR}/bin:\$PATH"
 export OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-}"
 export VAULT_ADDR="${VAULT_ADDR:-}"
 export VAULT_TOKEN="${VAULT_TOKEN:-}"
-# Activate the Python virtual environment
-source "${VENV_DIR}/bin/activate"
+# Enable the Python virtual environment.
+# Some distro venv builds may omit "bin/activate"; PATH-based activation still works.
+export VIRTUAL_ENV="${VENV_DIR}"
+export PATH="${VENV_DIR}/bin:\$PATH"
+if [[ -f "${VENV_DIR}/bin/activate" ]]; then
+    source "${VENV_DIR}/bin/activate"
+fi
 EOF
 ok "Environment file written to ${ENV_FILE}"
 info "Source it with:  source ${ENV_FILE}"
