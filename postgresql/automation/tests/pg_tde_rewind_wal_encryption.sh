@@ -86,12 +86,36 @@ EOF
     start_pg "$REPLICA_DATA" "$REPLICA_PORT"
 }
 
+_promote_replica() {
+    local port="$1"
+    local data_dir="$2"
+
+    # SQL promotion is generally more reliable than pg_ctl promote in CI.
+    "$PSQL" -p "$port" -d postgres -c "SELECT pg_promote(wait_seconds => 60);" >/dev/null 2>&1 || true
+
+    for _ in $(seq 1 60); do
+        IN_RECOVERY=$("$PSQL" -p "$port" -d postgres -t -A -c "SELECT pg_is_in_recovery();" 2>/dev/null || echo "t")
+        if [ "$IN_RECOVERY" = "f" ]; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    # Fallback with explicit diagnostics.
+    "$PG_CTL" -D "$data_dir" promote || true
+    sleep 2
+    IN_RECOVERY=$("$PSQL" -p "$port" -d postgres -t -A -c "SELECT pg_is_in_recovery();" 2>/dev/null || echo "t")
+    if [ "$IN_RECOVERY" != "f" ]; then
+        echo "ERROR: replica did not promote in time (port=$port)"
+        return 1
+    fi
+}
+
 _promote_and_diverge() {
     local new_primary_port="$1"
     local new_primary_data="$2"
     local sql="${3:-INSERT INTO t_rewind VALUES (generate_series(1,500));}"
-    "$PG_CTL" -D "$new_primary_data" promote
-    sleep 2
+    _promote_replica "$new_primary_port" "$new_primary_data"
     "$PSQL" -p "$new_primary_port" -d postgres -c "$sql"
     "$PSQL" -p "$new_primary_port" -d postgres -c "CHECKPOINT;"
 }
@@ -347,8 +371,7 @@ pg_tde.wal_encrypt = 'on'"
 "$PSQL" -p "$PRIMARY_PORT" -d postgres -c "SELECT pg_switch_wal();"
 
 # Promote replica and rotate server key multiple times while generating WAL.
-"$PG_CTL" -D "$REPLICA_DATA" promote
-sleep 2
+_promote_replica "$REPLICA_PORT" "$REPLICA_DATA"
 for i in 1 2 3; do
     "$PSQL" -p "$REPLICA_PORT" -d postgres \
         -c "SELECT pg_tde_create_key_using_global_key_provider('wal_rot_$i','file_provider');"

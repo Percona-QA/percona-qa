@@ -93,25 +93,33 @@ def _promote(standby: PgCluster) -> None:
     Promote standby with SQL and wait until it exits recovery.
     Avoid pg_ctl promote in flaky CI environments.
     """
+    # Ensure server is up before attempting promotion.
+    if not standby.is_ready():
+        standby.start()
+        standby.wait_ready(timeout=60)
+
     try:
         if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
             return
     except Exception:
         pass
+
+    # Prefer pg_ctl promote first (avoids SQL-level promotion edge cases).
     try:
-        standby.execute("SELECT pg_promote(wait_seconds => 60)")
+        standby.promote()
     except Exception:
-        pass
+        # Fallback to SQL promotion.
+        standby.execute("SELECT pg_promote(wait_seconds => 60)")
+
     deadline = time.time() + 60
     while time.time() < deadline:
-        try:
-            if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
-                return
-        except Exception:
-            pass
+        if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+            return
         time.sleep(1)
-    # Last fallback if SQL path did not complete in time.
-    standby.promote()
+    raise RuntimeError(
+        "Standby did not promote within timeout.\n"
+        f"Standby log tail:\n{standby.read_log(last_n=40)}"
+    )
 
 
 def _ha_pair(
@@ -176,7 +184,7 @@ def _ha_pair(
         primary.restart()
 
     repl = ReplicationManager(primary, standby)
-    repl.create_standby_from_backup(use_tde_basebackup=True)
+    repl.create_standby_from_backup(use_tde_basebackup=True, extra_args=["-E"])
     standby_params = {
         "shared_preload_libraries": "'pg_tde'",
         "restore_command": f"'cp {archive_dir}/%f %p'",
@@ -683,7 +691,9 @@ class TestTdeRewindFullHaCycle:
 
             # nodeB: first standby of nodeA
             repl_AB = ReplicationManager(nodeA, nodeB)
-            repl_AB.create_standby_from_backup(use_tde_basebackup=True)
+            repl_AB.create_standby_from_backup(
+                use_tde_basebackup=True, extra_args=["-E"]
+            )
             nodeB.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "restore_command": f"'cp {archive_dir}/%f %p'",
@@ -694,7 +704,9 @@ class TestTdeRewindFullHaCycle:
 
             # nodeC: second standby of nodeA
             repl_AC = ReplicationManager(nodeA, nodeC)
-            repl_AC.create_standby_from_backup(use_tde_basebackup=True)
+            repl_AC.create_standby_from_backup(
+                use_tde_basebackup=True, extra_args=["-E"]
+            )
             nodeC.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "restore_command": f"'cp {archive_dir}/%f %p'",
@@ -764,11 +776,8 @@ class TestTdeRewindFullHaCycle:
                 standby.start()
                 standby.wait_ready(timeout=60)
                 standby.execute("CHECKPOINT")
-                standby.stop()
 
             # Final verification from source side after all rounds.
-            standby.start()
-            standby.wait_ready(timeout=60)
             count = standby.fetchone("SELECT COUNT(*) FROM round_t")
             assert int(count) >= 3
         finally:
