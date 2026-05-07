@@ -9,6 +9,7 @@
 #   3. WAL compression (lz4, fallback pglz) combined with TDE
 #   4. WAL encryption + WAL archiving: archive survives rewind
 #   5. Timeline ID increments after promote + rewind with WAL encryption
+#   6. Overlapping WAL-key generations with kept target segments
 #
 # Prerequisites: INSTALL_DIR, RUN_DIR, PRIMARY_DATA, REPLICA_DATA,
 #                PRIMARY_PORT, REPLICA_PORT set by env.sh / test_runner.sh
@@ -307,6 +308,93 @@ COUNT=$("$PSQL" -p "$PRIMARY_PORT" -d postgres -t -A \
 [ "$COUNT" -gt 0 ] || { echo "ERROR: t_tl empty after rewind"; exit 1; }
 
 echo "PASS: Scenario 5 — timeline $TL_BEFORE -> $TL_AFTER, rows=$COUNT"
+
+##############################################################################
+# SCENARIO 6: Overlapping WAL-key generations with kept target segments
+##############################################################################
+echo ""
+echo "=== SCENARIO 6: WAL-key overlap with archived rewind ==="
+_cleanup_pair
+
+ARCHIVE_EXTRA="archive_mode = on
+archive_command = 'cp %p $ARCHIVE_DIR/%f'
+restore_command = 'cp $ARCHIVE_DIR/%f %p'"
+
+_setup_primary "$ARCHIVE_EXTRA"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "ALTER SYSTEM SET pg_tde.wal_encrypt = 'on';"
+restart_pg "$PRIMARY_DATA" "$PRIMARY_PORT"
+
+"$PSQL" -p "$PRIMARY_PORT" -d postgres \
+    -c "CREATE TABLE t_overlap (id INT, payload TEXT) USING tde_heap;"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres \
+    -c "INSERT INTO t_overlap SELECT g, repeat(md5(g::text), 12) FROM generate_series(1,3000) g;"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "CHECKPOINT;"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "SELECT pg_switch_wal();"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "SELECT pg_switch_wal();"
+
+_setup_replica "$ARCHIVE_EXTRA
+pg_tde.wal_encrypt = 'on'"
+
+# Keep WAL pressure on future target before divergence.
+"$PSQL" -p "$PRIMARY_PORT" -d postgres \
+    -c "INSERT INTO t_overlap SELECT g, repeat(md5(g::text), 10) FROM generate_series(3001,7000) g;"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "CHECKPOINT;"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "SELECT pg_switch_wal();"
+"$PSQL" -p "$PRIMARY_PORT" -d postgres -c "SELECT pg_switch_wal();"
+
+# Promote replica and rotate server key multiple times while generating WAL.
+"$PG_CTL" -D "$REPLICA_DATA" promote
+sleep 2
+for i in 1 2 3; do
+    "$PSQL" -p "$REPLICA_PORT" -d postgres \
+        -c "SELECT pg_tde_create_key_using_global_key_provider('wal_rot_$i','file_provider');"
+    "$PSQL" -p "$REPLICA_PORT" -d postgres \
+        -c "SELECT pg_tde_set_server_key_using_global_key_provider('wal_rot_$i','file_provider');"
+    "$PSQL" -p "$REPLICA_PORT" -d postgres \
+        -c "SELECT pg_tde_set_key_using_global_key_provider('wal_rot_$i','file_provider');"
+    START_ID=$((i * 10000))
+    END_ID=$((START_ID + 350))
+    "$PSQL" -p "$REPLICA_PORT" -d postgres \
+        -c "INSERT INTO t_overlap SELECT g, repeat(md5(g::text), 8) FROM generate_series($START_ID,$END_ID) g;"
+    "$PSQL" -p "$REPLICA_PORT" -d postgres -c "SELECT pg_switch_wal();"
+    "$PSQL" -p "$REPLICA_PORT" -d postgres -c "CHECKPOINT;"
+done
+
+"$PG_CTL" -D "$PRIMARY_DATA" stop -m immediate
+"$PG_CTL" -D "$REPLICA_DATA" stop -m fast
+_run_rewind_pgdata
+start_pg "$PRIMARY_DATA" "$PRIMARY_PORT"
+
+COUNT=$("$PSQL" -p "$PRIMARY_PORT" -d postgres -t -A \
+    -c "SELECT count(*) FROM t_overlap;")
+[ "$COUNT" -gt 0 ] || { echo "ERROR: t_overlap empty after overlap rewind"; exit 1; }
+
+# Re-attach rewound target as standby and verify it can replay fresh WAL.
+"$PG_CTL" -D "$PRIMARY_DATA" stop -m fast
+echo "primary_conninfo = 'host=$RUN_DIR port=$REPLICA_PORT user=$(id -un)'" >> "$PRIMARY_DATA/postgresql.auto.conf"
+touch "$PRIMARY_DATA/standby.signal"
+
+start_pg "$REPLICA_DATA" "$REPLICA_PORT"
+start_pg "$PRIMARY_DATA" "$PRIMARY_PORT"
+
+"$PSQL" -p "$REPLICA_PORT" -d postgres \
+    -c "INSERT INTO t_overlap SELECT g, repeat(md5(g::text), 6) FROM generate_series(50001,50300) g;"
+"$PSQL" -p "$REPLICA_PORT" -d postgres -c "SELECT pg_switch_wal();"
+"$PSQL" -p "$REPLICA_PORT" -d postgres -c "CHECKPOINT;"
+
+FOUND=0
+for _ in $(seq 1 30); do
+    MIRRORED=$("$PSQL" -p "$PRIMARY_PORT" -d postgres -t -A \
+        -c "SELECT count(*) FROM t_overlap WHERE id BETWEEN 50001 AND 50300;" 2>/dev/null || echo "0")
+    if [ "$MIRRORED" -eq 300 ]; then
+        FOUND=1
+        break
+    fi
+    sleep 1
+done
+[ "$FOUND" -eq 1 ] || { echo "ERROR: rewound standby did not replay fresh WAL after key overlap"; exit 1; }
+
+echo "PASS: Scenario 6 — overlap replay rows=$MIRRORED"
 
 ##############################################################################
 echo ""
