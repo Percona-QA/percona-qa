@@ -49,9 +49,9 @@ wal_log_hints = on
 max_wal_senders = 5
 wal_keep_size = 512MB
 archive_mode = on
-archive_command = 'cp %p $ARCHIVE_DIR/%f'
+archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 # Required because pg_tde_rewind is executed with -c in this suite.
-restore_command = 'cp $ARCHIVE_DIR/%f %p'
+restore_command = '$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
 EOF
     [ -n "$extra_conf" ] && echo "$extra_conf" >> "$PRIMARY_DATA/postgresql.conf"
     echo "host replication all 127.0.0.1/32 trust" >> "$PRIMARY_DATA/pg_hba.conf"
@@ -276,8 +276,8 @@ echo "=== SCENARIO 4: WAL encryption + archiving ==="
 _cleanup_pair
 
 ARCHIVE_EXTRA="archive_mode = on
-archive_command = 'cp %p $ARCHIVE_DIR/%f'
-restore_command = 'cp $ARCHIVE_DIR/%f %p'"
+archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'
+restore_command = '$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'"
 
 _setup_primary "$ARCHIVE_EXTRA"
 "$PSQL" -p "$PRIMARY_PORT" -d postgres -c "ALTER SYSTEM SET pg_tde.wal_encrypt = 'on';"
@@ -359,8 +359,8 @@ echo "=== SCENARIO 6: WAL-key overlap with archived rewind ==="
 _cleanup_pair
 
 ARCHIVE_EXTRA="archive_mode = on
-archive_command = 'cp %p $ARCHIVE_DIR/%f'
-restore_command = 'cp $ARCHIVE_DIR/%f %p'"
+archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'
+restore_command = '$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'"
 
 _setup_primary "$ARCHIVE_EXTRA"
 "$PSQL" -p "$PRIMARY_PORT" -d postgres -c "ALTER SYSTEM SET pg_tde.wal_encrypt = 'on';"
