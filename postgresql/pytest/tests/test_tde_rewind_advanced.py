@@ -184,7 +184,7 @@ def _ha_pair(
         primary.restart()
 
     repl = ReplicationManager(primary, standby)
-    repl.create_standby_from_backup(use_tde_basebackup=True, extra_args=["-E"])
+    repl.create_standby_from_backup(use_tde_basebackup=True)
     standby_params = {
         "shared_preload_libraries": "'pg_tde'",
         "restore_command": f"'cp {archive_dir}/%f %p'",
@@ -691,9 +691,7 @@ class TestTdeRewindFullHaCycle:
 
             # nodeB: first standby of nodeA
             repl_AB = ReplicationManager(nodeA, nodeB)
-            repl_AB.create_standby_from_backup(
-                use_tde_basebackup=True, extra_args=["-E"]
-            )
+            repl_AB.create_standby_from_backup(use_tde_basebackup=True)
             nodeB.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "restore_command": f"'cp {archive_dir}/%f %p'",
@@ -704,9 +702,7 @@ class TestTdeRewindFullHaCycle:
 
             # nodeC: second standby of nodeA
             repl_AC = ReplicationManager(nodeA, nodeC)
-            repl_AC.create_standby_from_backup(
-                use_tde_basebackup=True, extra_args=["-E"]
-            )
+            repl_AC.create_standby_from_backup(use_tde_basebackup=True)
             nodeC.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "restore_command": f"'cp {archive_dir}/%f %p'",
