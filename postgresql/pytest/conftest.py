@@ -63,6 +63,36 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Vault root token",
     )
     parser.addoption(
+        "--vault-namespace",
+        default=os.environ.get("VAULT_NAMESPACE", ""),
+        help="Vault/OpenBao namespace (optional)",
+    )
+    parser.addoption(
+        "--kmip-server-address",
+        default=os.environ.get("KMIP_SERVER_ADDRESS", ""),
+        help="KMIP server address (required for kmip tests)",
+    )
+    parser.addoption(
+        "--kmip-server-port",
+        default=os.environ.get("KMIP_SERVER_PORT", ""),
+        help="KMIP server port (required for kmip tests)",
+    )
+    parser.addoption(
+        "--kmip-client-ca",
+        default=os.environ.get("KMIP_CLIENT_CA", ""),
+        help="KMIP client certificate path",
+    )
+    parser.addoption(
+        "--kmip-client-key",
+        default=os.environ.get("KMIP_CLIENT_KEY", ""),
+        help="KMIP client private key path",
+    )
+    parser.addoption(
+        "--kmip-server-ca",
+        default=os.environ.get("KMIP_SERVER_CA", ""),
+        help="KMIP server CA certificate path",
+    )
+    parser.addoption(
         "--old-install-dir",
         default=os.environ.get("OLD_INSTALL_DIR", ""),
         help="Older PG installation used as the upgrade source",
@@ -100,6 +130,36 @@ def vault_token(request) -> str:
 
 
 @pytest.fixture(scope="session")
+def vault_namespace(request) -> str:
+    return request.config.getoption("--vault-namespace")
+
+
+@pytest.fixture(scope="session")
+def kmip_server_address(request) -> str:
+    return request.config.getoption("--kmip-server-address")
+
+
+@pytest.fixture(scope="session")
+def kmip_server_port(request) -> str:
+    return request.config.getoption("--kmip-server-port")
+
+
+@pytest.fixture(scope="session")
+def kmip_client_ca(request) -> str:
+    return request.config.getoption("--kmip-client-ca")
+
+
+@pytest.fixture(scope="session")
+def kmip_client_key(request) -> str:
+    return request.config.getoption("--kmip-client-key")
+
+
+@pytest.fixture(scope="session")
+def kmip_server_ca(request) -> str:
+    return request.config.getoption("--kmip-server-ca")
+
+
+@pytest.fixture(scope="session")
 def old_install_dir(request) -> Path:
     v = request.config.getoption("--old-install-dir")
     return Path(v) if v else None
@@ -133,9 +193,11 @@ def pytest_runtest_makereport(item, call):
 
 def pytest_collection_modifyitems(config, items):
     vault_addr = config.getoption("--vault-addr")
+    kmip_addr = config.getoption("--kmip-server-address")
     old_dir = config.getoption("--old-install-dir")
 
     skip_vault = pytest.mark.skip(reason="--vault-addr not provided")
+    skip_kmip = pytest.mark.skip(reason="--kmip-server-address not provided")
     skip_upgrade = pytest.mark.skip(reason="--old-install-dir not provided")
     skip_docker = pytest.mark.skip(reason="docker not found in PATH")
     skip_pgbackrest = pytest.mark.skip(reason="pgbackrest not installed or not on PATH")
@@ -146,6 +208,8 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "vault" in item.keywords and not vault_addr:
             item.add_marker(skip_vault)
+        if "kmip" in item.keywords and not kmip_addr:
+            item.add_marker(skip_kmip)
         if "upgrade" in item.keywords and not old_dir:
             item.add_marker(skip_upgrade)
         if "docker" in item.keywords and not docker_available:
