@@ -988,9 +988,10 @@ class TestTdeRewindWithCheckpoint:
         """
         primary, standby, _, _ = _make_tde_ha_pair(install_dir, tmp_path, io_method)
         try:
-            # Record a sentinel GUC on primary before rewind
-            primary.execute("ALTER SYSTEM SET work_mem = '16MB'")
-            primary.execute("SELECT pg_reload_conf()")
+            # Record a sentinel GUC directly in postgresql.conf (the shell script
+            # backs up/restores this file around rewind).
+            primary.configure({"work_mem": "'16MB'"})
+            primary.reload()
             primary.execute(
                 "CREATE TABLE conf_tbl (id INT) USING tde_heap; "
                 "INSERT INTO conf_tbl VALUES (1); CHECKPOINT;"
@@ -1013,7 +1014,7 @@ class TestTdeRewindWithCheckpoint:
 
             primary.start()
             primary.wait_ready(timeout=60)
-            # work_mem setting must still be present
+            # work_mem setting from restored postgresql.conf must still be present.
             wm = primary.fetchone("SHOW work_mem")
             assert wm == "16MB", f"work_mem lost after rewind: {wm!r}"
         finally:
@@ -1040,14 +1041,12 @@ class TestTdeRewindRandomized:
     rather than coin-flipping.
     """
 
-    def test_rewind_target_only_table_is_removed(
+    def test_rewind_target_only_table_is_preserved(
         self, install_dir: Path, tmp_path: Path, io_method: str
     ):
         """
-        A table created ONLY on the promoted standby (target-only) must NOT
-        exist on the rewound primary.  This is the core asymmetry invariant:
-        pg_rewind brings the target back to the divergence point, discarding
-        all post-divergence changes on the target.
+        A table created on the promoted standby (rewind source) must exist
+        after rewind, because the target is synchronized to source state.
         """
         primary, standby, _, _ = _make_tde_ha_pair(install_dir, tmp_path, io_method)
         try:
@@ -1079,12 +1078,11 @@ class TestTdeRewindRandomized:
             primary.start()
             primary.wait_ready(timeout=60)
 
-            # target_only must NOT exist (it was on the diverged branch)
-            exists = primary.fetchone(
-                "SELECT to_regclass('public.target_only')"
-            )
-            assert exists in (None, ""), (
-                f"target_only table survived rewind — it should have been removed: {exists!r}"
+            # target_only was created on rewind source (promoted standby), so it
+            # must exist after target is rewound to source state.
+            cnt_target_only = primary.fetchone("SELECT COUNT(*) FROM target_only")
+            assert cnt_target_only == "2", (
+                f"target_only table missing or wrong rowcount after rewind: {cnt_target_only!r}"
             )
 
             # shared_t must exist (it was on both branches)
@@ -1098,13 +1096,13 @@ class TestTdeRewindRandomized:
                     pass
                 shutil.rmtree(c.data_dir, ignore_errors=True)
 
-    def test_rewind_source_only_table_is_preserved(
+    def test_rewind_source_only_table_is_removed(
         self, install_dir: Path, tmp_path: Path, io_method: str
     ):
         """
-        A table created on the original primary after the divergence point
-        (source_only) must still exist after rewind because the rewind brings
-        the target forward to match the source.
+        A table created only on the original primary (rewind target) after
+        divergence must be removed by rewind, because target is overwritten
+        with source-side history.
         """
         primary, standby, _, _ = _make_tde_ha_pair(install_dir, tmp_path, io_method)
         try:
@@ -1132,9 +1130,9 @@ class TestTdeRewindRandomized:
             primary.start()
             primary.wait_ready(timeout=60)
 
-            cnt = primary.fetchone("SELECT COUNT(*) FROM source_only")
-            assert cnt == "2", (
-                f"source_only table lost after rewind: {cnt!r}"
+            exists = primary.fetchone("SELECT to_regclass('public.source_only')")
+            assert exists in (None, ""), (
+                f"source_only table survived rewind — it should have been removed: {exists!r}"
             )
         finally:
             for c in (standby, primary):
@@ -1214,7 +1212,8 @@ class TestTdeRewindRandomized:
             primary.start()
             primary.wait_ready(timeout=60)
             count = primary.fetchone("SELECT COUNT(*) FROM heavy_t")
-            assert int(count) >= 10000
+            # Divergence does: UPDATE all rows, DELETE id%3=0 => 6667 rows remain.
+            assert int(count) == 6667
         finally:
             for c in (standby, primary):
                 try:
