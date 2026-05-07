@@ -29,7 +29,7 @@ from typing import Optional, Tuple
 import pytest
 
 from conftest import allocate_port
-from lib import PgCluster, TdeManager, ReplicationManager
+from lib import PgCluster, ReplicationManager, TdeManager, archive_restore_conf_values
 from lib.cluster import libpq_superuser
 
 pytestmark = [pytest.mark.recovery, pytest.mark.slow]
@@ -151,13 +151,16 @@ def _ha_pair(
     shutil.rmtree(primary.data_dir, ignore_errors=True)
     shutil.rmtree(standby.data_dir, ignore_errors=True)
 
+    arch_cmd, restore_cmd = archive_restore_conf_values(
+        install_dir, archive_dir, use_tde_wrappers=True
+    )
     params = {
         "shared_preload_libraries": "'pg_tde'",
         "wal_level": "replica",
         "archive_mode": "on",
-        "archive_command": f"'cp %p {archive_dir}/%f'",
+        "archive_command": arch_cmd,
         # Required for pg_tde_rewind -c when this node later becomes target.
-        "restore_command": f"'cp {archive_dir}/%f %p'",
+        "restore_command": restore_cmd,
         "wal_log_hints": "on",
         "max_wal_senders": "5",
         "hot_standby": "on",
@@ -189,7 +192,7 @@ def _ha_pair(
         repl.create_standby_from_backup(use_tde_basebackup=True)
         standby_params = {
             "shared_preload_libraries": "'pg_tde'",
-            "restore_command": f"'cp {archive_dir}/%f %p'",
+            "restore_command": restore_cmd,
         }
         standby.write_default_config("replica", extra_params=standby_params)
         standby.start()
@@ -679,6 +682,9 @@ class TestTdeRewindFullHaCycle:
         archive_dir = tmp_path / "archive3"
         archive_dir.mkdir()
         keyfile = str(tmp_path / "keyring3.file")
+        arch3, rest3 = archive_restore_conf_values(
+            install_dir, archive_dir, use_tde_wrappers=True
+        )
 
         try:
             # Boot nodeA
@@ -687,8 +693,8 @@ class TestTdeRewindFullHaCycle:
                 "shared_preload_libraries": "'pg_tde'",
                 "wal_level": "replica",
                 "archive_mode": "on",
-                "archive_command": f"'cp %p {archive_dir}/%f'",
-                "restore_command": f"'cp {archive_dir}/%f %p'",
+                "archive_command": arch3,
+                "restore_command": rest3,
                 "wal_log_hints": "on",
                 "max_wal_senders": "10",
                 "hot_standby": "on",
@@ -714,7 +720,7 @@ class TestTdeRewindFullHaCycle:
             repl_AB.create_standby_from_backup(use_tde_basebackup=True)
             nodeB.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
-                "restore_command": f"'cp {archive_dir}/%f %p'",
+                "restore_command": rest3,
             })
             nodeB.start()
             nodeB.wait_ready(timeout=60)
@@ -725,7 +731,7 @@ class TestTdeRewindFullHaCycle:
             repl_AC.create_standby_from_backup(use_tde_basebackup=True)
             nodeC.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
-                "restore_command": f"'cp {archive_dir}/%f %p'",
+                "restore_command": rest3,
             })
             nodeC.start()
             nodeC.wait_ready(timeout=60)

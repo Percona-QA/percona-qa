@@ -89,7 +89,7 @@ for i in {1..4}; do
     sed -i '/recovery_target_time/d' "$PGDATA/postgresql.conf"
 
     # Add new recovery settings
-    echo "restore_command = 'cp $ARCHIVE_DIR/%f %p'" >> "$PGDATA/postgresql.conf"
+    echo "restore_command = '$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'" >> "$PGDATA/postgresql.conf"
     echo "recovery_target_time = '${RECOVERY_TARGET_TIMES[$i]}'" >> "$PGDATA/postgresql.conf"
     touch "$PGDATA/recovery.signal"
 

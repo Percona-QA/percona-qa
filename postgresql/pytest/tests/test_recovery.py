@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from lib import PgCluster, TdeManager, ReplicationManager
+from lib import PgCluster, ReplicationManager, TdeManager, archive_restore_conf_values
 from lib.cluster import libpq_superuser
 
 
@@ -352,6 +352,9 @@ def _make_tde_ha_pair(
     archive_dir = archive_dir or tmp_path / "archive"
     archive_dir.mkdir(parents=True, exist_ok=True)
     keyfile = keyfile or str(tmp_path / "keyring.file")
+    arch_cmd, restore_cmd = archive_restore_conf_values(
+        install_dir, archive_dir, use_tde_wrappers=True
+    )
 
     primary = PgCluster(
         tmp_path / primary_subdir, allocate_port(), install_dir,
@@ -367,9 +370,9 @@ def _make_tde_ha_pair(
         "shared_preload_libraries": "'pg_tde'",
         "wal_level": "replica",
         "archive_mode": "on",
-        "archive_command": f"'cp %p {archive_dir}/%f'",
+        "archive_command": arch_cmd,
         # Needed by pg_tde_rewind -c when primary later becomes rewind target.
-        "restore_command": f"'cp {archive_dir}/%f %p'",
+        "restore_command": restore_cmd,
         "wal_log_hints": "on",
         "max_wal_senders": "5",
         "hot_standby": "on",
@@ -389,7 +392,7 @@ def _make_tde_ha_pair(
     repl.create_standby_from_backup(use_tde_basebackup=True)
     standby.write_default_config("replica", extra_params={
         "shared_preload_libraries": "'pg_tde'",
-        "restore_command": f"'cp {archive_dir}/%f %p'",
+        "restore_command": restore_cmd,
     })
     standby.start()
     standby.wait_ready(timeout=60)

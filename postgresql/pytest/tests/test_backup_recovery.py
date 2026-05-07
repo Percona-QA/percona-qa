@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from lib import PgCluster, TdeManager, BackupManager
+from lib import BackupManager, PgCluster, TdeManager, archive_restore_conf_values, restore_conf_line_raw
 from lib.cluster import libpq_superuser
 from lib.backup import PgBaseBackup
 
@@ -285,10 +285,13 @@ class TestPitr:
 
         archive_dir = tmp_path / "enc_wal_archive"
         archive_dir.mkdir()
+        arch_cmd, _ = archive_restore_conf_values(
+            install_dir, archive_dir, use_tde_wrappers=True
+        )
         tde_primary.configure(
             {
                 "archive_mode": "on",
-                "archive_command": f"'cp %p {archive_dir}/%f'",
+                "archive_command": arch_cmd,
             }
         )
         tde_primary.restart()
@@ -321,7 +324,7 @@ class TestPitr:
             f.write("pg_tde.wal_encrypt = 'on'\n")
             f.write(f"recovery_target_time = '{pitr_time}'\n")
             f.write("recovery_target_action = 'promote'\n")
-            f.write(f"restore_command = 'cp {archive_dir}/%f %p'\n")
+            f.write(restore_conf_line_raw(archive_dir, install_dir, use_tde_wrappers=True))
         (restore_dir / "recovery.signal").touch()
         restored.add_hba_entry("local all all trust")
         restored.start()

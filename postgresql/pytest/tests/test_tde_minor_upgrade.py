@@ -41,7 +41,13 @@ from typing import Generator, Tuple
 import pytest
 
 from conftest import allocate_port
-from lib import PgCluster, TdeManager, ReplicationManager
+from lib import (
+    PgCluster,
+    ReplicationManager,
+    TdeManager,
+    archive_restore_conf_values,
+    restore_conf_line_raw,
+)
 from lib.backup import BackupManager, pgbackrest_installed
 
 pytestmark = [pytest.mark.upgrade, pytest.mark.encryption, pytest.mark.slow]
@@ -56,33 +62,6 @@ _TDE_PARAMS = {
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-
-
-def _tde_archive_wrapper(install_dir: Path) -> str:
-    """
-    Return the appropriate archive_command string for an encrypted WAL cluster.
-
-    Prefers pg_tde_archive_decrypt (Percona wrapper that decrypts WAL segments
-    before handing them to pgbackrest). Falls back to a plain 'cp' when the
-    binary is absent (non-Percona build or stripped install).
-    """
-    wrapper = install_dir / "bin" / "pg_tde_archive_decrypt"
-    if wrapper.exists():
-        return f"'{wrapper} %p %f'"
-    return "'cp %p /tmp/tde_upgrade_wal_archive/%f'"
-
-
-def _tde_restore_wrapper(install_dir: Path) -> str:
-    """
-    Return the appropriate restore_command string for an encrypted WAL cluster.
-
-    Prefers pg_tde_restore_encrypt (Percona wrapper that re-encrypts WAL
-    segments on restore). Falls back to plain 'cp'.
-    """
-    wrapper = install_dir / "bin" / "pg_tde_restore_encrypt"
-    if wrapper.exists():
-        return f"'{wrapper} %f %p'"
-    return "'cp /tmp/tde_upgrade_wal_archive/%f %p'"
 
 
 def _build_ha_cluster(
@@ -121,8 +100,12 @@ def _build_ha_cluster(
     params = dict(_TDE_PARAMS)
     if with_archive and archive_dir:
         archive_dir.mkdir(parents=True, exist_ok=True)
+        arch_cmd, restore_cmd = archive_restore_conf_values(
+            install_dir, archive_dir, use_tde_wrappers=wal_encrypt
+        )
         params["archive_mode"] = "on"
-        params["archive_command"] = f"'cp %p {archive_dir}/%f'"
+        params["archive_command"] = arch_cmd
+        params["restore_command"] = restore_cmd
         params["wal_level"] = "replica"
         params["max_wal_senders"] = "5"
         params["hot_standby"] = "on"
@@ -149,9 +132,12 @@ def _build_ha_cluster(
     repl.create_standby_from_backup(use_tde_basebackup=True)
     nodeB.write_default_config("replica", extra_params=_TDE_PARAMS)
     if with_archive and archive_dir:
+        _, restore_cmd = archive_restore_conf_values(
+            install_dir, archive_dir, use_tde_wrappers=wal_encrypt
+        )
         nodeB.configure(
             {
-                "restore_command": f"'cp {archive_dir}/%f %p'",
+                "restore_command": restore_cmd,
             }
         )
     nodeB.start()
@@ -840,7 +826,11 @@ class TestWalArchivingContinuity:
             with auto_conf.open("a") as f:
                 f.write(f"recovery_target_time = '{pitr_time}'\n")
                 f.write("recovery_target_action = 'promote'\n")
-                f.write(f"restore_command = 'cp {archive_dir}/%f %p'\n")
+                f.write(
+                    restore_conf_line_raw(
+                        archive_dir, install_dir, use_tde_wrappers=True
+                    )
+                )
             (restore_dir / "recovery.signal").touch()
             restored.add_hba_entry("local all all trust")
             restored.start()

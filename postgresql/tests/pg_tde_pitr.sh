@@ -28,8 +28,8 @@ log_directory = '$LOG_DIR'
 wal_level = replica
 archive_mode = on
 io_method = 'sync'
-archive_command = 'cp %p $ARCHIVE_DIR/%f'
 EOF
+echo "archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'" >> "$DATA_DIR_BASE/postgresql.conf"
 
 $PG_CTL -D "$DATA_DIR_BASE" -l "$LOG_DIR/server.log" start
 sleep 3
@@ -73,10 +73,10 @@ chmod 700 "$PITR_RECOVERY_DIR"
 # Configure PITR settings
 cat >> "$PITR_RECOVERY_DIR/postgresql.conf" <<EOF
 port = $PORT
-restore_command = 'cp $ARCHIVE_DIR/%f %p'
 recovery_target_time = '$TARGET_TIME2'
 io_method = 'sync'
 EOF
+echo "restore_command = '$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'" >> "$PITR_RECOVERY_DIR/postgresql.conf"
 
 touch "$PITR_RECOVERY_DIR/recovery.signal"
 

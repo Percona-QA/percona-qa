@@ -27,12 +27,12 @@ shared_preload_libraries = 'pg_tde'
 io_method = 'sync'
 wal_level = replica
 archive_mode = on
-archive_command = 'cp %p $ARCHIVE_DIR/%f'
 logging_collector = on
 log_directory = '$LOG_DIR'
 log_filename = 'server.log'
 log_statement = 'all'
 EOF
+echo "archive_command = '$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'" >> "$DATA_DIR_BASE/postgresql.conf"
 
 $PG_CTL -D "$DATA_DIR_BASE" -l "$LOG_DIR/server.log" start
 sleep 2
@@ -90,9 +90,9 @@ for i in {1..2}; do
   echo "  --> Configuring PITR with recovery_target_time = ${TARGET_TIMES[$i]}"
   cat >> "$PITR_RECOVERY_DIR/postgresql.conf" <<EOF
 port = $PORT
-restore_command = 'cp $ARCHIVE_DIR/%f %p'
 recovery_target_time = '${TARGET_TIMES[$i]}'
 EOF
+  echo "restore_command = '$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'" >> "$PITR_RECOVERY_DIR/postgresql.conf"
   touch "$PITR_RECOVERY_DIR/recovery.signal"
 
   echo "  --> Starting server for PITR..."

@@ -49,9 +49,9 @@ enable_pg_tde $PRIMARY_DATA
 cat >> $PRIMARY_DATA/postgresql.conf <<EOF
 wal_level=replica
 archive_mode=on
-archive_command='cp %p $ARCHIVE_DIR/%f'
-restore_command='cp $ARCHIVE_DIR/%f %p'
 EOF
+echo "archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p \"cp %%p $ARCHIVE_DIR/%%f\"'" >> $PRIMARY_DATA/postgresql.conf
+echo "restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'" >> $PRIMARY_DATA/postgresql.conf
 
 echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
 
@@ -85,8 +85,8 @@ cat >> $REPLICA_DATA/postgresql.conf <<EOF
 port=$REPLICA_PORT
 unix_socket_directories='$RUN_DIR'
 shared_preload_libraries='pg_tde'
-restore_command='cp $ARCHIVE_DIR/%f %p'
 EOF
+echo "restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p \"cp $ARCHIVE_DIR/%%f %%p\"'" >> $REPLICA_DATA/postgresql.conf
 
 start_pg $REPLICA_DATA $REPLICA_PORT
 
