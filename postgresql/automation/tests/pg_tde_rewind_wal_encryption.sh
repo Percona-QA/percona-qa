@@ -48,6 +48,10 @@ wal_level = replica
 wal_log_hints = on
 max_wal_senders = 5
 wal_keep_size = 512MB
+archive_mode = on
+archive_command = 'cp %p $ARCHIVE_DIR/%f'
+# Required because pg_tde_rewind is executed with -c in this suite.
+restore_command = 'cp $ARCHIVE_DIR/%f %p'
 EOF
     [ -n "$extra_conf" ] && echo "$extra_conf" >> "$PRIMARY_DATA/postgresql.conf"
     echo "host replication all 127.0.0.1/32 trust" >> "$PRIMARY_DATA/pg_hba.conf"
