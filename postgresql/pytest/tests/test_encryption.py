@@ -52,6 +52,150 @@ class TestTdeSetup:
         assert not tde.is_table_encrypted("t_heap")
 
 
+# ── ALTER DATABASE ... SET TABLESPACE ────────────────────────────────────────
+
+
+class TestAlterDatabaseSetTablespace:
+    def test_refuses_when_encrypted_objects_exist_in_default_tablespace(
+        self, tde_primary: PgCluster, tmp_path
+    ):
+        dbname = "tde_block_db"
+        target_dir = tmp_path / "tde_block_target_ts"
+        target_dir.mkdir()
+
+        tde_primary.execute(f"CREATE DATABASE {dbname}")
+        tde_primary.execute("CREATE TABLE enc_in_default (id INT)", dbname)
+        tde_primary.execute("INSERT INTO enc_in_default VALUES (1)", dbname)
+        tde_primary.execute(
+            f"CREATE TABLESPACE tde_block_target LOCATION '{target_dir}'"
+        )
+
+        old_oid = tde_primary.fetchone(
+            f"SELECT dattablespace FROM pg_database WHERE datname = '{dbname}'",
+            "template1",
+        )
+
+        with pytest.raises(RuntimeError):
+            tde_primary.execute(
+                f"ALTER DATABASE {dbname} SET TABLESPACE tde_block_target",
+                "template1",
+            )
+
+        new_oid = tde_primary.fetchone(
+            f"SELECT dattablespace FROM pg_database WHERE datname = '{dbname}'",
+            "template1",
+        )
+        assert new_oid == old_oid
+        assert tde_primary.fetchone("SELECT COUNT(*) FROM enc_in_default", dbname) == "1"
+
+    def test_allows_when_default_tablespace_has_no_encrypted_objects(
+        self, tde_primary: PgCluster, tmp_path
+    ):
+        dbname = "tde_allow_db"
+        outside_dir = tmp_path / "tde_allow_outside_ts"
+        target_dir = tmp_path / "tde_allow_target_ts"
+        outside_dir.mkdir()
+        target_dir.mkdir()
+
+        tde_primary.execute(
+            f"CREATE TABLESPACE tde_allow_outside LOCATION '{outside_dir}'"
+        )
+        tde_primary.execute(
+            f"CREATE TABLESPACE tde_allow_target LOCATION '{target_dir}'"
+        )
+        tde_primary.execute(f"CREATE DATABASE {dbname}")
+
+        # Keep encrypted data outside the database's default tablespace.
+        tde_primary.execute(
+            "CREATE TABLE enc_outside_default (id INT) TABLESPACE tde_allow_outside",
+            dbname,
+        )
+        tde_primary.execute("INSERT INTO enc_outside_default VALUES (42)", dbname)
+
+        tde_primary.execute(
+            f"ALTER DATABASE {dbname} SET TABLESPACE tde_allow_target",
+            "template1",
+        )
+
+        ts_name = tde_primary.fetchone(
+            "SELECT t.spcname FROM pg_database d "
+            "JOIN pg_tablespace t ON t.oid = d.dattablespace "
+            f"WHERE d.datname = '{dbname}'",
+            "template1",
+        )
+        assert ts_name == "tde_allow_target"
+        assert tde_primary.fetchone("SELECT COUNT(*) FROM enc_outside_default", dbname) == "1"
+
+    def test_allows_for_empty_database(self, tde_primary: PgCluster, tmp_path):
+        dbname = "tde_empty_db"
+        target_dir = tmp_path / "tde_empty_target_ts"
+        target_dir.mkdir()
+
+        tde_primary.execute(f"CREATE DATABASE {dbname}")
+        tde_primary.execute(
+            f"CREATE TABLESPACE tde_empty_target LOCATION '{target_dir}'"
+        )
+        tde_primary.execute(
+            f"ALTER DATABASE {dbname} SET TABLESPACE tde_empty_target",
+            "template1",
+        )
+
+        ts_name = tde_primary.fetchone(
+            "SELECT t.spcname FROM pg_database d "
+            "JOIN pg_tablespace t ON t.oid = d.dattablespace "
+            f"WHERE d.datname = '{dbname}'",
+            "template1",
+        )
+        assert ts_name == "tde_empty_target"
+
+    def test_allows_when_default_has_only_heap_objects(
+        self, tde_primary: PgCluster, tmp_path
+    ):
+        dbname = "tde_heap_only_db"
+        target_dir = tmp_path / "tde_heap_only_target_ts"
+        target_dir.mkdir()
+
+        tde_primary.execute(f"CREATE DATABASE {dbname}")
+        tde_primary.execute("CREATE TABLE heap_only (id INT) USING heap", dbname)
+        tde_primary.execute("INSERT INTO heap_only VALUES (1)", dbname)
+        tde_primary.execute(
+            f"CREATE TABLESPACE tde_heap_only_target LOCATION '{target_dir}'"
+        )
+        tde_primary.execute(
+            f"ALTER DATABASE {dbname} SET TABLESPACE tde_heap_only_target",
+            "template1",
+        )
+
+        ts_name = tde_primary.fetchone(
+            "SELECT t.spcname FROM pg_database d "
+            "JOIN pg_tablespace t ON t.oid = d.dattablespace "
+            f"WHERE d.datname = '{dbname}'",
+            "template1",
+        )
+        assert ts_name == "tde_heap_only_target"
+        assert tde_primary.fetchone("SELECT COUNT(*) FROM heap_only", dbname) == "1"
+
+    def test_refuses_with_mixed_heap_and_encrypted_in_default(
+        self, tde_primary: PgCluster, tmp_path
+    ):
+        dbname = "tde_mixed_block_db"
+        target_dir = tmp_path / "tde_mixed_block_target_ts"
+        target_dir.mkdir()
+
+        tde_primary.execute(f"CREATE DATABASE {dbname}")
+        tde_primary.execute("CREATE TABLE heap_tbl (id INT) USING heap", dbname)
+        tde_primary.execute("CREATE TABLE enc_tbl (id INT)", dbname)
+        tde_primary.execute(
+            f"CREATE TABLESPACE tde_mixed_block_target LOCATION '{target_dir}'"
+        )
+
+        with pytest.raises(RuntimeError):
+            tde_primary.execute(
+                f"ALTER DATABASE {dbname} SET TABLESPACE tde_mixed_block_target",
+                "template1",
+            )
+
+
 # ── key management ────────────────────────────────────────────────────────────
 
 
