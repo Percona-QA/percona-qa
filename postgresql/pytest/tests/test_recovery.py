@@ -8,6 +8,7 @@ Covers scenarios from:
   - pg_receivewal.sh
   - pg_archivecleanup.sh
 """
+import os
 import shutil
 import subprocess
 import time
@@ -320,7 +321,12 @@ def _run_pg_tde_rewind(
         "--target-pgdata", str(target.data_dir),
         "--source-pgdata", str(source.data_dir),
     ]
-    return subprocess.run(cmd, capture_output=True, text=True)
+    env = os.environ.copy()
+    lib_dir = str(install_dir / "lib")
+    ld_var = "LD_LIBRARY_PATH"
+    existing = env.get(ld_var, "")
+    env[ld_var] = f"{lib_dir}:{existing}" if existing else lib_dir
+    return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
 
 def _make_tde_ha_pair(
