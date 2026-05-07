@@ -1,4 +1,6 @@
 """Test-level fixtures: ready-to-use cluster objects for every test module."""
+import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -20,32 +22,48 @@ _TDE_PARAMS: Dict[str, str] = {
 
 # ── internal helper ───────────────────────────────────────────────────────────
 
-def _dump_logs_on_failure(request, clusters: List[PgCluster]) -> None:
-    """Print server logs for every cluster when the test has failed or errored."""
+def _safe_node_id(nodeid: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", nodeid)
+
+
+def _dump_logs_on_failure(request, clusters: List[PgCluster], failed_root: Path) -> None:
+    """Print and persist server logs for every cluster on test failure/error."""
     rep = getattr(request.node, "rep_call", None)
     if rep is None or rep.passed:
         return
+    failed_root.mkdir(parents=True, exist_ok=True)
     for c in clusters:
-        log_text = c.read_log(last_n=40)
-        if not log_text:
-            continue
+        log_path = c.data_dir / "server.log"
+        artifact_log = failed_root / f"{c.data_dir.name}_server.log"
+        if log_path.exists():
+            shutil.copy2(log_path, artifact_log)
+        # Optional: preserve full PGDATA for deep post-mortem analysis.
+        if os.environ.get("PYTEST_KEEP_FAILED_PGDATA", "").lower() in {"1", "true", "yes"}:
+            shutil.copytree(c.data_dir, failed_root / f"{c.data_dir.name}_data", dirs_exist_ok=True)
+
+        log_text = c.read_log(last_n=80)
         sep = "─" * 70
         print(f"\n{sep}")
         print(f"  PostgreSQL server log │ {c.data_dir.name}  port={c.port}")
+        print(f"  Data dir: {c.data_dir}")
+        if log_path.exists():
+            print(f"  Full log: {artifact_log}")
         print(sep)
-        print(log_text)
+        print(log_text if log_text else "(server.log is empty or missing)")
         print(sep)
+    print(f"[pytest-debug] Failure artifacts: {failed_root}")
 
 
 # ── factory fixture ───────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def pg_factory(install_dir: Path, tmp_path: Path, io_method: str, request):
+def pg_factory(install_dir: Path, tmp_path: Path, io_method: str, request, run_dir: Path):
     """
     Factory that creates isolated PgCluster instances for a test.
     All clusters are stopped and their data directories removed on teardown.
-    Server logs for every cluster are printed automatically on failure.
+    On failure, server logs are printed and copied under:
+      <run_dir>/pytest_failed/<sanitized-nodeid>/
     """
     clusters: List[PgCluster] = []
 
@@ -63,7 +81,8 @@ def pg_factory(install_dir: Path, tmp_path: Path, io_method: str, request):
 
     yield _make
 
-    _dump_logs_on_failure(request, clusters)
+    failed_root = run_dir / "pytest_failed" / _safe_node_id(request.node.nodeid)
+    _dump_logs_on_failure(request, clusters, failed_root)
 
     for c in clusters:
         try:
