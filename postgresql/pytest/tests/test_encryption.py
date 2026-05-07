@@ -56,6 +56,14 @@ class TestTdeSetup:
 
 
 class TestAlterDatabaseSetTablespace:
+    @staticmethod
+    def _setup_tde_in_db(cluster: PgCluster, dbname: str) -> None:
+        """Enable pg_tde objects in a newly created database."""
+        tde = TdeManager(cluster)
+        tde.create_extension(dbname=dbname)
+        # Ensure the database-level key is set for this DB as well.
+        tde.set_global_principal_key(dbname=dbname)
+
     def test_refuses_when_encrypted_objects_exist_in_default_tablespace(
         self, tde_primary: PgCluster, tmp_path
     ):
@@ -64,6 +72,7 @@ class TestAlterDatabaseSetTablespace:
         target_dir.mkdir()
 
         tde_primary.execute(f"CREATE DATABASE {dbname}")
+        self._setup_tde_in_db(tde_primary, dbname)
         tde_primary.execute("CREATE TABLE enc_in_default (id INT)", dbname)
         tde_primary.execute("INSERT INTO enc_in_default VALUES (1)", dbname)
         tde_primary.execute(
@@ -104,6 +113,7 @@ class TestAlterDatabaseSetTablespace:
             f"CREATE TABLESPACE tde_allow_target LOCATION '{target_dir}'"
         )
         tde_primary.execute(f"CREATE DATABASE {dbname}")
+        self._setup_tde_in_db(tde_primary, dbname)
 
         # Keep encrypted data outside the database's default tablespace.
         tde_primary.execute(
@@ -183,6 +193,7 @@ class TestAlterDatabaseSetTablespace:
         target_dir.mkdir()
 
         tde_primary.execute(f"CREATE DATABASE {dbname}")
+        self._setup_tde_in_db(tde_primary, dbname)
         tde_primary.execute("CREATE TABLE heap_tbl (id INT) USING heap", dbname)
         tde_primary.execute("CREATE TABLE enc_tbl (id INT)", dbname)
         tde_primary.execute(
