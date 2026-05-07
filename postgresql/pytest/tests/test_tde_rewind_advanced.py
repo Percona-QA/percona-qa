@@ -21,6 +21,7 @@ import random
 import shutil
 import subprocess
 import time
+import os
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -57,13 +58,18 @@ def _run_rewind_pgdata(
            "--source-pgdata", str(source.data_dir)]
     if restore_wal:
         cmd.append("-c")
-    return subprocess.run(cmd, capture_output=True, text=True)
+    env = os.environ.copy()
+    lib_dir = str(install_dir / "lib")
+    env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
+    return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
 
 def _run_rewind_live(
     install_dir: Path,
     target: PgCluster,
     source: PgCluster,
+    *,
+    restore_wal: bool = True,
 ) -> subprocess.CompletedProcess:
     """
     Online pg_tde_rewind: source must be running; target must be stopped.
@@ -74,7 +80,22 @@ def _run_rewind_live(
     cmd = [str(_tde_rewind_bin(install_dir)),
            "--target-pgdata", str(target.data_dir),
            "--source-server", connstr]
-    return subprocess.run(cmd, capture_output=True, text=True)
+    if restore_wal:
+        cmd.append("-c")
+    env = os.environ.copy()
+    lib_dir = str(install_dir / "lib")
+    env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
+    return subprocess.run(cmd, capture_output=True, text=True, env=env)
+
+
+def _promote(standby: PgCluster) -> None:
+    """
+    Promote standby with SQL first (more reliable in CI), then fallback to pg_ctl.
+    """
+    try:
+        standby.execute("SELECT pg_promote(wait_seconds => 60)")
+    except Exception:
+        standby.promote()
 
 
 def _ha_pair(
@@ -108,6 +129,8 @@ def _ha_pair(
         "wal_level": "replica",
         "archive_mode": "on",
         "archive_command": f"'cp %p {archive_dir}/%f'",
+        # Required for pg_tde_rewind -c when this node later becomes target.
+        "restore_command": f"'cp {archive_dir}/%f %p'",
         "wal_log_hints": "on",
         "max_wal_senders": "5",
         "hot_standby": "on",
@@ -156,7 +179,7 @@ def _ha_pair(
 
 def _promote_diverge_stop(standby: PgCluster, sql: str) -> None:
     """Promote standby, execute sql on it, checkpoint, then stop it."""
-    standby.promote()
+    _promote(standby)
     deadline = time.time() + 30
     while time.time() < deadline:
         try:
@@ -165,7 +188,11 @@ def _promote_diverge_stop(standby: PgCluster, sql: str) -> None:
         except Exception:
             pass
         time.sleep(1)
-    standby.execute(sql)
+    if isinstance(sql, (list, tuple)):
+        for stmt in sql:
+            standby.execute(stmt)
+    else:
+        standby.execute(sql)
     standby.execute("CHECKPOINT")
     standby.stop()
 
@@ -284,28 +311,23 @@ class TestTdeRewindWalEncryption:
         Falls back to pglz if lz4 is unavailable.
         """
         # Try lz4 first; fall back to pglz if the build doesn't support it
-        primary, standby, _, _ = _ha_pair(
-            install_dir, tmp_path, io_method, wal_compress="lz4"
-        )
+        primary = standby = None
         try:
-            primary.execute(
-                "CREATE TABLE comp_t (id INT, payload TEXT) USING tde_heap; "
-                "INSERT INTO comp_t SELECT g, repeat(md5(g::text), 10) "
-                "FROM generate_series(1,500) g; CHECKPOINT;"
+            primary, standby, _, _ = _ha_pair(
+                install_dir, tmp_path, io_method, wal_compress="lz4"
             )
-        except RuntimeError:
-            # lz4 not compiled in; retry with pglz
-            _teardown(standby, primary)
+        except Exception:
+            if primary is not None and standby is not None:
+                _teardown(standby, primary)
             primary, standby, _, _ = _ha_pair(
                 install_dir, tmp_path, io_method, wal_compress="pglz"
             )
+        try:
             primary.execute(
                 "CREATE TABLE comp_t (id INT, payload TEXT) USING tde_heap; "
                 "INSERT INTO comp_t SELECT g, repeat(md5(g::text), 10) "
                 "FROM generate_series(1,500) g; CHECKPOINT;"
             )
-
-        try:
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
             _promote_diverge_stop(
                 standby, "INSERT INTO comp_t SELECT g, md5(g::text) "
@@ -357,6 +379,98 @@ class TestTdeRewindWalEncryption:
             primary.start()
             primary.wait_ready(timeout=60)
             assert int(primary.fetchone("SELECT COUNT(*) FROM enc_arch_t")) >= 300
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_wal_key_overlap_when_target_segments_are_kept(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Simulate key-range overlap around divergence:
+          - old primary writes encrypted WAL with key A
+          - promoted standby rotates server key multiple times and archives WAL
+          - rewind runs with -c and may keep some target WAL segments
+
+        After rewind, the rewound node must still be able to consume new WAL
+        from the promoted source. This exercises wal_keys reconciliation for
+        kept target segments with source-side key generations.
+        """
+        archive_dir = tmp_path / "overlap_archive"
+        keyfile = str(tmp_path / "overlap_keyfile.per")
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method,
+            wal_encrypt=True, archive_dir=archive_dir, keyfile=keyfile,
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE wal_overlap_t (id INT, payload TEXT) USING tde_heap; "
+                "INSERT INTO wal_overlap_t "
+                "SELECT g, repeat(md5(g::text), 12) FROM generate_series(1,3000) g; "
+                "CHECKPOINT;"
+            )
+            for _ in range(3):
+                primary.execute("SELECT pg_switch_wal()")
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # Keep WAL pressure on the future target before divergence so rewind
+            # can retain a tail of target segments.
+            primary.execute(
+                "INSERT INTO wal_overlap_t "
+                "SELECT g, repeat(md5(g::text), 10) FROM generate_series(3001,7000) g;"
+            )
+            primary.execute("CHECKPOINT; SELECT pg_switch_wal(); SELECT pg_switch_wal();")
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+
+            tde_s = TdeManager(standby)
+            for i in range(1, 4):
+                tde_s.rotate_principal_key(new_key_name=f"src_wal_key_rot_{i}")
+                start_id = 10000 * i
+                standby.execute(
+                    "INSERT INTO wal_overlap_t "
+                    f"SELECT g, repeat(md5(g::text), 8) FROM generate_series({start_id},{start_id + 350}) g;"
+                )
+                standby.execute("SELECT pg_switch_wal(); CHECKPOINT;")
+
+            standby.stop()
+            primary.stop()
+
+            result = _run_rewind_pgdata(install_dir, primary, standby, restore_wal=True)
+            assert result.returncode == 0, (
+                f"Rewind with overlapping WAL key generations failed:\n"
+                f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+            )
+
+            primary.start()
+            primary.wait_ready(timeout=60)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM wal_overlap_t")) >= 3000
+
+            # Re-attach the rewound node as a standby and verify it replays
+            # newly generated WAL from the source after key rotations.
+            primary.stop(check=False)
+            _reconnect_standby(primary, standby)
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            standby.execute(
+                "INSERT INTO wal_overlap_t "
+                "SELECT g, repeat(md5(g::text), 6) FROM generate_series(50001,50300) g; "
+                "SELECT pg_switch_wal(); CHECKPOINT;"
+            )
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            mirrored = primary.fetchone(
+                "SELECT COUNT(*) FROM wal_overlap_t WHERE id BETWEEN 50001 AND 50300"
+            )
+            assert int(mirrored) == 300
         finally:
             _teardown(standby, primary)
 
@@ -467,7 +581,7 @@ class TestTdeRewindFullHaCycle:
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
             # Promote standby; keep it running (live source)
-            standby.promote()
+            _promote(standby)
             deadline = time.time() + 30
             while time.time() < deadline:
                 if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
@@ -524,6 +638,7 @@ class TestTdeRewindFullHaCycle:
                 "wal_level": "replica",
                 "archive_mode": "on",
                 "archive_command": f"'cp %p {archive_dir}/%f'",
+                "restore_command": f"'cp {archive_dir}/%f %p'",
                 "wal_log_hints": "on",
                 "max_wal_senders": "10",
                 "hot_standby": "on",
@@ -745,7 +860,6 @@ class TestTdeRewindKeyProviderEdges:
             tde2 = TdeManager(primary)
             tde2._func_args = {}
             tde2.cluster = primary
-            tde2.add_global_key_provider_file(keyfile=keyfile)
             tde2.set_global_principal_key(key_name="key_db2", dbname="app_db2")
             primary.execute(
                 "CREATE TABLE db2_tbl (id INT) USING tde_heap; "
@@ -797,7 +911,7 @@ class TestTdeRewindKeyProviderEdges:
             original_key = tde_primary.principal_key_name()
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
-            standby.promote()
+            _promote(standby)
             deadline = time.time() + 30
             while time.time() < deadline:
                 if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
@@ -911,8 +1025,10 @@ class TestTdeRewindDataStructures:
 
             _promote_diverge_stop(
                 standby,
-                "INSERT INTO in_ts1 SELECT generate_series(101,300); "
-                "VACUUM FULL in_ts1;",
+                [
+                    "INSERT INTO in_ts1 SELECT generate_series(101,300)",
+                    "VACUUM FULL in_ts1",
+                ],
             )
             primary.stop()
 
@@ -1000,8 +1116,10 @@ class TestTdeRewindDataStructures:
 
             _promote_diverge_stop(
                 standby,
-                "VACUUM FULL relnode_t; "   # changes relfilenode
-                "INSERT INTO relnode_t SELECT g, 'y' FROM generate_series(1,50) g;",
+                [
+                    "VACUUM FULL relnode_t",   # changes relfilenode
+                    "INSERT INTO relnode_t SELECT g, 'y' FROM generate_series(1,50) g",
+                ],
             )
             after_relfilenode_diverged = standby.fetchone(
                 "SELECT relfilenode FROM pg_class WHERE relname='relnode_t'"
@@ -1479,7 +1597,7 @@ class TestTdeRewindMultiRound:
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
             # Promote standby
-            standby.promote()
+            _promote(standby)
             deadline = time.time() + 30
             while time.time() < deadline:
                 if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
@@ -1585,7 +1703,7 @@ class TestTdeRewindMultiRound:
             )
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
-            standby.promote()
+            _promote(standby)
             deadline = time.time() + 30
             while time.time() < deadline:
                 if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
