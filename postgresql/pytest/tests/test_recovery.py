@@ -309,15 +309,16 @@ def _run_pg_tde_rewind(
     Execute pg_tde_rewind with --source-pgdata (offline source).
 
     Both clusters must be stopped before calling this function.
-    -c tells pg_rewind to use the restore_command to fetch WAL segments that
-    are needed but no longer present in source's pg_wal — mirrors the -c flag
-    used in all three PR shell scripts.
+
+    Do not force ``-c`` here: newer pg_rewind/pg_tde_rewind requires
+    ``restore_command`` on the *target* cluster when ``-c`` is specified.
+    Our pytest HA fixture configures restore_command on standby, not on the
+    original primary used as rewind target.
     """
     cmd = [
         str(_pg_tde_rewind_bin(install_dir)),
         "--target-pgdata", str(target.data_dir),
         "--source-pgdata", str(source.data_dir),
-        "-c",
     ]
     return subprocess.run(cmd, capture_output=True, text=True)
 
@@ -688,7 +689,7 @@ class TestTdeRewindExtended:
                 time.sleep(1)
 
             tde_s = TdeManager(standby)
-            tde_s.add_global_key_provider_file(keyfile=keyfile)
+            # Provider already exists on standby (copied from primary via basebackup).
             tde_s.rotate_principal_key(new_key_name="rotated_key")
             standby.execute("INSERT INTO key_rot_tbl SELECT generate_series(101,200)")
             standby.execute("CHECKPOINT")
@@ -778,9 +779,10 @@ class TestTdeRewindExtended:
             _promote_and_diverge(
                 standby,
                 "INSERT INTO deep_val SELECT generate_series(1001,5000); "
-                "DELETE FROM deep_val WHERE id % 3 = 0; "
-                "VACUUM FULL deep_val;",
+                "DELETE FROM deep_val WHERE id % 3 = 0;",
             )
+            standby.execute("VACUUM FULL deep_val")
+            standby.execute("CHECKPOINT")
 
             primary.stop()
             standby.stop()
@@ -980,9 +982,8 @@ class TestTdeRewindWithCheckpoint:
         primary, standby, _, _ = _make_tde_ha_pair(install_dir, tmp_path, io_method)
         try:
             # Record a sentinel GUC on primary before rewind
-            primary.execute(
-                "ALTER SYSTEM SET work_mem = '16MB'; SELECT pg_reload_conf();"
-            )
+            primary.execute("ALTER SYSTEM SET work_mem = '16MB'")
+            primary.execute("SELECT pg_reload_conf()")
             primary.execute(
                 "CREATE TABLE conf_tbl (id INT) USING tde_heap; "
                 "INSERT INTO conf_tbl VALUES (1); CHECKPOINT;"
