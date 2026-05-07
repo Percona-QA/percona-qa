@@ -90,10 +90,16 @@ _promote_replica() {
     local port="$1"
     local data_dir="$2"
 
+    # Replica may have exited after initial startup checks; ensure it is running.
+    if ! "$INSTALL_DIR/bin/pg_isready" -p "$port" -t 5 >/dev/null 2>&1; then
+        echo "Replica is not ready on port $port, attempting restart before promote..."
+        start_pg "$data_dir" "$port" || true
+    fi
+
     # SQL promotion is generally more reliable than pg_ctl promote in CI.
     "$PSQL" -p "$port" -d postgres -c "SELECT pg_promote(wait_seconds => 60);" >/dev/null 2>&1 || true
 
-    for _ in $(seq 1 60); do
+    for _ in $(seq 1 90); do
         IN_RECOVERY=$("$PSQL" -p "$port" -d postgres -t -A -c "SELECT pg_is_in_recovery();" 2>/dev/null || echo "t")
         if [ "$IN_RECOVERY" = "f" ]; then
             return 0
@@ -107,6 +113,14 @@ _promote_replica() {
     IN_RECOVERY=$("$PSQL" -p "$port" -d postgres -t -A -c "SELECT pg_is_in_recovery();" 2>/dev/null || echo "t")
     if [ "$IN_RECOVERY" != "f" ]; then
         echo "ERROR: replica did not promote in time (port=$port)"
+        if [ -f "$data_dir/server.log" ]; then
+            echo "--- replica server.log (tail) ---"
+            tail -n 80 "$data_dir/server.log" || true
+        fi
+        if [ -f "$PRIMARY_DATA/server.log" ]; then
+            echo "--- primary server.log (tail) ---"
+            tail -n 40 "$PRIMARY_DATA/server.log" || true
+        fi
         return 1
     fi
 }
