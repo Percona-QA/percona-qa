@@ -1,5 +1,6 @@
 """pg_tde extension management with runtime API version detection."""
 import logging
+import os
 import subprocess
 from typing import Dict, Optional
 
@@ -311,6 +312,11 @@ class TdeManager:
             log.warning("pg_tde_basebackup not found, using pg_basebackup")
             self.cluster.basebackup(target_dir, extra_args)
             return
+        env = os.environ.copy()
+        lib_dir = str(self.cluster.install_dir / "lib")
+        ld_var = "LD_LIBRARY_PATH"
+        existing = env.get(ld_var, "")
+        env[ld_var] = f"{lib_dir}:{existing}" if existing else lib_dir
         cmd = [
             str(bin_path),
             "-h", str(self.cluster.socket_dir),
@@ -321,7 +327,7 @@ class TdeManager:
         ]
         if extra_args:
             cmd.extend(extra_args)
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, env=env)
         log.info("pg_tde_basebackup completed to %s", target_dir)
 
     # ── convenience: full setup ───────────────────────────────────────────
