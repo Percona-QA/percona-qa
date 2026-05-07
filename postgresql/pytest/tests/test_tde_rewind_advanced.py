@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import time
 import os
+import signal
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -166,41 +167,45 @@ def _ha_pair(
     if extra_primary_params:
         params.update(extra_primary_params)
 
-    primary.initdb(extra_args=["--no-data-checksums"])
-    primary.write_default_config(extra_params=params)
-    primary.add_hba_entry("local all all trust")
-    primary.add_hba_entry("local replication all trust")
-    primary.add_hba_entry("host  all all 127.0.0.1/32 trust")
-    primary.add_hba_entry("host  replication all 127.0.0.1/32 trust")
-    primary.start()
+    try:
+        primary.initdb(extra_args=["--no-data-checksums"])
+        primary.write_default_config(extra_params=params)
+        primary.add_hba_entry("local all all trust")
+        primary.add_hba_entry("local replication all trust")
+        primary.add_hba_entry("host  all all 127.0.0.1/32 trust")
+        primary.add_hba_entry("host  replication all 127.0.0.1/32 trust")
+        primary.start()
 
-    tde = TdeManager(primary)
-    tde.create_extension()
-    tde.add_global_key_provider_file(keyfile=keyfile)
-    tde.set_global_principal_key()
+        tde = TdeManager(primary)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+        tde.set_global_principal_key()
 
-    if wal_encrypt:
-        tde.enable_wal_encryption()
-        primary.restart()
+        if wal_encrypt:
+            tde.enable_wal_encryption()
+            primary.restart()
 
-    repl = ReplicationManager(primary, standby)
-    repl.create_standby_from_backup(use_tde_basebackup=True)
-    standby_params = {
-        "shared_preload_libraries": "'pg_tde'",
-        "restore_command": f"'cp {archive_dir}/%f %p'",
-    }
-    standby.write_default_config("replica", extra_params=standby_params)
-    standby.start()
-    standby.wait_ready(timeout=60)
+        repl = ReplicationManager(primary, standby)
+        repl.create_standby_from_backup(use_tde_basebackup=True)
+        standby_params = {
+            "shared_preload_libraries": "'pg_tde'",
+            "restore_command": f"'cp {archive_dir}/%f %p'",
+        }
+        standby.write_default_config("replica", extra_params=standby_params)
+        standby.start()
+        standby.wait_ready(timeout=60)
 
-    deadline = time.time() + 30
-    while time.time() < deadline:
-        n = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
-        if n and int(n) >= 1:
-            break
-        time.sleep(1)
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            n = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
+            if n and int(n) >= 1:
+                break
+            time.sleep(1)
 
-    return primary, standby, tde, keyfile
+        return primary, standby, tde, keyfile
+    except Exception:
+        _teardown(standby, primary)
+        raise
 
 
 def _promote_diverge_stop(standby: PgCluster, sql: str) -> None:
@@ -231,6 +236,21 @@ def _teardown(*clusters: PgCluster) -> None:
     for c in clusters:
         try:
             c.stop(check=False)
+        except Exception:
+            pass
+        try:
+            c.stop(mode="immediate", check=False)
+        except Exception:
+            pass
+        try:
+            pid_file = c.data_dir / "postmaster.pid"
+            if pid_file.exists():
+                pid = int(pid_file.read_text().splitlines()[0].strip())
+                os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+        try:
+            (c.socket_dir / f".s.PGSQL.{c.port}").unlink(missing_ok=True)
         except Exception:
             pass
         shutil.rmtree(c.data_dir, ignore_errors=True)
