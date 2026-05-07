@@ -311,15 +311,14 @@ def _run_pg_tde_rewind(
 
     Both clusters must be stopped before calling this function.
 
-    Do not force ``-c`` here: newer pg_rewind/pg_tde_rewind requires
-    ``restore_command`` on the *target* cluster when ``-c`` is specified.
-    Our pytest HA fixture configures restore_command on standby, not on the
-    original primary used as rewind target.
+    Use ``-c`` so rewind can fetch missing WAL via restore_command when the
+    divergence point WAL has already been recycled from target pg_wal.
     """
     cmd = [
         str(_pg_tde_rewind_bin(install_dir)),
         "--target-pgdata", str(target.data_dir),
         "--source-pgdata", str(source.data_dir),
+        "-c",
     ]
     env = os.environ.copy()
     lib_dir = str(install_dir / "lib")
@@ -369,6 +368,8 @@ def _make_tde_ha_pair(
         "wal_level": "replica",
         "archive_mode": "on",
         "archive_command": f"'cp %p {archive_dir}/%f'",
+        # Needed by pg_tde_rewind -c when primary later becomes rewind target.
+        "restore_command": f"'cp {archive_dir}/%f %p'",
         "wal_log_hints": "on",
         "max_wal_senders": "5",
         "hot_standby": "on",
