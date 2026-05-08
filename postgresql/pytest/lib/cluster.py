@@ -131,8 +131,16 @@ class PgCluster:
         cmd = [str(self.bin / "pg_ctl"), "reload", "-D", str(self.data_dir)]
         self._run(cmd, env_override={})
 
-    def promote(self) -> None:
-        cmd = [str(self.bin / "pg_ctl"), "promote", "-D", str(self.data_dir), "-w"]
+    def promote(self, *, wait_seconds: int = 180) -> None:
+        cmd = [
+            str(self.bin / "pg_ctl"),
+            "promote",
+            "-D",
+            str(self.data_dir),
+            "-w",
+            "-t",
+            str(wait_seconds),
+        ]
         self._run(cmd, env_override={})
         log.info("Standby promoted to primary on port %d", self.port)
 

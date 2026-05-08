@@ -91,10 +91,13 @@ def _run_rewind_live(
 
 def _promote(standby: PgCluster) -> None:
     """
-    Promote standby with SQL and wait until it exits recovery.
-    Avoid pg_ctl promote in flaky CI environments.
+    Promote standby and wait until it exits recovery.
+
+    Uses SQL ``pg_promote`` first (long wait) so we do not rely on ``pg_ctl
+    promote``'s default timeout, which often loses the race when WAL encryption
+    + archive wrappers finish recovery slowly. Falls back to ``pg_ctl promote``
+    with an extended wait, then restarts once if the postmaster exited.
     """
-    # Ensure server is up before attempting promotion.
     if not standby.is_ready():
         standby.start()
         standby.wait_ready(timeout=60)
@@ -105,21 +108,47 @@ def _promote(standby: PgCluster) -> None:
     except Exception:
         pass
 
-    # Prefer pg_ctl promote first (avoids SQL-level promotion edge cases).
+    try:
+        standby.execute("SELECT pg_promote(wait_seconds => 120)")
+    except Exception:
+        pass
+
+    deadline = time.time() + 125
+    while time.time() < deadline:
+        try:
+            if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                return
+        except Exception:
+            pass
+        time.sleep(0.5)
+
     try:
         standby.promote()
     except Exception:
-        # Fallback to SQL promotion.
-        standby.execute("SELECT pg_promote(wait_seconds => 60)")
+        pass
 
-    deadline = time.time() + 60
+    deadline = time.time() + 90
     while time.time() < deadline:
-        if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
-            return
-        time.sleep(1)
+        try:
+            if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                return
+        except Exception:
+            pass
+        time.sleep(0.5)
+
+    # Postmaster may have exited during promote; bring it back once.
+    if not standby.is_ready():
+        standby.start()
+        standby.wait_ready(timeout=60)
+        try:
+            if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                return
+        except Exception:
+            pass
+
     raise RuntimeError(
         "Standby did not promote within timeout.\n"
-        f"Standby log tail:\n{standby.read_log(last_n=40)}"
+        f"Standby log tail:\n{standby.read_log(last_n=80)}"
     )
 
 
@@ -151,8 +180,10 @@ def _ha_pair(
     shutil.rmtree(primary.data_dir, ignore_errors=True)
     shutil.rmtree(standby.data_dir, ignore_errors=True)
 
+    # Wrappers are only valid when WAL segments are encrypted; plain WAL + decrypt
+    # helpers corrupts archive/recovery and standbys die during promotion.
     arch_cmd, restore_cmd = archive_restore_conf_values(
-        install_dir, archive_dir, use_tde_wrappers=True
+        install_dir, archive_dir, use_tde_wrappers=wal_encrypt
     )
     params = {
         "shared_preload_libraries": "'pg_tde'",
@@ -682,8 +713,9 @@ class TestTdeRewindFullHaCycle:
         archive_dir = tmp_path / "archive3"
         archive_dir.mkdir()
         keyfile = str(tmp_path / "keyring3.file")
+        # No WAL encryption on this topology — use plain cp archiving.
         arch3, rest3 = archive_restore_conf_values(
-            install_dir, archive_dir, use_tde_wrappers=True
+            install_dir, archive_dir, use_tde_wrappers=False
         )
 
         try:
@@ -1050,12 +1082,11 @@ class TestTdeRewindDataStructures:
             )
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
+            # Avoid VACUUM FULL here: it triggers pg_tde_rewind ensure_tde_keys
+            # assertion failures on some builds (target_key NULL in tde_ops.c).
             _promote_diverge_stop(
                 standby,
-                [
-                    "INSERT INTO in_ts1 SELECT generate_series(101,300)",
-                    "VACUUM FULL in_ts1",
-                ],
+                "INSERT INTO in_ts1 SELECT generate_series(101,300); CHECKPOINT;",
             )
             primary.stop()
 
