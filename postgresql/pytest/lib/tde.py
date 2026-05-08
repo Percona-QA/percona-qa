@@ -2,7 +2,8 @@
 import logging
 import os
 import subprocess
-from typing import Dict, Optional
+from pathlib import Path
+from typing import Dict, Optional, Tuple, Union
 
 from .cluster import PgCluster, libpq_superuser
 
@@ -351,3 +352,51 @@ class TdeManager:
         if enable_wal_enc:
             self.enable_wal_encryption()
         log.info("pg_tde fully configured on port %d", self.cluster.port)
+
+
+# ── WAL archive / restore_command helpers (was lib.tde_wal_archive) ──────────
+
+
+def wrappers_available(install_dir: Path) -> bool:
+    decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
+    encrypt = install_dir / "bin" / "pg_tde_restore_encrypt"
+    return decrypt.is_file() and encrypt.is_file()
+
+
+def archive_restore_conf_values(
+    install_dir: Path,
+    archive_dir: Union[Path, str],
+    *,
+    use_tde_wrappers: bool = True,
+) -> Tuple[str, str]:
+    """
+    Return (archive_command, restore_command) for ``extra_params`` to postgresql.conf
+    (each value is single-quoted).
+
+    With ``use_tde_wrappers`` True and binaries present: ``pg_tde_archive_decrypt``
+    / ``pg_tde_restore_encrypt`` around ``cp`` (see automation pg_tde_rewind_wal_encryption.sh).
+    Otherwise plain ``cp``.
+    """
+    ad = str(archive_dir).rstrip("/")
+    if use_tde_wrappers and wrappers_available(install_dir):
+        decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
+        encrypt = install_dir / "bin" / "pg_tde_restore_encrypt"
+        arch = f'{decrypt} %f %p "cp %%p {ad}/%%f"'
+        rst = f'{encrypt} %f %p "cp {ad}/%%f %%p"'
+    else:
+        arch = f"cp %p {ad}/%f"
+        rst = f"cp {ad}/%f %p"
+    return (f"'{arch}'", f"'{rst}'")
+
+
+def restore_conf_line_raw(
+    archive_dir: Union[Path, str],
+    install_dir: Path,
+    *,
+    use_tde_wrappers: bool = True,
+) -> str:
+    _, rst_val = archive_restore_conf_values(
+        install_dir, archive_dir, use_tde_wrappers=use_tde_wrappers
+    )
+    inner = rst_val.strip("'")
+    return f"restore_command = '{inner}'\n"
