@@ -1,0 +1,127 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Percona pg_tde QA — Docker Compose
+#
+# Services
+# ────────
+#   pg-tde-tests-pkg   Run tests against Percona apt packages (fast to build)
+#   pg-tde-tests-src   Run tests against code compiled from GitHub source
+#   vault              HashiCorp Vault dev server for vault-keyed tests
+#
+# Common usage
+# ────────────
+#   # Run default test subset (all non-slow, non-vault tests) — package mode
+#   docker compose run --rm pg-tde-tests-pkg
+#
+#   # Run a specific test file — source mode
+#   docker compose run --rm pg-tde-tests-src \
+#       pytest tests/test_recovery.py -v
+#
+#   # Run encryption tests only with HTML report
+#   docker compose run --rm pg-tde-tests-pkg \
+#       pytest tests/test_encryption.py -v --html=/reports/enc.html
+#
+#   # Interactive shell for debugging
+#   docker compose run --rm pg-tde-tests-src bash
+#
+#   # Full suite including slow tests (parallel, 4 workers)
+#   docker compose run --rm pg-tde-tests-pkg \
+#       pytest tests/ -v -m "not vault" -n4 --timeout=600
+#
+#   # Vault-keyed tests (start vault service first)
+#   docker compose up -d vault
+#   docker compose run --rm \
+#       -e VAULT_ADDR=http://vault:8200 \
+#       -e VAULT_TOKEN=root \
+#       pg-tde-tests-pkg \
+#       pytest tests/ -v -m vault
+#
+# Override versions at build time
+# ───────────────────────────────
+#   PG_MAJOR=18 OLD_PG_MAJOR=17 docker compose build pg-tde-tests-pkg
+#   PG_TDE_REF=my-feature-branch docker compose build pg-tde-tests-src
+# ──────────────────────────────────────────────────────────────────────────────
+
+x-common-test-env: &common-env
+  # Picked up by conftest.py as CLI defaults; see conftest.pytest_addoption
+  IO_METHOD: worker          # mmap | posix | worker (worker is default for < PG18)
+  VAULT_ADDR: ""             # override: http://vault:8200
+  VAULT_TOKEN: ""
+
+x-common-volumes: &common-volumes
+  - type: bind
+    source: .
+    target: /workspace
+    read_only: false
+  - type: volume
+    source: test-reports
+    target: /reports
+
+# ──────────────────────────────────────────────────────────────────────────────
+services:
+
+  # ── Package mode ─────────────────────────────────────────────────────────
+  pg-tde-tests-pkg:
+    build:
+      context: .
+      target: package-env
+      args:
+        PG_MAJOR: "${PG_MAJOR:-17}"
+        OLD_PG_MAJOR: "${OLD_PG_MAJOR:-16}"
+        PGQA_UID: "${PGQA_UID:-1001}"
+    image: percona-pg-tde-qa:pkg-${PG_MAJOR:-17}
+    environment:
+      <<: *common-env
+      INSTALL_DIR: /usr/lib/postgresql/${PG_MAJOR:-17}
+      OLD_INSTALL_DIR: /usr/lib/postgresql/${OLD_PG_MAJOR:-16}
+    volumes: *common-volumes
+    tmpfs:
+      - /tmp:exec,mode=1777
+    # Allow enough shared memory for PostgreSQL (default 64 MB is too small)
+    shm_size: "256mb"
+    # Tests need to create Unix domain sockets in /tmp
+    security_opt:
+      - no-new-privileges:false
+    # Keep container alive for exec/attach if CMD exits early
+    init: true
+
+  # ── Source mode ───────────────────────────────────────────────────────────
+  pg-tde-tests-src:
+    build:
+      context: .
+      target: source-env
+      args:
+        PG_MAJOR: "${PG_MAJOR:-17}"
+        PG_REF: "${PG_REF:-REL_17_STABLE}"
+        PG_REPO: "${PG_REPO:-https://github.com/postgres/postgres.git}"
+        PG_TDE_REF: "${PG_TDE_REF:-main}"
+        PG_TDE_REPO: "${PG_TDE_REPO:-https://github.com/Percona-Lab/pg_tde.git}"
+        DEBUG_BUILD: "${DEBUG_BUILD:-true}"
+        PGQA_UID: "${PGQA_UID:-1001}"
+    image: percona-pg-tde-qa:src-${PG_MAJOR:-17}-${PG_TDE_REF:-main}
+    environment:
+      <<: *common-env
+      INSTALL_DIR: /opt/postgresql/${PG_MAJOR:-17}
+      OLD_INSTALL_DIR: ""
+    volumes: *common-volumes
+    tmpfs:
+      - /tmp:exec,mode=1777
+    shm_size: "256mb"
+    security_opt:
+      - no-new-privileges:false
+    init: true
+
+  # ── Vault dev server (for vault-marked tests) ─────────────────────────────
+  vault:
+    image: hashicorp/vault:latest
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    command: server -dev
+
+volumes:
+  test-reports:
+    driver: local
