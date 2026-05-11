@@ -12,6 +12,19 @@ from typing import List, Optional
 log = logging.getLogger(__name__)
 
 
+def _pg_settings_file_string_literal(value: str) -> str:
+    """
+    Quote *value* for the RHS of a ``postgresql.conf`` / ``postgresql.auto.conf`` line.
+
+    PostgreSQL expects string GUCs as single-quoted literals; embedded ``'`` must
+    be doubled. Do **not** use ``shlex.quote()`` here: paths containing only
+    ``[\\w@%+=:,./-]`` are considered shell-safe and are returned **without** any
+    quotes, which pgBackRest then writes verbatim so the server sees a bare
+    ``/path/...`` after ``=`` and fails with a syntax error near ``/``.
+    """
+    return "'" + value.replace("'", "''") + "'"
+
+
 def pgbackrest_installed() -> bool:
     """Return True if the pgbackrest binary is on PATH and responds to ``version``."""
     exe = shutil.which("pgbackrest")
@@ -297,7 +310,10 @@ class BackupManager:
                 raise FileNotFoundError(f"pg_tde_restore_encrypt not found: {encrypt}")
             inner = self._inner_pgbackrest_archive_get()
             restore_cmd = f"{encrypt} %f %p \"{inner}\""
-            args.append("--recovery-option=restore_command=" + shlex.quote(restore_cmd))
+            args.append(
+                "--recovery-option=restore_command="
+                + _pg_settings_file_string_literal(restore_cmd)
+            )
         args.append("restore")
         self._run(*args)
         log.info(
