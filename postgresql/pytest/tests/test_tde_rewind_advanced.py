@@ -3436,7 +3436,8 @@ class TestTdeRewindExtremeCornerCases:
                 provider_name="file_provider_2", keyfile=keyfile_2
             )
             standby.execute("SELECT pg_tde_create_key_using_global_key_provider('key_2', 'file_provider_2');")
-            standby.execute("SELECT pg_tde_set_principal_key('key_2', 'file_provider_2');")
+            standby.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_2', 'file_provider_2');")
+            standby.execute("SELECT pg_tde_set_key_using_global_key_provider('key_2', 'file_provider_2');")
 
             standby.execute("INSERT INTO prov_test_t VALUES (2); CHECKPOINT;")
 
