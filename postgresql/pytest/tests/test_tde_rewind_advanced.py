@@ -2064,19 +2064,43 @@ class TestTdeRewindFullHaCycle:
                 "CREATE TABLE round_t (round INT, val TEXT) USING tde_heap; "
                 "CHECKPOINT;"
             )
-            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            repl = ReplicationManager(primary, standby)
+            repl.assert_catchup(timeout=30)
+            repl.assert_row_counts_match("round_t")
 
             for rnd in range(1, 4):
-                # On round 1 standby is still replica; promote+diverge helper handles it.
+                # On round 1 standby is still replica; promote+diverge handles it.
                 # On later rounds it is already primary and _promote() is a no-op.
-                _promote_diverge_stop(
-                    standby,
-                    f"INSERT INTO round_t VALUES ({rnd}, 'diverged-{rnd}');",
+                _promote(standby)
+                deadline = time.time() + 30
+                while time.time() < deadline:
+                    try:
+                        if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(1)
+                standby.execute(
+                    f"INSERT INTO round_t VALUES ({rnd}, 'diverged-{rnd}');"
                 )
+                assert int(standby.fetchone("SELECT COUNT(*) FROM round_t")) >= rnd
+                standby.execute("CHECKPOINT")
+                try:
+                    standby.execute("SELECT pg_switch_wal()")
+                except Exception:
+                    pass
+                standby.stop()
+
                 primary.stop(check=False)
 
-                result = _run_rewind_pgdata(install_dir, primary, standby)
+                # Without -c: avoid restore_command pulling archived segments that can disagree
+                # with divergent local pg_wal across repeated rewind cycles (round >= 2).
+                result = _run_rewind_pgdata(
+                    install_dir, primary, standby, restore_wal=False
+                )
                 assert result.returncode == 0, f"Round {rnd} rewind failed:\n{result.stderr}"
+
+                _repair_rewind_target_identity(primary)
 
                 # Bring rewound target up and verify state is readable.
                 primary.start()

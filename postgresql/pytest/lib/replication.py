@@ -79,26 +79,22 @@ class ReplicationManager:
 
     def wait_for_catchup(self, timeout: int = 60) -> bool:
         """Wait until standby replay_lsn has reached the primary's LSN at call time."""
-        # Snapshot once — primary advances every transaction so exact equality never holds
+        # Snapshot once — standby must replay at least through this primary position.
         target_lsn = self.primary.fetchone("SELECT pg_current_wal_lsn()")
         if not target_lsn:
             return False
         deadline = time.time() + timeout
         while time.time() < deadline:
-            replay_lsn = self.standby.fetchone("SELECT pg_last_wal_replay_lsn()")
-            if replay_lsn:
-                try:
-                    # pg_wal_lsn_diff(lsn1, lsn2) returns (lsn2 - lsn1) bytes.
-                    # Caught up when replay >= target_snapshot ⇔ replay - target >= 0
-                    # ⇔ pg_wal_lsn_diff(target, replay) >= 0.
-                    diff = self.primary.fetchone(
-                        f"SELECT pg_wal_lsn_diff('{target_lsn}', '{replay_lsn}')"
-                    )
-                    if diff is not None and int(diff) >= 0:
-                        log.info("Standby caught up: replay=%s target=%s", replay_lsn, target_lsn)
-                        return True
-                except Exception:
-                    pass
+            # Compare in SQL on the standby — avoids pg_wal_lsn_diff edge cases where
+            # diff-based checks disagree with direct pg_lsn ordering (seen in logs).
+            ok = self.standby.fetchone(
+                "SELECT pg_last_wal_replay_lsn() IS NOT NULL "
+                f"AND pg_last_wal_replay_lsn() >= '{target_lsn}'::pg_lsn"
+            )
+            if ok and ok.lower() in ("t", "true"):
+                replay_lsn = self.standby.fetchone("SELECT pg_last_wal_replay_lsn()")
+                log.info("Standby caught up: replay=%s target=%s", replay_lsn, target_lsn)
+                return True
             time.sleep(1)
         log.warning("Standby did not reach %s within %ds", target_lsn, timeout)
         return False
