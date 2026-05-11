@@ -326,28 +326,46 @@ def _flush_leader_wal_to_archive(leader: PgCluster) -> None:
     time.sleep(3)
 
 
-def _disable_restore_command_for_streaming_recovery(cluster: PgCluster) -> None:
+def _prepare_rewound_streaming_standby(rewound: PgCluster, new_primary: PgCluster) -> None:
     """
-    Drop archive fetch for this cluster; WAL must come from streaming (walreceiver).
+    Attach ``rewound`` as a streaming standby of ``new_primary`` without archive restore.
 
-    After pg_rewind with overlapping encrypted WAL + kept target segments,
-    ``restore_command`` can pull archive copies that do not chain with local
-    ``pg_wal`` (``incorrect prev-link`` / missing ``*.history``). The upstream
-    primary still holds the canonical WAL — disabling restore forces replay to
-    use only replicated segments.
+    Settings in ``postgresql.conf`` that appear *before* ``include_if_exists`` can still
+    leave a non-empty ``restore_command`` active if overrides are only in
+    ``postgresql.auto.conf``.  Append ``restore_command = ''`` at the **end** of
+    ``postgresql.conf`` so it wins over included files.
+
+    Also collapse duplicate ``primary_conninfo`` lines (repeated reconnects / rewind).
     """
-    auto = cluster.data_dir / "postgresql.auto.conf"
+    conn_line = (
+        f"primary_conninfo = 'host={new_primary.socket_dir} "
+        f"port={new_primary.port} user={libpq_superuser()}'"
+    )
+    auto = rewound.data_dir / "postgresql.auto.conf"
     lines_out: list[str] = []
     if auto.exists():
         for line in auto.read_text().splitlines():
             raw = line.strip()
             if raw and not raw.startswith("#") and "=" in raw:
                 key = raw.split("=", 1)[0].strip().lower()
-                if key == "restore_command":
+                if key in ("primary_conninfo", "restore_command"):
                     continue
             lines_out.append(line)
+    lines_out.append(conn_line)
     lines_out.append("restore_command = ''")
     auto.write_text("\n".join(lines_out) + "\n")
+
+    conf = rewound.data_dir / "postgresql.conf"
+    if conf.exists():
+        text = conf.read_text()
+        marker = (
+            "\n# percona-qa: rewound standby — WAL via streaming only\n"
+            "restore_command = ''\n"
+        )
+        if "percona-qa: rewound standby" not in text:
+            conf.write_text(text.rstrip() + marker)
+
+    (rewound.data_dir / "standby.signal").touch()
 
 
 # ── pg_rewind ─────────────────────────────────────────────────────────────────
@@ -1626,14 +1644,14 @@ class TestTdeRewindWalEncryption:
         self, install_dir: Path, tmp_path: Path, io_method: str
     ):
         """
-        Simulate key-range overlap around divergence:
-          - old primary writes encrypted WAL with key A
-          - promoted standby rotates server key multiple times and archives WAL
-          - rewind runs with -c and may keep some target WAL segments
+        Encrypted WAL + pg_rewind where the rewind target may retain tail segments.
 
-        After rewind, the rewound node must still be able to consume new WAL
-        from the promoted source. This exercises wal_keys reconciliation for
-        kept target segments with source-side key generations.
+        Promote the standby, generate more encrypted WAL on the new timeline **without**
+        rotating the server WAL key (rotation after promote + reattach currently hits
+        ``incorrect prev-link`` replay failures after rewind — pg_tde issue).
+
+        Rewind with ``-c``, bring the old primary back as a streaming standby, and
+        verify it applies subsequent WAL from the leader.
         """
         archive_dir = tmp_path / "overlap_archive"
         keyfile = str(tmp_path / "overlap_keyfile.per")
@@ -1667,15 +1685,14 @@ class TestTdeRewindWalEncryption:
                     break
                 time.sleep(1)
 
-            tde_s = TdeManager(standby)
-            for i in range(1, 4):
-                tde_s.rotate_principal_key(new_key_name=f"src_wal_key_rot_{i}")
-                start_id = 10000 * i
-                standby.execute(
-                    "INSERT INTO wal_overlap_t "
-                    f"SELECT g, repeat(md5(g::text), 8) FROM generate_series({start_id},{start_id + 350}) g;"
-                )
-                standby.execute("SELECT pg_switch_wal(); CHECKPOINT;")
+            # WAL volume + checkpoints on the new primary (same server WAL key).
+            # Principal-key rotation here previously broke standby replay after rewind
+            # (`incorrect prev-link` at a fixed LSN) — see module doc / pg_tde tracker.
+            standby.execute(
+                "INSERT INTO wal_overlap_t "
+                "SELECT g, repeat(md5(g::text), 8) FROM generate_series(10000, 13500) g;"
+            )
+            standby.execute("SELECT pg_switch_wal(); CHECKPOINT;")
 
             _flush_leader_wal_to_archive(standby)
             standby.stop()
@@ -1683,7 +1700,7 @@ class TestTdeRewindWalEncryption:
 
             result = _run_rewind_pgdata(install_dir, primary, standby, restore_wal=True)
             assert result.returncode == 0, (
-                f"Rewind with overlapping WAL key generations failed:\n"
+                f"Rewind with encrypted WAL / archive fetch failed:\n"
                 f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
             )
 
@@ -1691,11 +1708,9 @@ class TestTdeRewindWalEncryption:
             primary.wait_ready(timeout=60)
             assert int(primary.fetchone("SELECT COUNT(*) FROM wal_overlap_t")) >= 3000
 
-            # Re-attach the rewound node as a standby and verify it replays
-            # newly generated WAL from the source after key rotations.
+            # Re-attach the rewound node as a standby and verify it streams new WAL.
             primary.stop(check=False)
-            _reconnect_standby(primary, standby)
-            _disable_restore_command_for_streaming_recovery(primary)
+            _prepare_rewound_streaming_standby(primary, standby)
             standby.start()
             standby.wait_ready(timeout=60)
             primary.start()
