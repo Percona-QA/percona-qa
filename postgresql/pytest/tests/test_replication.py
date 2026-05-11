@@ -4,7 +4,7 @@ Streaming and logical replication tests.
 Covers scenarios from:
   - pg_tde_streaming_replication.sh
   - pg_tde_logical_replication.sh
-  - pg_tde_rewind_test.sh
+  - pg_tde_rewind_test.sh (rewind cases: see test_tde_rewind_advanced.py)
   - pg_tde_wal_segsize_replication_test.sh
   - pg_createsubscriber.sh
   - ddl_load_with_pg_tde_and_streaming_replication.sh
@@ -134,10 +134,10 @@ class TestTdeStreamingReplication:
         repl.assert_row_counts_match("dml_load")
 
 
-# ── standby promotion and pg_rewind ──────────────────────────────────────────
+# ── standby promotion (pg_rewind tests live in test_tde_rewind_advanced.py) ──
 
 
-class TestPromoteAndRewind:
+class TestStandbyPromotion:
     def test_standby_promotion(self, replica_pair: Tuple[PgCluster, PgCluster]):
         primary, standby = replica_pair
         primary.execute("CREATE TABLE pre_promote (id INT)")
@@ -150,61 +150,6 @@ class TestPromoteAndRewind:
 
         result = standby.fetchone("SELECT pg_is_in_recovery()")
         assert result == "f", "Promoted standby must not be in recovery"
-
-    def test_pg_rewind_after_promotion(self, replica_pair: Tuple[PgCluster, PgCluster], tmp_path):
-        primary, standby = replica_pair
-        primary.configure({"wal_log_hints": "on", "summarize_wal": "on"})
-        primary.restart()
-
-        primary.execute("CREATE TABLE rewind_test (id INT)")
-        primary.execute("INSERT INTO rewind_test SELECT generate_series(1,100)")
-        repl = ReplicationManager(primary, standby)
-        repl.assert_catchup(timeout=30)
-
-        # Promote standby; primary diverges
-        standby.promote()
-        standby.wait_ready(timeout=30)
-        standby.execute("INSERT INTO rewind_test SELECT generate_series(101,200)")
-
-        # Stop old primary
-        primary.stop()
-
-        # Rewind old primary to follow new primary (ex-standby)
-        primary.pg_rewind(str(primary.data_dir), standby.port)
-
-        # Old primary can now follow the new timeline
-        primary.start()
-        primary.wait_ready(timeout=30)
-        result = primary.fetchone("SELECT pg_is_in_recovery()")
-        assert result == "t", (
-            f"After pg_rewind, old primary (port {primary.port}) should be a standby "
-            f"(in_recovery=t) but got: {result!r}\n"
-            f"Server log:\n{primary.read_log(20)}"
-        )
-
-    def test_tde_rewind(self, tde_replica_pair: Tuple[PgCluster, PgCluster]):
-        primary, standby = tde_replica_pair
-        primary.configure({"wal_log_hints": "on", "summarize_wal": "on"})
-        primary.restart()
-
-        primary.execute("CREATE TABLE tde_rewind_t (id INT)")
-        primary.execute("INSERT INTO tde_rewind_t SELECT generate_series(1,100)")
-        repl = ReplicationManager(primary, standby)
-        repl.assert_catchup(timeout=30)
-
-        standby.promote()
-        standby.wait_ready(timeout=30)
-        standby.execute("INSERT INTO tde_rewind_t SELECT generate_series(101,200)")
-
-        primary.stop()
-        primary.pg_rewind(str(primary.data_dir), standby.port)
-        primary.start()
-        primary.wait_ready(timeout=30)
-        result = primary.fetchone("SELECT pg_is_in_recovery()")
-        assert result == "t"
-
-
-# ── logical replication ───────────────────────────────────────────────────────
 
 
 class TestLogicalReplication:
