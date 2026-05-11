@@ -166,16 +166,35 @@ class BackupManager:
 
     # ── stanza / backup operations ────────────────────────────────────────
 
+    # Only duplicate [stanza] pg1-* on the CLI for commands that still accept it
+    # in pgBackRest 2.58+. ``info``/``check``/``expire`` reject --pg1-path with
+    # [031]. ``restore``/``archive-push`` pass their own ``--pg1-path=...`` (WAL
+    # segment or target data dir) — never infer from other argv tokens (paths
+    # can equal subcommand names in edge cases).
+    _PG1_CLI_DUP_COMMANDS = frozenset({"stanza-create", "backup"})
+
+    @staticmethod
+    def _pgbackrest_subcommand(args_str: List[str]) -> str:
+        for a in reversed(args_str):
+            s = str(a)
+            if not s.startswith("-"):
+                return s
+        return ""
+
     def _run(self, *args) -> subprocess.CompletedProcess:
         cmd = [
             "pgbackrest",
             f"--config={self.conf_path}",
             f"--stanza={self.stanza}",
         ]
-        # Duplicate stanza pg1-* on the CLI; avoids [037] stanza-create requires option: pg1-path
-        # when the config file alone is not applied as expected.
-        merged = " ".join(str(a) for a in args)
-        if self._pg1_path and "--pg1-path=" not in merged:
+        args_str = [str(a) for a in args]
+        sub = self._pgbackrest_subcommand(args_str)
+        needs_pg1_dup = sub in self._PG1_CLI_DUP_COMMANDS
+        if (
+            needs_pg1_dup
+            and self._pg1_path
+            and not any(a.startswith("--pg1-path=") for a in args_str)
+        ):
             cmd.append(f"--pg1-path={self._pg1_path}")
             cmd.append(f"--pg1-port={self._pg1_port}")
             cmd.append(f"--pg1-socket-path={self._pg1_socket_path}")

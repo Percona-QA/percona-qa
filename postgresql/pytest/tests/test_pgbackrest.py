@@ -558,8 +558,30 @@ class TestPgBackRestMatrix:
         self, tde_primary: PgCluster, tmp_path: Path,
         install_dir: Path, io_method: str,
     ):
+        """
+        pgBackRest ``--db-include`` restores only the named user databases
+        (template0/template1/**postgres** are *always* restored, so we cannot
+        use ``postgres`` for the exclusion check). Set up a second user db
+        ``matrix_excl_db`` and verify only the included one has queryable data.
+        """
         bm = _setup_tde_pgbackrest_source(tde_primary, tmp_path)
         _create_matrix_schema(tde_primary)
+
+        # Second user DB — this is the one we expect to be excluded.
+        tde_primary.execute("CREATE DATABASE matrix_excl_db")
+        tde_primary.execute(
+            "CREATE EXTENSION pg_tde", dbname="matrix_excl_db"
+        )
+        TdeManager(tde_primary).set_global_principal_key(dbname="matrix_excl_db")
+        tde_primary.execute(
+            "CREATE TABLE matrix_excl_t (id INT PRIMARY KEY)",
+            dbname="matrix_excl_db",
+        )
+        tde_primary.execute(
+            "INSERT INTO matrix_excl_t SELECT generate_series(1, 300)",
+            dbname="matrix_excl_db",
+        )
+
         bm.backup(backup_type="full")
         bm.wait_for_wal_archive(tde_primary)
 
@@ -573,14 +595,18 @@ class TestPgBackRestMatrix:
             restore_dir, install_dir, tmp_path, io_method,
         )
         try:
-            # Included DB has its data.
+            # Included user DB has its data.
             assert restored.fetchone(
                 "SELECT COUNT(*) FROM matrix_t2", dbname="matrix_db"
             ) == "1000"
-            # Excluded DB's user tables: pgBackRest zero-fills the data files,
-            # so any read raises an error.
+            # Excluded user DB: pgBackRest zero-fills the relation files, so
+            # querying user tables there raises an "invalid page" / "could not
+            # open file" error.
             with pytest.raises(RuntimeError):
-                restored.execute("SELECT COUNT(*) FROM matrix_t1")
+                restored.execute(
+                    "SELECT COUNT(*) FROM matrix_excl_t",
+                    dbname="matrix_excl_db",
+                )
         finally:
             restored.stop()
 
