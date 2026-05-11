@@ -311,7 +311,7 @@ def _reconnect_standby(rewound: PgCluster, new_primary: PgCluster) -> None:
 class TestPgRewind:
     def test_rewind_basic(self, replica_pair, tmp_path: Path, install_dir: Path, io_method: str):
         primary, standby = replica_pair
-        primary.configure({"wal_log_hints": "on", "summarize_wal": "on"})
+        primary.configure({"wal_log_hints": "on"})
         primary.restart()
         primary.execute("CREATE TABLE rewind_base (id INT)")
         primary.execute("INSERT INTO rewind_base SELECT generate_series(1,100)")
@@ -345,7 +345,7 @@ class TestPgRewind:
 
     def test_rewind_after_large_dml(self, replica_pair, tmp_path: Path):
         primary, standby = replica_pair
-        primary.configure({"wal_log_hints": "on", "summarize_wal": "on"})
+        primary.configure({"wal_log_hints": "on"})
         primary.restart()
         primary.execute("CREATE TABLE rewind_large (id BIGSERIAL, data TEXT)")
         primary.execute(
@@ -2950,7 +2950,7 @@ class TestTdeRewindMultiRound:
 class TestPromoteAndRewind:
     def test_pg_rewind_after_promotion(self, replica_pair: Tuple[PgCluster, PgCluster], tmp_path):
         primary, standby = replica_pair
-        primary.configure({"wal_log_hints": "on", "summarize_wal": "on"})
+        primary.configure({"wal_log_hints": "on"})
         primary.restart()
 
         primary.execute("CREATE TABLE rewind_test (id INT)")
@@ -2969,6 +2969,14 @@ class TestPromoteAndRewind:
         # Rewind old primary to follow new primary (ex-standby)
         primary.pg_rewind(str(primary.data_dir), standby.port)
 
+        auto_conf = primary.data_dir / "postgresql.auto.conf"
+        with auto_conf.open("a") as f:
+            f.write(
+                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} "
+                f"user={libpq_superuser()}'\n"
+            )
+        (primary.data_dir / "standby.signal").touch()
+
         # Old primary can now follow the new timeline
         primary.start()
         primary.wait_ready(timeout=30)
@@ -2981,7 +2989,7 @@ class TestPromoteAndRewind:
 
     def test_tde_rewind(self, tde_replica_pair: Tuple[PgCluster, PgCluster]):
         primary, standby = tde_replica_pair
-        primary.configure({"wal_log_hints": "on", "summarize_wal": "on"})
+        primary.configure({"wal_log_hints": "on"})
         primary.restart()
 
         primary.execute("CREATE TABLE tde_rewind_t (id INT)")
@@ -2995,6 +3003,13 @@ class TestPromoteAndRewind:
 
         primary.stop()
         primary.pg_rewind(str(primary.data_dir), standby.port)
+        auto_conf = primary.data_dir / "postgresql.auto.conf"
+        with auto_conf.open("a") as f:
+            f.write(
+                f"primary_conninfo = 'host={standby.socket_dir} port={standby.port} "
+                f"user={libpq_superuser()}'\n"
+            )
+        (primary.data_dir / "standby.signal").touch()
         primary.start()
         primary.wait_ready(timeout=30)
         result = primary.fetchone("SELECT pg_is_in_recovery()")

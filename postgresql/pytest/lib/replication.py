@@ -1,5 +1,6 @@
 """Streaming and logical replication helpers."""
 import logging
+import shutil
 import time
 from typing import Optional
 
@@ -41,12 +42,11 @@ class ReplicationManager:
     ) -> None:
         """pg_basebackup (or pg_tde_basebackup) from primary into standby.data_dir."""
         if self.standby.data_dir.exists():
-            import shutil
             shutil.rmtree(self.standby.data_dir)
         if use_tde_basebackup:
             from .tde import TdeManager
-            # pg_tde_basebackup -E streams encrypted WAL; use only when the primary
-            # has pg_tde.wal_encrypt on (see caller extra_args), not by default.
+            # pg_tde_basebackup -E only when primary has pg_tde.wal_encrypt on
+            # (callers pass extra_args); TdeManager.tde_basebackup seeds pg_tde/.
             bb_args = list(extra_args or [])
             TdeManager(self.primary).tde_basebackup(
                 str(self.standby.data_dir), bb_args
