@@ -277,25 +277,52 @@ class BackupManager:
 
     def wait_for_wal_archive(self, cluster, timeout: int = 30) -> str:
         """
-        Force a WAL switch and block until pgBackRest has archived it.
+        Force a WAL switch and block until pg_stat_archiver reports progress.
 
-        Polls ``pg_stat_archiver.last_archived_wal`` (no sleep-and-hope).
-        Returns the name of the WAL segment that was archived.
+        Why this looks indirect: after ``pgbackrest backup`` returns, the cluster
+        is parked at offset 0 of a fresh WAL segment (pgBackRest does its own
+        ``pg_switch_wal`` to flush the backup-history file). A naive
+        ``SELECT pg_switch_wal()`` from us is then a *no-op* — no ``.ready`` file
+        appears, the archiver has nothing to do, and ``last_archived_wal`` never
+        advances past the ``*.backup`` history file we have already seen.
+
+        Workaround: emit at least one WAL record (CHECKPOINT writes a
+        CHECKPOINT_ONLINE record unconditionally) so the next ``pg_switch_wal``
+        actually closes a segment. Then poll until ``last_archived_wal`` differs
+        from the value we captured at entry — robust against the
+        ``...NNN.backup`` vs ``...NNN+1`` lexicographic ambiguity.
+
+        Returns the new ``last_archived_wal`` value.
         """
-        lsn = cluster.fetchone("SELECT pg_switch_wal()")
-        target_wal = cluster.fetchone(f"SELECT pg_walfile_name('{lsn}')")
+        initial = cluster.fetchone(
+            "SELECT COALESCE(last_archived_wal, '') FROM pg_stat_archiver"
+        ) or ""
+
+        # CHECKPOINT guarantees the current segment has offset > 0, so the
+        # subsequent pg_switch_wal is not a no-op.
         cluster.execute("CHECKPOINT")
+        cluster.execute("SELECT pg_switch_wal()")
+
         deadline = time.time() + timeout
-        last = None
+        latest = initial
         while time.time() < deadline:
-            last = cluster.fetchone("SELECT last_archived_wal FROM pg_stat_archiver")
-            if last and last >= target_wal:
-                log.debug("WAL %s archived", target_wal)
-                return target_wal
+            latest = cluster.fetchone(
+                "SELECT COALESCE(last_archived_wal, '') FROM pg_stat_archiver"
+            ) or ""
+            if latest and latest != initial:
+                log.debug("WAL archive advanced: %s -> %s", initial, latest)
+                return latest
             time.sleep(0.3)
+
+        # Surface any archiver-side failure so the test message is actionable.
+        stats = cluster.fetchone(
+            "SELECT format('failed_count=%s last_failed_wal=%s last_failed_time=%s', "
+            "failed_count, last_failed_wal, last_failed_time) "
+            "FROM pg_stat_archiver"
+        )
         raise TimeoutError(
-            f"WAL segment {target_wal} was not archived within {timeout}s "
-            f"(last_archived_wal={last!r})"
+            f"last_archived_wal did not advance from {initial!r} within {timeout}s. "
+            f"pg_stat_archiver: {stats}"
         )
 
 
