@@ -12,6 +12,7 @@ Covers scenarios from:
 import pytest
 
 from lib import PgCluster, TdeManager
+from lib.cluster import initdb_args_no_data_checksums
 
 
 pytestmark = pytest.mark.encryption
@@ -229,7 +230,7 @@ class TestKeyManagement:
 
     def test_multiple_key_providers(self, pg_factory):
         cluster = pg_factory("multi_kp")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         cluster.start()
@@ -298,9 +299,9 @@ class TestWalEncryption:
 
 class TestChecksums:
     def test_tde_requires_checksums_disabled(self, pg_factory):
-        """TDE is not compatible with data checksums — initdb must use --no-data-checksums."""
+        """TDE is not compatible with data checksums — on PG18+ initdb must disable them (``--no-data-checksums``); on PG17- they are already off by default."""
         cluster = pg_factory("checksum_tde")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         cluster.start()
@@ -319,7 +320,7 @@ class TestChecksums:
 
     def test_no_checksums_with_tde(self, pg_factory):
         cluster = pg_factory("nochecksum_tde")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         cluster.start()

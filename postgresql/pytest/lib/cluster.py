@@ -33,6 +33,34 @@ def prepend_install_lib_dirs(env: Dict[str, str], *install_roots: Path) -> None:
     env[key] = f"{prefix}:{tail}" if tail else prefix
 
 
+def postgres_major_version(install_dir: Path) -> int:
+    """Return major version number for binaries under ``install_dir`` (e.g. 17, 18)."""
+    bin_pg = Path(install_dir) / "bin" / "postgres"
+    env = os.environ.copy()
+    prepend_install_lib_dirs(env, Path(install_dir))
+    result = subprocess.run(
+        [str(bin_pg), "--version"],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    )
+    # "postgres (PostgreSQL) 17.2" → 17
+    return int(result.stdout.split()[2].split(".")[0])
+
+
+def initdb_args_no_data_checksums(install_dir: Path) -> List[str]:
+    """initdb flags to disable data checksums when the build defaults them on (PG 18+).
+
+    PostgreSQL 18 enables data checksums by default and accepts ``--no-data-checksums``.
+    PostgreSQL 17 and earlier disable checksums by default and **do not** implement
+    that flag — passing it would make initdb fail.
+    """
+    if postgres_major_version(install_dir) >= 18:
+        return ["--no-data-checksums"]
+    return []
+
+
 def libpq_superuser() -> str:
     """
     OS user that owns initdb-created clusters in CI (often 'ubuntu'), not always 'postgres'.
@@ -374,3 +402,33 @@ class PgCluster:
             "PGUSER": libpq_superuser(),
             "PGDATABASE": "postgres",
         }
+
+
+def initdb_extra_align_data_checksums_with_old(
+    old_cluster: "PgCluster",
+    new_install_dir: Path,
+    explicit_extra: Optional[List[str]],
+) -> Optional[List[str]]:
+    """Build initdb extra args so the new cluster matches the old data-checksum setting.
+
+    PostgreSQL 18+ initdb enables data checksums by default; upgrading from PG 17
+    (checksums off by default) therefore requires ``--no-data-checksums`` on the
+    new cluster unless the old cluster already had checksums enabled.
+
+    If ``explicit_extra`` already contains ``--data-checksums`` or
+    ``--no-data-checksums``, it is left unchanged (aside from copying the list).
+    """
+    extra = list(explicit_extra or ())
+    if "--data-checksums" in extra or "--no-data-checksums" in extra:
+        return extra or None
+    raw = old_cluster.controldata("Data page checksum version")
+    try:
+        old_ck = int(raw)
+    except ValueError:
+        old_ck = 0
+    new_maj = postgres_major_version(new_install_dir)
+    if old_ck == 0:
+        extra.extend(initdb_args_no_data_checksums(new_install_dir))
+    elif new_maj < 18:
+        extra.append("--data-checksums")
+    return extra or None

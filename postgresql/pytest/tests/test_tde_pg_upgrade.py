@@ -36,7 +36,11 @@ from typing import Optional
 import pytest
 
 from lib import PgCluster, TdeManager
-from lib.cluster import prepend_install_lib_dirs
+from lib.cluster import (
+    initdb_args_no_data_checksums,
+    initdb_extra_align_data_checksums_with_old,
+    prepend_install_lib_dirs,
+)
 from conftest import allocate_port
 
 
@@ -86,7 +90,11 @@ def _upgrade(
     new_cluster = PgCluster(
         new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method
     )
-    new_cluster.initdb(extra_args=extra_initdb)
+    new_cluster.initdb(
+        extra_args=initdb_extra_align_data_checksums_with_old(
+            old_cluster, install_dir, extra_initdb
+        )
+    )
     new_cluster.write_default_config(extra_params=extra_params)
     new_cluster.stop(check=False)
 
@@ -158,7 +166,7 @@ class TestPpgToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -177,7 +185,6 @@ class TestPpgToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, f"pg_upgrade failed:\n{result.stderr}"
@@ -211,7 +218,7 @@ class TestPpgToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -230,7 +237,6 @@ class TestPpgToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -260,7 +266,7 @@ class TestPpgToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -291,7 +297,6 @@ class TestPpgToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -320,7 +325,7 @@ class TestPpgToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -339,7 +344,6 @@ class TestPpgToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
             check_only=True,
         )
@@ -373,7 +377,7 @@ class TestPspToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -392,7 +396,6 @@ class TestPspToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, f"PSP→PSP upgrade failed:\n{result.stderr}"
@@ -425,7 +428,7 @@ class TestPspToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -452,7 +455,6 @@ class TestPspToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -481,7 +483,7 @@ class TestPspToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -497,7 +499,6 @@ class TestPspToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -533,7 +534,7 @@ class TestPspToPspUpgrade:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -552,7 +553,6 @@ class TestPspToPspUpgrade:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -627,7 +627,7 @@ class TestUpgradeAccessMethodPermutations:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "default_table_access_method": "'tde_heap'",
@@ -651,7 +651,6 @@ class TestUpgradeAccessMethodPermutations:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "default_table_access_method": "'tde_heap'",
@@ -688,7 +687,7 @@ class TestUpgradeAccessMethodPermutations:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -709,7 +708,6 @@ class TestUpgradeAccessMethodPermutations:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -788,7 +786,7 @@ class TestUpgradeAccessMethodPermutations:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -841,7 +839,7 @@ class TestUpgradeWalEncryptionPaths:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -861,7 +859,6 @@ class TestUpgradeWalEncryptionPaths:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -892,7 +889,7 @@ class TestUpgradeWalEncryptionPaths:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -914,7 +911,6 @@ class TestUpgradeWalEncryptionPaths:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, f"pg_upgrade after WAL enc disable failed:\n{result.stderr}"
@@ -945,7 +941,7 @@ class TestUpgradeWalEncryptionPaths:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -966,7 +962,6 @@ class TestUpgradeWalEncryptionPaths:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
@@ -1006,7 +1001,7 @@ class TestUpgradeWalEncryptionPaths:
             old_install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
         )
         old.start()
@@ -1026,7 +1021,6 @@ class TestUpgradeWalEncryptionPaths:
             install_dir,
             tmp_path,
             io_method,
-            extra_initdb=["--no-data-checksums"],
             extra_params=_tde_params(keyfile),
             check_only=True,
         )

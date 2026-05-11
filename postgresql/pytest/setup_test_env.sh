@@ -181,7 +181,12 @@ TMPSOCK="$TMPDATA"
 cleanup_smoke() { "${INSTALL_DIR}/bin/pg_ctl" stop -D "$TMPDATA/data" -m immediate -t 10 &>/dev/null || true; rm -rf "$TMPDATA"; }
 trap cleanup_smoke EXIT
 
-"${INSTALL_DIR}/bin/initdb" -D "${TMPDATA}/data" --no-data-checksums >/dev/null
+# PG 18+ defaults data checksums to on; --no-data-checksums exists only there.
+INITDB_EXTRA=()
+if [[ "${PG_VERSION}" -ge 18 ]]; then
+    INITDB_EXTRA=(--no-data-checksums)
+fi
+"${INSTALL_DIR}/bin/initdb" -D "${TMPDATA}/data" "${INITDB_EXTRA[@]}" >/dev/null
 cat >> "${TMPDATA}/data/postgresql.conf" <<PGCONF
 port = ${TMPPORT}
 unix_socket_directories = '${TMPSOCK}'

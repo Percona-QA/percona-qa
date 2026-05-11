@@ -49,6 +49,7 @@ from lib import (
     restore_conf_line_raw,
 )
 from lib.backup import BackupManager, pgbackrest_installed
+from lib.cluster import initdb_args_no_data_checksums
 
 pytestmark = [pytest.mark.upgrade, pytest.mark.encryption, pytest.mark.slow]
 
@@ -96,7 +97,7 @@ def _build_ha_cluster(
         io_method=io_method,
     )
 
-    nodeA.initdb(extra_args=["--no-data-checksums"])
+    nodeA.initdb(extra_args=initdb_args_no_data_checksums(install_dir))
     params = dict(_TDE_PARAMS)
     if with_archive and archive_dir:
         archive_dir.mkdir(parents=True, exist_ok=True)

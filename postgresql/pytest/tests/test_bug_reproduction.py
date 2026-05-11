@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from lib import PgCluster, TdeManager
+from lib.cluster import initdb_args_no_data_checksums
 from conftest import allocate_port
 
 
@@ -54,7 +55,7 @@ class TestPG1805:
 
     def _setup_tde_cluster(self, pg_factory):
         cluster = pg_factory("pg1805")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         cluster.start()
@@ -153,7 +154,7 @@ class TestPG1806:
         keyfile = str(tmp_path / "pg1806_key.per")
 
         cluster = pg_factory("pg1806")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         # Match steps_to_reproduce_pg-1806_wal_optimise.sh / 018_wal_optimize.pl GUCs.
@@ -234,7 +235,7 @@ class TestPG1806:
         keyfile = str(tmp_path / "pg1806_replica_key.per")
 
         cluster = pg_factory("pg1806_replica_wal")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         cluster.configure(
@@ -285,7 +286,7 @@ class TestPG1806:
         """
         keyfile = str(tmp_path / "pg1806_sender_toggle_key.per")
         cluster = pg_factory("pg1806_sender_toggle")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(
             extra_params={
                 "shared_preload_libraries": "'pg_tde'",
@@ -332,7 +333,7 @@ class TestPG1806:
 
         keyfile = str(tmp_path / "pg1806_default_threshold_key.per")
         cluster = pg_factory("pg1806_default_threshold")
-        cluster.initdb(extra_args=["--no-data-checksums"])
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
         cluster.write_default_config(extra_params={"shared_preload_libraries": "'pg_tde'", "default_table_access_method": "'tde_heap'"})
         cluster.add_hba_entry("local all all trust")
         cluster.configure(

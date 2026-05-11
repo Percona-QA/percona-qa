@@ -10,6 +10,7 @@ import pytest
 
 from conftest import allocate_port
 from lib import PgCluster, TdeManager, ReplicationManager
+from lib.cluster import initdb_args_no_data_checksums
 
 # Settings that must be present in postgresql.conf for every TDE cluster.
 # Passed via write_default_config(extra_params=...) so they are written
@@ -112,7 +113,7 @@ def primary_cluster(pg_factory) -> Generator[PgCluster, None, None]:
 def tde_primary(pg_factory) -> Generator[PgCluster, None, None]:
     """A primary cluster with pg_tde fully set up (file key provider)."""
     cluster = pg_factory("tde_primary")
-    cluster.initdb(extra_args=["--no-data-checksums"])
+    cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
     cluster.write_default_config("primary", extra_params=_TDE_PARAMS)
     cluster.add_hba_entry("local all all trust")
     cluster.add_hba_entry("host  all all 127.0.0.1/32 trust")
@@ -215,7 +216,7 @@ def tde_logical_pub_sub_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster
     subscriber = pg_factory("logical_tde_sub")
 
     for node in (publisher, subscriber):
-        node.initdb(extra_args=["--no-data-checksums"])
+        node.initdb(extra_args=initdb_args_no_data_checksums(node.install_dir))
         node.write_default_config("primary", extra_params=_TDE_PARAMS)
 
     publisher.configure(
@@ -263,7 +264,7 @@ def tde_replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None,
     primary = pg_factory("tde_primary")
     standby = pg_factory("tde_standby")
 
-    primary.initdb(extra_args=["--no-data-checksums"])
+    primary.initdb(extra_args=initdb_args_no_data_checksums(primary.install_dir))
     primary.write_default_config("primary", extra_params=_TDE_PARAMS)
     primary.configure({"wal_level": "replica", "max_wal_senders": "5", "hot_standby": "on"})
     primary.add_hba_entry("local all all trust")

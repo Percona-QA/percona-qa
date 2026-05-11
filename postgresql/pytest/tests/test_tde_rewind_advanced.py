@@ -31,7 +31,7 @@ import pytest
 
 from conftest import allocate_port
 from lib import PgCluster, ReplicationManager, TdeManager, archive_restore_conf_values
-from lib.cluster import libpq_superuser
+from lib.cluster import initdb_args_no_data_checksums, libpq_superuser
 
 pytestmark = [pytest.mark.recovery, pytest.mark.slow]
 
@@ -203,7 +203,7 @@ def _ha_pair(
         params.update(extra_primary_params)
 
     try:
-        primary.initdb(extra_args=["--no-data-checksums"])
+        primary.initdb(extra_args=initdb_args_no_data_checksums(primary.install_dir))
         primary.write_default_config(extra_params=params)
         primary.add_hba_entry("local all all trust")
         primary.add_hba_entry("local replication all trust")
@@ -416,7 +416,7 @@ def _make_tde_ha_pair(
         socket_dir=tmp_path, io_method=io_method,
     )
 
-    primary.initdb(extra_args=["--no-data-checksums"])
+    primary.initdb(extra_args=initdb_args_no_data_checksums(primary.install_dir))
     primary.write_default_config(extra_params={
         "shared_preload_libraries": "'pg_tde'",
         "wal_level": "replica",
@@ -1822,7 +1822,7 @@ class TestTdeRewindFullHaCycle:
 
         try:
             # Boot nodeA
-            nodeA.initdb(extra_args=["--no-data-checksums"])
+            nodeA.initdb(extra_args=initdb_args_no_data_checksums(nodeA.install_dir))
             nodeA.write_default_config(extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "wal_level": "replica",
