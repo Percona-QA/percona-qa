@@ -39,6 +39,40 @@ _TDE_RESTORED_PARAMS = {
     "default_table_access_method": "'tde_heap'",
 }
 
+# GUCs pgBackRest restores into postgresql.auto.conf from the backup. They override
+# the same names in postgresql.conf, so pg_ctl's ``-o -p ... -k ...`` no longer
+# matches the running server (startup fails with "stopped waiting"). Delta
+# restore re-syncs auto.conf from newer backups, so this shows up after diff/incr.
+_AUTO_CONF_OVERRIDE_KEYS = frozenset(
+    {
+        "port",
+        "unix_socket_directories",
+        "listen_addresses",
+        "log_directory",
+    }
+)
+
+
+def _strip_restored_auto_conf_socket_overrides(data_dir: Path) -> None:
+    """Drop listen/log path lines from postgresql.auto.conf so write_default_config wins."""
+    auto = data_dir / "postgresql.auto.conf"
+    if not auto.exists():
+        return
+    out_lines: list[str] = []
+    for line in auto.read_text().splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#"):
+            out_lines.append(line)
+            continue
+        if "=" not in raw:
+            out_lines.append(line)
+            continue
+        key = raw.split("=", 1)[0].strip().lower()
+        if key in _AUTO_CONF_OVERRIDE_KEYS:
+            continue
+        out_lines.append(line)
+    auto.write_text("\n".join(out_lines) + ("\n" if out_lines else ""))
+
 
 def _setup_tde_pgbackrest_source(
     tde_primary: PgCluster,
@@ -134,6 +168,7 @@ def _start_restored_cluster(
         socket_dir=socket_dir, io_method=io_method,
     )
     cluster.write_default_config(role, extra_params=_TDE_RESTORED_PARAMS)
+    _strip_restored_auto_conf_socket_overrides(restore_dir)
     cluster.add_hba_entry("local all all trust")
     cluster.start()
     cluster.wait_ready(timeout=timeout)
