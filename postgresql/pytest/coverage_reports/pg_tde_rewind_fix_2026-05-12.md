@@ -10,10 +10,10 @@
 
 | Metric | Before fix | After fix |
 |---|---|---|
-| Total pg_tde_rewind scenarios | 70 | 70 |
-| Passed | 54 | 70 |
+| Total pg_tde_rewind scenarios | 54 | 54 |
+| Passed | 38 | **54** |
 | **Failed** | **16** | **0** |
-| Coverage delta | +23 % pass rate | — |
+| Pass rate | 70 % | **100 %** |
 
 All 16 previously failing scenarios now pass on Andrew's branch. The fix
 addresses correctness of `pg_tde_rewind` across the full pg_tde feature
@@ -132,7 +132,7 @@ pytest tests/test_tde_rewind_advanced.py -v --tb=short 2>&1 | tee /tmp/rewind_ru
 grep -E "passed|failed" /tmp/rewind_run.log | tail -5
 ```
 
-**Expected outcome on Andrew's branch:** all 70 tests pass.
+**Expected outcome on Andrew's branch:** all 54 tests pass.
 
 Compare against the previous build:
 
