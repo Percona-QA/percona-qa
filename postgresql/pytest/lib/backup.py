@@ -177,13 +177,18 @@ class BackupManager:
             ]
         )
 
-    def _inner_pgbackrest_archive_get(self) -> str:
-        """pgBackRest CLI fragment passed to pg_tde_restore_encrypt (see Percona blog)."""
+    def _inner_pgbackrest_archive_get(self, pg1_data_dir: str) -> str:
+        """pgBackRest CLI fragment passed to pg_tde_restore_encrypt (see Percona blog).
+
+        *pg1_data_dir* must be the **restored** cluster data directory. pgBackRest
+        2.58+ requires ``--pg1-path`` on ``archive-get`` ([037] if omitted).
+        """
         return " ".join(
             [
                 "pgbackrest",
                 shlex.quote(f"--config={self.conf_path}"),
                 shlex.quote(f"--stanza={self.stanza}"),
+                shlex.quote(f"--pg1-path={pg1_data_dir}"),
                 "archive-get",
                 "%%f",
                 "%%p",
@@ -229,7 +234,8 @@ class BackupManager:
     # in pgBackRest 2.58+. ``info``/``check``/``expire`` reject --pg1-path with
     # [031]. ``restore``/``archive-push`` pass their own ``--pg1-path=...`` (WAL
     # segment or target data dir) — never infer from other argv tokens (paths
-    # can equal subcommand names in edge cases).
+    # can equal subcommand names in edge cases). ``archive-get`` also requires an
+    # explicit ``--pg1-path`` to the restored PGDATA in 2.58+.
     _PG1_CLI_DUP_COMMANDS = frozenset({"stanza-create", "backup"})
 
     @staticmethod
@@ -355,7 +361,7 @@ class BackupManager:
             encrypt = self._pg_bin / "pg_tde_restore_encrypt"
             if not encrypt.is_file():
                 raise FileNotFoundError(f"pg_tde_restore_encrypt not found: {encrypt}")
-            inner = self._inner_pgbackrest_archive_get()
+            inner = self._inner_pgbackrest_archive_get(str(dest.resolve()))
             restore_cmd = f"{encrypt} %f %p \"{inner}\""
             args.append(
                 "--recovery-option=restore_command="
