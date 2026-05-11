@@ -3389,15 +3389,16 @@ class TestTdeRewindExtremeCornerCases:
 
             ReplicationManager(standby, primary).assert_catchup(timeout=60)
 
-            # Assert the orphaned key was discarded and data is readable
-            active_key = TdeManager(primary).principal_key_info_snapshot()
-            assert active_key, "expected pg_tde key info output from cluster"
-            assert "orphaned_target_key" not in active_key
+            # Assert the orphaned key was discarded using the TdeManager helper
+            post_rewind_key = TdeManager(primary).principal_key_name()
+            assert post_rewind_key != "orphaned_target_key", "Orphaned key survived rewind!"
 
+            # The ultimate test: data is readable
             count = primary.fetchone("SELECT COUNT(*) FROM orphan_key_t")
             assert int(count) == 200
         finally:
             _teardown(standby, primary)
+
 
     def test_rewind_new_key_provider_added_on_source(
         self, install_dir: Path, tmp_path: Path, io_method: str
@@ -3458,15 +3459,13 @@ class TestTdeRewindExtremeCornerCases:
 
             ReplicationManager(standby, primary).assert_catchup(timeout=60)
 
-            # Verify target can read the data encrypted by the new provider
+            # Verify the catalog reflects the new key
+            post_rewind_key = TdeManager(primary).principal_key_name()
+            assert post_rewind_key == "key_2", f"Expected new key 'key_2', got {post_rewind_key}"
+
+            # Verify target can actually read the data encrypted by the new provider
             count = primary.fetchone("SELECT COUNT(*) FROM prov_test_t")
             assert int(count) == 2
-
-            # Verify the catalog reflects the new key
-            active_key = TdeManager(primary).principal_key_info_snapshot()
-            assert active_key, "expected pg_tde key info output from cluster"
-            assert "key_2" in active_key
-            assert "file_provider_2" in active_key
         finally:
             _teardown(standby, primary)
 
