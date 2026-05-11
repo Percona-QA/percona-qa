@@ -89,6 +89,10 @@ class PgCluster:
         if extra_params:
             params.update(extra_params)
         self.configure(params, append=False)
+        # initdb adds include_if_exists = 'postgresql.auto.conf'; a full rewrite above
+        # drops it, so recovery / ALTER SYSTEM parameters in auto.conf would be ignored.
+        with (self.data_dir / "postgresql.conf").open("a") as f:
+            f.write("include_if_exists = 'postgresql.auto.conf'\n")
 
     def add_hba_entry(self, entry: str) -> None:
         with (self.data_dir / "pg_hba.conf").open("a") as f:
