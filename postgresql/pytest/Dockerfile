@@ -7,11 +7,11 @@
 #   source-env    Compile PostgreSQL + pg_tde from GitHub source
 #
 # Key build args:
-#   PG_MAJOR        Primary PostgreSQL major version  (default: 17)
-#   OLD_PG_MAJOR    Old version for pg_upgrade tests  (default: 16)
+#   PG_MAJOR        Primary PostgreSQL major version  (default: 18)
+#   OLD_PG_MAJOR    Old version for pg_upgrade tests  (default: 17)
 #   PG_TDE_REF      pg_tde git branch/tag/sha         (default: main)
 #   PG_TDE_REPO     pg_tde git remote URL             (default: Percona-Lab GitHub)
-#   PG_REF          PostgreSQL git branch/tag          (default: REL_17_STABLE)
+#   PG_REF          PostgreSQL git branch/tag          (default: REL_18_STABLE)
 #   PG_REPO         PostgreSQL git remote URL          (default: upstream GitHub)
 #   DEBUG_BUILD     Include --enable-debug --enable-cassert (default: true)
 #
@@ -76,8 +76,8 @@ ENV PGUSER=pgqa
 # ══════════════════════════════════════════════════════════════════════════════
 FROM base AS package-install
 
-ARG PG_MAJOR=17
-ARG OLD_PG_MAJOR=16
+ARG PG_MAJOR=18
+ARG OLD_PG_MAJOR=17
 ARG PERCONA_RELEASE_URL=https://repo.percona.com/apt/percona-release_latest
 
 # Add Percona release tool and enable repos
@@ -125,8 +125,8 @@ ENV OLD_INSTALL_DIR=/usr/lib/postgresql/${OLD_PG_MAJOR}
 # ══════════════════════════════════════════════════════════════════════════════
 FROM base AS source-build
 
-ARG PG_MAJOR=17
-ARG PG_REF=REL_17_STABLE
+ARG PG_MAJOR=18
+ARG PG_REF=REL_18_STABLE
 ARG PG_REPO=https://github.com/postgres/postgres.git
 ARG PG_TDE_REF=main
 ARG PG_TDE_REPO=https://github.com/Percona-Lab/pg_tde.git
@@ -181,7 +181,7 @@ ENV OLD_INSTALL_DIR=""
 # ══════════════════════════════════════════════════════════════════════════════
 FROM package-install AS package-env
 
-ARG PG_MAJOR=17
+ARG PG_MAJOR=18
 
 ENV PATH="/opt/pgqa-venv/bin:/usr/lib/postgresql/${PG_MAJOR}/bin:${PATH}"
 
@@ -200,7 +200,7 @@ CMD ["pytest", "tests/", "-v", "--timeout=120", \
 # ══════════════════════════════════════════════════════════════════════════════
 FROM source-build AS source-env
 
-ARG PG_MAJOR=17
+ARG PG_MAJOR=18
 
 ENV PATH="/opt/pgqa-venv/bin:/opt/postgresql/${PG_MAJOR}/bin:${PATH}"
 

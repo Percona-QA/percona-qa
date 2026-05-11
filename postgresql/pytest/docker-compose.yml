@@ -65,14 +65,14 @@ services:
       context: .
       target: package-env
       args:
-        PG_MAJOR: "${PG_MAJOR:-17}"
-        OLD_PG_MAJOR: "${OLD_PG_MAJOR:-16}"
+        PG_MAJOR: "${PG_MAJOR:-18}"
+        OLD_PG_MAJOR: "${OLD_PG_MAJOR:-17}"
         PGQA_UID: "${PGQA_UID:-1001}"
-    image: percona-pg-tde-qa:pkg-${PG_MAJOR:-17}
+    image: percona-pg-tde-qa:pkg-${PG_MAJOR:-18}
     environment:
       <<: *common-env
-      INSTALL_DIR: /usr/lib/postgresql/${PG_MAJOR:-17}
-      OLD_INSTALL_DIR: /usr/lib/postgresql/${OLD_PG_MAJOR:-16}
+      INSTALL_DIR: /usr/lib/postgresql/${PG_MAJOR:-18}
+      OLD_INSTALL_DIR: /usr/lib/postgresql/${OLD_PG_MAJOR:-17}
     volumes: *common-volumes
     tmpfs:
       - /tmp:exec,mode=1777
@@ -90,17 +90,17 @@ services:
       context: .
       target: source-env
       args:
-        PG_MAJOR: "${PG_MAJOR:-17}"
-        PG_REF: "${PG_REF:-REL_17_STABLE}"
+        PG_MAJOR: "${PG_MAJOR:-18}"
+        PG_REF: "${PG_REF:-REL_18_STABLE}"
         PG_REPO: "${PG_REPO:-https://github.com/postgres/postgres.git}"
         PG_TDE_REF: "${PG_TDE_REF:-main}"
         PG_TDE_REPO: "${PG_TDE_REPO:-https://github.com/Percona-Lab/pg_tde.git}"
         DEBUG_BUILD: "${DEBUG_BUILD:-true}"
         PGQA_UID: "${PGQA_UID:-1001}"
-    image: percona-pg-tde-qa:src-${PG_MAJOR:-17}-${PG_TDE_REF:-main}
+    image: percona-pg-tde-qa:src-${PG_MAJOR:-18}-${PG_TDE_REF:-main}
     environment:
       <<: *common-env
-      INSTALL_DIR: /opt/postgresql/${PG_MAJOR:-17}
+      INSTALL_DIR: /opt/postgresql/${PG_MAJOR:-18}
       OLD_INSTALL_DIR: ""
     volumes: *common-volumes
     tmpfs:

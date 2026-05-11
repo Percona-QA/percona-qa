@@ -230,13 +230,12 @@ class BackupManager:
 
     # ── stanza / backup operations ────────────────────────────────────────
 
-    # Only duplicate [stanza] pg1-* on the CLI for commands that still accept it
-    # in pgBackRest 2.58+. ``info``/``check``/``expire`` reject --pg1-path with
-    # [031]. ``restore``/``archive-push`` pass their own ``--pg1-path=...`` (WAL
-    # segment or target data dir) — never infer from other argv tokens (paths
-    # can equal subcommand names in edge cases). ``archive-get`` also requires an
-    # explicit ``--pg1-path`` to the restored PGDATA in 2.58+.
-    _PG1_CLI_DUP_COMMANDS = frozenset({"stanza-create", "backup"})
+    # Duplicate stanza pg1-* on the CLI for commands that require it in pgBackRest
+    # 2.58+ ([037] without ``--pg1-path``). Older docs mentioned [031] for some
+    # commands; current releases need pg1 here for ``check``. Do not add ``info``
+    # blindly — verify against your pgBackRest version if extending this set.
+    # ``restore``/``archive-push``/``archive-get`` pass their own ``--pg1-path``.
+    _PG1_CLI_DUP_COMMANDS = frozenset({"stanza-create", "backup", "check"})
 
     @staticmethod
     def _pgbackrest_subcommand(args_str: List[str]) -> str:

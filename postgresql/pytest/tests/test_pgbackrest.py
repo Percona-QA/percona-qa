@@ -664,7 +664,11 @@ class TestPgBackRestMatrix:
 
         restore_dir = tmp_path / "restore_force"
         restore_dir.mkdir()
-        # Leave a stray file behind so pgBackRest sees a non-empty directory.
+        # pgBackRest 2.58 disables --force/--delta unless PG_VERSION or
+        # backup.manifest exists in the destination (it treats the dir as unknown
+        # otherwise). Seed PG_VERSION so --force stays enabled; keep a stray file
+        # so the directory is still non-empty and needs force.
+        (restore_dir / "PG_VERSION").write_text(f"{tde_primary.major_version}\n")
         (restore_dir / "stray_file.txt").write_text("would block restore")
 
         bm.restore(
