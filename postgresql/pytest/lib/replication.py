@@ -1,5 +1,6 @@
 """Streaming and logical replication helpers."""
 import logging
+import os
 import shutil
 import time
 from typing import Optional
@@ -53,6 +54,9 @@ class ReplicationManager:
             )
         else:
             self.primary.basebackup(str(self.standby.data_dir), extra_args)
+        # PostgreSQL 18+ refuses to start if PGDATA is not 0700 or 0750.
+        # pg_basebackup / pg_tde_basebackup can preserve a looser mode from umask.
+        os.chmod(self.standby.data_dir, 0o700)
         self._write_standby_signal()
         self._write_primary_conninfo()
         log.info("Standby created at %s", self.standby.data_dir)

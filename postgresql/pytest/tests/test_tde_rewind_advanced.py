@@ -1418,6 +1418,11 @@ class TestTdeRewindWalEncryption:
     determine the divergence point.  These tests verify that the rewind tool
     can correctly read encrypted WAL using the key material present in the
     target's pg_tde directory.
+
+    When rewind uses ``restore_command`` (``-c``), ``pg_tde_restore_encrypt``
+    must resolve keys from the **target** data directory (where WAL segments
+    land), not only the process working directory — fixed in pg_tde upstream
+    (May 2026: restore_encrypt checks pg_tde in the destination dir for pg_rewind).
     """
 
     def test_rewind_wal_encryption_enabled(
