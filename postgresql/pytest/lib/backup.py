@@ -25,6 +25,52 @@ def _pg_settings_file_string_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
+# Keys copied from backups / ALTER SYSTEM that break a pytest-managed instance
+# (bare paths after ``=``, wrong port/socket, or noisy archiver during recovery).
+_AUTO_CONF_DROP_AFTER_TDE_RESTORE = frozenset(
+    {
+        "restore_command",  # replaced with a known-valid line below
+        "archive_mode",
+        "archive_command",
+        "port",
+        "unix_socket_directories",
+        "listen_addresses",
+        "log_directory",
+    }
+)
+
+
+def _rewrite_restore_command_in_auto_conf(data_dir: Path, restore_cmd: str) -> None:
+    """
+    Rewrite ``postgresql.auto.conf`` after a pg_tde + pgBackRest restore.
+
+    - Drop ``restore_command`` / ``archive_*`` / socket GUC lines that pgBackRest or
+      the backup may have written incorrectly (e.g. unquoted paths → syntax error
+      near ``/``).
+    - Append a single PostgreSQL-valid ``restore_command`` literal.
+    """
+    auto = data_dir / "postgresql.auto.conf"
+    quoted = _pg_settings_file_string_literal(restore_cmd)
+    if not auto.exists():
+        auto.write_text(f"restore_command = {quoted}\n")
+        return
+    out_lines: List[str] = []
+    for line in auto.read_text().splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#"):
+            out_lines.append(line)
+            continue
+        if "=" not in raw:
+            out_lines.append(line)
+            continue
+        key = raw.split("=", 1)[0].strip().lower()
+        if key in _AUTO_CONF_DROP_AFTER_TDE_RESTORE:
+            continue
+        out_lines.append(line)
+    out_lines.append(f"restore_command = {quoted}")
+    auto.write_text("\n".join(out_lines) + "\n")
+
+
 def pgbackrest_installed() -> bool:
     """Return True if the pgbackrest binary is on PATH and responds to ``version``."""
     exe = shutil.which("pgbackrest")
@@ -302,6 +348,7 @@ class BackupManager:
         if db_include:
             for db in db_include:
                 args.append(f"--db-include={db}")
+        restore_cmd: Optional[str] = None
         if pg_tde_wal_restore:
             if not self._pg_bin:
                 raise ValueError("write_config(..., pg_bin='...') is required for pg_tde_wal_restore")
@@ -316,6 +363,8 @@ class BackupManager:
             )
         args.append("restore")
         self._run(*args)
+        if restore_cmd is not None:
+            _rewrite_restore_command_in_auto_conf(dest, restore_cmd)
         log.info(
             "pgBackRest restore completed to %s (type=%s, target=%s)",
             target_path, restore_type, target,
