@@ -88,8 +88,11 @@ class ReplicationManager:
             replay_lsn = self.standby.fetchone("SELECT pg_last_wal_replay_lsn()")
             if replay_lsn:
                 try:
+                    # pg_wal_lsn_diff(lsn1, lsn2) returns (lsn2 - lsn1) bytes.
+                    # Caught up when replay >= target_snapshot ⇔ replay - target >= 0
+                    # ⇔ pg_wal_lsn_diff(target, replay) >= 0.
                     diff = self.primary.fetchone(
-                        f"SELECT pg_wal_lsn_diff('{replay_lsn}', '{target_lsn}')"
+                        f"SELECT pg_wal_lsn_diff('{target_lsn}', '{replay_lsn}')"
                     )
                     if diff is not None and int(diff) >= 0:
                         log.info("Standby caught up: replay=%s target=%s", replay_lsn, target_lsn)

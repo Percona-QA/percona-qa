@@ -326,14 +326,22 @@ def _flush_leader_wal_to_archive(leader: PgCluster) -> None:
     time.sleep(3)
 
 
-def _prepare_rewound_streaming_standby(rewound: PgCluster, new_primary: PgCluster) -> None:
+def _prepare_rewound_streaming_standby(
+    rewound: PgCluster,
+    new_primary: PgCluster,
+    *,
+    streaming_only: bool = True,
+) -> None:
     """
-    Attach ``rewound`` as a streaming standby of ``new_primary`` without archive restore.
+    Attach ``rewound`` as a streaming standby of ``new_primary``.
 
-    Settings in ``postgresql.conf`` that appear *before* ``include_if_exists`` can still
-    leave a non-empty ``restore_command`` active if overrides are only in
-    ``postgresql.auto.conf``.  Append ``restore_command = ''`` at the **end** of
-    ``postgresql.conf`` so it wins over included files.
+    When ``streaming_only`` is True (default), force ``restore_command = ''`` at the
+    end of ``postgresql.conf`` so it wins over earlier settings — WAL comes only from
+    ``primary_conninfo`` streaming.
+
+    When False, keep the node's existing ``restore_command`` (e.g. encrypted WAL
+    archive). Streaming still applies new WAL; archive can satisfy timeline gaps or
+    replace bad local segments after pg_rewind ``-c`` kept tails.
 
     Also collapse duplicate ``primary_conninfo`` lines (repeated reconnects / rewind).
     """
@@ -348,15 +356,18 @@ def _prepare_rewound_streaming_standby(rewound: PgCluster, new_primary: PgCluste
             raw = line.strip()
             if raw and not raw.startswith("#") and "=" in raw:
                 key = raw.split("=", 1)[0].strip().lower()
-                if key in ("primary_conninfo", "restore_command"):
+                if key == "primary_conninfo":
+                    continue
+                if streaming_only and key == "restore_command":
                     continue
             lines_out.append(line)
     lines_out.append(conn_line)
-    lines_out.append("restore_command = ''")
+    if streaming_only:
+        lines_out.append("restore_command = ''")
     auto.write_text("\n".join(lines_out) + "\n")
 
     conf = rewound.data_dir / "postgresql.conf"
-    if conf.exists():
+    if conf.exists() and streaming_only:
         text = conf.read_text()
         marker = (
             "\n# percona-qa: rewound standby — WAL via streaming only\n"
@@ -1709,8 +1720,10 @@ class TestTdeRewindWalEncryption:
             assert int(primary.fetchone("SELECT COUNT(*) FROM wal_overlap_t")) >= 3000
 
             # Re-attach the rewound node as a standby and verify it streams new WAL.
+            # Keep archive restore_command: pg_rewind -c can leave tail segments that
+            # must agree with encrypted WAL keys; archive + streaming matches HA setups.
             primary.stop(check=False)
-            _prepare_rewound_streaming_standby(primary, standby)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
             standby.start()
             standby.wait_ready(timeout=60)
             primary.start()
