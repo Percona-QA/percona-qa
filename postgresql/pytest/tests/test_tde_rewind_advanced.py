@@ -3475,9 +3475,9 @@ class TestTdeRewindExtremeCornerCases:
     ):
         """
         Stress tests the pg_tde WAL parser. Injects massive amounts of aborted
-        subtransaction WAL records (SAVEPOINT / ROLLBACK TO SAVEPOINT) on
-        tde_heap tables during the divergence phase. Ensures pg_rewind calculates
-        the exact divergence LSN correctly despite the WAL noise.
+        subtransaction WAL records on tde_heap tables during the divergence phase.
+        Ensures pg_rewind calculates the exact divergence LSN correctly despite
+        the WAL noise.
         """
         primary, standby, _, _ = _ha_pair(
             install_dir, tmp_path, io_method, wal_encrypt=True
@@ -3496,17 +3496,20 @@ class TestTdeRewindExtremeCornerCases:
                     break
                 time.sleep(1)
 
-            # Create massive WAL noise using subtransactions on the target
+            # FIX: In PL/pgSQL, subtransactions are created using BEGIN/EXCEPTION
+            # blocks, not explicit SAVEPOINT commands. We force an exception to
+            # roll back the block, generating the aborted subtransaction WAL.
             primary.execute(
-                "BEGIN; "
                 "DO $$ BEGIN "
                 "  FOR i IN 1..500 LOOP "
-                "    SAVEPOINT s1; "
-                "    INSERT INTO subxact_t VALUES (i + 1000); "
-                "    ROLLBACK TO SAVEPOINT s1; "
+                "    BEGIN "
+                "      INSERT INTO subxact_t VALUES (i + 1000); "
+                "      RAISE EXCEPTION 'abort_subxact'; "
+                "    EXCEPTION WHEN OTHERS THEN "
+                "      -- Ignore exception to cleanly rollback just this block "
+                "    END; "
                 "  END LOOP; "
-                "END $$; "
-                "COMMIT;"
+                "END $$;"
             )
 
             # Source writes clean data
