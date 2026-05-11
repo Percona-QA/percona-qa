@@ -43,18 +43,24 @@ _TDE_RESTORED_PARAMS = {
 # the same names in postgresql.conf, so pg_ctl's ``-o -p ... -k ...`` no longer
 # matches the running server (startup fails with "stopped waiting"). Delta
 # restore re-syncs auto.conf from newer backups, so this shows up after diff/incr.
+#
+# Also drop archive_* lines that may come from ALTER SYSTEM on the source: they
+# can point at the old cluster's paths or break recovery the same way as in
+# ``test_pitr.py`` (copied PGDATA + stale auto.conf).
 _AUTO_CONF_OVERRIDE_KEYS = frozenset(
     {
         "port",
         "unix_socket_directories",
         "listen_addresses",
         "log_directory",
+        "archive_mode",
+        "archive_command",
     }
 )
 
 
 def _strip_restored_auto_conf_socket_overrides(data_dir: Path) -> None:
-    """Drop listen/log path lines from postgresql.auto.conf so write_default_config wins."""
+    """Drop socket/log/archive lines from postgresql.auto.conf so write_default_config wins."""
     auto = data_dir / "postgresql.auto.conf"
     if not auto.exists():
         return

@@ -156,7 +156,30 @@ class PgCluster:
             "-o", f"-p {self.port} -k {self.socket_dir}",
             "-l", str(log_file),
         ]
-        self._run(cmd, env_override=self._pgctl_wait_env())
+        try:
+            self._run(
+                cmd,
+                env_override=self._pgctl_wait_env(),
+                capture=True,
+            )
+        except subprocess.CalledProcessError as e:
+            tail = self.read_log(last_n=50)
+            out = (e.stdout or "").strip()
+            err = (e.stderr or "").strip()
+            raise RuntimeError(
+                "pg_ctl start failed (exit %d)\n"
+                "  cmd     : %s\n"
+                "  stdout  : %s\n"
+                "  stderr  : %s\n"
+                "  log tail: %s\n"
+                % (
+                    e.returncode,
+                    " ".join(cmd),
+                    out or "(empty)",
+                    err or "(empty)",
+                    tail or "(server.log missing or empty)",
+                )
+            ) from e
         log.info("PostgreSQL started on port %d", self.port)
 
     def stop(self, mode: str = "fast", timeout: int = 60, check: bool = True) -> None:
@@ -177,7 +200,30 @@ class PgCluster:
             "-o", f"-p {self.port} -k {self.socket_dir}",
             "-l", str(log_file),
         ]
-        self._run(cmd, env_override=self._pgctl_wait_env())
+        try:
+            self._run(
+                cmd,
+                env_override=self._pgctl_wait_env(),
+                capture=True,
+            )
+        except subprocess.CalledProcessError as e:
+            tail = self.read_log(last_n=50)
+            out = (e.stdout or "").strip()
+            err = (e.stderr or "").strip()
+            raise RuntimeError(
+                "pg_ctl restart failed (exit %d)\n"
+                "  cmd     : %s\n"
+                "  stdout  : %s\n"
+                "  stderr  : %s\n"
+                "  log tail: %s\n"
+                % (
+                    e.returncode,
+                    " ".join(cmd),
+                    out or "(empty)",
+                    err or "(empty)",
+                    tail or "(server.log missing or empty)",
+                )
+            ) from e
         log.info("PostgreSQL restarted on port %d", self.port)
 
     def reload(self) -> None:
