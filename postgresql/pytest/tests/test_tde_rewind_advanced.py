@@ -3626,8 +3626,7 @@ class TestTdeRewindExtremeCornerCases:
             primary.execute("CREATE DATABASE doomed_db;")
             primary.execute("CREATE EXTENSION pg_tde;", dbname="doomed_db")
 
-            # FIX: Use raw SQL to set up the key provider in the new db
-            # since the Python TdeManager wrapper doesn't take a dbname kwarg.
+            # Use raw SQL to set up the key provider in the new db
             primary.execute(f"SELECT pg_tde_add_global_key_provider_file('doomed_prov', '{keyfile}');", dbname="doomed_db")
             primary.execute("SELECT pg_tde_create_key_using_global_key_provider('doomed_key', 'doomed_prov');", dbname="doomed_db")
             primary.execute("SELECT pg_tde_set_server_key_using_global_key_provider('doomed_key', 'doomed_prov');", dbname="doomed_db")
@@ -3641,14 +3640,18 @@ class TestTdeRewindExtremeCornerCases:
             primary.execute("CHECKPOINT;")
             ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
-            # Promote standby (Source) and DROP the database
+            # Promote standby (Source)
             _promote(standby)
             deadline = time.time() + 30
             while time.time() < deadline:
                 if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
                     break
                 time.sleep(1)
-            standby.execute("DROP DATABASE doomed_db; CHECKPOINT;")
+
+            # FIX: Split DROP DATABASE and CHECKPOINT into separate calls to
+            # prevent PostgreSQL from wrapping them in an implicit transaction block.
+            standby.execute("DROP DATABASE doomed_db;")
+            standby.execute("CHECKPOINT;")
 
             # Diverge Target (Primary): Continue writing to the doomed database
             primary.execute("INSERT INTO doomed_tbl VALUES (99);", dbname="doomed_db")
