@@ -3264,3 +3264,270 @@ class TestPromoteAndRewind:
         primary.wait_ready(timeout=30)
         result = primary.fetchone("SELECT pg_is_in_recovery()")
         assert result == "t"
+
+
+class TestTdeRewindExtremeCornerCases:
+    """
+    Highly advanced corner cases stressing pg_tde's interaction with pg_rewind,
+    focusing on transaction state, key catalog synchronization, and WAL parsing.
+    """
+
+    def test_rewind_with_2pc_crossing_divergence(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Two-Phase Commit (PREPARE TRANSACTION) crossing the divergence point.
+        A transaction is prepared on the primary, but committed on the promoted
+        standby. pg_rewind must correctly sync the commit status of the TDE heap
+        writes so the rewound target sees the committed data.
+        """
+        # Enable 2PC on both nodes
+        extra_params = {"max_prepared_transactions": "10"}
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, extra_primary_params=extra_params
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE tde_2pc (id INT, val TEXT) USING tde_heap; "
+                "INSERT INTO tde_2pc VALUES (1, 'initial'); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # PREPARE transaction on primary
+            primary.execute(
+                "BEGIN; "
+                "INSERT INTO tde_2pc VALUES (2, 'prepared_row'); "
+                "PREPARE TRANSACTION 'tde_trx_1';"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # Promote standby and COMMIT the prepared transaction there
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+
+            standby.execute("COMMIT PREPARED 'tde_trx_1';")
+            standby.execute("INSERT INTO tde_2pc VALUES (3, 'post_commit'); CHECKPOINT;")
+
+            # Primary diverged by NOT committing it (or doing other things)
+            primary.execute("INSERT INTO tde_2pc VALUES (99, 'orphan_row');")
+            primary.stop()
+            standby.stop()
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
+
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # The rewound primary must see the committed prepared transaction
+            # and MUST NOT see the orphan row.
+            count = primary.fetchone("SELECT COUNT(*) FROM tde_2pc")
+            assert int(count) == 3
+
+            prepared_exists = primary.fetchone("SELECT COUNT(*) FROM tde_2pc WHERE id = 2")
+            assert int(prepared_exists) == 1
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_target_orphaned_key_rotation(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        The OLD primary (target) rotates its principal key AFTER the standby
+        has diverged. pg_rewind must correctly overwrite the target's pg_tde
+        catalog and key state with the source's state. The orphaned key
+        rotation must be entirely discarded without breaking decryption.
+        """
+        keyfile = str(tmp_path / "orphan_rot.file")
+        primary, standby, tde_p, _ = _ha_pair(
+            install_dir, tmp_path, io_method, keyfile=keyfile
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE orphan_key_t (id INT) USING tde_heap; "
+                "INSERT INTO orphan_key_t SELECT generate_series(1,100); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # 1. Promote Standby (Source)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+            standby.execute("INSERT INTO orphan_key_t SELECT generate_series(101,200); CHECKPOINT;")
+
+            # 2. Diverge Target (Primary) by rotating key and writing data
+            tde_p.rotate_principal_key(new_key_name="orphaned_target_key")
+            primary.execute("INSERT INTO orphan_key_t SELECT generate_series(901,999);")
+
+            primary.stop()
+            standby.stop()
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
+
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # Assert the orphaned key was discarded and data is readable
+            active_key = primary.fetchone("SELECT * FROM pg_tde_principal_key_info();")
+            assert "orphaned_target_key" not in active_key
+
+            count = primary.fetchone("SELECT COUNT(*) FROM orphan_key_t")
+            assert int(count) == 200
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_new_key_provider_added_on_source(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        After divergence, the promoted standby adds a completely new File Key
+        Provider, creates a new key, sets it as principal, and encrypts new data.
+        Rewind must sync the pg_tde catalog extensions so the target can
+        immediately decrypt the new data.
+        """
+        keyfile_1 = str(tmp_path / "provider_1.file")
+        keyfile_2 = str(tmp_path / "provider_2.file")
+
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, keyfile=keyfile_1
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE prov_test_t (id INT) USING tde_heap; "
+                "INSERT INTO prov_test_t VALUES (1); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # Promote standby
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+
+            # Source creates a brand new provider and key
+            tde_s = TdeManager(standby)
+            tde_s.add_global_key_provider_file(
+                provider_name="file_provider_2", keyfile=keyfile_2
+            )
+            standby.execute("SELECT pg_tde_create_key_using_global_key_provider('key_2', 'file_provider_2');")
+            standby.execute("SELECT pg_tde_set_principal_key('key_2', 'file_provider_2');")
+
+            standby.execute("INSERT INTO prov_test_t VALUES (2); CHECKPOINT;")
+
+            # Target diverges slightly on old key
+            primary.execute("INSERT INTO prov_test_t VALUES (99);")
+
+            primary.stop()
+            standby.stop()
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
+
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # Verify target can read the data encrypted by the new provider
+            count = primary.fetchone("SELECT COUNT(*) FROM prov_test_t")
+            assert int(count) == 2
+
+            # Verify the catalog reflects the new key
+            active_key = primary.fetchone("SELECT * FROM pg_tde_principal_key_info();")
+            assert "key_2" in active_key
+            assert "file_provider_2" in active_key
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_with_aborted_subtransactions_in_encrypted_wal(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Stress tests the pg_tde WAL parser. Injects massive amounts of aborted
+        subtransaction WAL records (SAVEPOINT / ROLLBACK TO SAVEPOINT) on
+        tde_heap tables during the divergence phase. Ensures pg_rewind calculates
+        the exact divergence LSN correctly despite the WAL noise.
+        """
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, wal_encrypt=True
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE subxact_t (id INT) USING tde_heap; "
+                "INSERT INTO subxact_t VALUES (1); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+
+            # Create massive WAL noise using subtransactions on the target
+            primary.execute(
+                "BEGIN; "
+                "DO $$ BEGIN "
+                "  FOR i IN 1..500 LOOP "
+                "    SAVEPOINT s1; "
+                "    INSERT INTO subxact_t VALUES (i + 1000); "
+                "    ROLLBACK TO SAVEPOINT s1; "
+                "  END LOOP; "
+                "END $$; "
+                "COMMIT;"
+            )
+
+            # Source writes clean data
+            standby.execute("INSERT INTO subxact_t VALUES (2); CHECKPOINT;")
+
+            primary.stop()
+            standby.stop()
+
+            result = _run_rewind_pgdata(install_dir, primary, standby, restore_wal=True)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
+
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # Aborted subtransactions should be gone, only valid rows remain
+            count = primary.fetchone("SELECT COUNT(*) FROM subxact_t")
+            assert int(count) == 2
+        finally:
+            _teardown(standby, primary)
