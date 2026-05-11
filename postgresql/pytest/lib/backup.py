@@ -175,7 +175,24 @@ class BackupManager:
             cmd.append(f"--pg1-socket-path={self._pg1_socket_path}")
         cmd.extend(args)
         log.debug("pgbackrest: %s", " ".join(cmd))
-        return subprocess.run(cmd, check=True, capture_output=True, text=True)
+        try:
+            return subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            # pgBackRest writes the actionable error to stderr; surface it so
+            # the test failure points at the real cause instead of just
+            # "non-zero exit status N".
+            raise RuntimeError(
+                "pgbackrest failed (exit %d):\n"
+                "  cmd:    %s\n"
+                "  stdout: %s\n"
+                "  stderr: %s"
+                % (
+                    e.returncode,
+                    " ".join(cmd),
+                    (e.stdout or "").strip(),
+                    (e.stderr or "").strip(),
+                )
+            ) from e
 
     def stanza_create(self) -> None:
         self._run("stanza-create")
