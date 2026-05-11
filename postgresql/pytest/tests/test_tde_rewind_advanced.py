@@ -2359,16 +2359,14 @@ class TestTdeRewindDataStructures:
     def test_rewind_with_tablespace_on_tde_heap(
         self, install_dir: Path, tmp_path: Path, io_method: str
     ):
-        """
-        Create a tablespace on the original primary; after divergence the
-        standby moves data into that tablespace.  Rewind must handle the
-        symlink in pg_tblspc correctly.
-        """
-        ts_dir = tmp_path / "ts1"
-        ts_dir.mkdir()
-        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        # Pass the developer GUC so they don't share absolute paths
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method,
+            extra_primary_params={"allow_in_place_tablespaces": "on"}
+        )
         try:
-            primary.execute(f"CREATE TABLESPACE ts1 LOCATION '{ts_dir}'")
+            # Use an empty location string so it builds safely in pg_tblspc
+            primary.execute("CREATE TABLESPACE ts1 LOCATION ''")
             primary.execute(
                 "CREATE TABLE in_ts1 (id INT) USING tde_heap TABLESPACE ts1; "
                 "INSERT INTO in_ts1 SELECT generate_series(1,100); "
