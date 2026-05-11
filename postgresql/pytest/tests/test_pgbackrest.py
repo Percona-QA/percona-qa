@@ -110,20 +110,53 @@ def _start_restored_cluster(
     *,
     role: str = "primary",
     timeout: int = 120,
+    promote: str = "auto",
 ) -> PgCluster:
-    """Boot a restored TDE cluster from a pgBackRest restore directory."""
+    """
+    Boot a restored TDE cluster from a pgBackRest restore directory.
+
+    pgBackRest's default restore writes ``recovery.signal`` + a
+    ``restore_command``, so the cluster comes up in recovery mode. The
+    ``promote`` argument controls what we do about that:
+
+    - ``"auto"`` (default) — call ``pg_promote()`` to leave recovery. Use for
+      default restores (``recovery_target_action`` defaults to ``pause``).
+    - ``"wait"`` — pgBackRest already configured ``recovery_target_action=promote``
+      (i.e. caller passed ``target_action="promote"`` for a PITR restore); just
+      wait for postgres to auto-promote when the target is reached. **Do not**
+      call ``pg_promote()`` ourselves — it would short-circuit recovery before
+      the target LSN/time/xid is replayed.
+    - ``False`` — stay in recovery (used for ``--type=standby`` restores).
+    """
     port = allocate_port()
     cluster = PgCluster(
         restore_dir, port, install_dir,
         socket_dir=socket_dir, io_method=io_method,
     )
-    # pgBackRest preserves a postgresql.conf from the backup; overwrite so we
-    # land on a known port/socket and our TDE preload is in place.
     cluster.write_default_config(role, extra_params=_TDE_RESTORED_PARAMS)
     cluster.add_hba_entry("local all all trust")
     cluster.start()
     cluster.wait_ready(timeout=timeout)
-    return cluster
+
+    if role != "primary" or promote is False:
+        return cluster
+
+    if promote == "auto":
+        # Only request promotion if recovery is still in progress; calling
+        # pg_promote() on an already-promoted cluster raises an error.
+        if cluster.fetchone("SELECT pg_is_in_recovery()") == "t":
+            cluster.execute("SELECT pg_promote(wait := true, wait_seconds := 60)")
+    elif promote != "wait":
+        raise ValueError(f"unknown promote mode: {promote!r}")
+
+    # Wait until the cluster is fully out of recovery (auto-promote for "wait",
+    # explicit pg_promote for "auto").
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        if cluster.fetchone("SELECT pg_is_in_recovery()") == "f":
+            return cluster
+        time.sleep(0.3)
+    raise TimeoutError("cluster did not exit recovery within 60s")
 
 
 # ── original smoke tests (deepened) ───────────────────────────────────────────
@@ -367,7 +400,8 @@ class TestPgBackRestMatrix:
         assert (restore_dir / "standby.signal").exists()
 
         restored = _start_restored_cluster(
-            restore_dir, install_dir, tmp_path, io_method, role="replica",
+            restore_dir, install_dir, tmp_path, io_method,
+            role="replica", promote=False,
         )
         try:
             assert restored.fetchone("SELECT pg_is_in_recovery()") == "t"
@@ -415,8 +449,11 @@ class TestPgBackRestMatrix:
             target_action="promote",
             pg_tde_wal_restore=True,
         )
+        # promote="wait": let pgBackRest's recovery_target_action=promote
+        # auto-promote at the target. Calling pg_promote() ourselves would
+        # short-circuit recovery before the target time is reached.
         restored = _start_restored_cluster(
-            restore_dir, install_dir, tmp_path, io_method,
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
         )
         try:
             assert restored.fetchone(
@@ -458,7 +495,7 @@ class TestPgBackRestMatrix:
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
-            restore_dir, install_dir, tmp_path, io_method,
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
         )
         try:
             assert restored.fetchone(
@@ -503,7 +540,7 @@ class TestPgBackRestMatrix:
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
-            restore_dir, install_dir, tmp_path, io_method,
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
         )
         try:
             assert restored.fetchone(
