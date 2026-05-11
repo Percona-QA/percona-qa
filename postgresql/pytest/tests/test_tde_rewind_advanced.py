@@ -189,7 +189,10 @@ def _ha_pair(
     params = {
         "shared_preload_libraries": "'pg_tde'",
         "wal_level": "replica",
-        "archive_mode": "on",
+        # ``always`` also archives WAL restored during recovery (standby paths).
+        # Encrypted WAL + timeline switches rely on ``restore_command`` finding
+        # matching segments and *.history in the archive; tighter archiving reduces races.
+        "archive_mode": "always" if wal_encrypt else "on",
         "archive_command": arch_cmd,
         # Required for pg_tde_rewind -c when this node later becomes target.
         "restore_command": restore_cmd,
@@ -197,6 +200,8 @@ def _ha_pair(
         "max_wal_senders": "5",
         "hot_standby": "on",
     }
+    if wal_encrypt:
+        params["archive_timeout"] = "'10s'"
     if wal_compress:
         params["wal_compression"] = f"'{wal_compress}'"
     if extra_primary_params:
@@ -232,9 +237,11 @@ def _ha_pair(
         standby_params = {
             "shared_preload_libraries": "'pg_tde'",
             "restore_command": restore_cmd,
-            "archive_mode": "on",
+            "archive_mode": "always" if wal_encrypt else "on",
             "archive_command": arch_cmd,
         }
+        if wal_encrypt:
+            standby_params["archive_timeout"] = "'10s'"
         standby.write_default_config("replica", extra_params=standby_params)
         standby.start()
         standby.wait_ready(timeout=60)
@@ -309,6 +316,14 @@ def _reconnect_standby(rewound: PgCluster, new_primary: PgCluster) -> None:
             f"port={new_primary.port} user={libpq_superuser()}'\n"
         )
     (rewound.data_dir / "standby.signal").touch()
+
+
+def _flush_leader_wal_to_archive(leader: PgCluster) -> None:
+    """Help archiver ship segments + timeline history before standbys replay."""
+    leader.execute("CHECKPOINT")
+    for _ in range(4):
+        leader.execute("SELECT pg_switch_wal()")
+    time.sleep(3)
 
 
 # ── pg_rewind ─────────────────────────────────────────────────────────────────
@@ -1638,6 +1653,7 @@ class TestTdeRewindWalEncryption:
                 )
                 standby.execute("SELECT pg_switch_wal(); CHECKPOINT;")
 
+            _flush_leader_wal_to_archive(standby)
             standby.stop()
             primary.stop()
 
@@ -1659,14 +1675,16 @@ class TestTdeRewindWalEncryption:
             standby.wait_ready(timeout=60)
             primary.start()
             primary.wait_ready(timeout=60)
-            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+            _flush_leader_wal_to_archive(standby)
+            ReplicationManager(standby, primary).assert_catchup(timeout=120)
 
             standby.execute(
                 "INSERT INTO wal_overlap_t "
                 "SELECT g, repeat(md5(g::text), 6) FROM generate_series(50001,50300) g; "
                 "SELECT pg_switch_wal(); CHECKPOINT;"
             )
-            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+            _flush_leader_wal_to_archive(standby)
+            ReplicationManager(standby, primary).assert_catchup(timeout=120)
 
             mirrored = primary.fetchone(
                 "SELECT COUNT(*) FROM wal_overlap_t WHERE id BETWEEN 50001 AND 50300"
@@ -1870,6 +1888,8 @@ class TestTdeRewindFullHaCycle:
             nodeB.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "restore_command": rest3,
+                # PG refuses standby startup if max_wal_senders < primary's value.
+                "max_wal_senders": "10",
             })
             nodeB.start()
             nodeB.wait_ready(timeout=60)
@@ -1881,6 +1901,7 @@ class TestTdeRewindFullHaCycle:
             nodeC.write_default_config("replica", extra_params={
                 "shared_preload_libraries": "'pg_tde'",
                 "restore_command": rest3,
+                "max_wal_senders": "10",
             })
             nodeC.start()
             nodeC.wait_ready(timeout=60)
