@@ -3390,7 +3390,8 @@ class TestTdeRewindExtremeCornerCases:
             ReplicationManager(standby, primary).assert_catchup(timeout=60)
 
             # Assert the orphaned key was discarded and data is readable
-            active_key = primary.fetchone("SELECT * FROM pg_tde_principal_key_info();")
+            active_key = TdeManager(primary).principal_key_info_snapshot()
+            assert active_key, "expected pg_tde key info output from cluster"
             assert "orphaned_target_key" not in active_key
 
             count = primary.fetchone("SELECT COUNT(*) FROM orphan_key_t")
@@ -3462,7 +3463,8 @@ class TestTdeRewindExtremeCornerCases:
             assert int(count) == 2
 
             # Verify the catalog reflects the new key
-            active_key = primary.fetchone("SELECT * FROM pg_tde_principal_key_info();")
+            active_key = TdeManager(primary).principal_key_info_snapshot()
+            assert active_key, "expected pg_tde key info output from cluster"
             assert "key_2" in active_key
             assert "file_provider_2" in active_key
         finally:

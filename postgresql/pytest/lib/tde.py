@@ -305,6 +305,31 @@ class TdeManager:
                     return row
         return None
 
+    def principal_key_info_snapshot(self, dbname: str = "postgres") -> str:
+        """
+        Raw ``SELECT *`` output from the first supported pg_tde key-info SRF.
+
+        pg_tde renamed these helpers across releases (``pg_tde_key_info`` vs
+        ``pg_tde_principal_key_info``, etc.); tests should not hard-code one name.
+        """
+        for fn in (
+            "pg_tde_key_info",
+            "pg_tde_default_key_info",
+            "pg_tde_server_key_info",
+            "pg_tde_principal_key_info",
+            "pg_tde_get_key_info",
+            "pg_tde_get_principal_key_info",
+        ):
+            if not self._has_func(fn):
+                continue
+            try:
+                return self.cluster.execute(
+                    f"SELECT * FROM {fn}()", dbname
+                ).strip()
+            except RuntimeError:
+                continue
+        return ""
+
     # ── basebackup with TDE ───────────────────────────────────────────────
 
     def tde_basebackup(self, target_dir: str, extra_args=None) -> None:
