@@ -3496,9 +3496,9 @@ class TestTdeRewindExtremeCornerCases:
                     break
                 time.sleep(1)
 
-            # FIX: In PL/pgSQL, subtransactions are created using BEGIN/EXCEPTION
-            # blocks, not explicit SAVEPOINT commands. We force an exception to
-            # roll back the block, generating the aborted subtransaction WAL.
+            # FIX: Use NULL; in the EXCEPTION block instead of a SQL comment.
+            # Python concatenates these strings into a single line, so a '--'
+            # comment comments out the rest of the command (including END $$;).
             primary.execute(
                 "DO $$ BEGIN "
                 "  FOR i IN 1..500 LOOP "
@@ -3506,7 +3506,7 @@ class TestTdeRewindExtremeCornerCases:
                 "      INSERT INTO subxact_t VALUES (i + 1000); "
                 "      RAISE EXCEPTION 'abort_subxact'; "
                 "    EXCEPTION WHEN OTHERS THEN "
-                "      -- Ignore exception to cleanly rollback just this block "
+                "      NULL; "
                 "    END; "
                 "  END LOOP; "
                 "END $$;"
