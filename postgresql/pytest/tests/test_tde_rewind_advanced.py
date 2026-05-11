@@ -203,6 +203,9 @@ def _ha_pair(
     }
     if wal_encrypt:
         params["archive_timeout"] = "'10s'"
+        # Match PG-2358 overlap repro: retain WAL on primaries so streaming catch-up after
+        # promote / rewind does not lose segments when pg_wal overlaps archived timelines.
+        params["wal_keep_size"] = "'512MB'"
     if wal_compress:
         params["wal_compression"] = f"'{wal_compress}'"
     if extra_primary_params:
