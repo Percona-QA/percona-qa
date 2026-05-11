@@ -319,14 +319,19 @@ class TdeManager:
         ld_var = "LD_LIBRARY_PATH"
         existing = env.get(ld_var, "")
         env[ld_var] = f"{lib_dir}:{existing}" if existing else lib_dir
-        tgt = Path(target_dir)
-        src_pg_tde = self.cluster.data_dir / "pg_tde"
-        if src_pg_tde.is_dir():
-            tgt.mkdir(parents=True, exist_ok=True)
-            dst_pg_tde = tgt / "pg_tde"
-            if dst_pg_tde.exists():
-                shutil.rmtree(dst_pg_tde)
-            shutil.copytree(src_pg_tde, dst_pg_tde)
+        bb_args = list(extra_args or [])
+        # Pre-seed pg_tde only for encrypted WAL streaming (-E): pg_tde_basebackup
+        # needs keys in the destination before the stream; for normal backups it
+        # creates pg_tde itself and fails with "File exists" if we copy first.
+        if "-E" in bb_args or "--wal-encrypted" in bb_args:
+            tgt = Path(target_dir)
+            src_pg_tde = self.cluster.data_dir / "pg_tde"
+            if src_pg_tde.is_dir():
+                tgt.mkdir(parents=True, exist_ok=True)
+                dst_pg_tde = tgt / "pg_tde"
+                if dst_pg_tde.exists():
+                    shutil.rmtree(dst_pg_tde)
+                shutil.copytree(src_pg_tde, dst_pg_tde)
         cmd = [
             str(bin_path),
             "-h", str(self.cluster.socket_dir),
@@ -335,8 +340,7 @@ class TdeManager:
             "-D", target_dir,
             "-R", "--checkpoint=fast",
         ]
-        if extra_args:
-            cmd.extend(extra_args)
+        cmd.extend(bb_args)
         subprocess.run(cmd, check=True, env=env)
         log.info("pg_tde_basebackup completed to %s", target_dir)
 

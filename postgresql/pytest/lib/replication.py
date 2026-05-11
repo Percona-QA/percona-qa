@@ -46,7 +46,7 @@ class ReplicationManager:
         if use_tde_basebackup:
             from .tde import TdeManager
             # pg_tde_basebackup -E only when primary has pg_tde.wal_encrypt on
-            # (callers pass extra_args); TdeManager.tde_basebackup seeds pg_tde/.
+            # (callers pass extra_args); TdeManager seeds pg_tde/ only for -E.
             bb_args = list(extra_args or [])
             TdeManager(self.primary).tde_basebackup(
                 str(self.standby.data_dir), bb_args
