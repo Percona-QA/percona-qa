@@ -3610,122 +3610,125 @@ class TestTdeRewindExtremeCornerCases:
                 _teardown(standby, primary)
 
     def test_rewind_dropped_encrypted_database(
-            self, install_dir: Path, tmp_path: Path, io_method: str
-        ):
-            """
-            An entire database containing pg_tde and encrypted tables is dropped on 
-            the promoted source, while the target continues to write to it. 
-            pg_rewind must completely wipe the database directory and its TDE state.
-            """
-            keyfile = str(tmp_path / "drop_db.file")
-            primary, standby, _, _ = _ha_pair(
-                install_dir, tmp_path, io_method, keyfile=keyfile
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        An entire database containing pg_tde and encrypted tables is dropped on
+        the promoted source, while the target continues to write to it.
+        pg_rewind must completely wipe the database directory and its TDE state.
+        """
+        keyfile = str(tmp_path / "drop_db.file")
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, keyfile=keyfile
+        )
+        try:
+            # Create a separate database and initialize pg_tde in it
+            primary.execute("CREATE DATABASE doomed_db;")
+            primary.execute("CREATE EXTENSION pg_tde;", dbname="doomed_db")
+
+            # FIX: Use raw SQL to set up the key provider in the new db
+            # since the Python TdeManager wrapper doesn't take a dbname kwarg.
+            primary.execute(f"SELECT pg_tde_add_global_key_provider_file('doomed_prov', '{keyfile}');", dbname="doomed_db")
+            primary.execute("SELECT pg_tde_create_key_using_global_key_provider('doomed_key', 'doomed_prov');", dbname="doomed_db")
+            primary.execute("SELECT pg_tde_set_server_key_using_global_key_provider('doomed_key', 'doomed_prov');", dbname="doomed_db")
+            primary.execute("SELECT pg_tde_set_key_using_global_key_provider('doomed_key', 'doomed_prov');", dbname="doomed_db")
+
+            primary.execute(
+                "CREATE TABLE doomed_tbl (id INT) USING tde_heap; "
+                "INSERT INTO doomed_tbl VALUES (1), (2), (3);",
+                dbname="doomed_db"
             )
-            try:
-                # Create a separate database and initialize pg_tde in it
-                primary.execute("CREATE DATABASE doomed_db;")
-                primary.execute("CREATE EXTENSION pg_tde;", dbname="doomed_db")
-                tde_db = TdeManager(primary)
-                tde_db._func_args = {}
-                tde_db.cluster = primary
-                tde_db.add_global_key_provider_file(keyfile=keyfile, dbname="doomed_db")
-                tde_db.set_global_principal_key(key_name="doomed_key", dbname="doomed_db")
-                
-                primary.execute(
-                    "CREATE TABLE doomed_tbl (id INT) USING tde_heap; "
-                    "INSERT INTO doomed_tbl VALUES (1), (2), (3);",
-                    dbname="doomed_db"
-                )
-                primary.execute("CHECKPOINT;")
-                ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            primary.execute("CHECKPOINT;")
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
-                # Promote standby (Source) and DROP the database
-                _promote(standby)
-                deadline = time.time() + 30
-                while time.time() < deadline:
-                    if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
-                        break
-                    time.sleep(1)
-                standby.execute("DROP DATABASE doomed_db; CHECKPOINT;")
+            # Promote standby (Source) and DROP the database
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+            standby.execute("DROP DATABASE doomed_db; CHECKPOINT;")
 
-                # Diverge Target (Primary): Continue writing to the doomed database
-                primary.execute("INSERT INTO doomed_tbl VALUES (99);", dbname="doomed_db")
-                
-                primary.stop()
-                standby.stop()
+            # Diverge Target (Primary): Continue writing to the doomed database
+            primary.execute("INSERT INTO doomed_tbl VALUES (99);", dbname="doomed_db")
 
-                result = _run_rewind_pgdata(install_dir, primary, standby)
-                assert result.returncode == 0, result.stderr
+            primary.stop()
+            standby.stop()
 
-                _repair_rewind_target_identity(primary)
-                _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
 
-                standby.start()
-                standby.wait_ready(timeout=60)
-                primary.start()
-                primary.wait_ready(timeout=60)
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
 
-                ReplicationManager(standby, primary).assert_catchup(timeout=60)
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
 
-                # The database must no longer exist on the rewound target
-                db_exists = primary.fetchone(
-                    "SELECT datname FROM pg_database WHERE datname='doomed_db';"
-                )
-                assert db_exists in (None, ""), "Dropped database survived rewind!"
-            finally:
-                _teardown(standby, primary)
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # The database must no longer exist on the rewound target
+            db_exists = primary.fetchone(
+                "SELECT datname FROM pg_database WHERE datname='doomed_db';"
+            )
+            assert db_exists in (None, ""), "Dropped database survived rewind!"
+        finally:
+            _teardown(standby, primary)
 
     def test_rewind_vacuum_full_on_tde_catalogs(
-            self, install_dir: Path, tmp_path: Path, io_method: str
-        ):
-            """
-            VACUUM FULL changes the relfilenode of a table. If the target runs 
-            VACUUM FULL on pg_tde's internal catalog tables (pg_tde_principal_key, etc.),
-            pg_rewind must correctly map the block changes back to the source's 
-            original catalog relfilenodes without destroying the extension.
-            """
-            keyfile = str(tmp_path / "cat_vac.file")
-            primary, standby, _, _ = _ha_pair(
-                install_dir, tmp_path, io_method, keyfile=keyfile
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        VACUUM FULL changes the relfilenode of a table. If the target runs
+        VACUUM FULL on pg_tde's internal catalog tables, pg_rewind must
+        correctly map the block changes back to the source's original catalog
+        relfilenodes without destroying the extension.
+        """
+        keyfile = str(tmp_path / "cat_vac.file")
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, keyfile=keyfile
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE cat_vac_t (id INT) USING tde_heap; "
+                "INSERT INTO cat_vac_t SELECT generate_series(1,100); CHECKPOINT;"
             )
-            try:
-                primary.execute(
-                    "CREATE TABLE cat_vac_t (id INT) USING tde_heap; "
-                    "INSERT INTO cat_vac_t SELECT generate_series(1,100); CHECKPOINT;"
-                )
-                ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
 
-                _promote(standby)
-                deadline = time.time() + 30
-                while time.time() < deadline:
-                    if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
-                        break
-                    time.sleep(1)
-                standby.execute("INSERT INTO cat_vac_t SELECT generate_series(101,200); CHECKPOINT;")
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+            standby.execute("INSERT INTO cat_vac_t SELECT generate_series(101,200); CHECKPOINT;")
 
-                # Diverge Target: Rewrite the pg_tde catalog tables
-                primary.execute("VACUUM FULL pg_tde_principal_key;")
-                primary.execute("VACUUM FULL pg_tde_key_provider;")
-                primary.execute("INSERT INTO cat_vac_t VALUES (999);")
-                
-                primary.stop()
-                standby.stop()
+            # Diverge Target: Rewrite all relfilenodes in the database
+            # FIX: A database-wide VACUUM FULL hits all tables, including pg_tde
+            # catalog tables, without needing to guess their exact internal names.
+            primary.execute("VACUUM FULL;")
+            primary.execute("INSERT INTO cat_vac_t VALUES (999);")
 
-                result = _run_rewind_pgdata(install_dir, primary, standby)
-                assert result.returncode == 0, result.stderr
+            primary.stop()
+            standby.stop()
 
-                _repair_rewind_target_identity(primary)
-                _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
 
-                standby.start()
-                standby.wait_ready(timeout=60)
-                primary.start()
-                primary.wait_ready(timeout=60)
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
 
-                ReplicationManager(standby, primary).assert_catchup(timeout=60)
+            standby.start()
+            standby.wait_ready(timeout=60)
+            primary.start()
+            primary.wait_ready(timeout=60)
 
-                # Data must be readable, proving the TDE catalog was restored successfully
-                count = primary.fetchone("SELECT COUNT(*) FROM cat_vac_t")
-                assert int(count) == 200
-            finally:
-                _teardown(standby, primary)
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # Data must be readable, proving the TDE catalog was restored successfully
+            count = primary.fetchone("SELECT COUNT(*) FROM cat_vac_t")
+            assert int(count) == 200
+        finally:
+            _teardown(standby, primary)
