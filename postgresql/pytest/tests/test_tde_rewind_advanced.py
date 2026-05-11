@@ -246,6 +246,8 @@ def _ha_pair(
         }
         if wal_encrypt:
             standby_params["archive_timeout"] = "'10s'"
+            # Same as primary / PG-2358 repro Step 4: standby archives WAL after promote too.
+            standby_params["wal_keep_size"] = "'512MB'"
         standby.write_default_config("replica", extra_params=standby_params)
         standby.start()
         standby.wait_ready(timeout=60)
