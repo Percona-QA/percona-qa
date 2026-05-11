@@ -19,6 +19,7 @@ advanced scenarios that stress the interaction between pg_tde and rewind:
 """
 
 import random
+import re
 import shutil
 import subprocess
 import time
@@ -326,6 +327,59 @@ def _flush_leader_wal_to_archive(leader: PgCluster) -> None:
     time.sleep(3)
 
 
+_REWIND_TARGET_CONF_MARKER = (
+    "# percona-qa: rewind target — restore allocated port (pg_rewind copied source conf)"
+)
+
+
+def _repair_rewind_target_identity(rewound: PgCluster) -> None:
+    """
+    pg_rewind copies the source ``postgresql.conf`` onto the target; restore the
+    target's listen port and drop stale recovery settings before first startup.
+    """
+    dd = rewound.data_dir
+    for sig in ("standby.signal", "recovery.signal"):
+        p = dd / sig
+        if p.exists():
+            p.unlink()
+    strip_auto = re.compile(
+        r"^\s*(primary_conninfo|primary_slot_name|recovery_|restore_command)\s*=",
+        re.I,
+    )
+    auto = dd / "postgresql.auto.conf"
+    if auto.exists():
+        kept = [
+            ln for ln in auto.read_text().splitlines()
+            if not (ln.strip() and strip_auto.match(ln))
+        ]
+        auto.write_text("\n".join(kept) + ("\n" if kept else ""))
+    conf = dd / "postgresql.conf"
+    if conf.exists() and _REWIND_TARGET_CONF_MARKER not in conf.read_text():
+        conf.write_text(
+            conf.read_text().rstrip()
+            + f"\n\n{_REWIND_TARGET_CONF_MARKER}\n"
+            + "logging_collector = off\n"
+            + f"port = {rewound.port}\n"
+        )
+
+
+def _sync_archive_history_to_pg_wal(archive_dir: Path, pg_wal: Path) -> None:
+    """Copy ``*.history`` from the WAL archive into ``pg_wal`` for timeline switches."""
+    if not archive_dir.is_dir():
+        return
+    pg_wal.mkdir(parents=True, exist_ok=True)
+    for hist in archive_dir.glob("*.history"):
+        shutil.copy2(hist, pg_wal / hist.name)
+
+
+def _sanitize_promoted_leader_pgdata(leader: PgCluster) -> None:
+    """Ensure a promoted primary does not still have standby/recovery signals."""
+    for sig in ("standby.signal", "recovery.signal"):
+        p = leader.data_dir / sig
+        if p.exists():
+            p.unlink()
+
+
 def _prepare_rewound_streaming_standby(
     rewound: PgCluster,
     new_primary: PgCluster,
@@ -343,6 +397,9 @@ def _prepare_rewound_streaming_standby(
     archive). Streaming still applies new WAL; archive can satisfy timeline gaps or
     replace bad local segments after pg_rewind ``-c`` kept tails.
 
+    Sets ``recovery_target_timeline = 'latest'`` so the standby follows the promoted
+    leader's timeline after rewind.
+
     Also collapse duplicate ``primary_conninfo`` lines (repeated reconnects / rewind).
     """
     conn_line = (
@@ -358,10 +415,13 @@ def _prepare_rewound_streaming_standby(
                 key = raw.split("=", 1)[0].strip().lower()
                 if key == "primary_conninfo":
                     continue
+                if key == "primary_slot_name" or key.startswith("recovery"):
+                    continue
                 if streaming_only and key == "restore_command":
                     continue
             lines_out.append(line)
     lines_out.append(conn_line)
+    lines_out.append("recovery_target_timeline = 'latest'")
     if streaming_only:
         lines_out.append("restore_command = ''")
     auto.write_text("\n".join(lines_out) + "\n")
@@ -1663,6 +1723,11 @@ class TestTdeRewindWalEncryption:
 
         Rewind with ``-c``, bring the old primary back as a streaming standby, and
         verify it applies subsequent WAL from the leader.
+
+        After rewind the target must **not** be started standalone before attaching:
+        recovery would end on the old timeline and write a checkpoint past the fork,
+        then ``recovery_target_timeline`` / timeline history would fail to join the
+        promoted leader's branch.
         """
         archive_dir = tmp_path / "overlap_archive"
         keyfile = str(tmp_path / "overlap_keyfile.per")
@@ -1715,21 +1780,18 @@ class TestTdeRewindWalEncryption:
                 f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
             )
 
-            primary.start()
-            primary.wait_ready(timeout=60)
-            assert int(primary.fetchone("SELECT COUNT(*) FROM wal_overlap_t")) >= 3000
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=True)
+            _sync_archive_history_to_pg_wal(archive_dir, primary.data_dir / "pg_wal")
+            _sanitize_promoted_leader_pgdata(standby)
 
-            # Re-attach the rewound node as a standby and verify it streams new WAL.
-            # Keep archive restore_command: pg_rewind -c can leave tail segments that
-            # must agree with encrypted WAL keys; archive + streaming matches HA setups.
-            primary.stop(check=False)
-            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
             standby.start()
             standby.wait_ready(timeout=60)
             primary.start()
             primary.wait_ready(timeout=60)
             _flush_leader_wal_to_archive(standby)
             ReplicationManager(standby, primary).assert_catchup(timeout=120)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM wal_overlap_t")) >= 3000
 
             standby.execute(
                 "INSERT INTO wal_overlap_t "
