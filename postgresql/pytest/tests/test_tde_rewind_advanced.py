@@ -326,6 +326,30 @@ def _flush_leader_wal_to_archive(leader: PgCluster) -> None:
     time.sleep(3)
 
 
+def _disable_restore_command_for_streaming_recovery(cluster: PgCluster) -> None:
+    """
+    Drop archive fetch for this cluster; WAL must come from streaming (walreceiver).
+
+    After pg_rewind with overlapping encrypted WAL + kept target segments,
+    ``restore_command`` can pull archive copies that do not chain with local
+    ``pg_wal`` (``incorrect prev-link`` / missing ``*.history``). The upstream
+    primary still holds the canonical WAL — disabling restore forces replay to
+    use only replicated segments.
+    """
+    auto = cluster.data_dir / "postgresql.auto.conf"
+    lines_out: list[str] = []
+    if auto.exists():
+        for line in auto.read_text().splitlines():
+            raw = line.strip()
+            if raw and not raw.startswith("#") and "=" in raw:
+                key = raw.split("=", 1)[0].strip().lower()
+                if key == "restore_command":
+                    continue
+            lines_out.append(line)
+    lines_out.append("restore_command = ''")
+    auto.write_text("\n".join(lines_out) + "\n")
+
+
 # ── pg_rewind ─────────────────────────────────────────────────────────────────
 
 
@@ -1671,6 +1695,7 @@ class TestTdeRewindWalEncryption:
             # newly generated WAL from the source after key rotations.
             primary.stop(check=False)
             _reconnect_standby(primary, standby)
+            _disable_restore_command_for_streaming_recovery(primary)
             standby.start()
             standby.wait_ready(timeout=60)
             primary.start()
