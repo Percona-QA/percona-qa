@@ -2150,7 +2150,9 @@ class TestTdeRewindFullHaCycle:
                 assert result.returncode == 0, f"Round {rnd} rewind failed:\n{result.stderr}"
 
                 _repair_rewind_target_identity(primary)
-                _prepare_rewound_streaming_standby(primary, standby, streaming_only=True)
+                # FIX: Set streaming_only=False so we don't blank out restore_command.
+                # This ensures pg_rewind -c can still fetch from the archive in Round 2 and 3!
+                _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
                 _sanitize_promoted_leader_pgdata(standby)
 
                 # Leader must be up before the rewound node starts in recovery.
