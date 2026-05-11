@@ -2057,6 +2057,12 @@ class TestTdeRewindFullHaCycle:
         Three consecutive diverge → rewind cycles on the same cluster pair.
         Verifies that each round produces a clean, consistent rewound server
         and that accumulated WAL / key state does not corrupt future rounds.
+
+        After each rewind, the target must not be started as a standalone primary only for
+        verification: end-of-recovery would advance its timeline while the source stays on
+        the promoted branch, so the next rewind sees conflicting timeline history. Attach the
+        rewound datadir as a streaming standby of the source (leader up first), assert catch-up,
+        then stop — same idea as ``test_rewind_wal_key_overlap_when_target_segments_are_kept``.
         """
         primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
         try:
@@ -2093,24 +2099,30 @@ class TestTdeRewindFullHaCycle:
 
                 primary.stop(check=False)
 
-                # Without -c: avoid restore_command pulling archived segments that can disagree
-                # with divergent local pg_wal across repeated rewind cycles (round >= 2).
-                result = _run_rewind_pgdata(
-                    install_dir, primary, standby, restore_wal=False
-                )
+                result = _run_rewind_pgdata(install_dir, primary, standby)
                 assert result.returncode == 0, f"Round {rnd} rewind failed:\n{result.stderr}"
 
                 _repair_rewind_target_identity(primary)
+                _prepare_rewound_streaming_standby(primary, standby, streaming_only=True)
+                _sanitize_promoted_leader_pgdata(standby)
 
-                # Bring rewound target up and verify state is readable.
+                # Leader must be up before the rewound node starts in recovery.
+                standby.start()
+                standby.wait_ready(timeout=60)
+
                 primary.start()
-                primary.wait_ready(timeout=60)
+                primary.wait_ready(timeout=90)
+                ReplicationManager(standby, primary).assert_catchup(timeout=120)
                 assert int(primary.fetchone("SELECT COUNT(*) FROM round_t")) >= rnd
                 primary.stop()
 
-                # Prepare source for next round.
-                standby.start()
-                standby.wait_ready(timeout=60)
+                for sig in ("standby.signal", "recovery.signal"):
+                    (primary.data_dir / sig).unlink(missing_ok=True)
+
+                # Standby usually still running; bring it up only if verify stop dropped it.
+                if not standby.is_ready():
+                    standby.start()
+                    standby.wait_ready(timeout=60)
                 standby.execute("CHECKPOINT")
 
             # Final verification from source side after all rounds.
