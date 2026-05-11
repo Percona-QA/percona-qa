@@ -48,7 +48,8 @@ class BackupManager:
         self.stanza = stanza
         self.repo_path = Path(repo_path)
         # Keep config beside repo1-path (pytest tmp_path), not a shared /tmp dir, so parallel
-        # runs and lock files do not collide and paths stay owned by the test user (avoids [053]).
+        # runs and lock files do not collide. Set spool-path under the repo too (avoids [053]
+        # when pgBackRest would otherwise default to /var/spool/pgbackrest).
         self.conf_path = self.repo_path.parent / f"pgbackrest_{stanza}.conf"
         # Set by write_config(); duplicated on the CLI for backup/stanza-create (some versions
         # miss stanza options from ConfigParser). Do not pass pg1-port/socket on archive-push.
@@ -78,6 +79,10 @@ class BackupManager:
         log_path.mkdir(parents=True, exist_ok=True)
         lock_path = self.repo_path / "lock"
         lock_path.mkdir(parents=True, exist_ok=True)
+        # Default spool-path is /var/spool/pgbackrest — restore/archive still probe it
+        # and fail with [053] Permission denied for non-root pytest users.
+        spool_path = self.repo_path / "spool"
+        spool_path.mkdir(parents=True, exist_ok=True)
         self.conf_path.parent.mkdir(parents=True, exist_ok=True)
         cfg = configparser.ConfigParser(interpolation=None)
         cfg["global"] = {
@@ -86,6 +91,7 @@ class BackupManager:
             "log-level-console": "info",
             "log-path": str(log_path),
             "lock-path": str(lock_path),
+            "spool-path": str(spool_path),
         }
         cfg[f"stanza:{self.stanza}"] = {
             "pg1-path": pg_path,
