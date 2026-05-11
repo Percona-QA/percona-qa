@@ -67,6 +67,34 @@ def _run_rewind_pgdata(
     return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
 
+def _cleanup_ha_pair_root(root: Path, install_dir: Path) -> None:
+    """Stop postgres under ``root/{primary,standby}`` and remove the tree (failed ``_ha_pair``)."""
+    if not root.exists():
+        return
+    pg_ctl = install_dir / "bin" / "pg_ctl"
+    if pg_ctl.is_file():
+        for sub in ("primary", "standby"):
+            d = root / sub
+            if d.is_dir():
+                subprocess.run(
+                    [
+                        str(pg_ctl),
+                        "-D",
+                        str(d),
+                        "stop",
+                        "-m",
+                        "immediate",
+                        "-w",
+                        "-t",
+                        "30",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+    shutil.rmtree(root, ignore_errors=True)
+
+
 def _run_rewind_live(
     install_dir: Path,
     target: PgCluster,
@@ -248,6 +276,9 @@ def _ha_pair(
             standby_params["archive_timeout"] = "'10s'"
             # Same as primary / PG-2358 repro Step 4: standby archives WAL after promote too.
             standby_params["wal_keep_size"] = "'512MB'"
+        # Replay must use the same GUCs as primary when WAL applies DDL (e.g. in-place TS).
+        if extra_primary_params:
+            standby_params.update(extra_primary_params)
         standby.write_default_config("replica", extra_params=standby_params)
         standby.start()
         standby.wait_ready(timeout=60)
@@ -466,6 +497,7 @@ class TestPgRewind:
 
         primary.stop()
         primary.pg_rewind(str(primary.data_dir), standby.port)
+        _repair_rewind_target_identity(primary)
 
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
@@ -507,6 +539,7 @@ class TestPgRewind:
 
         primary.stop()
         primary.pg_rewind(str(primary.data_dir), standby.port)
+        _repair_rewind_target_identity(primary)
 
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
@@ -1644,17 +1677,25 @@ class TestTdeRewindWalEncryption:
         confuse pg_tde_rewind when locating the divergence point.
         Falls back to pglz if lz4 is unavailable.
         """
-        # Try lz4 first; fall back to pglz if the build doesn't support it
+        lz_root = tmp_path / "wal_compress_lz4_try"
+        pglz_root = tmp_path / "wal_compress_pglz_try"
         primary = standby = None
         try:
             primary, standby, _, _ = _ha_pair(
-                install_dir, tmp_path, io_method, wal_compress="lz4"
+                install_dir,
+                lz_root,
+                io_method,
+                wal_compress="lz4",
+                wal_encrypt=True,
             )
         except Exception:
-            if primary is not None and standby is not None:
-                _teardown(standby, primary)
+            _cleanup_ha_pair_root(lz_root, install_dir)
             primary, standby, _, _ = _ha_pair(
-                install_dir, tmp_path, io_method, wal_compress="pglz"
+                install_dir,
+                pglz_root,
+                io_method,
+                wal_compress="pglz",
+                wal_encrypt=True,
             )
         try:
             primary.execute(
@@ -1672,8 +1713,14 @@ class TestTdeRewindWalEncryption:
             result = _run_rewind_pgdata(install_dir, primary, standby)
             assert result.returncode == 0, result.stderr
 
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=True)
+            _sanitize_promoted_leader_pgdata(standby)
+            standby.start()
+            standby.wait_ready(timeout=60)
             primary.start()
-            primary.wait_ready(timeout=60)
+            primary.wait_ready(timeout=90)
+            ReplicationManager(standby, primary).assert_catchup(timeout=120)
             assert int(primary.fetchone("SELECT COUNT(*) FROM comp_t")) >= 500
         finally:
             _teardown(standby, primary)
@@ -2385,12 +2432,20 @@ class TestTdeRewindDataStructures:
             result = _run_rewind_pgdata(install_dir, primary, standby)
             assert result.returncode == 0, result.stderr
 
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=True)
+            _sanitize_promoted_leader_pgdata(standby)
+            standby.start()
+            standby.wait_ready(timeout=60)
             primary.start()
-            primary.wait_ready(timeout=60)
+            primary.wait_ready(timeout=90)
+            ReplicationManager(standby, primary).assert_catchup(timeout=120)
             assert int(primary.fetchone("SELECT COUNT(*) FROM in_ts1")) >= 100
+            primary.stop()
+            for sig in ("standby.signal", "recovery.signal"):
+                (primary.data_dir / sig).unlink(missing_ok=True)
         finally:
             _teardown(standby, primary)
-            shutil.rmtree(ts_dir, ignore_errors=True)
 
     def test_rewind_sequence_values_reset(
         self, install_dir: Path, tmp_path: Path, io_method: str
@@ -3029,7 +3084,8 @@ class TestTdeRewindMultiRound:
 
             result = _run_rewind_pgdata(install_dir, primary, standby)
             assert result.returncode == 0, result.stderr
-
+            # ADD THIS LINE: Repair the config so pg_ctl pings the correct port
+            _repair_rewind_target_identity(primary)
             primary.start()
             primary.wait_ready(timeout=60)
             primary.restart()  # verify no latent corruption
@@ -3158,6 +3214,7 @@ class TestPromoteAndRewind:
 
         # Rewind old primary to follow new primary (ex-standby)
         primary.pg_rewind(str(primary.data_dir), standby.port)
+        _repair_rewind_target_identity(primary)
 
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
@@ -3193,6 +3250,7 @@ class TestPromoteAndRewind:
 
         primary.stop()
         primary.pg_rewind(str(primary.data_dir), standby.port)
+        _repair_rewind_target_identity(primary)
         auto_conf = primary.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
             f.write(
