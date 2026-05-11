@@ -225,9 +225,15 @@ def _ha_pair(
             use_tde_basebackup=True,
             extra_args=(["-E"] if wal_encrypt else None),
         )
+        # Mirror archiving on the standby so WAL received (and later generated after
+        # promotion) lands in the same archive as the primary. Rewound / reattached
+        # nodes may fall back to restore_command for timeline gaps; missing files
+        # (e.g. timeline-N.history or segment 00000002...) otherwise stall replay.
         standby_params = {
             "shared_preload_libraries": "'pg_tde'",
             "restore_command": restore_cmd,
+            "archive_mode": "on",
+            "archive_command": arch_cmd,
         }
         standby.write_default_config("replica", extra_params=standby_params)
         standby.start()
