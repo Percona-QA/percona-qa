@@ -189,20 +189,64 @@ class BackupManager:
         self,
         target_path: str,
         *,
-        recovery_target_time: Optional[str] = None,
+        restore_type: str = "default",
+        target: Optional[str] = None,
+        target_action: str = "promote",
+        recovery_target_time: Optional[str] = None,  # kept for backward compat
         delta: bool = False,
+        db_include: Optional[List[str]] = None,
+        force: bool = False,
         pg_tde_wal_restore: bool = False,
     ) -> None:
+        """
+        Run ``pgbackrest restore``.
+
+        Args:
+            target_path: target data directory.
+            restore_type: pgBackRest ``--type`` value. One of
+                ``default`` (latest backup, replay all WAL),
+                ``standby`` (restore as standby with ``standby.signal``),
+                ``time`` / ``lsn`` / ``xid`` (PITR — ``target`` required),
+                ``immediate`` (recover to first consistent point).
+            target: value for ``--target`` (timestamp / LSN / XID).
+                Required when ``restore_type`` is time/lsn/xid.
+            target_action: ``--target-action`` for PITR (promote/pause/shutdown).
+            recovery_target_time: legacy alias for ``restore_type='time'`` + ``target=...``.
+            delta: pass ``--delta``; do not wipe ``target_path`` first.
+            db_include: list of database names; passes ``--db-include`` once per entry.
+            force: pass ``--force`` (allows restore into a non-empty directory).
+            pg_tde_wal_restore: wrap archive-get with ``pg_tde_restore_encrypt``.
+        """
+        # Legacy alias support.
+        if recovery_target_time and restore_type == "default":
+            restore_type = "time"
+            target = recovery_target_time
+
+        if restore_type in {"time", "lsn", "xid"} and not target:
+            raise ValueError(f"restore_type={restore_type!r} requires target=")
+        if target_action not in {"promote", "pause", "shutdown"}:
+            raise ValueError(f"invalid target_action: {target_action!r}")
+
         dest = Path(target_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        if dest.exists() and not delta:
+        # Wipe the destination unless the caller wants delta or force semantics.
+        if dest.exists() and not delta and not force:
             shutil.rmtree(dest)
-        args: List[str] = [f"--pg1-path={target_path}", "restore"]
+
+        args: List[str] = [f"--pg1-path={target_path}"]
+        if restore_type != "default":
+            args.append(f"--type={restore_type}")
+        if target is not None:
+            args.append(f"--target={target}")
+        if restore_type in {"time", "lsn", "xid", "name", "immediate"}:
+            args.append(f"--target-action={target_action}")
         if delta:
-            args.insert(0, "--delta")
-        if recovery_target_time:
-            args.insert(0, f"--recovery-target-time={recovery_target_time}")
-            args.insert(0, "--recovery-target-action=promote")
+            args.append("--delta")
+        if force:
+            args.append("--force")
+        if db_include:
+            for db in db_include:
+                args.append(f"--db-include={db}")
         if pg_tde_wal_restore:
             if not self._pg_bin:
                 raise ValueError("write_config(..., pg_bin='...') is required for pg_tde_wal_restore")
@@ -211,9 +255,13 @@ class BackupManager:
                 raise FileNotFoundError(f"pg_tde_restore_encrypt not found: {encrypt}")
             inner = self._inner_pgbackrest_archive_get()
             restore_cmd = f"{encrypt} %f %p \"{inner}\""
-            args.insert(0, "--recovery-option=restore_command=" + shlex.quote(restore_cmd))
+            args.append("--recovery-option=restore_command=" + shlex.quote(restore_cmd))
+        args.append("restore")
         self._run(*args)
-        log.info("pgBackRest restore completed to %s", target_path)
+        log.info(
+            "pgBackRest restore completed to %s (type=%s, target=%s)",
+            target_path, restore_type, target,
+        )
 
     def info(self) -> str:
         result = self._run("info")
@@ -224,6 +272,31 @@ class BackupManager:
 
     def check(self) -> None:
         self._run("check")
+
+    # ── timing helpers ────────────────────────────────────────────────────
+
+    def wait_for_wal_archive(self, cluster, timeout: int = 30) -> str:
+        """
+        Force a WAL switch and block until pgBackRest has archived it.
+
+        Polls ``pg_stat_archiver.last_archived_wal`` (no sleep-and-hope).
+        Returns the name of the WAL segment that was archived.
+        """
+        lsn = cluster.fetchone("SELECT pg_switch_wal()")
+        target_wal = cluster.fetchone(f"SELECT pg_walfile_name('{lsn}')")
+        cluster.execute("CHECKPOINT")
+        deadline = time.time() + timeout
+        last = None
+        while time.time() < deadline:
+            last = cluster.fetchone("SELECT last_archived_wal FROM pg_stat_archiver")
+            if last and last >= target_wal:
+                log.debug("WAL %s archived", target_wal)
+                return target_wal
+            time.sleep(0.3)
+        raise TimeoutError(
+            f"WAL segment {target_wal} was not archived within {timeout}s "
+            f"(last_archived_wal={last!r})"
+        )
 
 
 class PgBaseBackup:
