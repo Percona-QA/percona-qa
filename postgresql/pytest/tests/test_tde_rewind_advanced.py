@@ -345,7 +345,11 @@ class TestPgRewind:
 
     def test_rewind_after_large_dml(self, replica_pair, tmp_path: Path):
         primary, standby = replica_pair
-        primary.configure({"wal_log_hints": "on"})
+        # Lots of WAL + checkpoints recycle segments from pg_wal; pg_rewind must
+        # still read local WAL on the old primary back to the divergence point.
+        primary.configure(
+            {"wal_log_hints": "on", "wal_keep_size": "'512MB'"}
+        )
         primary.restart()
         primary.execute("CREATE TABLE rewind_large (id BIGSERIAL, data TEXT)")
         primary.execute(
