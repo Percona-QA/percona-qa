@@ -160,6 +160,104 @@ def replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, Non
 
 
 @pytest.fixture
+def logical_pub_sub_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, None]:
+    """
+    Two independent primary clusters for logical replication.
+
+    Unlike ``replica_pair``, the subscriber is not a physical standby — it must
+    accept writes for ``CREATE SUBSCRIPTION`` / apply workers.
+    """
+    publisher = pg_factory("logical_pub")
+    subscriber = pg_factory("logical_sub")
+
+    for node in (publisher, subscriber):
+        node.initdb()
+        node.write_default_config("primary")
+
+    publisher.configure(
+        {
+            "wal_level": "logical",
+            "max_wal_senders": "10",
+            "max_replication_slots": "10",
+        }
+    )
+    subscriber.configure(
+        {
+            "wal_level": "logical",
+            "max_replication_slots": "10",
+            "max_logical_replication_workers": "10",
+        }
+    )
+
+    for node in (publisher, subscriber):
+        node.add_hba_entry("local all all trust")
+        node.add_hba_entry("local replication all trust")
+        node.add_hba_entry("host  all all 127.0.0.1/32 trust")
+        node.add_hba_entry("host  replication all 127.0.0.1/32 trust")
+
+    publisher.start()
+    subscriber.start()
+    publisher.wait_ready()
+    subscriber.wait_ready()
+
+    yield publisher, subscriber
+
+
+@pytest.fixture
+def tde_logical_pub_sub_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, None]:
+    """
+    Two independent TDE-enabled primaries for logical replication.
+
+    Each node uses its own keyring path under its PGDATA so pg_tde metadata does
+    not collide across clusters.
+    """
+    publisher = pg_factory("logical_tde_pub")
+    subscriber = pg_factory("logical_tde_sub")
+
+    for node in (publisher, subscriber):
+        node.initdb(extra_args=["--no-data-checksums"])
+        node.write_default_config("primary", extra_params=_TDE_PARAMS)
+
+    publisher.configure(
+        {
+            "wal_level": "logical",
+            "max_wal_senders": "10",
+            "max_replication_slots": "10",
+        }
+    )
+    subscriber.configure(
+        {
+            "wal_level": "logical",
+            "max_replication_slots": "10",
+            "max_logical_replication_workers": "10",
+        }
+    )
+
+    for node in (publisher, subscriber):
+        node.add_hba_entry("local all all trust")
+        node.add_hba_entry("local replication all trust")
+        node.add_hba_entry("host  all all 127.0.0.1/32 trust")
+        node.add_hba_entry("host  replication all 127.0.0.1/32 trust")
+
+    publisher.start()
+    subscriber.start()
+    publisher.wait_ready()
+    subscriber.wait_ready()
+
+    tde_p = TdeManager(publisher)
+    tde_p.create_extension()
+    tde_p.add_global_key_provider_file(keyfile=str(publisher.data_dir / "keyring.pub.per"))
+    tde_p.set_global_principal_key()
+
+    tde_s = TdeManager(subscriber)
+    tde_s.create_extension()
+    tde_s.add_global_key_provider_file(keyfile=str(subscriber.data_dir / "keyring.sub.per"))
+    tde_s.set_global_principal_key()
+
+    yield publisher, subscriber
+
+
+@pytest.fixture
 def tde_replica_pair(pg_factory) -> Generator[Tuple[PgCluster, PgCluster], None, None]:
     """Streaming replication pair with pg_tde enabled on both nodes."""
     primary = pg_factory("tde_primary")

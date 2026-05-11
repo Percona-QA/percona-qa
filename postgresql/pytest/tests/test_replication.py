@@ -153,10 +153,8 @@ class TestStandbyPromotion:
 
 
 class TestLogicalReplication:
-    def test_basic_logical_replication(self, replica_pair: Tuple[PgCluster, PgCluster]):
-        publisher, subscriber = replica_pair
-        publisher.configure({"wal_level": "logical"})
-        publisher.restart()
+    def test_basic_logical_replication(self, logical_pub_sub_pair: Tuple[PgCluster, PgCluster]):
+        publisher, subscriber = logical_pub_sub_pair
 
         publisher.execute("CREATE TABLE logical_src (id INT PRIMARY KEY, val TEXT)")
         publisher.execute("INSERT INTO logical_src SELECT i, md5(i::text) FROM generate_series(1,100) i")
@@ -169,10 +167,8 @@ class TestLogicalReplication:
         time.sleep(5)  # allow initial sync
         repl.assert_row_counts_match("logical_src")
 
-    def test_logical_replication_with_tde(self, tde_replica_pair: Tuple[PgCluster, PgCluster]):
-        publisher, subscriber = tde_replica_pair
-        publisher.configure({"wal_level": "logical"})
-        publisher.restart()
+    def test_logical_replication_with_tde(self, tde_logical_pub_sub_pair: Tuple[PgCluster, PgCluster]):
+        publisher, subscriber = tde_logical_pub_sub_pair
 
         publisher.execute("CREATE TABLE tde_logical_src (id INT PRIMARY KEY, val TEXT)")
         publisher.execute(
