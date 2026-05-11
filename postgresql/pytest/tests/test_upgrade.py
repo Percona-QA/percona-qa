@@ -7,6 +7,7 @@ Covers scenarios from:
 
 All tests require --old-install-dir to be provided.
 """
+import os
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,7 @@ from typing import Optional
 import pytest
 
 from lib import PgCluster, TdeManager
+from lib.cluster import prepend_install_lib_dirs
 from conftest import allocate_port
 
 
@@ -45,7 +47,11 @@ def _run_pg_upgrade(
     ]
     if check_only:
         cmd.append("--check")
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=str(tmp_path))
+    env = os.environ.copy()
+    prepend_install_lib_dirs(env, old_cluster.install_dir, new_install_dir)
+    return subprocess.run(
+        cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
+    )
 
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -111,11 +117,14 @@ class TestPgUpgradeSmoke:
 
         new_cluster.start()
         new_cluster.wait_ready()
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, install_dir)
         subprocess.run(
             [str(install_dir / "bin" / "vacuumdb"),
              "-h", str(tmp_path), "-p", str(new_port),
              "--all", "--analyze-in-stages"],
             check=True,
+            env=env,
         )
         new_cluster.stop()
 
@@ -308,7 +317,11 @@ def _upgrade(
         cmd.append("--check")
     if pg_upgrade_extra:
         cmd.extend(pg_upgrade_extra)
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(tmp_path))
+    env = os.environ.copy()
+    prepend_install_lib_dirs(env, old_cluster.install_dir, install_dir)
+    result = subprocess.run(
+        cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
+    )
     return new_cluster, result
 
 
@@ -908,6 +921,8 @@ class TestUpgradePostMaintenance:
 
         new_cluster.start()
         new_cluster.wait_ready()
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, install_dir)
         subprocess.run(
             [
                 str(install_dir / "bin" / "vacuumdb"),
@@ -915,6 +930,7 @@ class TestUpgradePostMaintenance:
                 "--all", "--analyze-in-stages",
             ],
             check=True,
+            env=env,
         )
         new_cluster.stop()
 
@@ -938,7 +954,9 @@ class TestUpgradePostMaintenance:
 
         new_cluster.start()
         new_cluster.wait_ready()
-        subprocess.run(["bash", str(script)], check=True, cwd=str(tmp_path))
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, install_dir)
+        subprocess.run(["bash", str(script)], check=True, cwd=str(tmp_path), env=env)
         new_cluster.stop()
 
 
@@ -1001,7 +1019,9 @@ class TestUpgradeNegativeExtended:
             "-p", "5555",
             "-P", str(new_port),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, Path(old_install_dir), install_dir)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         assert result.returncode != 0
 
     def test_upgrade_fails_when_old_cluster_is_running(
@@ -1058,7 +1078,9 @@ class TestUpgradeNegativeExtended:
             "-P", str(new_port),
             "--check",
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, old.install_dir, install_dir)
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         assert result.returncode != 0
 
 

@@ -27,6 +27,7 @@ WAL encryption paths
 
 All tests are skipped unless --old-install-dir is provided.
 """
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -35,6 +36,7 @@ from typing import Optional
 import pytest
 
 from lib import PgCluster, TdeManager
+from lib.cluster import prepend_install_lib_dirs
 from conftest import allocate_port
 
 
@@ -102,7 +104,11 @@ def _upgrade(
         cmd.append("--check")
     if pg_upgrade_extra:
         cmd.extend(pg_upgrade_extra)
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(tmp_path))
+    env = os.environ.copy()
+    prepend_install_lib_dirs(env, old_cluster.install_dir, install_dir)
+    result = subprocess.run(
+        cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
+    )
     return new_cluster, result
 
 

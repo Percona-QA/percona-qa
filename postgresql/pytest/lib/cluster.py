@@ -12,6 +12,27 @@ from typing import Dict, List, Optional
 log = logging.getLogger(__name__)
 
 
+def prepend_install_lib_dirs(env: Dict[str, str], *install_roots: Path) -> None:
+    """Prepend PREFIX/lib and PREFIX/lib64 to LD_LIBRARY_PATH for each install root.
+
+    Source builds often lack RPATH; without this, binaries from one PostgreSQL
+    prefix can load the wrong libpq / ICU from another prefix on LD_LIBRARY_PATH.
+    """
+    additions: List[str] = []
+    for root in install_roots:
+        r = Path(root)
+        for name in ("lib", "lib64"):
+            p = r / name
+            if p.is_dir():
+                additions.append(str(p))
+    if not additions:
+        return
+    prefix = ":".join(additions)
+    key = "LD_LIBRARY_PATH"
+    tail = env.get(key, "")
+    env[key] = f"{prefix}:{tail}" if tail else prefix
+
+
 def libpq_superuser() -> str:
     """
     OS user that owns initdb-created clusters in CI (often 'ubuntu'), not always 'postgres'.
@@ -171,6 +192,8 @@ class PgCluster:
         log.info("PostgreSQL crashed (SIGKILL) on port %d", self.port)
 
     def is_ready(self) -> bool:
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, self.install_dir)
         result = subprocess.run(
             [
                 str(self.bin / "pg_isready"),
@@ -181,6 +204,7 @@ class PgCluster:
             ],
             capture_output=True,
             timeout=5,
+            env=env,
         )
         return result.returncode == 0
 
@@ -278,18 +302,27 @@ class PgCluster:
     @property
     def major_version(self) -> int:
         if self._major_version is None:
+            env = os.environ.copy()
+            prepend_install_lib_dirs(env, self.install_dir)
             result = subprocess.run(
                 [str(self.bin / "postgres"), "--version"],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
+                env=env,
             )
             # "postgres (PostgreSQL) 17.1" → 17
             self._major_version = int(result.stdout.split()[2].split(".")[0])
         return self._major_version
 
     def controldata(self, field: str) -> str:
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, self.install_dir)
         result = subprocess.run(
             [str(self.bin / "pg_controldata"), str(self.data_dir)],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
+            env=env,
         )
         for line in result.stdout.splitlines():
             if field in line:
@@ -314,6 +347,7 @@ class PgCluster:
         **kwargs,
     ) -> subprocess.CompletedProcess:
         env = os.environ.copy()
+        prepend_install_lib_dirs(env, self.install_dir)
         if env_override is not None:
             env.update(env_override)
         log.debug("Running: %s", " ".join(cmd))
