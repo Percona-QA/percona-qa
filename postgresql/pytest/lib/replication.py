@@ -45,11 +45,9 @@ class ReplicationManager:
             shutil.rmtree(self.standby.data_dir)
         if use_tde_basebackup:
             from .tde import TdeManager
+            # pg_tde_basebackup -E streams encrypted WAL; use only when the primary
+            # has pg_tde.wal_encrypt on (see caller extra_args), not by default.
             bb_args = list(extra_args or [])
-            # For streaming replication standbys created via pg_tde_basebackup,
-            # always encrypt streamed WAL unless the caller already specified it.
-            if "-E" not in bb_args and "--wal-encrypted" not in bb_args:
-                bb_args.append("-E")
             TdeManager(self.primary).tde_basebackup(
                 str(self.standby.data_dir), bb_args
             )

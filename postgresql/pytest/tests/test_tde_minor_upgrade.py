@@ -129,7 +129,10 @@ def _build_ha_cluster(
         nodeA.restart()
 
     repl = ReplicationManager(nodeA, nodeB)
-    repl.create_standby_from_backup(use_tde_basebackup=True)
+    repl.create_standby_from_backup(
+        use_tde_basebackup=True,
+        extra_args=(["-E"] if wal_encrypt else None),
+    )
     nodeB.write_default_config("replica", extra_params=_TDE_PARAMS)
     if with_archive and archive_dir:
         _, restore_cmd = archive_restore_conf_values(

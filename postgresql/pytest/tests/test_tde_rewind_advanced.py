@@ -221,7 +221,10 @@ def _ha_pair(
             primary.restart()
 
         repl = ReplicationManager(primary, standby)
-        repl.create_standby_from_backup(use_tde_basebackup=True)
+        repl.create_standby_from_backup(
+            use_tde_basebackup=True,
+            extra_args=(["-E"] if wal_encrypt else None),
+        )
         standby_params = {
             "shared_preload_libraries": "'pg_tde'",
             "restore_command": restore_cmd,
