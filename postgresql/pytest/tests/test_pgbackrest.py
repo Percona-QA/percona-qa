@@ -18,6 +18,9 @@ Covers the 10-scenario matrix ported from
 All matrix tests run with TDE + WAL encryption to mirror the bash scenario.
 The original three smoke tests are kept (and deepened) for fast feedback.
 """
+import os
+import shutil
+import threading
 import time
 from pathlib import Path
 
@@ -26,7 +29,7 @@ import pytest
 from conftest import allocate_port
 from lib import BackupManager, PgCluster, TdeManager
 from lib.backup import PgBaseBackup
-
+from .test_pgbackrest import _setup_tde_pgbackrest_source, _start_restored_cluster
 
 pytestmark = [pytest.mark.backup, pytest.mark.pgbackrest, pytest.mark.slow]
 
@@ -724,3 +727,250 @@ class TestPgBackRestMatrix:
         # ``check`` raises subprocess.CalledProcessError on failure; reaching
         # this assertion means the configuration is healthy.
         bm.check()
+
+class TestPgBackRestAdvancedAndNegative:
+    """
+    Complex, advanced, and negative scenarios for pgBackRest + pg_tde.
+    Covers key rotation chains, tablespace remapping, missing libraries,
+    corrupted archives, and concurrent DDL stress tests.
+    """
+
+    def test_backup_chain_with_tde_key_rotation(
+        self, tde_primary: PgCluster, tmp_path: Path, install_dir: Path, io_method: str
+    ):
+        """
+        Corner Case: Key evolution over a backup chain.
+        Takes a full backup with Key 1. Rotates to Key 2, takes a diff backup.
+        Rotates to Key 3, takes an incr backup. Restores the incremental backup
+        and verifies the TDE catalog correctly evolved and all data is readable.
+        """
+        bm = _setup_tde_pgbackrest_source(tde_primary, tmp_path, stanza="key_rot")
+        tde = TdeManager(tde_primary)
+
+        # Round 1: Full Backup
+        tde_primary.execute("CREATE TABLE chain_t (id INT, k TEXT) USING tde_heap;")
+        tde_primary.execute("INSERT INTO chain_t VALUES (1, 'key1'); CHECKPOINT;")
+        bm.backup(backup_type="full")
+
+        # Round 2: Rotate to Key 2, Diff Backup
+        tde.rotate_principal_key("rot_key_2")
+        tde_primary.execute("INSERT INTO chain_t VALUES (2, 'key2'); CHECKPOINT;")
+        bm.backup(backup_type="diff")
+
+        # Round 3: Rotate to Key 3, Incr Backup
+        tde.rotate_principal_key("rot_key_3")
+        tde_primary.execute("INSERT INTO chain_t VALUES (3, 'key3'); CHECKPOINT;")
+        bm.backup(backup_type="incr")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_chain"
+        bm.restore(str(restore_dir), pg_tde_wal_restore=True)
+
+        restored = _start_restored_cluster(restore_dir, install_dir, tmp_path, io_method)
+        try:
+            # Verify data from all three key generations is readable
+            assert restored.fetchone("SELECT COUNT(*) FROM chain_t") == "3"
+
+            # Verify the active key is exactly the last one rotated
+            active_key = TdeManager(restored).principal_key_name()
+            assert active_key == "rot_key_3", f"Expected 'rot_key_3', got {active_key}"
+        finally:
+            restored.stop()
+
+    def test_tablespace_mapping_with_tde(
+        self, tde_primary: PgCluster, tmp_path: Path, install_dir: Path, io_method: str
+    ):
+        """
+        Advanced Scenario: Tablespace mapping.
+        Creates a custom tablespace, encrypts a table inside it. Restores using
+        pgBackRest's --tablespace-map option to redirect the physical location
+        of the encrypted files.
+        """
+        ts_src = tmp_path / "ts_source"
+        ts_src.mkdir()
+        ts_dst = tmp_path / "ts_dest"
+        ts_dst.mkdir()
+
+        bm = _setup_tde_pgbackrest_source(tde_primary, tmp_path, stanza="ts_map")
+
+        tde_primary.execute(f"CREATE TABLESPACE my_ts LOCATION '{ts_src}';")
+        tde_primary.execute(
+            "CREATE TABLE ts_table (id INT) USING tde_heap TABLESPACE my_ts; "
+            "INSERT INTO ts_table SELECT generate_series(1, 100); CHECKPOINT;"
+        )
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_ts"
+        # Map the source tablespace directory to a completely new destination
+        bm.restore(
+            str(restore_dir),
+            pg_tde_wal_restore=True,
+            extra_args=[f"--tablespace-map={ts_src}={ts_dst}"]
+        )
+
+        restored = _start_restored_cluster(restore_dir, install_dir, tmp_path, io_method)
+        try:
+            # Verify data is readable in the new physical location
+            assert restored.fetchone("SELECT COUNT(*) FROM ts_table") == "100"
+            # Verify the physical destination folder was populated
+            assert any(ts_dst.iterdir()), "Destination tablespace directory is empty!"
+        finally:
+            restored.stop()
+
+    def test_negative_restore_missing_tde_library(
+        self, tde_primary: PgCluster, tmp_path: Path, install_dir: Path, io_method: str
+    ):
+        """
+        Negative Scenario: Attempt to access restored data without pg_tde loaded.
+        Restores a valid backup but purposefully strips 'pg_tde' from
+        shared_preload_libraries. Postgres must start, but accessing the
+        tables must cleanly fail (not crash).
+        """
+        bm = _setup_tde_pgbackrest_source(tde_primary, tmp_path, stanza="missing_lib")
+        tde_primary.execute(
+            "CREATE TABLE no_lib_t (id INT) USING tde_heap; "
+            "INSERT INTO no_lib_t VALUES (1); CHECKPOINT;"
+        )
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_no_lib"
+        bm.restore(str(restore_dir), pg_tde_wal_restore=True)
+
+        from conftest import allocate_port
+        port = allocate_port()
+        restored = PgCluster(
+            restore_dir, port, install_dir, socket_dir=tmp_path, io_method=io_method
+        )
+
+        # OMIT 'pg_tde' from shared_preload_libraries deliberately
+        restored.write_default_config(
+            extra_params={"shared_preload_libraries": "''"}
+        )
+        from .test_pgbackrest import _strip_restored_auto_conf_socket_overrides
+        _strip_restored_auto_conf_socket_overrides(restore_dir)
+        restored.add_hba_entry("local all all trust")
+
+        restored.start()
+        restored.wait_ready(timeout=60)
+        try:
+            # Accessing the table should fail cleanly since the AM doesn't exist
+            with pytest.raises(RuntimeError) as exc:
+                restored.execute("SELECT * FROM no_lib_t;")
+
+            assert "access method \"tde_heap\" does not exist" in str(exc.value)
+        finally:
+            restored.stop()
+
+    def test_negative_pitr_missing_wal(
+        self, tde_primary: PgCluster, tmp_path: Path, install_dir: Path, io_method: str
+    ):
+        """
+        Negative Scenario: Missing WAL in the archive during PITR.
+        Takes a base backup, generates target WAL, then physically deletes
+        the latest WAL from the pgBackRest repo. The restore process must
+        fail to reach the target LSN rather than silently succeeding.
+        """
+        bm = _setup_tde_pgbackrest_source(tde_primary, tmp_path, stanza="missing_wal")
+        tde_primary.execute("CREATE TABLE missing_wal_t (id INT) USING tde_heap;")
+        bm.backup(backup_type="full")
+
+        # Generate WAL and capture LSN
+        tde_primary.execute("INSERT INTO missing_wal_t VALUES (1); CHECKPOINT;")
+        target_lsn = tde_primary.fetchone("SELECT pg_current_wal_lsn()")
+        tde_primary.execute("SELECT pg_switch_wal();")
+        bm.wait_for_wal_archive(tde_primary)
+
+        # Sabotage the repository: Delete all WAL files in the archive directory
+        repo_archive_dir = tmp_path / "repo" / "archive" / "missing_wal"
+        deleted_something = False
+        for f in repo_archive_dir.rglob("*"):
+            if f.is_file() and not str(f).endswith(".history"):
+                f.unlink()
+                deleted_something = True
+
+        assert deleted_something, "Failed to sabotage repo: No WAL files found to delete!"
+
+        restore_dir = tmp_path / "restore_missing_wal"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            pg_tde_wal_restore=True
+        )
+
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False
+        )
+        try:
+            # The cluster will be stuck in recovery because it can't fetch the WAL
+            # it needs to reach the target_lsn.
+            in_recovery = restored.fetchone("SELECT pg_is_in_recovery()")
+            assert in_recovery == "t"
+
+            # Check the log for the fatal recovery target error
+            log_content = restored.read_log()
+            assert "recovery ended before configured recovery target was reached" in log_content \
+                or "could not connect to stream" in log_content \
+                or "waiting for WAL" in log_content
+        finally:
+            restored.stop(check=False)
+
+    def test_concurrent_ddl_during_backup(
+        self, tde_primary: PgCluster, tmp_path: Path, install_dir: Path, io_method: str
+    ):
+        """
+        Stress Scenario: High DDL churn during pgBackRest execution.
+        Runs a background thread constantly creating and dropping tde_heap
+        tables while pgBackRest is copying files. Verifies that the manifest
+        and resulting backup remain internally consistent.
+        """
+        bm = _setup_tde_pgbackrest_source(tde_primary, tmp_path, stanza="ddl_stress")
+
+        stop_event = threading.Event()
+        error_capture = []
+
+        def ddl_worker():
+            try:
+                i = 0
+                while not stop_event.is_set():
+                    tde_primary.execute(f"CREATE TABLE stress_{i} (id INT) USING tde_heap;")
+                    tde_primary.execute(f"INSERT INTO stress_{i} VALUES ({i});")
+                    if i > 5:
+                        tde_primary.execute(f"DROP TABLE stress_{i-5};")
+                    i += 1
+            except Exception as e:
+                # Discard errors related to the server shutting down at the end
+                if not stop_event.is_set():
+                    error_capture.append(e)
+
+        # Start the background DDL noise
+        t = threading.Thread(target=ddl_worker, daemon=True)
+        t.start()
+
+        try:
+            # While DDL is happening, take the full backup
+            bm.backup(backup_type="full")
+        finally:
+            # Stop thread safely
+            stop_event.set()
+            t.join(timeout=10)
+
+        assert not error_capture, f"Background DDL failed unexpectedly: {error_capture}"
+
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_stress"
+        bm.restore(str(restore_dir), pg_tde_wal_restore=True)
+
+        restored = _start_restored_cluster(restore_dir, install_dir, tmp_path, io_method)
+        try:
+            # If it starts and completes recovery, the backup is consistent.
+            # Just verify we can query the catalog without issue.
+            assert restored.fetchone("SELECT pg_is_in_recovery()") == "f"
+            # Ensure at least one stress table survived
+            tables = restored.execute("SELECT tablename FROM pg_tables WHERE tablename LIKE 'stress_%';")
+            assert "stress_" in tables
+        finally:
+            restored.stop()
