@@ -29,7 +29,6 @@ import pytest
 from conftest import allocate_port
 from lib import BackupManager, PgCluster, TdeManager
 from lib.backup import PgBaseBackup
-from .test_pgbackrest import _setup_tde_pgbackrest_source, _start_restored_cluster
 
 pytestmark = [pytest.mark.backup, pytest.mark.pgbackrest, pytest.mark.slow]
 

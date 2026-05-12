@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from lib import PgCluster, ReplicationManager, TdeManager
-from lib.cluster import libpq_superuser
+from lib.cluster import initdb_args_no_data_checksums, libpq_superuser
 
 
 pytestmark = pytest.mark.recovery
@@ -66,6 +66,117 @@ class TestCrashRecovery:
         primary_cluster.execute("INSERT INTO post_crash SELECT generate_series(101,200)")
         count = primary_cluster.fetchone("SELECT COUNT(*) FROM post_crash")
         assert count == "200"
+
+    def test_crash_recovery_with_wal_encryption(self, pg_factory, tmp_path):
+        """
+        Crash-recovery WAL replay must work when ``pg_tde.wal_encrypt = on``.
+
+        The existing ``test_data_survives_crash_tde`` does CHECKPOINT before
+        the SIGKILL, so the data is already on disk and recovery is trivial.
+        This test forces the **encrypted-WAL replay** path: inserts after
+        CHECKPOINT survive only if pg_tde successfully decrypts the WAL
+        records during crash recovery.
+
+        Failure modes this catches:
+          - pg_tde fails to load WAL keys at recovery time
+          - WAL decryption silently produces garbage → postgres aborts
+            recovery, or starts but the committed inserts are missing
+          - Per-relation keys aren't restored before the redo loop runs
+
+        Sister test of the wal_encrypt=off ``test_data_survives_crash_tde``
+        — together they pin down both encrypted and plaintext WAL paths.
+        """
+        cluster = pg_factory("crash_wal_enc")
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
+        cluster.write_default_config(extra_params={
+            "shared_preload_libraries": "'pg_tde'",
+            "default_table_access_method": "'tde_heap'",
+        })
+        cluster.add_hba_entry("local all all trust")
+        cluster.start()
+
+        tde = TdeManager(cluster)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=str(tmp_path / "crash_key.file"))
+        tde.set_global_principal_key()
+        tde.enable_wal_encryption()   # PGC_POSTMASTER; restarts the cluster
+        assert tde.is_wal_encrypted(), (
+            "pg_tde.wal_encrypt did not engage — test would otherwise pass "
+            "trivially without exercising the encrypted-WAL recovery path."
+        )
+
+        # Phase 1: pre-checkpoint inserts. These rows are written to heap
+        # pages and flushed by CHECKPOINT — recovery doesn't need WAL replay
+        # to find them.
+        cluster.execute(
+            "CREATE TABLE crash_wal_enc "
+            "(id INT PRIMARY KEY, payload TEXT) USING tde_heap"
+        )
+        cluster.execute(
+            "INSERT INTO crash_wal_enc "
+            "SELECT i, md5(i::text) FROM generate_series(1, 100) i"
+        )
+        cluster.execute("CHECKPOINT")
+
+        # Phase 2: post-checkpoint inserts. These rows live ONLY in WAL
+        # until the next checkpoint. After SIGKILL, recovery has to replay
+        # the encrypted WAL records to put them back into the heap.
+        marker = "post-ckpt-wal-enc-marker-7f3a"
+        cluster.execute(
+            "INSERT INTO crash_wal_enc "
+            f"SELECT i, '{marker}-' || i::text FROM generate_series(101, 200) i"
+        )
+        # Force-flush WAL to disk (commit already does this on default sync
+        # settings, but be explicit so the test is durable against future
+        # synchronous_commit=off defaults).
+        cluster.fetchone("SELECT pg_current_wal_flush_lsn()")
+
+        # SIGKILL the postmaster — no clean shutdown, no extra checkpoint.
+        cluster.crash()
+
+        # Recovery must succeed. If WAL decryption fails the postmaster
+        # will refuse to start; this raises with the server log attached
+        # (see PgCluster.wait_ready).
+        cluster.start()
+        cluster.wait_ready(timeout=60)
+
+        # All 200 rows must be present. Pre-checkpoint rows come from disk
+        # pages; post-checkpoint rows can only come from decrypted WAL.
+        total = cluster.fetchone("SELECT COUNT(*) FROM crash_wal_enc")
+        assert total == "200", (
+            f"Expected 200 rows after crash recovery, got {total}. "
+            "pg_tde may have failed to decrypt WAL during recovery — "
+            "100 pre-checkpoint rows should be on disk and 100 post-"
+            "checkpoint rows should have been replayed from encrypted WAL."
+        )
+        post_count = cluster.fetchone(
+            "SELECT COUNT(*) FROM crash_wal_enc "
+            f"WHERE payload LIKE '{marker}-%'"
+        )
+        assert post_count == "100", (
+            f"Expected 100 post-checkpoint rows from encrypted-WAL replay, "
+            f"got {post_count}."
+        )
+
+        # Server log must not contain decryption errors. Any sign of
+        # "could not decrypt" / "decryption failed" indicates a partial-
+        # recovery bug where postgres muddled through but pg_tde complained.
+        server_log = cluster.read_log(last_n=200)
+        for needle in ("could not decrypt", "decryption failed",
+                       "invalid encrypted"):
+            assert needle.lower() not in server_log.lower(), (
+                f"Server log contains decryption-error phrase {needle!r} "
+                "after crash recovery.\nLog tail:\n" + server_log[-2000:]
+            )
+
+        # Sanity: the new cluster is fully writable post-recovery, and the
+        # new INSERT also goes through an encrypted WAL path cleanly.
+        cluster.execute(
+            "INSERT INTO crash_wal_enc VALUES (999999, 'post-recovery-write')"
+        )
+        assert cluster.fetchone(
+            "SELECT COUNT(*) FROM crash_wal_enc"
+        ) == "201"
 
 
 # ── relfilenode reuse ─────────────────────────────────────────────────────────
