@@ -980,6 +980,189 @@ class TestTdeRewindExtended:
                     pass
                 shutil.rmtree(c.data_dir, ignore_errors=True)
 
+    # ── restart-of-old-primary-before-rewind (PG-2330 / PG-2357) ──────────
+    #
+    # Both tickets describe the same defect: pg_tde_rewind intermittently
+    # preserves stale on-disk state on the old primary when that primary is
+    # restarted between divergence and the rewind call. PG-2357 was reported
+    # later with an additional ``maybe_restart`` helper that randomises the
+    # *non-critical* restarts in the reproducer — but the bug-triggering
+    # restart (after divergence, before pg_tde_rewind) is identical to
+    # PG-2330. A single regression covers both.
+
+    def _pg2330_reproduce_iteration(
+        self,
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+        iteration: int,
+    ) -> None:
+        """
+        One full run of the PG-2330 / PG-2357 scenario.
+
+        Trigger sequence:
+          1. Init primary, create ``t1`` with 10 000 rows, basebackup → standby.
+          2. Restart the primary once (pre-promotion — matches the script).
+          3. Promote the standby (becomes the rewind *source*).
+          4. INSERT one row id=999999 on the promoted standby + CHECKPOINT.
+          5. Create ``target_only`` on the promoted standby.
+          6. Create ``source_only`` on the old primary (divergent write).
+          7. **Restart the old primary — the critical PG-2330/PG-2357 trigger.**
+          8. Stop both clusters; run ``pg_tde_rewind --target-pgdata=<old primary>
+             --source-pgdata=<promoted standby> -c``.
+          9. Start the rewound (old) primary and assert post-rewind state.
+
+        Expected on a fixed build:
+          - ``t1`` has 10 001 rows
+          - ``target_only`` exists on the rewound primary
+          - ``source_only`` does **not** exist on the rewound primary
+        """
+        keyfile_path = tmp_path / f"key_{iteration}.file"
+        archive_path = tmp_path / f"archive_{iteration}"
+        primary, standby, _, _ = _make_tde_ha_pair(
+            install_dir, tmp_path, io_method,
+            primary_subdir=f"primary_{iteration}",
+            standby_subdir=f"standby_{iteration}",
+            keyfile=str(keyfile_path),
+            archive_dir=archive_path,
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE t1 (id INT) USING tde_heap; "
+                "INSERT INTO t1 SELECT generate_series(1, 10000); "
+                "CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # Pre-promotion restart of primary (matches the upstream script).
+            primary.restart()
+            primary.wait_ready(timeout=60)
+
+            _promote_and_diverge(
+                standby,
+                "INSERT INTO t1 VALUES (999999); CHECKPOINT;",
+            )
+
+            # Asymmetric DDL: each side gets a table the other doesn't have.
+            standby.execute(
+                "CREATE TABLE target_only (id INT) USING tde_heap; "
+                "INSERT INTO target_only VALUES (1), (2);"
+            )
+            primary.execute(
+                "CREATE TABLE source_only (id INT) USING tde_heap; "
+                "INSERT INTO source_only VALUES (10), (20);"
+            )
+
+            # The critical step — without this restart PG-2330/PG-2357 does not trigger.
+            primary.restart()
+            primary.wait_ready(timeout=60)
+
+            primary.stop()
+            standby.stop()
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, (
+                f"PG-2330 iter {iteration}: pg_tde_rewind exited "
+                f"{result.returncode}\n"
+                f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+            )
+
+            # If start fails here it is *itself* a manifestation of PG-2330
+            # ("incorrect prev-link" / WAL chain inconsistency). Surface the
+            # postgres log so the iteration that fails is actionable.
+            try:
+                primary.start()
+                primary.wait_ready(timeout=60)
+            except Exception as exc:
+                log_tail = primary.read_log(last_n=60)
+                raise AssertionError(
+                    f"PG-2330 iter {iteration}: rewound primary failed to start.\n"
+                    f"Underlying error: {exc}\n"
+                    f"Last 60 lines of postgres log:\n{log_tail}"
+                ) from exc
+
+            t1_count = primary.fetchone("SELECT COUNT(*) FROM t1")
+            assert t1_count == "10001", (
+                f"PG-2330 iter {iteration}: t1 row count = {t1_count}, "
+                "expected 10001 (rewind did not pull the row inserted on the "
+                "promoted standby — stale on-disk state preserved)."
+            )
+
+            target_count = primary.fetchone("SELECT COUNT(*) FROM target_only")
+            assert target_count == "2", (
+                f"PG-2330 iter {iteration}: target_only row count = "
+                f"{target_count}, expected 2 (standby-only table missing from "
+                "the rewound primary)."
+            )
+
+            # source_only must be gone; querying it must raise.
+            with pytest.raises(RuntimeError):
+                primary.execute("SELECT COUNT(*) FROM source_only")
+        finally:
+            # Per-iteration teardown: data dirs (stop + rmtree) AND the
+            # iteration-scoped archive_<i>/ and key_<i>.file under tmp_path.
+            # The stress variant runs 5+ iterations under one tmp_path, so
+            # leaving these behind accumulates GBs of WAL across iterations
+            # and eventually exhausts /tmp, semaphores, or shared-mem slots.
+            for c in (standby, primary):
+                try:
+                    c.stop(check=False)
+                except Exception:
+                    pass
+                shutil.rmtree(c.data_dir, ignore_errors=True)
+            shutil.rmtree(archive_path, ignore_errors=True)
+            try:
+                keyfile_path.unlink()
+            except FileNotFoundError:
+                pass
+
+    def test_pg2330_pg2357_rewind_after_pre_rewind_restart(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Regression for PG-2330 (and the duplicate PG-2357): restarting the
+        old primary *between* divergence and the rewind must not cause
+        pg_tde_rewind to preserve stale on-disk state. Asymmetric DDL
+        (target_only / source_only) makes the failure observable. Single
+        iteration — deterministic on a fixed build.
+        """
+        self._pg2330_reproduce_iteration(
+            install_dir, tmp_path, io_method, iteration=0,
+        )
+
+    def test_pg2330_pg2357_rewind_after_pre_rewind_restart_stress(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Stress variant of the PG-2330 / PG-2357 regression. The bug is
+        intermittent on the broken build, so the reproducer is run five times
+        with independent data/archive dirs to raise the probability of
+        catching a regression to a useful level.
+
+        Iteration count is configurable via the ``PG2330_STRESS_ITERS`` env
+        var (default 5). Each iteration cleans up its own data/archive/keyfile
+        so /tmp usage stays roughly flat regardless of N. The loop also
+        early-exits with a clear message if /tmp drops below 1 GB free — this
+        prevents the historical "ran for hours, died at iter N with cryptic
+        pg_ctl error" failure mode when the run is much longer than expected.
+        """
+        import os
+        import shutil as _shutil
+
+        iters = int(os.environ.get("PG2330_STRESS_ITERS", "5"))
+        for i in range(iters):
+            free_mb = _shutil.disk_usage(str(tmp_path)).free // (1024 * 1024)
+            if free_mb < 1024:
+                pytest.fail(
+                    f"PG-2330 stress: /tmp dropped below 1 GB free "
+                    f"({free_mb} MB available) before iteration {i}. "
+                    "Refusing to continue — clean up /tmp/pytest-of-ubuntu/* "
+                    "and confirm the per-iteration cleanup is firing."
+                )
+            self._pg2330_reproduce_iteration(
+                install_dir, tmp_path, io_method, iteration=i,
+            )
+
     def test_rewind_deep_validation_reindex_vacuum_full(
         self, install_dir: Path, tmp_path: Path, io_method: str
     ):
@@ -3845,144 +4028,3 @@ class TestTdeRewindExtremeCornerCases:
             assert int(count) == 200
         finally:
             _teardown(standby, primary)
-
-
-# ── PG-2330 ───────────────────────────────────────────────────────────────────
-
-
-class TestPG2330:
-    """
-    Regression for PG-2330:
-    pg_tde_rewind incorrectly preserves old-primary state after the old primary
-    is restarted *before* the rewind operation.
-
-    Trigger sequence (from the upstream reproducer script):
-      1. Init primary, create t1 with 10 000 rows, basebackup → standby.
-      2. Restart the original primary (pre-promotion restart).
-      3. Promote the standby (it becomes the rewind *source*).
-      4. Insert one row (id=999999) on the promoted standby + CHECKPOINT.
-      5. Create ``target_only`` on the promoted standby.
-      6. Create ``source_only`` on the old primary (divergent write).
-      7. **Restart the old primary again — this is the critical step**.
-      8. Stop both clusters; run ``pg_tde_rewind --target-pgdata=<old primary>
-         --source-pgdata=<promoted standby> -c``.
-      9. Start the rewound (old) primary.
-
-    Expected on a healthy build:
-      - ``t1`` has 10 001 rows (10 000 base + the row inserted on the standby)
-      - ``target_only`` exists on the rewound primary
-      - ``source_only`` does **not** exist on the rewound primary
-
-    On the broken build the failure is intermittent — the rewound primary
-    keeps the old state (no target_only, source_only still present, t1 = 10 000).
-    """
-
-    def _pg2330_one_iteration(
-        self,
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-        iteration: int,
-    ) -> None:
-        """Run the reproducer once and assert the post-rewind state."""
-        primary, standby, _, _ = _make_tde_ha_pair(
-            install_dir, tmp_path, io_method,
-            primary_subdir=f"primary_{iteration}",
-            standby_subdir=f"standby_{iteration}",
-            keyfile=str(tmp_path / f"key_{iteration}.file"),
-            archive_dir=tmp_path / f"archive_{iteration}",
-        )
-        try:
-            # 1. Baseline data on the old primary.
-            primary.execute(
-                "CREATE TABLE t1 (id INT) USING tde_heap; "
-                "INSERT INTO t1 SELECT generate_series(1, 10000); "
-                "CHECKPOINT;"
-            )
-            ReplicationManager(primary, standby).assert_catchup(timeout=30)
-
-            # 2. Pre-promotion restart of primary — matches the script.
-            primary.restart()
-            primary.wait_ready(timeout=60)
-
-            # 3 & 4. Promote standby; insert the marker row on the new primary.
-            _promote_and_diverge(
-                standby,
-                "INSERT INTO t1 VALUES (999999); CHECKPOINT;",
-            )
-
-            # 5. Object that exists ONLY on the rewind source (promoted standby).
-            standby.execute(
-                "CREATE TABLE target_only (id INT) USING tde_heap; "
-                "INSERT INTO target_only VALUES (1), (2);"
-            )
-
-            # 6. Object that exists ONLY on the rewind target (old primary).
-            primary.execute(
-                "CREATE TABLE source_only (id INT) USING tde_heap; "
-                "INSERT INTO source_only VALUES (10), (20);"
-            )
-
-            # 7. **The critical step** — restart the old primary before rewind.
-            # Without this restart the bug does not surface.
-            primary.restart()
-            primary.wait_ready(timeout=60)
-
-            # 8. Offline pg_tde_rewind: both clusters stopped, target → source.
-            primary.stop()
-            standby.stop()
-
-            result = _run_rewind_pgdata(install_dir, primary, standby)
-            assert result.returncode == 0, (
-                f"PG-2330 iter {iteration}: pg_tde_rewind exited {result.returncode}\n"
-                f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
-            )
-
-            # 9. Bring the rewound primary online and verify state.
-            primary.start()
-            primary.wait_ready(timeout=60)
-
-            t1_count = primary.fetchone("SELECT COUNT(*) FROM t1")
-            assert t1_count == "10001", (
-                f"PG-2330 iter {iteration}: t1 row count = {t1_count}, expected 10001. "
-                "Rewind did not pull the row inserted on the promoted standby."
-            )
-
-            target_count = primary.fetchone("SELECT COUNT(*) FROM target_only")
-            assert target_count == "2", (
-                f"PG-2330 iter {iteration}: target_only row count = {target_count}, "
-                "expected 2. The standby-only table is missing from the rewound primary."
-            )
-
-            # ``source_only`` must be gone — querying it must error out.
-            with pytest.raises(RuntimeError):
-                primary.execute("SELECT COUNT(*) FROM source_only")
-        finally:
-            _teardown(standby, primary)
-
-    def test_pg2330_rewind_after_pre_rewind_restart(
-        self, install_dir: Path, tmp_path: Path, io_method: str
-    ):
-        """
-        Single-iteration PG-2330 reproducer.
-
-        On a fixed build this passes deterministically. On the broken build the
-        bug is intermittent — see ``test_pg2330_rewind_after_pre_rewind_restart_stress``
-        for a higher-confidence regression catcher.
-        """
-        self._pg2330_one_iteration(install_dir, tmp_path, io_method, iteration=0)
-
-    @pytest.mark.slow
-    def test_pg2330_rewind_after_pre_rewind_restart_stress(
-        self, install_dir: Path, tmp_path: Path, io_method: str
-    ):
-        """
-        Multi-iteration PG-2330 reproducer (5 rounds).
-
-        PG-2330 is intermittent on the broken build. Running the full
-        reproducer five times raises the probability of catching a regression
-        to a useful level. Each iteration uses its own data/archive dirs so
-        failures of earlier rounds do not pollute later ones.
-        """
-        for i in range(5):
-            self._pg2330_one_iteration(install_dir, tmp_path, io_method, iteration=i)
