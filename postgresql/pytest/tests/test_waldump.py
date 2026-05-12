@@ -358,20 +358,51 @@ class TestPgTdeWaldumpDataTypes:
 
     def test_geometric_range_inet_xml(self, pg_factory, tmp_path):
         cluster = _start_tde_cluster_with_wal_encryption(pg_factory, tmp_path)
-        marker = "type-geom-range-xml-marker-44c"
-        cluster.execute(
-            "CREATE TABLE wd_geo (id INT, p POINT, b BOX, r INT4RANGE, "
-            "ip INET, x XML, lbl TEXT) USING tde_heap"
-        )
-        cluster.execute(
-            "INSERT INTO wd_geo SELECT "
-            "  g, POINT(g, g+1), BOX(POINT(0,0), POINT(g,g)), "
-            "  int4range(g, g+10), "
-            "  ('192.0.2.' || (g % 250 + 1))::inet, "
-            f"  XMLPARSE(CONTENT '<r>' || '{marker}-' || g::text || '</r>'), "
-            f"  '{marker}-' || g "
-            "FROM generate_series(1, 150) g"
-        )
+        marker = "type-geom-range-inet-marker-44c"
+
+        # PostgreSQL can be built without libxml support; detect that at
+        # runtime and skip the XML column so the rest of the type matrix
+        # still gets exercised on those builds.
+        has_xml = False
+        try:
+            cluster.execute(
+                "DO $$ BEGIN PERFORM XMLPARSE(CONTENT '<r/>'); END $$;"
+            )
+            has_xml = True
+        except RuntimeError as exc:
+            if "libxml" not in str(exc) and "unsupported XML" not in str(exc):
+                raise
+
+        if has_xml:
+            cluster.execute(
+                "CREATE TABLE wd_geo (id INT, p POINT, b BOX, r INT4RANGE, "
+                "ip INET, c CIDR, x XML, lbl TEXT) USING tde_heap"
+            )
+            cluster.execute(
+                "INSERT INTO wd_geo SELECT "
+                "  g, POINT(g, g+1), BOX(POINT(0,0), POINT(g,g)), "
+                "  int4range(g, g+10), "
+                "  ('192.0.2.' || (g % 250 + 1))::inet, "
+                "  ('10.' || (g % 250) || '.0.0/24')::cidr, "
+                f"  XMLPARSE(CONTENT '<r>' || '{marker}-' || g::text || '</r>'), "
+                f"  '{marker}-' || g "
+                "FROM generate_series(1, 150) g"
+            )
+        else:
+            cluster.execute(
+                "CREATE TABLE wd_geo (id INT, p POINT, b BOX, r INT4RANGE, "
+                "ip INET, c CIDR, m MACADDR, lbl TEXT) USING tde_heap"
+            )
+            cluster.execute(
+                "INSERT INTO wd_geo SELECT "
+                "  g, POINT(g, g+1), BOX(POINT(0,0), POINT(g,g)), "
+                "  int4range(g, g+10), "
+                "  ('192.0.2.' || (g % 250 + 1))::inet, "
+                "  ('10.' || (g % 250) || '.0.0/24')::cidr, "
+                "  ('08:00:2b:01:02:' || lpad(to_hex(g % 256), 2, '0'))::macaddr, "
+                f"  '{marker}-' || g "
+                "FROM generate_series(1, 150) g"
+            )
         self._verify(cluster, _flushed_segment(cluster), marker)
 
     def test_tsvector_and_hstore_like(self, pg_factory, tmp_path):
@@ -709,15 +740,25 @@ class TestPgTdeWaldumpFilters:
         cluster, seg, *_ = self._build(pg_factory, tmp_path)
         result = _run_waldump(cluster, ["-F", "main", str(seg)])
         _assert_ok_or_eof_tail(result, descr="--fork=main")
-        # Every blkref line in --fork=main output must reference the main
-        # fork; pg_waldump prints "fork fsm" / "fork vm" / "fork init" for
-        # non-main forks.
+        # Every blkref in --fork=main output must reference the main fork.
+        # pg_waldump emits "blkref #N: rel T/D/R fork {fsm,vm,init} blk N"
+        # for non-main forks and "blkref #N: rel T/D/R blk N" for main.
+        #
+        # Match only on the literal "fork {name} " prefix — checking for the
+        # bare word "init" would falsely trip on descriptions like
+        # "relcache init file inval".
+        non_main_tokens = ("fork fsm ", "fork vm ", "fork init ")
         for line in result.stdout.splitlines():
-            if "blkref" in line:
-                for non_main in (" fsm ", " vm ", " init "):
-                    assert non_main not in line, (
-                        f"--fork=main returned a non-main blkref: {line}"
-                    )
+            if "blkref" not in line:
+                continue
+            # Restrict the scan to the part of the line at-or-after "blkref":
+            # rmgr description text (which may include "init file") sits
+            # earlier and is unrelated to the actual fork name.
+            blkref_slice = line[line.index("blkref"):]
+            for tok in non_main_tokens:
+                assert tok not in blkref_slice, (
+                    f"--fork=main returned a non-main blkref: {line}"
+                )
 
     def test_save_fullpage_extracts_decrypted_images(
         self, pg_factory, tmp_path
