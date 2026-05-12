@@ -181,3 +181,128 @@ class TestLogicalReplication:
 
         time.sleep(5)
         repl.assert_row_counts_match("tde_logical_src")
+
+    def test_logical_replication_with_wal_encryption(
+        self, tde_logical_pub_sub_pair: Tuple[PgCluster, PgCluster]
+    ):
+        """
+        Logical replication must work end-to-end when *both* publisher and
+        subscriber have ``pg_tde.wal_encrypt = on``. Closes the
+        WAL-encryption × logical-replication coverage gap noted in the
+        baseline coverage report (Phase 1 priority).
+
+        What it proves:
+          - Enabling WAL encryption on both nodes is harmless to logical
+            replication (the decoder still reads WAL after re-keying).
+          - Initial-table-sync (COPY phase) completes under WAL encryption.
+          - Post-sync DML inserted on the publisher is decoded out of the
+            encrypted WAL and applied on the subscriber.
+          - Subscriber's WAL is also encrypted on disk (no plaintext leak).
+
+        Uses polling on ``pg_subscription_rel.srsubstate`` rather than
+        ``time.sleep`` — matches the "stop using sleep-and-hope" rule from
+        the coverage report's quality recommendations.
+        """
+        publisher, subscriber = tde_logical_pub_sub_pair
+
+        # Enable WAL encryption on both ends. pg_tde.wal_encrypt is
+        # PGC_POSTMASTER so enable_wal_encryption() restarts the cluster.
+        for node in (publisher, subscriber):
+            TdeManager(node).enable_wal_encryption()
+            assert node.fetchone("SHOW pg_tde.wal_encrypt") == "on", (
+                f"WAL encryption did not engage on {node.data_dir.name}"
+            )
+
+        # Seed the publisher *before* setting up replication so the initial
+        # COPY has rows to ship, then add post-sync rows below.
+        marker = "wal-enc-logical-row-7d2a"
+        publisher.execute(
+            "CREATE TABLE wal_enc_logical (id INT PRIMARY KEY, val TEXT) "
+            "USING tde_heap"
+        )
+        publisher.execute(
+            "INSERT INTO wal_enc_logical "
+            f"SELECT i, '{marker}' || i::text FROM generate_series(1, 500) i"
+        )
+        subscriber.execute(
+            "CREATE TABLE wal_enc_logical (id INT PRIMARY KEY, val TEXT) "
+            "USING tde_heap"
+        )
+
+        repl = ReplicationManager(publisher, subscriber)
+        repl.setup_logical_publication(tables=["wal_enc_logical"])
+        repl.setup_logical_subscription()
+
+        # Poll until the initial COPY phase reports 'r' (ready). Replaces
+        # the flaky time.sleep(5) in the older logical-replication tests.
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            states = subscriber.fetchall(
+                "SELECT srsubstate FROM pg_subscription_rel"
+            )
+            # 'r' = ready / streaming, 's' = synced (also acceptable).
+            if states and all(s in ("r", "s") for s in states):
+                break
+            time.sleep(0.5)
+        else:
+            raise AssertionError(
+                "Logical replication initial sync did not complete in 60s.\n"
+                f"pg_subscription_rel states: {states!r}\n"
+                "Subscriber log tail:\n" + subscriber.read_log(last_n=40)
+            )
+
+        repl.assert_row_counts_match("wal_enc_logical")
+
+        # Apply post-sync DML on the publisher. This exercises the
+        # *streaming* logical-replication path (WAL decoded out of encrypted
+        # segments), not just the initial COPY.
+        publisher.execute(
+            "INSERT INTO wal_enc_logical "
+            f"SELECT i, '{marker}-post' || i::text "
+            "FROM generate_series(501, 1000) i"
+        )
+        publisher.execute(
+            "UPDATE wal_enc_logical SET val = val || '-upd' WHERE id <= 10"
+        )
+        publisher.execute("DELETE FROM wal_enc_logical WHERE id BETWEEN 11 AND 20")
+
+        # Poll for replication catch-up via LSN comparison rather than sleep.
+        target_lsn = publisher.fetchone("SELECT pg_current_wal_lsn()")
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            applied = subscriber.fetchone(
+                "SELECT MAX(latest_end_lsn) FROM pg_stat_subscription"
+            )
+            if applied and applied >= target_lsn:
+                break
+            time.sleep(0.5)
+        else:
+            raise AssertionError(
+                f"Subscriber did not replay up to publisher LSN {target_lsn} "
+                "within 60s.\nSubscriber log tail:\n"
+                + subscriber.read_log(last_n=40)
+            )
+
+        repl.assert_row_counts_match("wal_enc_logical")
+        expected = 500 + 500 - 10   # initial + post-sync - deletes
+        sub_count = int(subscriber.fetchone(
+            "SELECT COUNT(*) FROM wal_enc_logical"
+        ))
+        assert sub_count == expected, (
+            f"Subscriber row count {sub_count} != expected {expected}; "
+            "post-sync DML not fully replicated under WAL encryption."
+        )
+
+        # Sanity: subscriber's own WAL is encrypted on disk too — no plain
+        # marker bytes anywhere in pg_wal/.
+        subscriber.execute("CHECKPOINT")
+        subscriber.execute("SELECT pg_switch_wal()")
+        pg_wal_dir = subscriber.data_dir / "pg_wal"
+        marker_bytes = marker.encode()
+        for seg in pg_wal_dir.iterdir():
+            if not seg.is_file() or len(seg.name) != 24 or "." in seg.name:
+                continue
+            assert marker_bytes not in seg.read_bytes(), (
+                f"Plaintext marker leaked into subscriber WAL segment "
+                f"{seg.name}; WAL encryption is not engaging on the subscriber."
+            )
