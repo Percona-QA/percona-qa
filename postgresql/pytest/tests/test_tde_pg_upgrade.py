@@ -1,9 +1,11 @@
 """
-pg_tde pg_upgrade tests: PPG→PSP, PSP→PSP, heap↔tde_heap permutations, WAL encryption paths.
+pg_tde major-version upgrade tests: PPG→PSP, PSP→PSP, heap↔tde_heap permutations, WAL paths.
 
-Regression coverage for PG-2240 ("pg_upgrade is broken with encrypted data").
-The root cause: pg_upgrade does not copy $OLD_DATA/pg_tde/, which holds encrypted DEKs.
-The fix applied in these tests: copy that directory before starting the new cluster.
+Regression coverage for PG-2240: vanilla ``pg_upgrade`` does not migrate ``$PGDATA/pg_tde/``,
+so encrypted ``tde_heap`` data could not be decrypted on the new cluster. These tests run
+``pg_tde_upgrade`` (the Percona wrapper around ``pg_upgrade``), which carries over pg_tde–
+specific state including the ``pg_tde`` directory — the historical manual ``shutil.copytree``
+workaround is not used here.
 
 Upgrade flavours tested
 ───────────────────────
@@ -13,7 +15,7 @@ Upgrade flavours tested
 Access-method permutations
 ──────────────────────────
   heap  → heap              Baseline (no TDE).
-  tde_heap → tde_heap       Primary PG-2240 scenario; pg_tde dir copy required.
+  tde_heap → tde_heap       Primary PG-2240 scenario (encrypted tables).
   heap + tde_heap → same    Mixed tables in one cluster.
   heap  → enable TDE after  Encrypt data post-upgrade.
   tde_heap → convert first  Rewrite tables as heap before upgrading.
@@ -28,7 +30,6 @@ WAL encryption paths
 All tests are skipped unless --old-install-dir is provided.
 """
 import os
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -124,21 +125,6 @@ def _upgrade(
     )
     return new_cluster, result
 
-def _copy_pg_tde_dir(old_cluster: PgCluster, new_cluster: PgCluster) -> bool:
-    """PG-2240 fix: copy pg_tde key-material directory from old to new cluster.
-
-    pg_upgrade does not migrate $PGDATA/pg_tde/ — without it the new cluster
-    cannot decrypt tde_heap blocks.  Returns True if the source directory existed.
-    """
-    src = old_cluster.data_dir / "pg_tde"
-    dst = new_cluster.data_dir / "pg_tde"
-    if not src.exists():
-        return False
-    if dst.exists():
-        shutil.rmtree(str(dst))
-    shutil.copytree(str(src), str(dst))
-    return True
-
 
 def _tde_params(keyfile: str) -> dict:
     return {"shared_preload_libraries": "'pg_tde'"}
@@ -161,7 +147,7 @@ class TestPpgToPspUpgrade:
         tmp_path: Path,
         io_method: str,
     ):
-        """Core PG-2240 scenario: tde_heap data survives PPG→PSP with the pg_tde dir copy fix."""
+        """Core PG-2240 scenario: tde_heap data survives PPG→PSP via pg_tde_upgrade."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
@@ -192,9 +178,6 @@ class TestPpgToPspUpgrade:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, f"pg_upgrade failed:\n{result.stderr}"
-
-        copied = _copy_pg_tde_dir(old, new_cluster)
-        assert copied, "pg_tde key-material directory was not present in old cluster"
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -244,8 +227,6 @@ class TestPpgToPspUpgrade:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -309,8 +290,6 @@ class TestPpgToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM pg_secrets") == "1"
@@ -365,8 +344,8 @@ class TestPspToPspUpgrade:
     """Same-flavour PSP major-version upgrade (e.g. 17 → 18).
 
     The key-provider API is identical on both sides; only the PostgreSQL
-    catalog version changes.  The PG-2240 fix (pg_tde dir copy) is still
-    required whenever tde_heap tables are present.
+    catalog version changes. Encrypted ``tde_heap`` data relies on
+    ``pg_tde_upgrade`` to carry ``pg_tde`` state to the new cluster (PG-2240).
     """
 
     def test_tde_heap_data_survives(
@@ -376,7 +355,7 @@ class TestPspToPspUpgrade:
         tmp_path: Path,
         io_method: str,
     ):
-        """Encrypted tde_heap data is intact after PSP→PSP with the PG-2240 fix."""
+        """Encrypted tde_heap data is intact after PSP→PSP (pg_tde_upgrade)."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
@@ -407,8 +386,6 @@ class TestPspToPspUpgrade:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, f"PSP→PSP upgrade failed:\n{result.stderr}"
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -471,8 +448,6 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM rows_a") == "2"
@@ -514,8 +489,6 @@ class TestPspToPspUpgrade:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -569,8 +542,6 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM wal_data") == "1"
@@ -586,9 +557,9 @@ class TestPspToPspUpgrade:
 class TestUpgradeAccessMethodPermutations:
     """Five permutations of heap/tde_heap across old and new clusters.
 
-    These tests directly exercise the PG-2240 scenario (all tde_heap) as well as
-    edge cases: mixed tables, enabling TDE post-upgrade, and converting away from
-    tde_heap before upgrading.
+    These tests exercise encrypted-table upgrades (PG-2240 / ``pg_tde_upgrade``)
+    plus edge cases: mixed tables, enabling TDE post-upgrade, and converting away
+    from tde_heap before upgrading.
     """
 
     def test_all_heap_baseline(
@@ -630,7 +601,7 @@ class TestUpgradeAccessMethodPermutations:
         tmp_path: Path,
         io_method: str,
     ):
-        """Primary PG-2240 scenario: all tables use tde_heap; pg_tde dir copy is required."""
+        """Primary PG-2240 scenario: all tables use tde_heap; pg_tde_upgrade must preserve keys."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
@@ -669,9 +640,6 @@ class TestUpgradeAccessMethodPermutations:
             },
         )
         assert result.returncode == 0, f"pg_upgrade (all tde_heap) failed:\n{result.stderr}"
-
-        copied = _copy_pg_tde_dir(old, new_cluster)
-        assert copied, "pg_tde key-material directory missing from old cluster"
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -723,8 +691,6 @@ class TestUpgradeAccessMethodPermutations:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -789,7 +755,7 @@ class TestUpgradeAccessMethodPermutations:
         tmp_path: Path,
         io_method: str,
     ):
-        """Rewrite tde_heap tables as heap before pg_upgrade; no pg_tde dir copy needed."""
+        """Rewrite tde_heap tables as heap before pg_upgrade; no pg_tde key dir needed on new cluster."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
@@ -832,52 +798,6 @@ class TestUpgradeAccessMethodPermutations:
         )
         assert am == "heap"
         new_cluster.stop()
-
-    # def test_tde_heap_convert_to_heap_before_upgrade(
-    #     self,
-    #     old_install_dir: Optional[Path],
-    #     install_dir: Path,
-    #     tmp_path: Path,
-    #     io_method: str,
-    # ):
-    #     """Rewrite tde_heap tables as heap before pg_upgrade; no pg_tde dir copy needed."""
-    #     if not old_install_dir:
-    #         pytest.skip("--old-install-dir not provided")
-
-    #     keyfile = str(tmp_path / "tde_then_heap.per")
-    #     old = _make_old_cluster(
-    #         old_install_dir,
-    #         tmp_path,
-    #         io_method,
-    #         extra_initdb=initdb_args_no_data_checksums(old_install_dir),
-    #         extra_params=_tde_params(keyfile),
-    #     )
-    #     old.start()
-    #     tde = TdeManager(old)
-    #     tde.create_extension()
-    #     tde.add_global_key_provider_file(keyfile=keyfile)
-    #     tde.set_global_principal_key()
-    #     old.execute(
-    #         "CREATE TABLE was_encrypted (id INT, data TEXT) USING tde_heap; "
-    #         "INSERT INTO was_encrypted SELECT i, md5(i::text) FROM generate_series(1,250) i;"
-    #     )
-    #     # Convert to plain heap before upgrading — data is now unencrypted on disk
-    #     old.execute("ALTER TABLE was_encrypted SET ACCESS METHOD heap")
-    #     old.stop()
-
-    #     # No pg_tde shared_preload_libraries on new cluster — purely plain upgrade
-    #     new_cluster, result = _upgrade(old, install_dir, tmp_path, io_method)
-    #     assert result.returncode == 0, result.stderr
-
-    #     new_cluster.start()
-    #     new_cluster.wait_ready()
-    #     assert new_cluster.fetchone("SELECT COUNT(*) FROM was_encrypted") == "250"
-    #     am = new_cluster.fetchone(
-    #         "SELECT am.amname FROM pg_class c JOIN pg_am am ON c.relam = am.oid "
-    #         "WHERE c.relname = 'was_encrypted'"
-    #     )
-    #     assert am == "heap"
-    #     new_cluster.stop()
 
 
 # ── WAL encryption upgrade paths ──────────────────────────────────────────────
@@ -925,8 +845,6 @@ class TestUpgradeWalEncryptionPaths:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -978,8 +896,6 @@ class TestUpgradeWalEncryptionPaths:
         )
         assert result.returncode == 0, f"pg_upgrade after WAL enc disable failed:\n{result.stderr}"
 
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         tde_new = TdeManager(new_cluster)
@@ -1028,8 +944,6 @@ class TestUpgradeWalEncryptionPaths:
             extra_params=_tde_params(keyfile),
         )
         assert result.returncode == 0, result.stderr
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -1148,7 +1062,6 @@ class TestUpgradeEnforceEncryption:
         new_params = _tde_params(keyfile)
         new_params["pg_tde.enforce_encryption"] = "'on'"
 
-        from .test_tde_pg_upgrade import _upgrade, _copy_pg_tde_dir
         new_cluster, result = _upgrade(
             old,
             install_dir,
@@ -1157,8 +1070,6 @@ class TestUpgradeEnforceEncryption:
             extra_params=new_params,
         )
         assert result.returncode == 0, f"pg_upgrade failed with enforce_encryption=on:\n{result.stderr}"
-
-        _copy_pg_tde_dir(old, new_cluster)
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -1266,9 +1177,6 @@ class TestPgTdeUpgradeModes:
             f"pg_tde_upgrade --link failed:\n{result.stderr}"
         )
 
-        copied = _copy_pg_tde_dir(old, new_cluster)
-        assert copied, "pg_tde key-material dir was not present in old cluster"
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM mode_t") == "500"
@@ -1314,7 +1222,6 @@ class TestPgTdeUpgradeModes:
             f"pg_tde_upgrade --clone failed:\n{result.stderr}"
         )
 
-        _copy_pg_tde_dir(old, new_cluster)
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM mode_t") == "500"
@@ -1366,7 +1273,6 @@ class TestPgTdeUpgradeModes:
             f"pg_tde_upgrade -j 4 failed:\n{result.stderr}"
         )
 
-        _copy_pg_tde_dir(old, new_cluster)
         new_cluster.start()
         new_cluster.wait_ready()
         for i in range(10):
@@ -1448,8 +1354,6 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (partitioned) failed:\n{result.stderr}"
         )
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM part_t") == "4"
@@ -1502,8 +1406,6 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (FK cascade) failed:\n{result.stderr}"
         )
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
 
@@ -1552,8 +1454,6 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (indexes) failed:\n{result.stderr}"
         )
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM idx_t") == "500"
@@ -1624,8 +1524,6 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (multi-provider) failed:\n{result.stderr}"
         )
-        _copy_pg_tde_dir(old, new_cluster)
-
         new_cluster.start()
         new_cluster.wait_ready()
         assert new_cluster.fetchone(
