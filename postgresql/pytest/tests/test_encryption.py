@@ -526,3 +526,137 @@ class TestTdeCipher:
             tde_primary.execute("SET pg_tde.cipher = 'aes_999'")
         # The cluster must still be healthy after the rejected SET.
         assert tde_primary.fetchone("SHOW pg_tde.cipher") in ("aes_128", "aes_256")
+
+
+# ── WAL segment size × WAL encryption ─────────────────────────────────────────
+
+
+@pytest.mark.slow
+class TestWalSegmentSizeWithEncryption:
+    """
+    ``pg_tde.wal_encrypt`` must work across all supported WAL segment sizes,
+    not just the 16 MB default that every other test uses.
+
+    Catches segment-boundary encryption bugs — anywhere pg_tde's WAL
+    handling implicitly assumes 16 MB segments (e.g. key rotation tied to
+    segment count, buffers sized to the default, IV/nonce derivations that
+    cap at 16 MB worth of records). Both extremes are tested:
+
+      - **1 MB** segments — boundaries hit frequently; smallest supported size.
+      - **64 MB** segments — fewest boundary transitions; largest common size.
+
+    Closes the gap from the baseline coverage report:
+    ``pg_tde_wal_encryption_segsize.sh`` had no pytest equivalent.
+    """
+
+    @pytest.mark.parametrize("wal_segsize_mb,target_rows", [
+        pytest.param(1, 2000, id="1MB-segments"),
+        pytest.param(64, 50000, id="64MB-segments"),
+    ])
+    def test_wal_segment_size_with_encryption(
+        self, pg_factory, tmp_path, wal_segsize_mb, target_rows
+    ):
+        cluster = pg_factory(f"wal_segsize_{wal_segsize_mb}MB")
+        cluster.initdb(extra_args=[
+            f"--wal-segsize={wal_segsize_mb}",
+            *initdb_args_no_data_checksums(cluster.install_dir),
+        ])
+        cluster.write_default_config(extra_params={
+            "shared_preload_libraries": "'pg_tde'",
+            "default_table_access_method": "'tde_heap'",
+        })
+        cluster.add_hba_entry("local all all trust")
+        cluster.start()
+
+        tde = TdeManager(cluster)
+        tde.create_extension()
+        tde.add_global_key_provider_file(
+            keyfile=str(tmp_path / f"segsize_{wal_segsize_mb}.file")
+        )
+        tde.set_global_principal_key()
+        tde.enable_wal_encryption()
+        assert tde.is_wal_encrypted(), (
+            "WAL encryption did not engage — test would otherwise pass "
+            "trivially without exercising segment-boundary encryption."
+        )
+
+        # Verify the segment size we asked for is actually in effect.
+        # SHOW returns a human size like "1MB" / "64MB".
+        wal_seg_show = cluster.fetchone("SHOW wal_segment_size")
+        assert wal_seg_show == f"{wal_segsize_mb}MB", (
+            f"wal_segment_size is {wal_seg_show!r}; expected "
+            f"'{wal_segsize_mb}MB' (initdb --wal-segsize not honoured)."
+        )
+
+        # Write data with a unique marker so we can verify no plaintext
+        # leaks into any segment regardless of where boundaries fall.
+        marker = f"SEGSIZE-{wal_segsize_mb}MB-marker-x4f-leak-check"
+        cluster.execute(
+            "CREATE TABLE seg_test "
+            "(id INT PRIMARY KEY, payload TEXT) USING tde_heap"
+        )
+        # md5() yields 32 chars; marker prefix adds ~30 chars → ~60 byte
+        # payload per row. With target_rows tuned per case we get enough
+        # WAL volume to cross at least one segment boundary.
+        cluster.execute(
+            "INSERT INTO seg_test "
+            f"SELECT i, '{marker}-' || md5(i::text) "
+            f"FROM generate_series(1, {target_rows}) i"
+        )
+        cluster.execute("CHECKPOINT")
+        cluster.execute("SELECT pg_switch_wal()")
+
+        # We must have at least 2 segments on disk — otherwise we are not
+        # actually testing the boundary case.
+        pg_wal = cluster.data_dir / "pg_wal"
+        segs = sorted(
+            p for p in pg_wal.iterdir()
+            if p.is_file() and len(p.name) == 24 and "." not in p.name
+        )
+        assert len(segs) >= 2, (
+            f"Only {len(segs)} WAL segment(s) generated with "
+            f"--wal-segsize={wal_segsize_mb}MB and {target_rows} rows; "
+            "increase target_rows so the workload crosses a boundary."
+        )
+
+        # Each segment file must match the configured size exactly.
+        expected_bytes = wal_segsize_mb * 1024 * 1024
+        for seg in segs:
+            actual = seg.stat().st_size
+            assert actual == expected_bytes, (
+                f"WAL segment {seg.name} is {actual} bytes; "
+                f"expected {expected_bytes} for --wal-segsize={wal_segsize_mb}."
+            )
+
+        # Plaintext marker must not appear in any segment on disk.
+        marker_bytes = marker.encode()
+        for seg in segs:
+            assert marker_bytes not in seg.read_bytes(), (
+                f"Plaintext marker leaked into encrypted segment "
+                f"{seg.name} ({wal_segsize_mb}MB). WAL encryption may not "
+                "engage correctly at this segment size."
+            )
+
+        # Crash-recover loop forces the encrypted-WAL replay path through
+        # multiple {wal_segsize_mb}MB segments — catches decryption bugs
+        # specific to segment transitions.
+        cluster.crash()
+        cluster.start()
+        cluster.wait_ready(timeout=60)
+
+        recovered = cluster.fetchone("SELECT COUNT(*) FROM seg_test")
+        assert int(recovered) == target_rows, (
+            f"After crash recovery with --wal-segsize={wal_segsize_mb}MB: "
+            f"expected {target_rows} rows, got {recovered}. "
+            "Likely a decryption bug at a WAL segment boundary."
+        )
+
+        # No decryption errors in the recovery log.
+        server_log = cluster.read_log(last_n=300)
+        for needle in ("could not decrypt", "decryption failed",
+                       "invalid encrypted"):
+            assert needle.lower() not in server_log.lower(), (
+                f"Server log contains {needle!r} after crash recovery "
+                f"with --wal-segsize={wal_segsize_mb}MB.\n"
+                "Log tail:\n" + server_log[-2000:]
+            )
