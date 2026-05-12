@@ -561,9 +561,18 @@ class TestWalSegmentSizeWithEncryption:
             f"--wal-segsize={wal_segsize_mb}",
             *initdb_args_no_data_checksums(cluster.install_dir),
         ])
+        # Postgres requires min_wal_size >= 2 × wal_segment_size and
+        # max_wal_size >= 2 × wal_segment_size. Defaults (80MB / 1GB) are
+        # fine for 1MB segments but make a 64MB-segment cluster refuse to
+        # start ("min_wal_size must be at least twice wal_segment_size").
+        # Use 4× the segment size so checkpoints have headroom too.
+        min_wal_mb = max(80, wal_segsize_mb * 4)
+        max_wal_mb = max(1024, wal_segsize_mb * 8)
         cluster.write_default_config(extra_params={
             "shared_preload_libraries": "'pg_tde'",
             "default_table_access_method": "'tde_heap'",
+            "min_wal_size": f"'{min_wal_mb}MB'",
+            "max_wal_size": f"'{max_wal_mb}MB'",
         })
         cluster.add_hba_entry("local all all trust")
         cluster.start()
