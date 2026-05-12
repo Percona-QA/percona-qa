@@ -54,19 +54,31 @@ def _start_tde_cluster_with_wal_encryption(
 
 def _flushed_wal_segment(cluster: PgCluster) -> Path:
     """
-    Force a WAL switch + checkpoint so the just-closed segment is on disk,
-    then return its path inside ``data_dir/pg_wal``.
+    Force the current WAL segment to be closed (so pg_waldump can read it).
+
+    Subtle: a CHECKPOINT *after* pg_switch_wal will recycle the just-closed
+    segment (rename it forward as a future segment), which makes the segment
+    name we captured unfindable on disk. So:
+
+      1. CHECKPOINT once to flush any dirty pages.
+      2. Capture the name of the current segment (the one we're about to close).
+      3. pg_switch_wal — closes the current segment. The new segment becomes
+         the "current" one.
+      4. **Do not** checkpoint again — that's what recycles the file.
+
+    The captured segment file is then guaranteed to be present on disk and
+    untouched until the next checkpoint.
     """
     cluster.execute("CHECKPOINT")
-    lsn = cluster.fetchone("SELECT pg_switch_wal()")
-    cluster.execute("CHECKPOINT")
     seg_name = cluster.fetchone(
-        f"SELECT pg_walfile_name('{lsn}'::pg_lsn - 1)"
+        "SELECT pg_walfile_name(pg_current_wal_insert_lsn())"
     )
+    cluster.execute("SELECT pg_switch_wal()")
     seg_path = cluster.data_dir / "pg_wal" / seg_name
     assert seg_path.exists(), (
-        f"WAL segment {seg_name} was not flushed to disk under "
-        f"{cluster.data_dir / 'pg_wal'}"
+        f"WAL segment {seg_name} not present on disk under "
+        f"{cluster.data_dir / 'pg_wal'} after pg_switch_wal — "
+        "did a background checkpoint recycle it?"
     )
     return seg_path
 

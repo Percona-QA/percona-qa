@@ -201,8 +201,9 @@ class TestPgTdeBaseBackupWalEncryption:
         )
 
         def _run_basebackup(target: Path, *extra) -> subprocess.CompletedProcess:
-            if target.exists():
-                _shutil.rmtree(target)
+            """Run pg_tde_basebackup. Caller owns ``target`` lifecycle —
+            we never wipe it here because the -E path needs a pre-seeded
+            ``pg_tde/`` subdir to exist when pg_tde_basebackup starts."""
             cmd = [
                 str(bin_path),
                 "-h", str(tde_primary.socket_dir),
@@ -217,8 +218,11 @@ class TestPgTdeBaseBackupWalEncryption:
         warning_phrase = "WAL keys"
 
         # 1. No -E: warning MUST appear (source has TDE keys, target backup
-        #    won't be re-keyed → the message is correct).
+        #    won't be re-keyed → the message is correct). Target dir must not
+        #    exist (pg_tde_basebackup creates it).
         target_no_E = tmp_path / "bb_no_E"
+        if target_no_E.exists():
+            _shutil.rmtree(target_no_E)
         r1 = _run_basebackup(target_no_E)
         assert r1.returncode == 0, (
             f"pg_tde_basebackup (no -E) failed: stderr={r1.stderr}"
@@ -231,15 +235,18 @@ class TestPgTdeBaseBackupWalEncryption:
 
         # 2. With -E: the same warning must NOT appear.
         # Pre-seed the keyring (the same step TdeManager.tde_basebackup does
-        # for us when encrypt_wal=True).
+        # for us when encrypt_wal=True). The target dir must exist with
+        # pg_tde/ inside BEFORE pg_tde_basebackup -E starts.
         target_E = tmp_path / "bb_with_E"
-        target_E.mkdir(parents=True, exist_ok=True)
+        if target_E.exists():
+            _shutil.rmtree(target_E)
+        target_E.mkdir(parents=True)
         src_pg_tde = tde_primary.data_dir / "pg_tde"
-        if src_pg_tde.is_dir():
-            dst = target_E / "pg_tde"
-            if dst.exists():
-                _shutil.rmtree(dst)
-            _shutil.copytree(src_pg_tde, dst)
+        assert src_pg_tde.is_dir(), (
+            f"Source has no pg_tde/ directory at {src_pg_tde} — "
+            "test setup is broken."
+        )
+        _shutil.copytree(src_pg_tde, target_E / "pg_tde")
 
         r2 = _run_basebackup(target_E, "-E")
         assert r2.returncode == 0, (
