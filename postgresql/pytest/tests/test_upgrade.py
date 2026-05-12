@@ -1120,15 +1120,6 @@ class TestUpgradeNegativeExtended:
     ):
         """
         pg_upgrade --check must reject a new cluster that contains user data.
-
-        Note on the previous test: an encoding mismatch (e.g. LATIN1 → UTF8
-        or SQL_ASCII → UTF8) used to be a reliable negative case, but modern
-        Percona/community pg_upgrade releases accept these pairs as
-        compatible (verified on PG 18.4) — making encoding-mismatch a poor
-        gate for tests. Use a guaranteed reject instead: pg_upgrade
-        requires the new cluster to contain only the default
-        ``template0`` / ``template1`` / ``postgres`` databases (plus
-        nothing else, including no extra user databases).
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
@@ -1139,7 +1130,7 @@ class TestUpgradeNegativeExtended:
         old.stop()
 
         # Build a fully prepared new cluster (initdb + start) and pollute it
-        # with a user database — pg_upgrade --check must refuse.
+        # with user data — pg_upgrade --check must refuse.
         new_port = allocate_port()
         new_data = tmp_path / "new"
         new_cluster = PgCluster(
@@ -1153,12 +1144,24 @@ class TestUpgradeNegativeExtended:
         new_cluster.write_default_config()
         new_cluster.add_hba_entry("local all all trust")
         new_cluster.start()
-        new_cluster.execute("CREATE DATABASE poisoned_db")
+
+        # FIX: Pollute a database that pg_upgrade is actively checking (postgres).
+        # pg_upgrade ignores extra databases, but strictly checks mapped ones.
+        new_cluster.execute("CREATE TABLE public.poisoned_table (id INT);")
         new_cluster.stop()
 
         new_bin = install_dir / "bin"
+
+        # Standardize on pg_tde_upgrade if testing the Percona branch
+        try:
+            upgrade_binary = new_bin / "pg_tde_upgrade"
+            if not upgrade_binary.exists():
+                upgrade_binary = new_bin / "pg_upgrade"
+        except NameError:
+            upgrade_binary = new_bin / "pg_tde_upgrade"
+
         cmd = [
-            str(_upgrade_bin(install_dir)),
+            str(upgrade_binary),
             "-b", str(old.bin),
             "-B", str(new_bin),
             "-d", str(old.data_dir),
@@ -1167,15 +1170,24 @@ class TestUpgradeNegativeExtended:
             "-P", str(new_port),
             "--check",
         ]
+
         env = os.environ.copy()
+        # Ensure the NEW lib path is first to avoid symbol lookup errors
+        from lib.cluster import prepend_install_lib_dirs
         prepend_install_lib_dirs(env, install_dir, old.install_dir)
+
+        import subprocess
         result = subprocess.run(
             cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
         )
+
+        combined = (result.stdout + "\n" + result.stderr).lower()
+
         assert result.returncode != 0, (
             "pg_upgrade --check should reject a non-pristine new cluster.\n"
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
+        assert "not empty" in combined, "Expected pg_upgrade to explicitly flag the new cluster as not empty."
 
     def test_upgrade_fails_wrong_data_dir(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
