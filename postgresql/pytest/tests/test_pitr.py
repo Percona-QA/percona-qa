@@ -21,7 +21,6 @@ from lib import PgCluster, TdeManager, archive_restore_conf_values, restore_conf
 
 pytestmark = pytest.mark.backup
 
-
 @pytest.mark.slow
 class TestPitr:
     def test_pitr_plain(self, primary_cluster: PgCluster, tmp_path: Path,
@@ -40,17 +39,25 @@ class TestPitr:
 
         primary_cluster.execute("CREATE TABLE pitr_tbl (id INT)")
         primary_cluster.execute("INSERT INTO pitr_tbl SELECT generate_series(1,100)")
+
+        # FIX: Take the cold base backup BEFORE marking the PITR target time
+        primary_cluster.stop()
+        restore_dir = tmp_path / "pitr_restore"
+        shutil.copytree(str(primary_cluster.data_dir), str(restore_dir))
+        primary_cluster.start()
+
+        # Now mark the time and perform the destructive action
         pitr_time = (primary_cluster.fetchone("SELECT now()") or "").strip()
         time.sleep(1)
+
         primary_cluster.execute("DROP TABLE pitr_tbl")
         primary_cluster.execute("CHECKPOINT")
         primary_cluster.execute("SELECT pg_switch_wal()")
+        time.sleep(1) # Give the archiver a brief moment to push the WAL
         primary_cluster.stop()
 
         from conftest import allocate_port
         restore_port = allocate_port()
-        restore_dir = tmp_path / "pitr_restore"
-        shutil.copytree(str(primary_cluster.data_dir), str(restore_dir))
 
         restored = PgCluster(restore_dir, restore_port, install_dir,
                              socket_dir=tmp_path, io_method=io_method)
@@ -92,16 +99,24 @@ class TestPitr:
 
         tde_primary.execute("CREATE TABLE pitr_enc_tbl (id INT)")
         tde_primary.execute("INSERT INTO pitr_enc_tbl SELECT generate_series(1,100)")
+
+        # FIX: Take the cold base backup BEFORE marking the PITR target time
+        tde_primary.stop()
+        restore_dir = tmp_path / "pitr_enc_restore"
+        shutil.copytree(str(tde_primary.data_dir), str(restore_dir))
+        tde_primary.start()
+
+        # Now mark the time and perform the destructive action
         pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
         time.sleep(1)
+
         tde_primary.execute("DROP TABLE pitr_enc_tbl")
         tde_primary.execute("SELECT pg_switch_wal()")
+        time.sleep(1) # Give the archiver a brief moment to push the WAL
         tde_primary.stop()
 
         from conftest import allocate_port
         restore_port = allocate_port()
-        restore_dir = tmp_path / "pitr_enc_restore"
-        shutil.copytree(str(tde_primary.data_dir), str(restore_dir))
 
         restored = PgCluster(restore_dir, restore_port, install_dir,
                              socket_dir=tmp_path, io_method=io_method)
