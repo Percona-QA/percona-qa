@@ -1784,21 +1784,18 @@ class TestTdeUpgradeExtremeCornerCases:
         tde.create_extension()
         tde.add_global_key_provider_file(keyfile=keyfile)
 
-        old.execute("CREATE TABLE rot_t (id INT, gen TEXT) USING tde_heap;")
+        # FIX: Generation 1 key MUST be created before creating the tde_heap table
+        tde.set_global_principal_key(key_name='key_gen_1')
 
-        # Generation 1
-        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_gen_1', 'file_provider');")
-        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_gen_1', 'file_provider');")
+        old.execute("CREATE TABLE rot_t (id INT, gen TEXT) USING tde_heap;")
         old.execute("INSERT INTO rot_t VALUES (1, 'gen1');")
 
         # Generation 2
-        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_gen_2', 'file_provider');")
-        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_gen_2', 'file_provider');")
+        tde.rotate_principal_key('key_gen_2')
         old.execute("INSERT INTO rot_t VALUES (2, 'gen2');")
 
         # Generation 3
-        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_gen_3', 'file_provider');")
-        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_gen_3', 'file_provider');")
+        tde.rotate_principal_key('key_gen_3')
         old.execute("INSERT INTO rot_t VALUES (3, 'gen3');")
 
         old.stop()
@@ -1815,7 +1812,6 @@ class TestTdeUpgradeExtremeCornerCases:
         count = new_cluster.fetchone("SELECT COUNT(*) FROM rot_t;")
         assert int(count) == 3, "Failed to decrypt older key generations after upgrade!"
         new_cluster.stop()
-
 
     def test_upgrade_unlogged_tde_heap(
         self,
