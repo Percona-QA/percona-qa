@@ -33,6 +33,7 @@ markers = [
     "slow: tests that take more than 5 minutes",
     "vault: tests that require a running HashiCorp Vault / OpenBao instance",
     "kmip: tests that require a running KMIP server",
+    "waldump: pg_waldump / pg_tde_waldump diagnostic-tool tests",
     "docker: tests that require Docker",
     "pg16: tests that require PostgreSQL 16",
     "pg17: tests that require PostgreSQL 17",
