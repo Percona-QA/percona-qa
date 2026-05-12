@@ -549,12 +549,17 @@ class TestWalSegmentSizeWithEncryption:
     ``pg_tde_wal_encryption_segsize.sh`` had no pytest equivalent.
     """
 
-    @pytest.mark.parametrize("wal_segsize_mb,target_rows", [
-        pytest.param(1, 2000, id="1MB-segments"),
-        pytest.param(64, 50000, id="64MB-segments"),
+    # Each row's payload size in WAL drives how many rows we need to cross
+    # a segment boundary. With the default 60-byte payload, 50k rows yield
+    # only ~14 MB of WAL — fine for 1MB segments, far from filling one 64MB
+    # segment. Use ``payload_repeat`` to scale row size per segment-size.
+    @pytest.mark.parametrize("wal_segsize_mb,target_rows,payload_repeat", [
+        pytest.param(1, 2000, 1, id="1MB-segments"),
+        # 100k rows × ~1KB payload ≈ 120MB WAL → spans ≥2 segments at 64MB.
+        pytest.param(64, 100_000, 30, id="64MB-segments"),
     ])
     def test_wal_segment_size_with_encryption(
-        self, pg_factory, tmp_path, wal_segsize_mb, target_rows
+        self, pg_factory, tmp_path, wal_segsize_mb, target_rows, payload_repeat
     ):
         cluster = pg_factory(f"wal_segsize_{wal_segsize_mb}MB")
         cluster.initdb(extra_args=[
@@ -604,12 +609,13 @@ class TestWalSegmentSizeWithEncryption:
             "CREATE TABLE seg_test "
             "(id INT PRIMARY KEY, payload TEXT) USING tde_heap"
         )
-        # md5() yields 32 chars; marker prefix adds ~30 chars → ~60 byte
-        # payload per row. With target_rows tuned per case we get enough
-        # WAL volume to cross at least one segment boundary.
+        # ``payload_repeat`` controls per-row WAL volume so we span ≥2
+        # segments regardless of the parametrized segment size:
+        #   - 1MB  segments: repeat=1   → ~60-byte payload  × 2000 rows ≈ 3MB WAL
+        #   - 64MB segments: repeat=30  → ~1KB  payload × 100k rows ≈ 120MB WAL
         cluster.execute(
             "INSERT INTO seg_test "
-            f"SELECT i, '{marker}-' || md5(i::text) "
+            f"SELECT i, '{marker}-' || repeat(md5(i::text), {payload_repeat}) "
             f"FROM generate_series(1, {target_rows}) i"
         )
         cluster.execute("CHECKPOINT")
