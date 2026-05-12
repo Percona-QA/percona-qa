@@ -4028,3 +4028,58 @@ class TestTdeRewindExtremeCornerCases:
             assert int(count) == 200
         finally:
             _teardown(standby, primary)
+
+    def test_rewind_crash_recovery_wal_corruption(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Reproduces a known bug: pg_tde_rewind with WAL encryption corrupts WAL
+        after an immediate shutdown, causing a startup PANIC on the *second* restart.
+        """
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, wal_encrypt=True
+        )
+        try:
+            primary.execute("CREATE TABLE immediate_t (id INT) USING tde_heap;")
+            primary.execute("INSERT INTO immediate_t VALUES (1); CHECKPOINT;")
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # 1. Stop target with IMMEDIATE mode to leave it in a crashed/dirty state
+            primary.stop(mode="immediate")
+
+            # 2. Promote standby
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(1)
+            standby.execute("INSERT INTO immediate_t VALUES (2); CHECKPOINT;")
+
+            # 3. Run pg_rewind
+            # This triggers internal crash recovery via single-user postgres.
+            # WAL generated here is likely improperly encrypted.
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            _prepare_rewound_streaming_standby(primary, standby, streaming_only=False)
+
+            # 4. First startup succeeds! (The timebomb is planted)
+            primary.start()
+            primary.wait_ready(timeout=60)
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+
+            # 5. Clean shutdown
+            primary.stop(mode="fast")
+
+            # 6. Second startup -> BOOM.
+            # This will fail with a RuntimeError: pg_ctl start failed (exit 1)
+            # The log will contain the "invalid magic number" and PANIC.
+            primary.start()
+            primary.wait_ready(timeout=60)
+
+            count = primary.fetchone("SELECT COUNT(*) FROM immediate_t")
+            assert int(count) == 2
+        finally:
+            _teardown(standby, primary)
