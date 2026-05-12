@@ -5,12 +5,16 @@ Covers scenarios from:
   - pg_upgrade_custom_image.sh
   - pg_tde_upgrade_test.sh
 
+When the new install ships ``pg_tde_upgrade`` (the Percona wrapper around
+``pg_upgrade``), tests prefer it so pg_tde-specific state (e.g. the
+``$PGDATA/pg_tde/`` key-material directory the upstream tool does not migrate —
+PG-2240) is carried across automatically. Non-TDE scenarios still work because
+``pg_tde_upgrade`` is a transparent wrapper of ``pg_upgrade``.
+
 All tests require --old-install-dir to be provided.
 """
 import os
-import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +35,12 @@ pytestmark = [pytest.mark.upgrade, pytest.mark.slow]
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
+def _upgrade_bin(new_install_dir: Path) -> Path:
+    """Prefer ``pg_tde_upgrade`` (handles pg_tde state, PG-2240) when present."""
+    wrapper = new_install_dir / "bin" / "pg_tde_upgrade"
+    return wrapper if wrapper.exists() else new_install_dir / "bin" / "pg_upgrade"
+
+
 def _run_pg_upgrade(
     old_cluster: PgCluster,
     new_install_dir: Path,
@@ -41,7 +51,7 @@ def _run_pg_upgrade(
 ) -> subprocess.CompletedProcess:
     new_bin = new_install_dir / "bin"
     cmd = [
-        str(new_bin / "pg_upgrade"),
+        str(_upgrade_bin(new_install_dir)),
         "-b", str(old_cluster.bin),
         "-B", str(new_bin),
         "-d", str(old_cluster.data_dir),
@@ -52,7 +62,9 @@ def _run_pg_upgrade(
     if check_only:
         cmd.append("--check")
     env = os.environ.copy()
-    prepend_install_lib_dirs(env, old_cluster.install_dir, new_install_dir)
+    # New install_dir must come first so new pg_upgrade / psql pick up the newer
+    # libpq.so (PQfullProtocolVersion etc.) — see test_tde_pg_upgrade.py.
+    prepend_install_lib_dirs(env, new_install_dir, old_cluster.install_dir)
     return subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
     )
@@ -212,7 +224,7 @@ class TestUpgradeExtensions:
         old_cluster.start()
         tde = TdeManager(old_cluster)
         tde.create_extension()
-        tde.add_global_key_provider_file(keyfile="/tmp/pg_tde_upgrade.per")
+        tde.add_global_key_provider_file(keyfile=str(tmp_path / "pg_tde_upgrade.per"))
         tde.set_global_principal_key()
         old_cluster.execute("CREATE TABLE tde_upgrade_data (id INT)")
         old_cluster.execute("INSERT INTO tde_upgrade_data SELECT generate_series(1,500)")
@@ -317,7 +329,7 @@ def _upgrade(
 
     new_bin = install_dir / "bin"
     cmd = [
-        str(new_bin / "pg_upgrade"),
+        str(_upgrade_bin(install_dir)),
         "-b", str(old_cluster.bin),
         "-B", str(new_bin),
         "-d", str(old_cluster.data_dir),
@@ -330,7 +342,7 @@ def _upgrade(
     if pg_upgrade_extra:
         cmd.extend(pg_upgrade_extra)
     env = os.environ.copy()
-    prepend_install_lib_dirs(env, old_cluster.install_dir, install_dir)
+    prepend_install_lib_dirs(env, install_dir, old_cluster.install_dir)
     result = subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
     )
@@ -731,10 +743,17 @@ class TestUpgradeLinkMode:
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method, pg_upgrade_extra=["--clone"]
         )
-        # --clone is only available on certain filesystems; skip if unsupported
-        if result.returncode != 0 and "clone" in result.stderr.lower():
+        # --clone is only available on certain filesystems; pg_upgrade prints
+        # the "could not clone" message to stdout (not stderr), so look in both.
+        combined = (result.stdout + "\n" + result.stderr).lower()
+        if result.returncode != 0 and (
+            "could not clone" in combined
+            or ("clone" in combined and "not supported" in combined)
+        ):
             pytest.skip("--clone not supported on this filesystem")
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, (
+            f"pg_upgrade --clone failed:\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -1030,7 +1049,7 @@ class TestUpgradeNegativeExtended:
         new_port = allocate_port()
         new_bin = install_dir / "bin"
         cmd = [
-            str(new_bin / "pg_upgrade"),
+            str(_upgrade_bin(install_dir)),
             "-b", str(Path(old_install_dir) / "bin"),
             "-B", str(new_bin),
             "-d", str(tmp_path / "no_such_dir"),
@@ -1039,7 +1058,7 @@ class TestUpgradeNegativeExtended:
             "-P", str(new_port),
         ]
         env = os.environ.copy()
-        prepend_install_lib_dirs(env, Path(old_install_dir), install_dir)
+        prepend_install_lib_dirs(env, install_dir, Path(old_install_dir))
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         assert result.returncode != 0
 
@@ -1088,7 +1107,7 @@ class TestUpgradeNegativeExtended:
         new_bin = install_dir / "bin"
         new_port = allocate_port()
         cmd = [
-            str(new_bin / "pg_upgrade"),
+            str(_upgrade_bin(install_dir)),
             "-b", str(old.bin),
             "-B", str(new_bin),
             "-d", str(old.data_dir),
@@ -1098,7 +1117,7 @@ class TestUpgradeNegativeExtended:
             "--check",
         ]
         env = os.environ.copy()
-        prepend_install_lib_dirs(env, old.install_dir, install_dir)
+        prepend_install_lib_dirs(env, install_dir, old.install_dir)
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         assert result.returncode != 0
 
