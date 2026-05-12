@@ -1594,3 +1594,260 @@ class TestUpgradeScale:
         )
         assert int(tbl_count) >= 50
         new_cluster.stop()
+
+class TestTdeUpgradeExtremeCornerCases:
+    """
+    Advanced physical layout and catalog corner cases.
+    Tests TOAST file mapping, key history migration, unlogged tables,
+    custom schema deployments, and relfilenode churn during pg_tde_upgrade.
+    """
+
+    def test_upgrade_massive_toast_data(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        TOAST tables have their own underlying relfilenodes.
+        pg_tde_upgrade must successfully map and migrate the encryption
+        metadata for the hidden TOAST relation as well as the main heap.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "toast_upgrade.per")
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        tde = TdeManager(old)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+        tde.set_global_principal_key()
+
+        old.execute("CREATE TABLE toast_t (id INT, massive_payload TEXT) USING tde_heap;")
+        # Insert a string large enough to force out-of-line TOAST storage (~260KB)
+        old.execute("INSERT INTO toast_t SELECT 1, repeat('abcdefghijklmnopqrstuvwxyz', 10000);")
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
+        )
+        assert result.returncode == 0, f"pg_tde_upgrade (TOAST) failed:\n{result.stderr}"
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+
+        # Verify the TOAST data was successfully decrypted on the new cluster
+        length = new_cluster.fetchone("SELECT length(massive_payload) FROM toast_t WHERE id = 1;")
+        assert int(length) == 260000, "TOAST data was truncated or corrupted during upgrade!"
+        new_cluster.stop()
+
+    def test_upgrade_key_rotation_history(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        If a key is rotated multiple times, a single table will contain
+        blocks encrypted by different historical keys. pg_tde_upgrade must
+        migrate the entire key history, ensuring old data remains readable.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "rotation_upgrade.per")
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        tde = TdeManager(old)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+
+        old.execute("CREATE TABLE rot_t (id INT, gen TEXT) USING tde_heap;")
+
+        # Generation 1
+        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_gen_1', 'file_provider');")
+        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_gen_1', 'file_provider');")
+        old.execute("INSERT INTO rot_t VALUES (1, 'gen1');")
+
+        # Generation 2
+        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_gen_2', 'file_provider');")
+        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_gen_2', 'file_provider');")
+        old.execute("INSERT INTO rot_t VALUES (2, 'gen2');")
+
+        # Generation 3
+        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_gen_3', 'file_provider');")
+        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_gen_3', 'file_provider');")
+        old.execute("INSERT INTO rot_t VALUES (3, 'gen3');")
+
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
+        )
+        assert result.returncode == 0, f"pg_tde_upgrade (Key Rotation) failed:\n{result.stderr}"
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+
+        # Verify ALL generations of data can be read
+        count = new_cluster.fetchone("SELECT COUNT(*) FROM rot_t;")
+        assert int(count) == 3, "Failed to decrypt older key generations after upgrade!"
+        new_cluster.stop()
+
+
+    def test_upgrade_unlogged_tde_heap(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        Unlogged tables bypass WAL entirely. pg_upgrade handles them specially
+        (often just copying the init fork). pg_tde_upgrade must not crash
+        when processing an encrypted table with no WAL history.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "unlogged_upgrade.per")
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        tde = TdeManager(old)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+        tde.set_global_principal_key()
+
+        # Create UNLOGGED table
+        old.execute("CREATE UNLOGGED TABLE unlogged_t (id INT) USING tde_heap;")
+        old.execute("INSERT INTO unlogged_t VALUES (1), (2), (3);")
+
+        # Clean shutdown flushes unlogged tables to disk safely
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
+        )
+        assert result.returncode == 0, f"pg_tde_upgrade (Unlogged) failed:\n{result.stderr}"
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+
+        count = new_cluster.fetchone("SELECT COUNT(*) FROM unlogged_t;")
+        assert int(count) == 3, "Unlogged encrypted data did not survive upgrade!"
+        new_cluster.stop()
+
+
+    def test_upgrade_extension_in_custom_schema(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        Tests if pg_tde_upgrade hardcodes the 'public' schema.
+        Installs pg_tde into a dedicated schema and upgrades.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "schema_upgrade.per")
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+
+        old.execute("CREATE SCHEMA vault;")
+        old.execute("CREATE EXTENSION pg_tde SCHEMA vault;")
+
+        # Must explicitly qualify functions since they aren't in public
+        old.execute(f"SELECT vault.pg_tde_add_global_key_provider_file('fp', '{keyfile}');")
+        old.execute("SELECT vault.pg_tde_create_key_using_global_key_provider('k1', 'fp');")
+        old.execute("SELECT vault.pg_tde_set_server_key_using_global_key_provider('k1', 'fp');")
+        old.execute("SELECT vault.pg_tde_set_key_using_global_key_provider('k1', 'fp');")
+
+        old.execute("CREATE TABLE custom_schema_t (id INT) USING tde_heap;")
+        old.execute("INSERT INTO custom_schema_t VALUES (99);")
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
+        )
+        assert result.returncode == 0, f"pg_tde_upgrade (Custom Schema) failed:\n{result.stderr}"
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+        assert new_cluster.fetchone("SELECT COUNT(*) FROM custom_schema_t;") == "1"
+        new_cluster.stop()
+
+
+    def test_upgrade_dropped_and_recreated_tables(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        Relfilenode ghosting: Creates a table, drops it, and creates a new one
+        with the exact same name. Forces pg_tde_upgrade to resolve the correct
+        active relfilenode mapping and discard the dead ones.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "ghost_upgrade.per")
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        tde = TdeManager(old)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+        tde.set_global_principal_key()
+
+        # Version 1 (Will be ghosted)
+        old.execute("CREATE TABLE ghost_t (id INT) USING tde_heap;")
+        old.execute("INSERT INTO ghost_t VALUES (1);")
+        old.execute("DROP TABLE ghost_t;")
+
+        # Version 2 (Active)
+        old.execute("CREATE TABLE ghost_t (id INT) USING tde_heap;")
+        old.execute("INSERT INTO ghost_t VALUES (2);")
+
+        # Force catalog cleanup
+        old.execute("VACUUM FULL;")
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
+        )
+        assert result.returncode == 0, f"pg_tde_upgrade (Ghost Relfilenodes) failed:\n{result.stderr}"
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+
+        # Must return exactly 1 row (value=2). If it fails, the catalog map is broken.
+        val = new_cluster.fetchone("SELECT id FROM ghost_t;")
+        assert int(val) == 2, "pg_tde_upgrade mixed up the dropped table's relfilenode!"
+        new_cluster.stop()
