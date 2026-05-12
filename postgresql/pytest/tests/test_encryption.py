@@ -675,3 +675,199 @@ class TestWalSegmentSizeWithEncryption:
                 f"with --wal-segsize={wal_segsize_mb}MB.\n"
                 "Log tail:\n" + server_log[-2000:]
             )
+
+
+# ── pg_tde.enforce_encryption GUC ─────────────────────────────────────────────
+
+
+def _set_enforce_encryption(cluster: PgCluster, value: str) -> None:
+    """
+    Flip ``pg_tde.enforce_encryption`` cluster-wide via ALTER SYSTEM + reload.
+
+    ``pg_tde.enforce_encryption`` is PGC_SUSET — a per-session ``SET`` would
+    only affect the connection that ran it, and ``cluster.execute`` opens a
+    new psql connection per call. Using ALTER SYSTEM SET + pg_reload_conf
+    makes the change visible to every subsequent ``cluster.execute`` call.
+    """
+    cluster.execute(f"ALTER SYSTEM SET pg_tde.enforce_encryption = {value}")
+    cluster.execute("SELECT pg_reload_conf()")
+
+
+class TestTdeEnforceEncryption:
+    """
+    ``pg_tde.enforce_encryption`` coverage.
+
+    Acts as a security-policy switch: when ``on``, *no* unencrypted user
+    table can be created (every CREATE TABLE / CREATE TABLE AS / SELECT
+    INTO / ALTER TABLE … SET ACCESS METHOD must produce a ``tde_heap``
+    relation). The GUC is PGC_SUSET so it applies cluster-wide once
+    ALTER SYSTEM-set + pg_reload_conf'd.
+
+    These tests close the "zero pytest coverage" gap from
+    ``pytest/coverage_reports/baseline_*.md``.
+    """
+
+    def test_enforce_encryption_off_by_default(self, tde_primary: PgCluster):
+        """Default value must be ``off`` (matches Percona docs)."""
+        assert tde_primary.fetchone("SHOW pg_tde.enforce_encryption") == "off"
+
+    def test_enforce_encryption_can_be_enabled(self, tde_primary: PgCluster):
+        """Setting to ``on`` must be accepted and visible to new sessions."""
+        _set_enforce_encryption(tde_primary, "on")
+        assert tde_primary.fetchone("SHOW pg_tde.enforce_encryption") == "on"
+
+    def test_enforce_encryption_blocks_heap_create_table(
+        self, tde_primary: PgCluster
+    ):
+        """``CREATE TABLE … USING heap`` must be refused when enforcement is on."""
+        _set_enforce_encryption(tde_primary, "on")
+        with pytest.raises(RuntimeError):
+            tde_primary.execute(
+                "CREATE TABLE blocked_heap (id INT) USING heap"
+            )
+        # The cluster must still be queryable after the refused DDL.
+        assert tde_primary.fetchone("SELECT 1") == "1"
+        # And no relation got created.
+        exists = tde_primary.fetchone(
+            "SELECT to_regclass('blocked_heap')"
+        )
+        assert exists in ("", None), (
+            f"blocked_heap should not exist; to_regclass returned {exists!r}"
+        )
+
+    def test_enforce_encryption_allows_tde_heap_create_table(
+        self, tde_primary: PgCluster
+    ):
+        """``CREATE TABLE … USING tde_heap`` must succeed when enforcement is on."""
+        _set_enforce_encryption(tde_primary, "on")
+        tde_primary.execute(
+            "CREATE TABLE allowed_tde (id INT) USING tde_heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO allowed_tde SELECT generate_series(1, 100)"
+        )
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM allowed_tde"
+        ) == "100"
+        assert TdeManager(tde_primary).is_table_encrypted("allowed_tde")
+
+    def test_enforce_encryption_default_access_method_satisfies(
+        self, tde_primary: PgCluster
+    ):
+        """
+        With enforcement on AND ``default_table_access_method = tde_heap``
+        (the tde_primary default), a plain ``CREATE TABLE`` with no USING
+        clause must succeed and produce a tde_heap relation.
+        """
+        _set_enforce_encryption(tde_primary, "on")
+        # tde_primary already sets default_table_access_method=tde_heap.
+        assert tde_primary.fetchone(
+            "SHOW default_table_access_method"
+        ) == "tde_heap"
+        tde_primary.execute("CREATE TABLE default_tab (id INT)")
+        assert TdeManager(tde_primary).is_table_encrypted("default_tab")
+
+    def test_enforce_encryption_blocks_create_table_as_heap(
+        self, tde_primary: PgCluster
+    ):
+        """
+        CREATE TABLE AS … USING heap must also be refused. CTAS goes through
+        a different code path than plain CREATE TABLE — easy place to miss.
+        """
+        _set_enforce_encryption(tde_primary, "on")
+        with pytest.raises(RuntimeError):
+            tde_primary.execute(
+                "CREATE TABLE ctas_blocked USING heap "
+                "AS SELECT generate_series(1, 10) AS id"
+            )
+        assert tde_primary.fetchone(
+            "SELECT to_regclass('ctas_blocked')"
+        ) in ("", None)
+
+    def test_enforce_encryption_allows_create_table_as_tde_heap(
+        self, tde_primary: PgCluster
+    ):
+        """CREATE TABLE AS … USING tde_heap must work when enforcement is on."""
+        _set_enforce_encryption(tde_primary, "on")
+        tde_primary.execute(
+            "CREATE TABLE ctas_tde USING tde_heap "
+            "AS SELECT generate_series(1, 50) AS id"
+        )
+        assert tde_primary.fetchone("SELECT COUNT(*) FROM ctas_tde") == "50"
+        assert TdeManager(tde_primary).is_table_encrypted("ctas_tde")
+
+    def test_enforce_encryption_blocks_alter_table_to_heap(
+        self, tde_primary: PgCluster
+    ):
+        """
+        ``ALTER TABLE … SET ACCESS METHOD heap`` must be refused on an
+        encrypted relation when enforcement is on — preventing an operator
+        from silently downgrading a sensitive table.
+        """
+        tde_primary.execute(
+            "CREATE TABLE downgrade_target (id INT) USING tde_heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO downgrade_target SELECT generate_series(1, 100)"
+        )
+        _set_enforce_encryption(tde_primary, "on")
+        with pytest.raises(RuntimeError):
+            tde_primary.execute(
+                "ALTER TABLE downgrade_target SET ACCESS METHOD heap"
+            )
+        # The table must remain encrypted and its data intact.
+        tde = TdeManager(tde_primary)
+        assert tde.is_table_encrypted("downgrade_target")
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM downgrade_target"
+        ) == "100"
+
+    def test_enforce_encryption_existing_heap_tables_remain_accessible(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Enabling enforcement after heap tables already exist must not break
+        access to those tables — enforcement controls CREATION, not access.
+        """
+        tde_primary.execute(
+            "CREATE TABLE legacy_heap (id INT) USING heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO legacy_heap SELECT generate_series(1, 200)"
+        )
+        _set_enforce_encryption(tde_primary, "on")
+        # Read still works.
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM legacy_heap"
+        ) == "200"
+        # And inserts into the existing heap table also still work
+        # (enforcement is about CREATE, not DML).
+        tde_primary.execute("INSERT INTO legacy_heap VALUES (99999)")
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM legacy_heap"
+        ) == "201"
+
+    def test_enforce_encryption_persists_after_restart(
+        self, tde_primary: PgCluster
+    ):
+        """
+        ALTER SYSTEM SET writes to postgresql.auto.conf, so the value must
+        survive a restart.
+        """
+        _set_enforce_encryption(tde_primary, "on")
+        assert tde_primary.fetchone(
+            "SHOW pg_tde.enforce_encryption"
+        ) == "on"
+        tde_primary.restart()
+        tde_primary.wait_ready()
+        assert tde_primary.fetchone(
+            "SHOW pg_tde.enforce_encryption"
+        ) == "on", (
+            "pg_tde.enforce_encryption did not survive restart — "
+            "ALTER SYSTEM SET may not have written to postgresql.auto.conf."
+        )
+        # And the policy is still being applied after the restart.
+        with pytest.raises(RuntimeError):
+            tde_primary.execute(
+                "CREATE TABLE post_restart (id INT) USING heap"
+            )
