@@ -40,17 +40,31 @@ class ReplicationManager:
         *,
         use_tde_basebackup: bool = False,
         extra_args=None,
+        encrypt_wal: Optional[bool] = None,
     ) -> None:
-        """pg_basebackup (or pg_tde_basebackup) from primary into standby.data_dir."""
+        """
+        Run ``pg_basebackup`` (or ``pg_tde_basebackup``) from primary into
+        ``self.standby.data_dir``.
+
+        ``encrypt_wal`` is forwarded to ``TdeManager.tde_basebackup``:
+          - ``None`` (default): auto-detect from primary's ``pg_tde.wal_encrypt``
+          - ``True`` / ``False``: force ``-E`` on or off
+
+        Only honoured when ``use_tde_basebackup=True`` (the plain
+        ``pg_basebackup`` path ignores it).
+        """
         if self.standby.data_dir.exists():
             shutil.rmtree(self.standby.data_dir)
         if use_tde_basebackup:
             from .tde import TdeManager
-            # pg_tde_basebackup -E only when primary has pg_tde.wal_encrypt on
-            # (callers pass extra_args); TdeManager seeds pg_tde/ only for -E.
+            # pg_tde_basebackup -E auto-enables when primary has wal_encrypt on
+            # (encrypt_wal=None auto-detects). TdeManager seeds pg_tde/ only when
+            # -E is in effect.
             bb_args = list(extra_args or [])
             TdeManager(self.primary).tde_basebackup(
-                str(self.standby.data_dir), bb_args
+                str(self.standby.data_dir),
+                bb_args,
+                encrypt_wal=encrypt_wal,
             )
         else:
             self.primary.basebackup(str(self.standby.data_dir), extra_args)

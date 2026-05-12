@@ -332,7 +332,37 @@ class TdeManager:
 
     # ── basebackup with TDE ───────────────────────────────────────────────
 
-    def tde_basebackup(self, target_dir: str, extra_args=None) -> None:
+    def tde_basebackup(
+        self,
+        target_dir: str,
+        extra_args=None,
+        *,
+        encrypt_wal: Optional[bool] = None,
+    ) -> None:
+        """
+        Run ``pg_tde_basebackup`` against ``self.cluster``.
+
+        Args:
+            target_dir: backup destination (will be created if missing).
+            extra_args: list of extra CLI flags to forward to pg_tde_basebackup.
+            encrypt_wal: controls the ``-E`` flag (encrypted WAL on the target):
+
+                - ``None`` (default): auto-detect — pass ``-E`` iff
+                  ``pg_tde.wal_encrypt = on`` on the source. Suppresses the
+                  ``"source has WAL keys, but no WAL encryption configured…"``
+                  warning when the source is WAL-encrypted, and avoids it
+                  meaninglessly when the source runs plaintext WAL.
+                - ``True``: always pass ``-E`` and pre-seed the destination's
+                  ``pg_tde/`` keyring (required so pg_tde_basebackup can
+                  encrypt the streamed WAL on the way in).
+                - ``False``: never pass ``-E``. The warning will appear if
+                  the source has any pg_tde keys configured — that's expected
+                  and harmless for tests that intentionally run with
+                  plaintext WAL.
+
+            Backwards compatibility: passing ``-E`` (or ``--wal-encrypted``)
+            via ``extra_args`` still works and is treated as ``encrypt_wal=True``.
+        """
         bin_path = self.cluster.bin / "pg_tde_basebackup"
         if not bin_path.exists():
             # Fall back to standard pg_basebackup if tde variant not present
@@ -344,11 +374,25 @@ class TdeManager:
         ld_var = "LD_LIBRARY_PATH"
         existing = env.get(ld_var, "")
         env[ld_var] = f"{lib_dir}:{existing}" if existing else lib_dir
+
         bb_args = list(extra_args or [])
+        e_in_args = "-E" in bb_args or "--wal-encrypted" in bb_args
+        if encrypt_wal is None:
+            # Auto: enable -E iff the source is actually running with WAL
+            # encryption on. Defensive — is_wal_encrypted() returns False if
+            # the GUC can't be read for any reason, so the default mirrors
+            # the historical no-op behaviour.
+            encrypt_wal = self.is_wal_encrypted()
+        # Honour explicit -E in extra_args even if encrypt_wal=False (consistent
+        # with the previous behaviour where callers could opt in via extra_args).
+        use_E = bool(encrypt_wal) or e_in_args
+        if use_E and not e_in_args:
+            bb_args.append("-E")
+
         # Pre-seed pg_tde only for encrypted WAL streaming (-E): pg_tde_basebackup
         # needs keys in the destination before the stream; for normal backups it
         # creates pg_tde itself and fails with "File exists" if we copy first.
-        if "-E" in bb_args or "--wal-encrypted" in bb_args:
+        if use_E:
             tgt = Path(target_dir)
             src_pg_tde = self.cluster.data_dir / "pg_tde"
             if src_pg_tde.is_dir():
@@ -367,7 +411,8 @@ class TdeManager:
         ]
         cmd.extend(bb_args)
         subprocess.run(cmd, check=True, env=env)
-        log.info("pg_tde_basebackup completed to %s", target_dir)
+        log.info("pg_tde_basebackup completed to %s (encrypt_wal=%s)",
+                 target_dir, use_E)
 
     # ── convenience: full setup ───────────────────────────────────────────
 
