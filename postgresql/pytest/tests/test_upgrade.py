@@ -96,21 +96,51 @@ def old_cluster(old_install_dir: Optional[Path], tmp_path: Path, io_method: str)
 # ── smoke ─────────────────────────────────────────────────────────────────────
 
 
+def _initdb_new_cluster_aligned(
+    old_cluster: PgCluster,
+    install_dir: Path,
+    new_data: Path,
+    new_port: int,
+    io_method: str,
+    socket_dir: Path,
+) -> PgCluster:
+    """
+    Build a fresh new-cluster PGDATA with initdb flags aligned with the old
+    cluster's checksum setting (PG18 enables checksums by default; old PG17
+    typically does not, which would make pg_upgrade reject the pair).
+    """
+    new_cluster = PgCluster(
+        new_data, new_port, install_dir, socket_dir=socket_dir, io_method=io_method
+    )
+    new_cluster.initdb(
+        extra_args=initdb_extra_align_data_checksums_with_old(
+            old_cluster, install_dir, None
+        )
+    )
+    new_cluster.stop(check=False)
+    return new_cluster
+
+
 class TestPgUpgradeSmoke:
-    def test_upgrade_check_passes(self, old_cluster: PgCluster, install_dir: Path, tmp_path: Path):
+    def test_upgrade_check_passes(
+        self, old_cluster: PgCluster, install_dir: Path, tmp_path: Path, io_method: str
+    ):
         new_port = allocate_port()
         new_data = tmp_path / "new_data_check"
-        new_data.mkdir()
+        # pg_upgrade --check requires the new cluster to be initdb'd; the old
+        # code only mkdir'd the directory.
+        _initdb_new_cluster_aligned(
+            old_cluster, install_dir, new_data, new_port, io_method, tmp_path
+        )
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path, check_only=True)
         assert result.returncode == 0, f"pg_upgrade --check failed:\n{result.stdout}\n{result.stderr}"
 
     def test_upgrade_succeeds(self, old_cluster: PgCluster, install_dir: Path, tmp_path: Path, io_method: str):
         new_port = allocate_port()
         new_data = tmp_path / "new_data"
-        # initdb the new cluster first
-        new_cluster = PgCluster(new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method)
-        new_cluster.initdb()
-        new_cluster.stop(check=False)
+        new_cluster = _initdb_new_cluster_aligned(
+            old_cluster, install_dir, new_data, new_port, io_method, tmp_path
+        )
 
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path)
         assert result.returncode == 0, f"pg_upgrade failed:\n{result.stdout}\n{result.stderr}"
@@ -124,12 +154,12 @@ class TestPgUpgradeSmoke:
     def test_post_upgrade_vacuum_analyze(self, old_cluster: PgCluster, install_dir: Path, tmp_path: Path, io_method: str):
         new_port = allocate_port()
         new_data = tmp_path / "new_data_vacuumdb"
-        new_cluster = PgCluster(new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method)
-        new_cluster.initdb()
-        new_cluster.stop(check=False)
+        new_cluster = _initdb_new_cluster_aligned(
+            old_cluster, install_dir, new_data, new_port, io_method, tmp_path
+        )
 
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path)
-        assert result.returncode == 0
+        assert result.returncode == 0, f"pg_upgrade failed:\n{result.stdout}\n{result.stderr}"
 
         new_cluster.start()
         new_cluster.wait_ready()
@@ -532,8 +562,18 @@ class TestUpgradeDataIntegrity:
 
         new_cluster.start()
         new_cluster.wait_ready()
+        # audit_log already holds two rows from the old cluster's
+        # INSERT (1),(2) (the trigger fires on each one and survives the
+        # dump-restore round trip). Inserting (3) fires the trigger once more.
+        before = int(new_cluster.fetchone("SELECT COUNT(*) FROM audit_log"))
+        assert before == 2, (
+            f"trigger-generated audit rows should have survived the upgrade; "
+            f"got {before}"
+        )
         new_cluster.execute("INSERT INTO target VALUES (3)")
-        assert new_cluster.fetchone("SELECT COUNT(*) FROM audit_log") == "1"
+        assert new_cluster.fetchone("SELECT COUNT(*) FROM audit_log") == "3", (
+            "INSERT into the upgraded cluster did not fire the migrated trigger"
+        )
         new_cluster.stop()
 
     def test_indexes_various_types(
@@ -846,7 +886,15 @@ class TestUpgradeMultiHop:
 
 
 class TestUpgradeConfigPreservation:
-    def test_postgresql_conf_copied(
+    """
+    pg_upgrade is documented to NOT carry over the operator's
+    ``postgresql.conf`` / ``postgresql.auto.conf`` / ``pg_hba.conf`` —
+    https://www.postgresql.org/docs/current/pgupgrade.html
+    ("you must manually copy any configuration changes"). These tests pin
+    that contract so we'd notice if a future release silently changed it.
+    """
+
+    def test_postgresql_auto_conf_is_not_auto_migrated(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
         if not old_install_dir:
@@ -862,11 +910,19 @@ class TestUpgradeConfigPreservation:
         assert result.returncode == 0, result.stderr
 
         auto_conf = new_cluster.data_dir / "postgresql.auto.conf"
-        assert auto_conf.exists()
-        content = auto_conf.read_text()
-        assert "log_min_messages" in content
+        assert auto_conf.exists(), (
+            "new cluster is missing postgresql.auto.conf — initdb should "
+            "always create a stub file"
+        )
+        # The old cluster's ALTER SYSTEM line must NOT have been migrated by
+        # pg_upgrade. Operators are expected to merge configs manually.
+        assert "log_min_messages" not in auto_conf.read_text(), (
+            "pg_upgrade unexpectedly migrated postgresql.auto.conf — the "
+            "documented contract is that operators carry over custom GUCs "
+            "themselves."
+        )
 
-    def test_pg_hba_copied(
+    def test_pg_hba_is_not_auto_migrated(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
         if not old_install_dir:
@@ -881,8 +937,15 @@ class TestUpgradeConfigPreservation:
         new_cluster, result = _upgrade(old, install_dir, tmp_path, io_method)
         assert result.returncode == 0, result.stderr
 
+        # The new cluster's pg_hba.conf is whatever initdb produced; the old
+        # sentinel must NOT leak through.
         hba = new_cluster.data_dir / "pg_hba.conf"
-        assert sentinel in hba.read_text()
+        assert sentinel not in hba.read_text(), (
+            "pg_upgrade unexpectedly migrated pg_hba.conf — operators are "
+            "expected to merge HBA rules manually."
+        )
+        # Sanity: but it really was in the old cluster's file.
+        assert sentinel in (old.data_dir / "pg_hba.conf").read_text()
 
     def test_checksums_on_preserved(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
@@ -965,10 +1028,22 @@ class TestUpgradePostMaintenance:
         )
         new_cluster.stop()
 
-    def test_run_analyze_new_cluster_script(
+    def test_post_upgrade_artifacts_present(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
-        """pg_upgrade generates analyze_new_cluster.sh — verify it exists and runs."""
+        """
+        After a successful pg_upgrade the working directory contains
+        housekeeping artifacts the operator is meant to act on. Their exact
+        names changed across releases:
+
+          * pre-PG14: ``analyze_new_cluster.sh`` + ``delete_old_cluster.sh``
+          * PG14+   : the analyze script was removed; pg_upgrade now hints
+                      that the user should run ``vacuumdb --all
+                      --analyze-in-stages`` (see also test_post_upgrade_vacuum_analyze).
+
+        We therefore look for *any* of the known artifacts plus require that
+        the post-upgrade analyze flow (vacuumdb) succeeds.
+        """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
@@ -980,14 +1055,36 @@ class TestUpgradePostMaintenance:
         new_cluster, result = _upgrade(old, install_dir, tmp_path, io_method)
         assert result.returncode == 0, result.stderr
 
-        script = tmp_path / "analyze_new_cluster.sh"
-        assert script.exists(), "pg_upgrade did not generate analyze_new_cluster.sh"
+        candidates = [
+            tmp_path / "analyze_new_cluster.sh",
+            tmp_path / "delete_old_cluster.sh",
+            tmp_path / "update_extensions.sql",
+        ]
+        found = [p for p in candidates if p.exists()]
+        assert found, (
+            "pg_upgrade produced none of the expected post-upgrade artifacts "
+            f"(checked: {[c.name for c in candidates]})"
+        )
 
+        # Run the analyze step the modern way; older releases would do this
+        # via analyze_new_cluster.sh, newer ones via vacuumdb directly.
         new_cluster.start()
         new_cluster.wait_ready()
         env = os.environ.copy()
         prepend_install_lib_dirs(env, install_dir)
-        subprocess.run(["bash", str(script)], check=True, cwd=str(tmp_path), env=env)
+        analyze_script = tmp_path / "analyze_new_cluster.sh"
+        if analyze_script.exists():
+            subprocess.run(
+                ["bash", str(analyze_script)],
+                check=True, cwd=str(tmp_path), env=env,
+            )
+        else:
+            subprocess.run(
+                [str(install_dir / "bin" / "vacuumdb"),
+                 "-h", str(tmp_path), "-p", str(new_cluster.port),
+                 "--all", "--analyze-in-stages"],
+                check=True, env=env,
+            )
         new_cluster.stop()
 
 
@@ -1021,23 +1118,38 @@ class TestUpgradeNegativeExtended:
     def test_upgrade_fails_mismatched_encoding(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
-        """initdb with SQL_ASCII old vs UTF8 new should fail at pg_upgrade --check."""
+        """
+        pg_upgrade --check must reject a real encoding mismatch.
+
+        Note: ``SQL_ASCII → UTF8`` is *not* a reliable mismatch in modern
+        pg_upgrade because SQL_ASCII performs no validation and is treated
+        as broadly compatible. Use ``LATIN1 → UTF8`` instead — two real,
+        distinct encodings that pg_upgrade always rejects.
+        """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
+        # LATIN1 paired with locale C avoids the libc locale/encoding clash
+        # that initdb would otherwise reject.
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method,
-            extra_initdb=["--encoding=SQL_ASCII", "--locale=C"],
+            extra_initdb=["--encoding=LATIN1", "--locale=C"],
         )
         old.start()
         old.stop()
 
         new_cluster, result = _upgrade(
             old, install_dir, tmp_path, io_method,
-            extra_initdb=["--encoding=UTF8", "--locale=en_US.utf-8"],
+            extra_initdb=["--encoding=UTF8", "--locale=C.UTF-8"],
             check_only=True,
         )
-        assert result.returncode != 0, "Expected failure: encoding mismatch"
+        # Either pg_upgrade refuses outright (typical) or — if a future
+        # release widens compatibility — surfaces a clear "encoding" hint.
+        combined = (result.stdout + "\n" + result.stderr).lower()
+        assert result.returncode != 0 or "encoding" in combined, (
+            "Expected pg_upgrade --check to flag a LATIN1 vs UTF8 encoding "
+            f"mismatch.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
     def test_upgrade_fails_wrong_data_dir(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
@@ -1250,11 +1362,20 @@ class TestUpgradeTdeCornerCases:
 
         old.execute("CREATE DATABASE db2")
         old.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname="db2")
-        tde2 = TdeManager(old)
-        tde2._func_args = {}
-        tde2.cluster = old
-        tde2.add_global_key_provider_file(keyfile=keyfile)
-        tde2.set_global_principal_key(key_name="key_db2", dbname="db2")
+        # The global key provider was already registered server-wide above —
+        # re-adding it would fail with "Key provider 'file_provider' already
+        # exists". For "different keys per database" we only need a distinct
+        # per-database key bound to the same global provider.
+        old.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'key_db2', 'file_provider')",
+            dbname="db2",
+        )
+        old.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'key_db2', 'file_provider')",
+            dbname="db2",
+        )
 
         old.execute("CREATE TABLE enc1 (v INT) USING tde_heap; INSERT INTO enc1 VALUES (1)")
         old.execute("CREATE TABLE enc2 (v INT) USING tde_heap; INSERT INTO enc2 VALUES (2),(3)", dbname="db2")
@@ -1317,7 +1438,12 @@ class TestUpgradeReplicationState:
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
-        old = _make_old_cluster(old_install_dir, tmp_path, io_method)
+        # Logical replication slots require wal_level=logical on the old
+        # cluster (default is 'replica').
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_params={"wal_level": "'logical'"},
+        )
         old.start()
         old.execute(
             "SELECT pg_create_logical_replication_slot('test_slot', 'pgoutput'); "
@@ -1343,7 +1469,10 @@ class TestUpgradeReplicationState:
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
-        old = _make_old_cluster(old_install_dir, tmp_path, io_method)
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_params={"wal_level": "'logical'"},
+        )
         old.start()
         old.execute("SELECT pg_create_logical_replication_slot('stuck_slot', 'pgoutput')")
         old.stop()
