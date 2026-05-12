@@ -9,6 +9,9 @@
 #   OLD_INSTALL_DIR   Path to old PG install used as pg_upgrade source
 #   VAULT_ADDR        HashiCorp Vault address (only needed for vault tests)
 #   VAULT_TOKEN       Vault token
+#
+# On Debian/Ubuntu, if pgbackrest is not installed, section 3a configures the Percona
+# apt repository and installs percona-pgbackrest (requires sudo).
 
 set -euo pipefail
 
@@ -78,6 +81,52 @@ if [[ ! -f "${SHARE_DIR}/pg_tde.control" ]] && \
     warn "Encryption tests will fail without pg_tde."
 else
     ok "pg_tde extension found"
+fi
+
+# ── 3a. pgBackRest (percona-pgbackrest) ───────────────────────────────────────
+echo ""
+echo "=== 3a. pgBackRest (Percona) ==="
+
+if command -v pgbackrest >/dev/null 2>&1; then
+    _pgbr_line=$(pgbackrest version 2>/dev/null | head -n1 || true)
+    if [[ -n "${_pgbr_line}" ]]; then
+        ok "pgBackRest already installed (${_pgbr_line})"
+    else
+        ok "pgBackRest already installed"
+    fi
+else
+    if ! command -v apt-get >/dev/null 2>&1; then
+        warn "pgbackrest not in PATH and apt-get not found — install percona-pgbackrest manually to run tests/test_pgbackrest.py"
+    elif ! command -v sudo >/dev/null 2>&1; then
+        warn "sudo not found; cannot auto-install pgBackRest. Install percona-pgbackrest manually."
+    else
+        info "Installing prerequisites and Percona pgBackRest (apt)…"
+        sudo apt-get update -qq
+        sudo apt-get install -y wget gnupg2 lsb-release \
+            || fail "apt-get install wget gnupg2 lsb-release failed"
+
+        PR_DEB="$(mktemp "${TMPDIR:-/tmp}/percona-release_XXXXXX.deb")"
+        wget -q "https://repo.percona.com/apt/percona-release_latest.generic_all.deb" -O "$PR_DEB" \
+            || fail "wget percona-release .deb failed"
+        sudo dpkg -i "$PR_DEB" || fail "dpkg -i percona-release failed"
+        rm -f "$PR_DEB"
+
+        case "${PG_VERSION}" in
+            17|18) PPG_REPO="ppg-${PG_VERSION}" ;;
+            *)
+                PPG_REPO="ppg-18"
+                warn "Using Percona ${PPG_REPO} for pgBackRest (detected PostgreSQL ${PG_VERSION}; use 17 or 18 for a matching repo)"
+                ;;
+        esac
+        sudo percona-release enable-only "${PPG_REPO}" \
+            || fail "percona-release enable-only ${PPG_REPO} failed"
+
+        sudo apt-get update
+        sudo apt-get install -y percona-pgbackrest \
+            || fail "apt-get install percona-pgbackrest failed"
+        command -v pgbackrest >/dev/null 2>&1 || fail "pgbackrest not on PATH after install"
+        ok "percona-pgbackrest installed ($(pgbackrest version 2>/dev/null | head -n1 || echo pgbackrest))"
+    fi
 fi
 
 # ── 4. Python ──────────────────────────────────────────────────────────────────
@@ -227,6 +276,9 @@ echo "   source ${ENV_FILE}"
 echo ""
 echo "   # All encryption tests:"
 echo "   pytest tests/test_encryption.py -v"
+echo ""
+echo "   # pgBackRest (needs percona-pgbackrest; section 3a installs it on apt):"
+echo "   pytest tests/test_pgbackrest.py -v"
 echo ""
 echo "   # All sections (skip vault/upgrade):"
 echo "   pytest tests/ -v -m 'not vault and not upgrade'"
