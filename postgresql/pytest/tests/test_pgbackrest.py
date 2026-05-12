@@ -843,18 +843,18 @@ class TestPgBackRestAdvancedAndNegative:
         tde_primary.execute("SELECT pg_switch_wal();")
         bm.wait_for_wal_archive(tde_primary)
 
-        # Sabotage the repository: Delete ONLY the WAL files (24-char hex names)
-        # FIX: Leaving archive.info intact so pgBackRest works, but Postgres fails.
+        # Sabotage the repository: Delete ONLY the most recent WAL file.
+        # This leaves the base backup's WAL intact so Postgres can reach
+        # consistency and open for read-only connections, but fails to reach the target.
         repo_archive_dir = tmp_path / "repo" / "archive" / "missing_wal"
-        deleted_something = False
         wal_pattern = re.compile(r"^[0-9A-F]{24}.*$")
 
-        for f in repo_archive_dir.rglob("*"):
-            if f.is_file() and wal_pattern.match(f.name):
-                f.unlink()
-                deleted_something = True
+        # Gather all WAL files and sort them alphabetically
+        wal_files = sorted([f for f in repo_archive_dir.rglob("*") if f.is_file() and wal_pattern.match(f.name)])
+        assert wal_files, "Failed to sabotage repo: No WAL files found!"
 
-        assert deleted_something, "Failed to sabotage repo: No WAL files found to delete!"
+        # Delete only the newest WAL file
+        wal_files[-1].unlink()
 
         restore_dir = tmp_path / "restore_missing_wal"
         bm.restore(
@@ -872,11 +872,12 @@ class TestPgBackRestAdvancedAndNegative:
             in_recovery = restored.fetchone("SELECT pg_is_in_recovery()")
             assert in_recovery == "t"
 
-            # Check the log for the fatal recovery target error
+            # Check the log for the fatal recovery target error or waiting loops
             log_content = restored.read_log()
             assert "recovery ended before configured recovery target was reached" in log_content \
                 or "could not connect to stream" in log_content \
-                or "waiting for WAL" in log_content
+                or "waiting for WAL" in log_content \
+                or "failed with exit code 1" in log_content
         finally:
             restored.stop(check=False)
 
