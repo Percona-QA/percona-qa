@@ -1018,8 +1018,17 @@ class TestUpgradeEnforceEncryption:
         io_method: str,
     ):
         """
-        Validates that enforce_encryption doesn't break pg_upgrade by
-        implicitly changing the AM of legacy heap tables during schema restore.
+        Validates that ``pg_tde.enforce_encryption = on`` does not break
+        ``pg_upgrade`` by changing the access method of legacy heap tables
+        during schema restore on the new cluster.
+
+        Current pg_tde rejects ``CREATE TABLE ... USING heap`` (or no USING
+        clause) when enforcement is on instead of silently coercing the AM,
+        so the new ``tde_heap`` table is created explicitly. Schema restore
+        during ``pg_upgrade`` runs as a superuser and must replay the
+        ``USING heap`` from the dump even with enforcement active — this
+        test confirms that round-trip and that enforcement still blocks
+        plain heap creation on the upgraded cluster.
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
@@ -1046,13 +1055,24 @@ class TestUpgradeEnforceEncryption:
             "INSERT INTO legacy_heap VALUES (1), (2), (3);"
         )
 
-        # 2. Enable enforcement and create a forced encrypted table
+        # 2. Enable enforcement; plain CREATE TABLE is now rejected by pg_tde
         old.execute("ALTER SYSTEM SET pg_tde.enforce_encryption = 'on';")
         old.execute("SELECT pg_reload_conf();")
 
-        # This table should automatically become tde_heap because of enforcement
+        # Sanity-check that enforcement blocks non-tde_heap tables on the old cluster.
+        # The error message changed across pg_tde versions; just match the substring.
+        try:
+            old.execute("CREATE TABLE blocked_plain (id INT);")
+        except RuntimeError as exc:
+            assert "enforce_encryption" in str(exc), (
+                f"unexpected error from old cluster:\n{exc}"
+            )
+        else:
+            pytest.fail("enforce_encryption=on did not block plain CREATE TABLE on old cluster")
+
+        # Explicit tde_heap creation must succeed.
         old.execute(
-            "CREATE TABLE forced_enc (id INT); "
+            "CREATE TABLE forced_enc (id INT) USING tde_heap; "
             "INSERT INTO forced_enc VALUES (99);"
         )
         old.stop()
@@ -1091,13 +1111,27 @@ class TestUpgradeEnforceEncryption:
         )
         assert am_forced == "tde_heap"
 
-        # 6. Verify enforcement is actively working on the new cluster
-        new_cluster.execute("CREATE TABLE post_upgrade_forced (id INT);")
+        # 6. Verify enforcement is actively working on the new cluster:
+        #    plain CREATE TABLE must still be rejected.
+        try:
+            new_cluster.execute("CREATE TABLE post_upgrade_blocked (id INT);")
+        except RuntimeError as exc:
+            assert "enforce_encryption" in str(exc), (
+                f"unexpected error from new cluster:\n{exc}"
+            )
+        else:
+            pytest.fail(
+                "enforce_encryption=on did not block plain CREATE TABLE "
+                "on the upgraded cluster"
+            )
+
+        # Explicit tde_heap creation must still work after upgrade.
+        new_cluster.execute("CREATE TABLE post_upgrade_forced (id INT) USING tde_heap;")
         am_post = new_cluster.fetchone(
             "SELECT am.amname FROM pg_class c JOIN pg_am am ON c.relam = am.oid "
             "WHERE c.relname = 'post_upgrade_forced'"
         )
-        assert am_post == "tde_heap", "Enforcement failed to apply to new tables after upgrade!"
+        assert am_post == "tde_heap"
 
         new_cluster.stop()
 
@@ -1198,7 +1232,8 @@ class TestPgTdeUpgradeModes:
         """
         ``--clone`` uses copy-on-write semantics on supported filesystems
         (Btrfs, XFS reflink, APFS). Skip if the filesystem doesn't
-        support it — pg_upgrade reports this clearly in stderr.
+        support it — ``pg_upgrade`` reports failure on stdout (stderr is
+        often empty).
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
@@ -1213,13 +1248,18 @@ class TestPgTdeUpgradeModes:
             extra_params=_tde_params(keyfile),
             pg_upgrade_extra=["--clone"],
         )
-        if result.returncode != 0 and "clone" in result.stderr.lower():
-            pytest.skip(
-                "--clone is not supported on this filesystem; "
-                f"stderr: {result.stderr[:300]}"
-            )
+        if result.returncode != 0:
+            combined = f"{result.stdout or ''}\n{result.stderr or ''}".lower()
+            if (
+                "could not clone" in combined
+                or ("clone" in combined and "not supported" in combined)
+            ):
+                pytest.skip(
+                    "--clone is not supported on this filesystem; "
+                    f"output: {(result.stdout or result.stderr or '')[:400]!r}"
+                )
         assert result.returncode == 0, (
-            f"pg_tde_upgrade --clone failed:\n{result.stderr}"
+            f"pg_tde_upgrade --clone failed:\n{result.stdout}\n{result.stderr}"
         )
 
         new_cluster.start()
