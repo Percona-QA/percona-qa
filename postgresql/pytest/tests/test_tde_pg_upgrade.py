@@ -112,13 +112,17 @@ def _upgrade(
         cmd.append("--check")
     if pg_upgrade_extra:
         cmd.extend(pg_upgrade_extra)
+
     env = os.environ.copy()
-    prepend_install_lib_dirs(env, old_cluster.install_dir, install_dir)
+
+    # FIX: The NEW install_dir must be prepended first so that the new pg_upgrade
+    # and psql binaries load the newer libpq.so containing PQfullProtocolVersion.
+    prepend_install_lib_dirs(env, install_dir, old_cluster.install_dir)
+
     result = subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
     )
     return new_cluster, result
-
 
 def _copy_pg_tde_dir(old_cluster: PgCluster, new_cluster: PgCluster) -> bool:
     """PG-2240 fix: copy pg_tde key-material directory from old to new cluster.
