@@ -871,3 +871,244 @@ class TestTdeEnforceEncryption:
             tde_primary.execute(
                 "CREATE TABLE post_restart (id INT) USING heap"
             )
+
+
+# ── pg_tde_verify_* / pg_tde_delete_* SQL APIs ────────────────────────────────
+
+
+def _pg_tde_function_exists(cluster: PgCluster, fn_name: str) -> bool:
+    """Return True if a pg_proc function named ``fn_name`` is visible."""
+    n = cluster.fetchone(
+        f"SELECT COUNT(*) FROM pg_proc WHERE proname = '{fn_name}'"
+    )
+    return int(n) > 0
+
+
+def _setup_default_key_cluster(
+    pg_factory, tmp_path, name: str
+) -> tuple:
+    """
+    Build a TDE cluster where the *default* principal key path is used
+    (``pg_tde_set_default_key_using_global_key_provider``) — instead of
+    the per-server/per-database variants the ``tde_primary`` fixture uses.
+
+    Returns ``(cluster, TdeManager)``. The default key info is queryable
+    via ``pg_tde_default_key_info()`` once this returns.
+    """
+    cluster = pg_factory(name)
+    cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
+    cluster.write_default_config(extra_params={
+        "shared_preload_libraries": "'pg_tde'",
+        "default_table_access_method": "'tde_heap'",
+    })
+    cluster.add_hba_entry("local all all trust")
+    cluster.start()
+
+    tde = TdeManager(cluster)
+    tde.create_extension()
+    tde.add_global_key_provider_file(keyfile=str(tmp_path / f"{name}.file"))
+    # Create the key, then set as DEFAULT (not server, not DB-scoped).
+    if not _pg_tde_function_exists(
+        cluster, "pg_tde_set_default_key_using_global_key_provider"
+    ):
+        pytest.skip(
+            "pg_tde_set_default_key_using_global_key_provider not present "
+            "in this build"
+        )
+    cluster.execute(
+        "SELECT pg_tde_create_key_using_global_key_provider("
+        "'def_key'::text, 'file_provider'::text)"
+    )
+    cluster.execute(
+        "SELECT pg_tde_set_default_key_using_global_key_provider("
+        "'def_key'::text, 'file_provider'::text)"
+    )
+    return cluster, tde
+
+
+class TestTdeVerifyDeleteKeyApis:
+    """
+    Coverage for diagnostic and destructive pg_tde key APIs:
+
+      Verify:  pg_tde_verify_key(),
+               pg_tde_verify_server_key(),
+               pg_tde_verify_default_key()
+      Delete:  pg_tde_delete_key(),
+               pg_tde_delete_default_key()
+
+    Until now these had zero pytest coverage — they're the functions ops
+    teams call to diagnose a broken setup or to wipe key state during
+    rotation/cleanup. Tests skip cleanly when a function isn't present
+    in the build, so older pg_tde versions don't fail the suite.
+    """
+
+    # ── verify ────────────────────────────────────────────────────────────
+
+    def test_pg_tde_verify_key_on_configured_db_succeeds(
+        self, tde_primary: PgCluster
+    ):
+        """
+        With a database principal key set (the tde_primary fixture default),
+        ``pg_tde_verify_key()`` must complete without raising. Any non-zero
+        exit from psql means the key is not verifiable.
+        """
+        if not _pg_tde_function_exists(tde_primary, "pg_tde_verify_key"):
+            pytest.skip("pg_tde_verify_key not present in this build")
+        # No exception → key is valid. Calling it twice asserts the
+        # function is also re-callable (no one-shot state).
+        tde_primary.execute("SELECT pg_tde_verify_key()")
+        tde_primary.execute("SELECT pg_tde_verify_key()")
+
+    def test_pg_tde_verify_server_key_on_configured_cluster_succeeds(
+        self, tde_primary: PgCluster
+    ):
+        """
+        ``pg_tde_verify_server_key()`` must succeed on a cluster whose
+        server-level principal key has been set
+        (tde_primary calls pg_tde_set_server_key_using_global_key_provider).
+        """
+        if not _pg_tde_function_exists(tde_primary, "pg_tde_verify_server_key"):
+            pytest.skip("pg_tde_verify_server_key not present in this build")
+        tde_primary.execute("SELECT pg_tde_verify_server_key()")
+
+    def test_pg_tde_verify_default_key_when_set_succeeds(
+        self, pg_factory, tmp_path
+    ):
+        """
+        ``pg_tde_verify_default_key()`` succeeds on a cluster with a
+        default key set via ``pg_tde_set_default_key_using_global_key_provider``.
+        """
+        cluster, _ = _setup_default_key_cluster(
+            pg_factory, tmp_path, "verify_default"
+        )
+        if not _pg_tde_function_exists(cluster, "pg_tde_verify_default_key"):
+            pytest.skip("pg_tde_verify_default_key not present in this build")
+        cluster.execute("SELECT pg_tde_verify_default_key()")
+
+    def test_pg_tde_verify_key_after_rotation_succeeds(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Key rotation must not break ``pg_tde_verify_key()`` — verify should
+        always reflect the *current* key, not the original one.
+        """
+        if not _pg_tde_function_exists(tde_primary, "pg_tde_verify_key"):
+            pytest.skip("pg_tde_verify_key not present in this build")
+        tde = TdeManager(tde_primary)
+        tde.rotate_principal_key("verify_after_rotate_key")
+        tde_primary.execute("SELECT pg_tde_verify_key()")
+        # And the now-active key is the rotated one, not the original.
+        active = tde.principal_key_name()
+        assert active == "verify_after_rotate_key", (
+            f"Active principal key is {active!r}; expected the rotated key."
+        )
+
+    # ── delete ────────────────────────────────────────────────────────────
+
+    def test_pg_tde_delete_default_key_clears_default(
+        self, pg_factory, tmp_path
+    ):
+        """
+        After ``pg_tde_delete_default_key()``, the default-key view
+        (pg_tde_default_key_info) must report no key. The cluster itself
+        must remain healthy and accept new key configuration.
+        """
+        cluster, tde = _setup_default_key_cluster(
+            pg_factory, tmp_path, "delete_default"
+        )
+        if not _pg_tde_function_exists(cluster, "pg_tde_delete_default_key"):
+            pytest.skip("pg_tde_delete_default_key not present in this build")
+
+        # Sanity: the default key info IS populated before the delete.
+        before = cluster.fetchone(
+            "SELECT key_name FROM pg_tde_default_key_info()"
+        )
+        assert before == "def_key", (
+            f"Pre-delete default key name = {before!r}; expected 'def_key'."
+        )
+
+        cluster.execute("SELECT pg_tde_delete_default_key()")
+
+        # After delete: the info call must either return no row or raise.
+        after_runtime_error = False
+        after_value = None
+        try:
+            after_value = cluster.fetchone(
+                "SELECT key_name FROM pg_tde_default_key_info()"
+            )
+        except RuntimeError:
+            after_runtime_error = True
+        assert after_runtime_error or after_value in (None, ""), (
+            "After pg_tde_delete_default_key(), pg_tde_default_key_info() "
+            f"still reports a key: {after_value!r}"
+        )
+
+        # Re-creating the default key after delete must succeed —
+        # proves delete cleaned state properly, not just hid it.
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'def_key_again'::text, 'file_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_default_key_using_global_key_provider("
+            "'def_key_again'::text, 'file_provider'::text)"
+        )
+        assert cluster.fetchone(
+            "SELECT key_name FROM pg_tde_default_key_info()"
+        ) == "def_key_again"
+
+    def test_pg_tde_delete_key_clears_db_key(
+        self, pg_factory, tmp_path
+    ):
+        """
+        After ``pg_tde_delete_key()`` on a database, ``pg_tde_key_info()``
+        must report no key (or raise). Run against a fresh database that
+        has *no* encrypted tables — deleting while tde_heap tables exist
+        is a separate (and potentially destructive) scenario.
+        """
+        cluster = pg_factory("delete_db_key")
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(
+            cluster.install_dir
+        ))
+        cluster.write_default_config(extra_params={
+            "shared_preload_libraries": "'pg_tde'",
+            "default_table_access_method": "'tde_heap'",
+        })
+        cluster.add_hba_entry("local all all trust")
+        cluster.start()
+
+        tde = TdeManager(cluster)
+        tde.create_extension()
+        tde.add_global_key_provider_file(
+            keyfile=str(tmp_path / "delete_db_key.file")
+        )
+        tde.set_global_principal_key(key_name="db_key_to_delete")
+
+        if not _pg_tde_function_exists(cluster, "pg_tde_delete_key"):
+            pytest.skip("pg_tde_delete_key not present in this build")
+
+        # Sanity: the DB key info is populated.
+        before = cluster.fetchone("SELECT key_name FROM pg_tde_key_info()")
+        assert before == "db_key_to_delete"
+
+        cluster.execute("SELECT pg_tde_delete_key()")
+
+        # After delete: info reports nothing (or raises).
+        after_runtime_error = False
+        after_value = None
+        try:
+            after_value = cluster.fetchone(
+                "SELECT key_name FROM pg_tde_key_info()"
+            )
+        except RuntimeError:
+            after_runtime_error = True
+        assert after_runtime_error or after_value in (None, ""), (
+            "After pg_tde_delete_key(), pg_tde_key_info() still reports "
+            f"a key: {after_value!r}"
+        )
+
+        # And we can configure a new key on the same database.
+        tde.set_global_principal_key(key_name="db_key_replacement")
+        assert cluster.fetchone(
+            "SELECT key_name FROM pg_tde_key_info()"
+        ) == "db_key_replacement"
