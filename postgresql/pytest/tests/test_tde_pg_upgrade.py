@@ -276,14 +276,18 @@ class TestPpgToPspUpgrade:
         old.start()
         tde = TdeManager(old)
         tde.create_extension()
+        # Add the GLOBAL provider once
         tde.add_global_key_provider_file(keyfile=keyfile)
         tde.set_global_principal_key(key_name="key_postgres")
 
         old.execute("CREATE DATABASE db_alpha")
         old.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname="db_alpha")
-        tde_alpha = TdeManager(old)
-        tde_alpha.add_global_key_provider_file(keyfile=keyfile)
-        tde_alpha.set_global_principal_key(key_name="key_alpha", dbname="db_alpha")
+
+        # FIX: The provider is global, so it already exists. We just need to
+        # create a new key using that provider, and set it for this specific DB.
+        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_alpha', 'file_provider')", dbname="db_alpha")
+        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_alpha', 'file_provider')", dbname="db_alpha")
+        old.execute("SELECT pg_tde_set_key_using_global_key_provider('key_alpha', 'file_provider')", dbname="db_alpha")
 
         old.execute(
             "CREATE TABLE pg_secrets (v INT) USING tde_heap; "
@@ -438,14 +442,18 @@ class TestPspToPspUpgrade:
         old.start()
         tde = TdeManager(old)
         tde.create_extension()
+        # Add the GLOBAL provider once
         tde.add_global_key_provider_file(keyfile=keyfile)
         tde.set_global_principal_key(key_name="key_v1")
 
         old.execute("CREATE DATABASE db_b")
         old.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname="db_b")
-        tde_b = TdeManager(old)
-        tde_b.add_global_key_provider_file(keyfile=keyfile)
-        tde_b.set_global_principal_key(key_name="key_v2", dbname="db_b")
+
+        # FIX: The provider is global, so it already exists. We just need to
+        # create a new key using that provider, and set it for this specific DB.
+        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_v2', 'file_provider')", dbname="db_b")
+        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_v2', 'file_provider')", dbname="db_b")
+        old.execute("SELECT pg_tde_set_key_using_global_key_provider('key_v2', 'file_provider')", dbname="db_b")
 
         old.execute("CREATE TABLE rows_a (n INT) USING tde_heap; INSERT INTO rows_a VALUES (1),(2)")
         old.execute(
@@ -802,8 +810,13 @@ class TestUpgradeAccessMethodPermutations:
             "CREATE TABLE was_encrypted (id INT, data TEXT) USING tde_heap; "
             "INSERT INTO was_encrypted SELECT i, md5(i::text) FROM generate_series(1,250) i;"
         )
-        # Convert to plain heap before upgrading — data is now unencrypted on disk
+
+        # Convert to plain heap before upgrading
         old.execute("ALTER TABLE was_encrypted SET ACCESS METHOD heap")
+
+        # FIX: To completely abandon pg_tde so the new cluster can boot without
+        # the library loaded, we must drop the extension from the catalog.
+        old.execute("DROP EXTENSION pg_tde;")
         old.stop()
 
         # No pg_tde shared_preload_libraries on new cluster — purely plain upgrade
@@ -819,6 +832,52 @@ class TestUpgradeAccessMethodPermutations:
         )
         assert am == "heap"
         new_cluster.stop()
+
+    # def test_tde_heap_convert_to_heap_before_upgrade(
+    #     self,
+    #     old_install_dir: Optional[Path],
+    #     install_dir: Path,
+    #     tmp_path: Path,
+    #     io_method: str,
+    # ):
+    #     """Rewrite tde_heap tables as heap before pg_upgrade; no pg_tde dir copy needed."""
+    #     if not old_install_dir:
+    #         pytest.skip("--old-install-dir not provided")
+
+    #     keyfile = str(tmp_path / "tde_then_heap.per")
+    #     old = _make_old_cluster(
+    #         old_install_dir,
+    #         tmp_path,
+    #         io_method,
+    #         extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+    #         extra_params=_tde_params(keyfile),
+    #     )
+    #     old.start()
+    #     tde = TdeManager(old)
+    #     tde.create_extension()
+    #     tde.add_global_key_provider_file(keyfile=keyfile)
+    #     tde.set_global_principal_key()
+    #     old.execute(
+    #         "CREATE TABLE was_encrypted (id INT, data TEXT) USING tde_heap; "
+    #         "INSERT INTO was_encrypted SELECT i, md5(i::text) FROM generate_series(1,250) i;"
+    #     )
+    #     # Convert to plain heap before upgrading — data is now unencrypted on disk
+    #     old.execute("ALTER TABLE was_encrypted SET ACCESS METHOD heap")
+    #     old.stop()
+
+    #     # No pg_tde shared_preload_libraries on new cluster — purely plain upgrade
+    #     new_cluster, result = _upgrade(old, install_dir, tmp_path, io_method)
+    #     assert result.returncode == 0, result.stderr
+
+    #     new_cluster.start()
+    #     new_cluster.wait_ready()
+    #     assert new_cluster.fetchone("SELECT COUNT(*) FROM was_encrypted") == "250"
+    #     am = new_cluster.fetchone(
+    #         "SELECT am.amname FROM pg_class c JOIN pg_am am ON c.relam = am.oid "
+    #         "WHERE c.relname = 'was_encrypted'"
+    #     )
+    #     assert am == "heap"
+    #     new_cluster.stop()
 
 
 # ── WAL encryption upgrade paths ──────────────────────────────────────────────
