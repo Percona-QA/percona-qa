@@ -1115,40 +1115,66 @@ class TestUpgradeNegativeExtended:
         )
         assert result.returncode != 0, "Expected failure: checksum on → off mismatch"
 
-    def test_upgrade_fails_mismatched_encoding(
+    def test_upgrade_fails_when_new_cluster_is_not_pristine(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
         """
-        pg_upgrade --check must reject a real encoding mismatch.
+        pg_upgrade --check must reject a new cluster that contains user data.
 
-        Note: ``SQL_ASCII → UTF8`` is *not* a reliable mismatch in modern
-        pg_upgrade because SQL_ASCII performs no validation and is treated
-        as broadly compatible. Use ``LATIN1 → UTF8`` instead — two real,
-        distinct encodings that pg_upgrade always rejects.
+        Note on the previous test: an encoding mismatch (e.g. LATIN1 → UTF8
+        or SQL_ASCII → UTF8) used to be a reliable negative case, but modern
+        Percona/community pg_upgrade releases accept these pairs as
+        compatible (verified on PG 18.4) — making encoding-mismatch a poor
+        gate for tests. Use a guaranteed reject instead: pg_upgrade
+        requires the new cluster to contain only the default
+        ``template0`` / ``template1`` / ``postgres`` databases (plus
+        nothing else, including no extra user databases).
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
-        # LATIN1 paired with locale C avoids the libc locale/encoding clash
-        # that initdb would otherwise reject.
-        old = _make_old_cluster(
-            old_install_dir, tmp_path, io_method,
-            extra_initdb=["--encoding=LATIN1", "--locale=C"],
-        )
+        old = _make_old_cluster(old_install_dir, tmp_path, io_method)
         old.start()
+        old.execute("CREATE TABLE in_old (id INT); INSERT INTO in_old VALUES (1)")
         old.stop()
 
-        new_cluster, result = _upgrade(
-            old, install_dir, tmp_path, io_method,
-            extra_initdb=["--encoding=UTF8", "--locale=C.UTF-8"],
-            check_only=True,
+        # Build a fully prepared new cluster (initdb + start) and pollute it
+        # with a user database — pg_upgrade --check must refuse.
+        new_port = allocate_port()
+        new_data = tmp_path / "new"
+        new_cluster = PgCluster(
+            new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method
         )
-        # Either pg_upgrade refuses outright (typical) or — if a future
-        # release widens compatibility — surfaces a clear "encoding" hint.
-        combined = (result.stdout + "\n" + result.stderr).lower()
-        assert result.returncode != 0 or "encoding" in combined, (
-            "Expected pg_upgrade --check to flag a LATIN1 vs UTF8 encoding "
-            f"mismatch.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        new_cluster.initdb(
+            extra_args=initdb_extra_align_data_checksums_with_old(
+                old, install_dir, None
+            )
+        )
+        new_cluster.write_default_config()
+        new_cluster.add_hba_entry("local all all trust")
+        new_cluster.start()
+        new_cluster.execute("CREATE DATABASE poisoned_db")
+        new_cluster.stop()
+
+        new_bin = install_dir / "bin"
+        cmd = [
+            str(_upgrade_bin(install_dir)),
+            "-b", str(old.bin),
+            "-B", str(new_bin),
+            "-d", str(old.data_dir),
+            "-D", str(new_data),
+            "-p", str(old.port),
+            "-P", str(new_port),
+            "--check",
+        ]
+        env = os.environ.copy()
+        prepend_install_lib_dirs(env, install_dir, old.install_dir)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
+        )
+        assert result.returncode != 0, (
+            "pg_upgrade --check should reject a non-pristine new cluster.\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
 
     def test_upgrade_fails_wrong_data_dir(

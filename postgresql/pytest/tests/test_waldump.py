@@ -740,25 +740,31 @@ class TestPgTdeWaldumpFilters:
         cluster, seg, *_ = self._build(pg_factory, tmp_path)
         result = _run_waldump(cluster, ["-F", "main", str(seg)])
         _assert_ok_or_eof_tail(result, descr="--fork=main")
-        # Every blkref in --fork=main output must reference the main fork.
-        # pg_waldump emits "blkref #N: rel T/D/R fork {fsm,vm,init} blk N"
-        # for non-main forks and "blkref #N: rel T/D/R blk N" for main.
-        #
-        # Match only on the literal "fork {name} " prefix — checking for the
-        # bare word "init" would falsely trip on descriptions like
-        # "relcache init file inval".
-        non_main_tokens = ("fork fsm ", "fork vm ", "fork init ")
+        # --fork=N filters at the RECORD level (pg_waldump includes a record
+        # if ANY of its blkrefs targets the requested fork), not per-blkref.
+        # A single record may therefore legitimately also list non-main
+        # blkrefs in the same line — e.g. a Heap2 VISIBLE record references
+        # both the visibility map (fork vm) AND the main heap page in one
+        # record. The contract we can actually pin is: every record returned
+        # must contain *at least one* main-fork blkref.
+        fork_tokens = ("fork fsm", "fork vm", "fork init")
         for line in result.stdout.splitlines():
-            if "blkref" not in line:
+            if "blkref #" not in line:
                 continue
-            # Restrict the scan to the part of the line at-or-after "blkref":
-            # rmgr description text (which may include "init file") sits
-            # earlier and is unrelated to the actual fork name.
-            blkref_slice = line[line.index("blkref"):]
-            for tok in non_main_tokens:
-                assert tok not in blkref_slice, (
-                    f"--fork=main returned a non-main blkref: {line}"
-                )
+            # Split the line into individual blkref segments. Each blkref
+            # payload is comma-free ("blkref #N: rel T/D/R [fork X] blk N
+            # [FPW]"), so splitting on "," is safe.
+            segments = [
+                s.strip() for s in line.split(",") if "blkref #" in s
+            ]
+            has_main = any(
+                not any(tok in seg_text for tok in fork_tokens)
+                for seg_text in segments
+            )
+            assert has_main, (
+                "--fork=main returned a record with no main-fork blkref: "
+                f"{line}"
+            )
 
     def test_save_fullpage_extracts_decrypted_images(
         self, pg_factory, tmp_path
