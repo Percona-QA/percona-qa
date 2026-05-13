@@ -2384,3 +2384,249 @@ class TestPgTdeChangeKeyProviderSql:
         assert str(db_path) in opts and str(tmp_path / "other.kf") not in opts, (
             f"global-scope change leaked into the database entry: {opts!r}"
         )
+
+
+# ── pg_tde_add_global_key_provider (generic JSON-options API) ────────────────
+
+
+class TestPgTdeAddGlobalKeyProviderGenericApi:
+    """
+    Parity with the existing database-scope generic-API coverage. The
+    database-scope test ``test_add_provider_with_unknown_type_via_generic_api_fails``
+    already pins the negative path for ``pg_tde_add_database_key_provider(
+    type, name, options)``. The global-scope generic API
+    ``pg_tde_add_global_key_provider(type, name, options)`` had a coverage
+    gap: no positive test of the generic JSON-options form (the file/
+    vault/kmip-specific wrappers were exercised, but not the generic
+    entry point). This class closes that gap with one positive end-to-end
+    and two doc-aligned negatives.
+
+    The generic global-scope API is documented at
+    https://docs.percona.com/pg-tde/functions.html — ``type`` must be
+    one of ``file``, ``vault-v2``, ``kmip``; ``options`` is a JSON
+    object whose required keys depend on the type.
+    """
+
+    def test_add_global_provider_via_generic_api_creates_usable_file_provider(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Positive end-to-end: the generic API call must create a global
+        provider that is (a) visible in
+        ``pg_tde_list_all_global_key_providers``, (b) usable as the
+        source for ``pg_tde_create_key_using_global_key_provider``, and
+        (c) usable as the server/database principal-key binding. If any
+        of those fail, the catalog entry would be present but
+        functionally inert — silently broken in operator hands.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_global_generic_ok"
+        )
+        if not _pg_tde_function_exists(
+            cluster, "pg_tde_add_global_key_provider"
+        ):
+            pytest.skip(
+                "generic pg_tde_add_global_key_provider not present "
+                "in this build"
+            )
+        keyfile = tmp_path / "generic_global.kf"
+        cluster.execute(
+            "SELECT pg_tde_add_global_key_provider("
+            f"'file'::text, 'g_generic'::text, "
+            f"'{{\"type\":\"file\",\"path\":\"{keyfile}\"}}'::json)"
+        )
+
+        # (a) Listed in the global catalog.
+        assert "g_generic" in _list_global_provider_names(cluster), (
+            "generic API ran but the provider is missing from "
+            "pg_tde_list_all_global_key_providers"
+        )
+
+        # (b) The provider is functionally usable for key creation.
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'g_generic_key'::text, 'g_generic'::text)"
+        )
+
+        # (c) And as a server- and database-principal-key binding.
+        cluster.execute(
+            "SELECT pg_tde_set_server_key_using_global_key_provider("
+            "'g_generic_key'::text, 'g_generic'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'g_generic_key'::text, 'g_generic'::text)"
+        )
+
+        # And the keyfile actually got materialized on disk by the
+        # create-key call — a regression where the generic API only
+        # touched the catalog would not produce a keyfile.
+        assert keyfile.exists(), (
+            f"keyfile {keyfile} was not created; the generic API may "
+            "have written the catalog row without invoking the file "
+            "provider's create-key path"
+        )
+
+    def test_add_global_provider_with_unknown_type_via_generic_api_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Companion to the database-scope unknown-type test. An operator
+        typo (``vault`` vs ``vault-v2``) at the global scope must be
+        rejected before any catalog row is written. Without this, a
+        bogus provider entry sits in
+        ``pg_tde_list_all_global_key_providers`` and silently fails the
+        first time someone tries to use it.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_global_generic_bad_type"
+        )
+        if not _pg_tde_function_exists(
+            cluster, "pg_tde_add_global_key_provider"
+        ):
+            pytest.skip(
+                "generic pg_tde_add_global_key_provider not present "
+                "in this build"
+            )
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_add_global_key_provider("
+                "'vault'::text, 'g_bad_type'::text, "
+                "'{\"url\":\"http://x\"}'::json)"
+            )
+        assert "g_bad_type" not in _list_global_provider_names(cluster), (
+            f"pg_tde rejected the call (good: {exc.value!r}) but somehow "
+            "left a 'g_bad_type' entry in the global catalog"
+        )
+
+    def test_add_global_provider_via_generic_api_missing_required_option_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        The documented options schema for a ``file`` provider requires
+        a ``path`` field. The generic API must reject a call that
+        omits it — otherwise an empty/zero-path keyfile would be
+        created later when someone first tries to use the provider.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_global_generic_missing_opt"
+        )
+        if not _pg_tde_function_exists(
+            cluster, "pg_tde_add_global_key_provider"
+        ):
+            pytest.skip(
+                "generic pg_tde_add_global_key_provider not present "
+                "in this build"
+            )
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_add_global_key_provider("
+                "'file'::text, 'g_no_path'::text, '{}'::json)"
+            )
+        assert "g_no_path" not in _list_global_provider_names(cluster), (
+            f"pg_tde rejected the call (good: {exc.value!r}) but somehow "
+            "left a 'g_no_path' entry in the global catalog"
+        )
+
+
+# ── pg_tde.inherit_global_providers — cross-database delete-rejection ─────────
+
+
+class TestPgTdeInheritGlobalProvidersDelete:
+    """
+    The ``pg_tde.inherit_global_providers`` GUC (default ``on``) lets
+    individual databases reference server-scope (global) providers when
+    setting their own principal key. The documented consequence is that
+    ``pg_tde_delete_global_key_provider`` must fail with "currently in
+    use" when ANY database (not just the current one) has bound that
+    provider as its database principal key — otherwise the bound
+    database would lose access to its key the moment the provider goes
+    away.
+
+    The previously existing ``test_delete_global_provider_in_use_by_database_key_fails``
+    exercises the SAME-database variant. This test class adds the
+    cross-database variant: provider used by DB ``A``, delete attempted
+    from DB ``B``. Together they cover the inherit-global-providers
+    contract documented at
+    https://docs.percona.com/pg-tde/global-key-provider-keyring.html.
+    """
+
+    def test_delete_global_provider_in_use_by_other_database_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Setup:
+          * inherit_global_providers = on (cluster default).
+          * Register a global file provider in ``postgres``.
+          * Create database ``other_db``; install pg_tde there; bind
+            the global provider as ``other_db``'s database key.
+
+        Action: from ``postgres`` (a different database than the one
+        actually using the provider), try ``pg_tde_delete_global_key_provider``.
+
+        Expected: rejected with "currently in use", and the provider
+        remains listed. This pins the cross-database scope of the
+        delete-rejection contract — a regression that only checked the
+        current database would let the delete go through and leave
+        ``other_db`` unable to decrypt its tables.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "inherit_xdb_delete"
+        )
+        # GUC defaults to on; set it explicitly so the test is robust
+        # against build-time default changes.
+        cluster.execute(
+            "ALTER SYSTEM SET pg_tde.inherit_global_providers = on"
+        )
+        cluster.execute("SELECT pg_reload_conf()")
+        assert cluster.fetchone(
+            "SHOW pg_tde.inherit_global_providers"
+        ) == "on"
+
+        # Provider lives in postgres.
+        _add_global_file_provider(
+            cluster, "xdb_provider", str(tmp_path / "xdb.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'xdb_key'::text, 'xdb_provider'::text)"
+        )
+
+        # Build a *second* database and bind the global provider as
+        # its database principal key.
+        cluster.execute("CREATE DATABASE other_db")
+        cluster.execute(
+            "CREATE EXTENSION pg_tde", "other_db"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'xdb_key'::text, 'xdb_provider'::text)",
+            "other_db",
+        )
+
+        # Now try to delete the provider from the ORIGINAL database.
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_global_key_provider('xdb_provider')"
+            )
+        msg = str(exc.value).lower()
+        assert "in use" in msg, (
+            "Expected pg_tde to reject deletion of a global provider "
+            "that is in use by another database (inherit_global_providers"
+            f"=on); got: {exc.value!r}"
+        )
+        # And the provider is still listed — no partial removal.
+        assert "xdb_provider" in _list_global_provider_names(cluster), (
+            "xdb_provider missing after a failed cross-DB delete — "
+            "partial state"
+        )
+
+        # Sanity: after dropping the binding in other_db, the same
+        # delete now succeeds. This proves the rejection was caused
+        # specifically by other_db's binding, not by an unrelated
+        # latent state.
+        cluster.execute("DROP DATABASE other_db")
+        cluster.execute(
+            "SELECT pg_tde_delete_global_key_provider('xdb_provider')"
+        )
+        assert "xdb_provider" not in _list_global_provider_names(cluster)
