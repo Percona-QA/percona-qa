@@ -1234,3 +1234,425 @@ class TestTdeVerifyDeleteKeyApis:
         assert cluster.fetchone(
             "SELECT key_name FROM pg_tde_key_info()"
         ) == "db_key_replacement"
+
+
+# ── pg_tde_delete_*_key_provider ──────────────────────────────────────────────
+
+
+def _add_global_file_provider(
+    cluster: PgCluster, name: str, keyfile: str
+) -> None:
+    """Register a global file key provider with the given name."""
+    cluster.execute(
+        "SELECT pg_tde_add_global_key_provider_file("
+        f"'{name}'::text, '{keyfile}'::text)"
+    )
+
+
+def _add_database_file_provider(
+    cluster: PgCluster, name: str, keyfile: str, dbname: str = "postgres"
+) -> None:
+    """Register a database-scope file key provider with the given name."""
+    cluster.execute(
+        "SELECT pg_tde_add_database_key_provider_file("
+        f"'{name}'::text, '{keyfile}'::text)",
+        dbname,
+    )
+
+
+def _list_global_provider_names(cluster: PgCluster) -> list:
+    out = cluster.execute(
+        "SELECT provider_name FROM pg_tde_list_all_global_key_providers()"
+    )
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def _list_database_provider_names(
+    cluster: PgCluster, dbname: str = "postgres"
+) -> list:
+    out = cluster.execute(
+        "SELECT provider_name FROM pg_tde_list_all_database_key_providers()",
+        dbname,
+    )
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def _build_provider_test_cluster(
+    pg_factory, tmp_path, name: str, *, with_tde_heap: bool = False
+) -> PgCluster:
+    """
+    Build a TDE-enabled cluster for provider-deletion tests without using
+    the ``tde_primary`` fixture (which pre-configures keys we don't want
+    to inherit). Caller adds providers / keys as the scenario requires.
+    """
+    cluster = pg_factory(name)
+    cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
+    extra = {"shared_preload_libraries": "'pg_tde'"}
+    if with_tde_heap:
+        extra["default_table_access_method"] = "'tde_heap'"
+    cluster.write_default_config(extra_params=extra)
+    cluster.add_hba_entry("local all all trust")
+    cluster.start()
+    TdeManager(cluster).create_extension()
+    return cluster
+
+
+class TestPgTdeDeleteKeyProvider:
+    """
+    Coverage for the destructive provider-management SQL APIs:
+
+      Global scope:    pg_tde_delete_global_key_provider(name)
+      Database scope:  pg_tde_delete_database_key_provider(name)
+
+    These ports the four TAP scenarios that previously had zero pytest
+    coverage:
+
+      - t/064_delete_key_providers.pl
+        (basic delete success / fails when in use / fails when missing)
+      - t/074_verify_global_key_deletion_with_active_database_provider.pl
+        (global provider in use by database key → delete fails)
+      - t/075_delete_global_key_with_active_server_key_provider.pl
+        (global provider in use as server key → delete fails;
+         still fails after enabling WAL encryption)
+      - t/076_delete_non_active_global_key_provider.pl
+        (provider no longer in use after switch → delete succeeds)
+
+    File providers only — vault / kmip variants live in the TAP suite and
+    need external services. The contract under test is the deletion
+    logic itself, which is provider-type-agnostic.
+    """
+
+    # ── delete-succeeds cases ─────────────────────────────────────────────
+
+    def test_delete_unused_global_provider_succeeds(
+        self, pg_factory, tmp_path
+    ):
+        """
+        After switching the default key to a *new* global provider, the
+        *old* provider is no longer in use and must be deletable. Verify
+        it disappears from ``pg_tde_list_all_global_key_providers()``.
+        Port of t/076_delete_non_active_global_key_provider.pl.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "delete_global_unused"
+        )
+        old_kf = tmp_path / "old.kf"
+        new_kf = tmp_path / "new.kf"
+        _add_global_file_provider(cluster, "old_provider", str(old_kf))
+        _add_global_file_provider(cluster, "new_provider", str(new_kf))
+
+        # Set default key with the old provider, then move to the new one.
+        if not _pg_tde_function_exists(
+            cluster, "pg_tde_set_default_key_using_global_key_provider"
+        ):
+            pytest.skip(
+                "pg_tde_set_default_key_using_global_key_provider not present"
+            )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'old_key'::text, 'old_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_default_key_using_global_key_provider("
+            "'old_key'::text, 'old_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'new_key'::text, 'new_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_default_key_using_global_key_provider("
+            "'new_key'::text, 'new_provider'::text)"
+        )
+
+        assert "old_provider" in _list_global_provider_names(cluster)
+        cluster.execute(
+            "SELECT pg_tde_delete_global_key_provider('old_provider')"
+        )
+        assert "old_provider" not in _list_global_provider_names(cluster), (
+            "old_provider still listed after pg_tde_delete_global_key_provider"
+        )
+        # The new provider must still be there — the delete must not be
+        # collateral.
+        assert "new_provider" in _list_global_provider_names(cluster)
+
+    def test_delete_unused_database_provider_succeeds(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Database-scope equivalent of the global-scope success case. Add
+        two database providers, switch the DB key to the second one,
+        delete the first. The first must disappear from
+        ``pg_tde_list_all_database_key_providers()``.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "delete_db_unused"
+        )
+        _add_database_file_provider(
+            cluster, "old_db_provider", str(tmp_path / "old_db.kf")
+        )
+        _add_database_file_provider(
+            cluster, "new_db_provider", str(tmp_path / "new_db.kf")
+        )
+
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_database_key_provider("
+            "'old_db_key'::text, 'old_db_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_database_key_provider("
+            "'old_db_key'::text, 'old_db_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_database_key_provider("
+            "'new_db_key'::text, 'new_db_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_database_key_provider("
+            "'new_db_key'::text, 'new_db_provider'::text)"
+        )
+
+        assert "old_db_provider" in _list_database_provider_names(cluster)
+        cluster.execute(
+            "SELECT pg_tde_delete_database_key_provider('old_db_provider')"
+        )
+        assert (
+            "old_db_provider" not in _list_database_provider_names(cluster)
+        ), (
+            "old_db_provider still listed after "
+            "pg_tde_delete_database_key_provider"
+        )
+        assert "new_db_provider" in _list_database_provider_names(cluster)
+
+    # ── delete-fails-while-in-use cases ───────────────────────────────────
+
+    def test_delete_global_provider_in_use_by_db_key_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        A global provider currently set as the database principal key must
+        NOT be deletable — silently losing the key bricks the database on
+        next start. pg_tde must error out with "currently in use".
+        Port of t/074_verify_global_key_deletion_with_active_database_provider.pl.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "in_use_db", with_tde_heap=True
+        )
+        _add_global_file_provider(
+            cluster, "in_use_provider", str(tmp_path / "in_use.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'in_use_key'::text, 'in_use_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'in_use_key'::text, 'in_use_provider'::text)"
+        )
+
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_global_key_provider('in_use_provider')"
+            )
+        msg = str(exc.value).lower()
+        assert "currently in use" in msg or "in use" in msg, (
+            "Expected pg_tde to reject deletion of an in-use provider; "
+            f"got: {exc.value!r}"
+        )
+        # And the provider must NOT have been partially removed.
+        assert "in_use_provider" in _list_global_provider_names(cluster), (
+            "in_use_provider missing after a failed delete — partial state"
+        )
+
+    def test_delete_global_provider_in_use_by_server_key_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        A global provider holding the *server* (WAL) principal key cannot
+        be deleted: losing the WAL key would prevent decoding any
+        post-deletion WAL record. Port of
+        t/075_delete_global_key_with_active_server_key_provider.pl
+        (without WAL encryption enabled — see the follow-up test for
+        the wal_encrypt=on case).
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "in_use_server"
+        )
+        _add_global_file_provider(
+            cluster, "srv_provider", str(tmp_path / "srv.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'srv_key'::text, 'srv_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_server_key_using_global_key_provider("
+            "'srv_key'::text, 'srv_provider'::text)"
+        )
+
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_global_key_provider('srv_provider')"
+            )
+        msg = str(exc.value).lower()
+        assert "currently in use" in msg or "in use" in msg, (
+            "Expected pg_tde to reject deletion of an in-use server-key "
+            f"provider; got: {exc.value!r}"
+        )
+        assert "srv_provider" in _list_global_provider_names(cluster)
+
+    def test_delete_global_provider_with_wal_encrypt_on_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Same contract as the previous test but with ``pg_tde.wal_encrypt=on``
+        and a server restart in between — the WAL stream is now actively
+        being encrypted with the key from this provider. Deletion must
+        STILL be rejected. Port of step 5-6 of
+        t/075_delete_global_key_with_active_server_key_provider.pl.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "in_use_wal_enc"
+        )
+        _add_global_file_provider(
+            cluster, "wal_provider", str(tmp_path / "wal.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'wal_key'::text, 'wal_provider'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_server_key_using_global_key_provider("
+            "'wal_key'::text, 'wal_provider'::text)"
+        )
+        TdeManager(cluster).enable_wal_encryption()  # restarts the cluster
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_global_key_provider('wal_provider')"
+            )
+        msg = str(exc.value).lower()
+        assert "currently in use" in msg or "in use" in msg, (
+            "Expected pg_tde to reject deletion of an in-use WAL-key "
+            f"provider; got: {exc.value!r}"
+        )
+        assert "wal_provider" in _list_global_provider_names(cluster)
+
+    def test_delete_database_provider_in_use_by_db_key_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Database-scope counterpart: a database provider currently set as
+        the DB principal key cannot be deleted.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "in_use_db_scope"
+        )
+        _add_database_file_provider(
+            cluster, "db_in_use", str(tmp_path / "db_in_use.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_database_key_provider("
+            "'db_in_use_key'::text, 'db_in_use'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_database_key_provider("
+            "'db_in_use_key'::text, 'db_in_use'::text)"
+        )
+
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_database_key_provider('db_in_use')"
+            )
+        msg = str(exc.value).lower()
+        assert "currently in use" in msg or "in use" in msg, (
+            "Expected pg_tde to reject deletion of an in-use database "
+            f"provider; got: {exc.value!r}"
+        )
+        assert "db_in_use" in _list_database_provider_names(cluster)
+
+    # ── delete-fails-for-missing-provider cases ───────────────────────────
+
+    def test_delete_nonexistent_global_provider_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Asking pg_tde to delete a global provider that was never
+        registered must fail — silently succeeding would mask typos and
+        let scripts assume cleanup ran when it didn't.
+        Port of t/064_delete_key_providers.pl step 8.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "nonexistent_global"
+        )
+        before = _list_global_provider_names(cluster)
+        assert "ghost_provider" not in before
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_global_key_provider('ghost_provider')"
+            )
+        msg = str(exc.value).lower()
+        # pg_tde historically uses "does not exists" — be lenient about
+        # tense in case a future build fixes the grammar.
+        assert "does not exist" in msg or "not found" in msg, (
+            "Expected an error mentioning that the provider does not "
+            f"exist; got: {exc.value!r}"
+        )
+        # Catalog must not have changed.
+        assert _list_global_provider_names(cluster) == before
+
+    def test_delete_nonexistent_database_provider_fails(
+        self, pg_factory, tmp_path
+    ):
+        """Database-scope counterpart of the missing-provider error path."""
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "nonexistent_db"
+        )
+        before = _list_database_provider_names(cluster)
+        assert "ghost_db_provider" not in before
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_delete_database_key_provider"
+                "('ghost_db_provider')"
+            )
+        msg = str(exc.value).lower()
+        assert "does not exist" in msg or "not found" in msg, (
+            "Expected an error mentioning that the provider does not "
+            f"exist; got: {exc.value!r}"
+        )
+        assert _list_database_provider_names(cluster) == before
+
+    # ── persistence ───────────────────────────────────────────────────────
+
+    def test_deleted_provider_stays_deleted_across_restart(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Once a provider is deleted, it must not reappear after a restart.
+        Catches regressions where the in-memory catalog is updated but
+        the on-disk pg_tde state file is not flushed.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "delete_persist"
+        )
+        _add_global_file_provider(
+            cluster, "keep_me", str(tmp_path / "keep.kf")
+        )
+        _add_global_file_provider(
+            cluster, "remove_me", str(tmp_path / "remove.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_delete_global_key_provider('remove_me')"
+        )
+        assert "remove_me" not in _list_global_provider_names(cluster)
+
+        cluster.restart()
+        names = _list_global_provider_names(cluster)
+        assert "remove_me" not in names, (
+            "Deleted provider 'remove_me' reappeared after restart — "
+            "pg_tde may not have persisted the deletion."
+        )
+        assert "keep_me" in names, (
+            "Unaffected provider 'keep_me' disappeared across restart"
+        )
