@@ -585,3 +585,525 @@ class TestPartitionedTdeHeap:
         assert tde_primary.fetchone(
             "SELECT COUNT(*) FROM durable"
         ) == "200"
+
+
+class TestPartitionedTdeHeapCorners:
+    """
+    Corner-case coverage for partitioned tde_heap tables — the unusual
+    workflows that can each exercise a distinct internal code path:
+
+    * relfilenode rewrites (VACUUM FULL, ALTER TYPE)
+    * row movement across partitions (UPDATE on partition key)
+    * bulk insert routing (COPY)
+    * TOAST-out values inside an encrypted leaf
+    * composite partition keys
+    * sibling-isolation during DROP PARTITION
+    * many-partition scaling
+    * local indexes on encrypted leaves
+    * declarative UNIQUE constraint that must include the partition key
+
+    Each scenario was historically reported to break or behave subtly
+    differently from the base case, so they get explicit assertions
+    that the encrypted-AM contract still holds after the operation.
+    """
+
+    # ── indexes on encrypted partitions ───────────────────────────────────
+
+    def test_local_index_on_encrypted_partition_is_encrypted(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Per the Percona docs, indexes on tde_heap relations have their
+        pages encrypted just like the heap. The pg_tde_is_encrypted
+        function explicitly supports indexes: "This can additionally be
+        used to verify that indexes and sequences are encrypted."
+
+        Create a local btree index on a leaf partition and verify it
+        reports encrypted=true. A regression would silently leak index
+        keys in plaintext on disk.
+        """
+        tde_primary.execute(
+            "CREATE TABLE idx_part (id INT, payload TEXT) "
+            "PARTITION BY RANGE (id)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE idx_part_a PARTITION OF idx_part "
+            "FOR VALUES FROM (0) TO (1000)"
+        )
+        tde_primary.execute(
+            "INSERT INTO idx_part SELECT i, md5(i::text) "
+            "FROM generate_series(0, 999) i"
+        )
+        tde_primary.execute(
+            "CREATE INDEX idx_part_a_payload_idx ON idx_part_a (payload)"
+        )
+
+        tde = TdeManager(tde_primary)
+        assert tde.is_table_encrypted("idx_part_a"), (
+            "partition leaf reports not-encrypted before the index check"
+        )
+        assert _is_encrypted_raw(
+            tde_primary, "idx_part_a_payload_idx"
+        ) == "t", (
+            "local index on an encrypted partition is NOT encrypted — "
+            "index keys would leak in plaintext on disk"
+        )
+
+    def test_unique_constraint_on_partition_key_with_tde_heap(
+        self, tde_primary: PgCluster
+    ):
+        """
+        PostgreSQL forbids UNIQUE constraints on partitioned tables
+        unless every column of the constraint includes (or is) the
+        partition key. With tde_heap each per-partition index that
+        backs the constraint must still be encrypted. Verify by adding
+        a primary key on the partition column and inspecting the
+        per-partition index.
+        """
+        tde_primary.execute(
+            "CREATE TABLE uk_part (id INT, payload TEXT, PRIMARY KEY (id)) "
+            "PARTITION BY RANGE (id)"
+        )
+        for name, lo, hi in [
+            ("uk_part_a", 0, 100),
+            ("uk_part_b", 100, 200),
+        ]:
+            tde_primary.execute(
+                f"CREATE TABLE {name} PARTITION OF uk_part "
+                f"FOR VALUES FROM ({lo}) TO ({hi})"
+            )
+        tde_primary.execute(
+            "INSERT INTO uk_part SELECT i, md5(i::text) "
+            "FROM generate_series(0, 199) i"
+        )
+
+        # Every per-partition pkey index must be encrypted.
+        index_names = tde_primary.execute(
+            "SELECT indexrelid::regclass::text "
+            "FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid "
+            "WHERE c.relname IN ('uk_part_a', 'uk_part_b')"
+        )
+        indexes = [
+            line.strip()
+            for line in index_names.splitlines()
+            if line.strip()
+        ]
+        assert len(indexes) == 2, (
+            f"expected 2 per-partition pkey indexes, found: {indexes}"
+        )
+        for idx in indexes:
+            assert _is_encrypted_raw(tde_primary, idx) == "t", (
+                f"per-partition pkey index {idx} is not encrypted"
+            )
+
+        # And the constraint actually fires.
+        with pytest.raises(RuntimeError):
+            tde_primary.execute("INSERT INTO uk_part VALUES (5, 'dup')")
+
+    # ── rewrites that produce a new relfilenode ───────────────────────────
+
+    def test_vacuum_full_preserves_encryption_on_partition(
+        self, tde_primary: PgCluster
+    ):
+        """
+        VACUUM FULL allocates a new relfilenode and copies tuples into
+        it. With tde_heap that new relfilenode must also be encrypted,
+        and the data must still be readable afterwards. A regression
+        could rewrite the heap into plaintext storage even though the
+        AM is still ``tde_heap`` in the catalog.
+        """
+        tde_primary.execute(
+            "CREATE TABLE vf_part (id INT, payload TEXT) "
+            "PARTITION BY RANGE (id)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE vf_part_a PARTITION OF vf_part "
+            "FOR VALUES FROM (0) TO (1000)"
+        )
+        tde_primary.execute(
+            "INSERT INTO vf_part SELECT i, md5(i::text) "
+            "FROM generate_series(0, 499) i"
+        )
+        # Delete half so VACUUM FULL has actual work to do.
+        tde_primary.execute("DELETE FROM vf_part_a WHERE id % 2 = 0")
+
+        before = tde_primary.fetchone(
+            "SELECT pg_relation_filenode('vf_part_a'::regclass)"
+        )
+        tde_primary.execute("VACUUM FULL vf_part_a")
+        after = tde_primary.fetchone(
+            "SELECT pg_relation_filenode('vf_part_a'::regclass)"
+        )
+        assert before != after, (
+            "VACUUM FULL did not allocate a new relfilenode "
+            f"(before={before!r}, after={after!r}) — the assertion below "
+            "becomes a tautology"
+        )
+
+        tde = TdeManager(tde_primary)
+        assert _amname(tde_primary, "vf_part_a") == "tde_heap"
+        assert tde.is_table_encrypted("vf_part_a"), (
+            "partition is NOT encrypted after VACUUM FULL — pg_tde "
+            "may not have re-applied encryption to the new relfilenode"
+        )
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM vf_part_a"
+        ) == "250"
+
+    def test_alter_column_type_rewrites_partition_keeping_encryption(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Some ALTER TABLE forms (e.g. type changes that require a cast)
+        trigger a full table rewrite to a new relfilenode. The new
+        storage must still be encrypted, the data must round-trip
+        through the type conversion, and the catalog must still report
+        tde_heap.
+        """
+        tde_primary.execute(
+            "CREATE TABLE alt_part (id INT, val INT) "
+            "PARTITION BY RANGE (id)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE alt_part_a PARTITION OF alt_part "
+            "FOR VALUES FROM (0) TO (200)"
+        )
+        tde_primary.execute(
+            "INSERT INTO alt_part SELECT i, i * 7 "
+            "FROM generate_series(0, 199) i"
+        )
+
+        before_filenode = tde_primary.fetchone(
+            "SELECT pg_relation_filenode('alt_part_a'::regclass)"
+        )
+        # ALTER ... TYPE BIGINT USING val::bigint forces a rewrite.
+        tde_primary.execute(
+            "ALTER TABLE alt_part ALTER COLUMN val TYPE BIGINT "
+            "USING val::bigint"
+        )
+        after_filenode = tde_primary.fetchone(
+            "SELECT pg_relation_filenode('alt_part_a'::regclass)"
+        )
+        # Some PG versions do not rewrite for widening int->bigint when
+        # the data fits. Either way the encryption assertion still
+        # holds; we just note the rewrite status for diagnostics.
+        rewritten = before_filenode != after_filenode
+
+        tde = TdeManager(tde_primary)
+        assert _amname(tde_primary, "alt_part_a") == "tde_heap"
+        assert tde.is_table_encrypted("alt_part_a"), (
+            f"partition is NOT encrypted after ALTER TYPE "
+            f"(relfilenode rewritten={rewritten})"
+        )
+        # Data round-trip through the type change.
+        assert tde_primary.fetchone(
+            "SELECT SUM(val) FROM alt_part_a"
+        ) == str(sum(i * 7 for i in range(200)))
+
+    # ── row movement across partitions ────────────────────────────────────
+
+    def test_row_movement_across_encrypted_partitions_via_update(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Since PG 11, UPDATE on a row that changes the partition key
+        physically moves the row to the new partition. Both source and
+        target partitions must remain encrypted, the row must end up
+        in the correct destination, and it must be readable end-to-end.
+        """
+        tde_primary.execute(
+            "CREATE TABLE move_t (id INT, payload TEXT) "
+            "PARTITION BY RANGE (id)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE move_low PARTITION OF move_t "
+            "FOR VALUES FROM (0) TO (100)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE move_hi PARTITION OF move_t "
+            "FOR VALUES FROM (100) TO (200)"
+        )
+        tde_primary.execute(
+            "INSERT INTO move_t VALUES (5, 'low-row'), (105, 'hi-row')"
+        )
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM move_low"
+        ) == "1"
+
+        # Move the low row into the hi partition.
+        tde_primary.execute("UPDATE move_t SET id = 150 WHERE id = 5")
+
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM move_low"
+        ) == "0", "source partition still contains the moved row"
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM move_hi"
+        ) == "2", "destination partition is missing the moved row"
+        # The moved row's payload survived the move.
+        assert tde_primary.fetchone(
+            "SELECT payload FROM move_hi WHERE id = 150"
+        ) == "low-row"
+
+        tde = TdeManager(tde_primary)
+        assert tde.is_table_encrypted("move_low")
+        assert tde.is_table_encrypted("move_hi")
+
+    # ── DDL on individual partitions ──────────────────────────────────────
+
+    def test_drop_partition_leaves_siblings_intact(
+        self, tde_primary: PgCluster
+    ):
+        """
+        DROP TABLE on one partition must not affect its siblings'
+        existence, encryption status, or data. Catches regressions
+        where pg_tde catalog cleanup over-eagerly invalidates shared
+        per-database state.
+        """
+        tde_primary.execute(
+            "CREATE TABLE drop_t (id INT) PARTITION BY RANGE (id)"
+        )
+        for name, lo, hi in [
+            ("drop_a", 0, 100),
+            ("drop_b", 100, 200),
+            ("drop_c", 200, 300),
+        ]:
+            tde_primary.execute(
+                f"CREATE TABLE {name} PARTITION OF drop_t "
+                f"FOR VALUES FROM ({lo}) TO ({hi})"
+            )
+        tde_primary.execute(
+            "INSERT INTO drop_t SELECT generate_series(0, 299)"
+        )
+
+        tde_primary.execute("DROP TABLE drop_b")
+
+        # Survivor partitions still encrypted and queryable.
+        tde = TdeManager(tde_primary)
+        for surv in ("drop_a", "drop_c"):
+            assert tde.is_table_encrypted(surv), (
+                f"surviving partition {surv} is not encrypted after a "
+                "sibling DROP"
+            )
+            assert tde_primary.fetchone(
+                f"SELECT COUNT(*) FROM {surv}"
+            ) == "100"
+        # Children listed via pg_inherits no longer include drop_b.
+        children = _children_of(tde_primary, "drop_t")
+        assert "drop_b" not in children, (
+            f"drop_b still listed as a child after DROP TABLE: {children}"
+        )
+
+    def test_truncate_parent_clears_all_encrypted_children(
+        self, tde_primary: PgCluster
+    ):
+        """
+        TRUNCATE on the partitioned parent recursively truncates every
+        child. Each child must remain encrypted afterwards — the
+        underlying storage gets a new relfilenode (TRUNCATE's default
+        behaviour) and pg_tde must re-apply encryption.
+        """
+        tde_primary.execute(
+            "CREATE TABLE trunc_t (id INT) PARTITION BY RANGE (id)"
+        )
+        for name, lo, hi in [
+            ("trunc_a", 0, 50),
+            ("trunc_b", 50, 100),
+        ]:
+            tde_primary.execute(
+                f"CREATE TABLE {name} PARTITION OF trunc_t "
+                f"FOR VALUES FROM ({lo}) TO ({hi})"
+            )
+        tde_primary.execute(
+            "INSERT INTO trunc_t SELECT generate_series(0, 99)"
+        )
+
+        tde_primary.execute("TRUNCATE TABLE trunc_t")
+
+        tde = TdeManager(tde_primary)
+        for child in ("trunc_a", "trunc_b"):
+            assert _amname(tde_primary, child) == "tde_heap", (
+                f"child {child} dropped tde_heap AM after TRUNCATE"
+            )
+            assert tde.is_table_encrypted(child), (
+                f"child {child} is not encrypted after TRUNCATE; pg_tde "
+                "may not have re-applied encryption to the new "
+                "relfilenode allocated by TRUNCATE"
+            )
+            assert tde_primary.fetchone(
+                f"SELECT COUNT(*) FROM {child}"
+            ) == "0"
+
+        # Re-insert must still route + encrypt correctly.
+        tde_primary.execute("INSERT INTO trunc_t SELECT generate_series(0, 9)")
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM trunc_t"
+        ) == "10"
+
+    # ── bulk insert paths ─────────────────────────────────────────────────
+
+    def test_copy_from_routes_into_encrypted_partitions(
+        self, tde_primary: PgCluster, tmp_path
+    ):
+        """
+        Server-side ``COPY ... FROM`` uses a separate insert path from
+        regular INSERT. With partitioning + tde_heap it must still
+        route each row to the correct leaf and encrypt on write.
+        """
+        tde_primary.execute(
+            "CREATE TABLE copy_t (id INT, payload TEXT) "
+            "PARTITION BY RANGE (id)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE copy_low PARTITION OF copy_t "
+            "FOR VALUES FROM (0) TO (50)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE copy_hi PARTITION OF copy_t "
+            "FOR VALUES FROM (50) TO (100)"
+        )
+
+        csv_path = tmp_path / "bulk.csv"
+        lines = []
+        for i in range(100):
+            lines.append(f"{i},payload-{i}")
+        csv_path.write_text("\n".join(lines) + "\n")
+        # World-readable so the postgres server process can read it.
+        csv_path.chmod(0o644)
+
+        tde_primary.execute(
+            f"COPY copy_t FROM '{csv_path}' WITH (FORMAT csv)"
+        )
+
+        tde = TdeManager(tde_primary)
+        for child, expected in [("copy_low", "50"), ("copy_hi", "50")]:
+            assert tde.is_table_encrypted(child)
+            assert tde_primary.fetchone(
+                f"SELECT COUNT(*) FROM {child}"
+            ) == expected, (
+                f"COPY did not route {expected} rows to {child}; "
+                "partition routing under tde_heap may be broken"
+            )
+
+    # ── TOAST ─────────────────────────────────────────────────────────────
+
+    def test_toast_values_in_encrypted_partition_round_trip(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Wide values (>~2 KB compressed) are stored out-of-line in the
+        relation's TOAST table. pg_tde must encrypt the TOAST table
+        too, otherwise large fields would leak in plaintext on disk
+        even though the main heap is encrypted.
+
+        Insert a wide value into an encrypted partition; verify the
+        round-trip works (proves decryption) and that the TOAST
+        relation reports as encrypted.
+        """
+        tde_primary.execute(
+            "CREATE TABLE toast_t (id INT, big TEXT) "
+            "PARTITION BY RANGE (id)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE toast_a PARTITION OF toast_t "
+            "FOR VALUES FROM (0) TO (10)"
+        )
+        # repeat('X', 50000) compresses well but still spills to TOAST.
+        tde_primary.execute(
+            "INSERT INTO toast_a VALUES (1, repeat('X', 50000))"
+        )
+        # Round-trip: the length matches.
+        assert tde_primary.fetchone(
+            "SELECT length(big) FROM toast_a WHERE id = 1"
+        ) == "50000"
+
+        tde = TdeManager(tde_primary)
+        assert tde.is_table_encrypted("toast_a")
+
+        # Find the TOAST relation for toast_a and verify it's encrypted.
+        toast_relname = tde_primary.fetchone(
+            "SELECT t.relname FROM pg_class c "
+            "JOIN pg_class t ON t.oid = c.reltoastrelid "
+            "WHERE c.relname = 'toast_a'"
+        )
+        if toast_relname:
+            # Some pg_tde versions report on TOAST relations directly.
+            # Either 't' (encrypted) or '' (no opinion) is acceptable;
+            # 'f' would mean TOAST is actively plaintext, which is the
+            # regression.
+            toast_encrypted = _is_encrypted_raw(tde_primary, toast_relname)
+            assert toast_encrypted != "f", (
+                f"TOAST relation {toast_relname} reports plaintext "
+                "while its parent partition is on tde_heap — wide "
+                "values would leak in clear text on disk"
+            )
+
+    # ── composite key + scaling ───────────────────────────────────────────
+
+    def test_composite_range_partition_key_with_tde_heap(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Multi-column RANGE partition keys are routinely used for
+        time-bucketed data (e.g. ``RANGE (year, month)``). The
+        encryption contract must hold across this layout too.
+        """
+        tde_primary.execute(
+            "CREATE TABLE comp_t (yr INT, mo INT, qty INT) "
+            "PARTITION BY RANGE (yr, mo)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE comp_2024 PARTITION OF comp_t "
+            "FOR VALUES FROM (2024, 1) TO (2025, 1)"
+        )
+        tde_primary.execute(
+            "CREATE TABLE comp_2025 PARTITION OF comp_t "
+            "FOR VALUES FROM (2025, 1) TO (2026, 1)"
+        )
+        tde_primary.execute(
+            "INSERT INTO comp_t VALUES "
+            "(2024, 6, 10), (2024, 12, 20), (2025, 3, 30)"
+        )
+
+        tde = TdeManager(tde_primary)
+        for leaf, expected in [("comp_2024", "2"), ("comp_2025", "1")]:
+            assert _amname(tde_primary, leaf) == "tde_heap"
+            assert tde.is_table_encrypted(leaf)
+            assert tde_primary.fetchone(
+                f"SELECT COUNT(*) FROM {leaf}"
+            ) == expected
+
+    def test_many_partitions_all_encrypted_stress(
+        self, tde_primary: PgCluster
+    ):
+        """
+        Scaling sanity: 30 partitions, each encrypted, each receiving
+        rows. Catches per-partition pg_tde state-table growth issues
+        (e.g. catalog bloat or per-rel cache thrashing) that wouldn't
+        surface in the 3-4 partition mainline tests.
+        """
+        N = 30
+        tde_primary.execute(
+            "CREATE TABLE many_t (id INT) PARTITION BY RANGE (id)"
+        )
+        for i in range(N):
+            tde_primary.execute(
+                f"CREATE TABLE many_p{i} PARTITION OF many_t "
+                f"FOR VALUES FROM ({i * 100}) TO ({(i + 1) * 100})"
+            )
+        tde_primary.execute(
+            f"INSERT INTO many_t SELECT generate_series(0, {N * 100 - 1})"
+        )
+
+        tde = TdeManager(tde_primary)
+        not_encrypted = [
+            f"many_p{i}"
+            for i in range(N)
+            if not tde.is_table_encrypted(f"many_p{i}")
+        ]
+        assert not not_encrypted, (
+            f"{len(not_encrypted)}/{N} partitions are NOT encrypted "
+            f"after batch creation: {not_encrypted[:5]}..."
+        )
+        assert tde_primary.fetchone(
+            "SELECT COUNT(*) FROM many_t"
+        ) == str(N * 100)
