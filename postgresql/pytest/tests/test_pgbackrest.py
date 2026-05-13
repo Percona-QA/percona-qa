@@ -15,7 +15,19 @@ Covers the 10-scenario matrix ported from
   9. backup chain (full + diff + incr) visible in ``info``
  10. ``check`` succeeds after stanza setup
 
-All matrix tests run with TDE + WAL encryption to mirror the bash scenario.
+All matrix tests run with TDE + WAL encryption and use both pg_tde wrappers
+via ``BackupManager``: ``pg_tde_archive_decrypt`` on the ``archive_command``
+path (decrypts WAL before ``pgbackrest archive-push``) and
+``pg_tde_restore_encrypt`` on the ``restore_command`` path (re-encrypts WAL
+fetched by ``pgbackrest archive-get``). This is the integration documented
+in the Percona walkthrough — pgBackRest's repo always holds **plaintext**
+WAL regardless of the source's WAL-encryption state.
+
+``TestPgBackRestEncryptedWalWrappersContract`` (bottom of this file) is the
+byte-level proof that those wrappers actually fire in both directions; the
+rest of the matrix only proves "end-to-end works" and would silently pass
+if a wrapper became a no-op.
+
 The original three smoke tests are kept (and deepened) for fast feedback.
 """
 import os
@@ -940,5 +952,240 @@ class TestPgBackRestAdvancedAndNegative:
             # Ensure at least one stress table survived
             tables = restored.execute("SELECT tablename FROM pg_tables WHERE tablename LIKE 'stress_%';")
             assert "stress_" in tables
+        finally:
+            restored.stop()
+
+
+# ── byte-level contract: pg_tde wrappers actually fire on the pgBackRest path ─
+
+
+def _find_repo_wal_segments(repo_path: Path, stanza: str) -> list:
+    """
+    Return every file under ``<repo>/archive/<stanza>/.../<24hex>...`` —
+    the WAL segments pgBackRest stores. pgBackRest names files
+    ``<24hex>`` (raw), ``<24hex>-<sha>`` (default), or ``<24hex>-<sha>.gz``
+    (compressed); we accept all three shapes here and rely on the caller
+    to scope the search to a compress-type=none repo for byte inspection.
+    """
+    archive = repo_path / "archive" / stanza
+    if not archive.is_dir():
+        return []
+    pattern = re.compile(r"^[0-9A-F]{24}(-[0-9a-f]+)?$")
+    return [
+        p for p in archive.rglob("*")
+        if p.is_file() and pattern.match(p.name)
+    ]
+
+
+class TestPgBackRestEncryptedWalWrappersContract:
+    """
+    Byte-level proof that pgBackRest + pg_tde wrappers actually transform
+    WAL on the way through the pipeline:
+
+        source pg_wal/<seg>  →  pg_tde_archive_decrypt  →  pgBackRest repo
+          (encrypted)              (decrypts)                (plaintext)
+
+        pgBackRest repo  →  pg_tde_restore_encrypt  →  restored pg_wal/<seg>
+          (plaintext)         (re-encrypts)             (encrypted)
+
+    Without these assertions the rest of the pgBackRest matrix would pass
+    even if both wrappers had silently degraded to no-ops — pgBackRest
+    treats WAL as opaque bytes for its own storage purposes, and recovery
+    would still replay whatever shape sat in pg_wal back into the heap.
+    The matrix would happily green-tick a build that quietly stored
+    *encrypted* WAL in the repo, which would break ``pgbackrest verify``
+    and any downstream tooling that parses the WAL.
+
+    These two tests rebuild the source cluster with
+    ``compress-type=none`` so the repo's archived segments are byte-
+    inspectable; the rest of ``test_pgbackrest.py`` keeps the default
+    (``gz``) compression and is unaffected.
+    """
+
+    def _setup_uncompressed_pgbackrest(
+        self,
+        tde_primary: PgCluster,
+        tmp_path: Path,
+        *,
+        stanza: str = "wrappers_contract",
+    ) -> BackupManager:
+        """Source-side ``_setup_tde_pgbackrest_source`` with compression off."""
+        TdeManager(tde_primary).enable_wal_encryption()
+        bm = BackupManager(stanza=stanza, repo_path=str(tmp_path / "repo"))
+        bm.write_config(
+            pg_path=str(tde_primary.data_dir),
+            pg_port=tde_primary.port,
+            pg_socket_path=str(tde_primary.socket_dir),
+            pg_bin=str(tde_primary.bin),
+            compress_type="none",
+        )
+        bm.configure_postgres(tde_primary, pg_tde_wal_archiving=True)
+        tde_primary.restart()
+        bm.stanza_create()
+        return bm
+
+    def test_archive_push_decrypts_wal_into_repo(
+        self, tde_primary: PgCluster, tmp_path: Path,
+    ):
+        """
+        After ``archive_command`` runs through ``pg_tde_archive_decrypt``:
+
+          1. The archived WAL segment in pgBackRest's repo must contain
+             the plaintext marker we inserted before the segment switch.
+          2. The source ``$PGDATA/pg_wal/<seg>`` must NOT contain the same
+             marker — it's still encrypted on the source side.
+
+        Both witnesses must agree for the contract to hold. If only (1)
+        passes, WAL encryption may be silently off at the source. If only
+        (2) passes, the wrapper turned into a no-op and stored ciphertext
+        in the repo.
+        """
+        bm = self._setup_uncompressed_pgbackrest(tde_primary, tmp_path)
+
+        marker = "MARKER-pgbackrest-archive-decrypt-must-decrypt-bea71f"
+        tde_primary.execute(
+            "CREATE TABLE wrap_push_t (id INT, payload TEXT) USING tde_heap"
+        )
+        tde_primary.execute(
+            f"INSERT INTO wrap_push_t VALUES (1, '{marker}')"
+        )
+        tde_primary.execute("CHECKPOINT")
+
+        seg_name = tde_primary.fetchone(
+            "SELECT pg_walfile_name(pg_current_wal_insert_lsn())"
+        )
+        src_seg = tde_primary.data_dir / "pg_wal" / seg_name
+        assert src_seg.exists(), f"pg_wal does not contain {seg_name}"
+        src_bytes = src_seg.read_bytes()
+
+        tde_primary.execute("SELECT pg_switch_wal()")
+        bm.wait_for_wal_archive(tde_primary)
+
+        repo_segments = _find_repo_wal_segments(
+            Path(bm.repo_path), bm.stanza
+        )
+        assert repo_segments, (
+            "pgBackRest stored no WAL in the repo after pg_switch_wal()+"
+            "wait_for_wal_archive — archive_command never ran."
+        )
+
+        marker_b = marker.encode()
+        # 1. The repo MUST contain the plaintext marker in some segment
+        #    (the one we just switched out).
+        repo_has_plaintext = any(
+            marker_b in seg.read_bytes() for seg in repo_segments
+        )
+        assert repo_has_plaintext, (
+            "pgBackRest's repo contains NO segment with the plaintext "
+            f"marker {marker!r}. pg_tde_archive_decrypt is not firing in "
+            "the archive_command pipeline; the repo is holding ciphertext "
+            "and any downstream parsing (pgbackrest verify, etc.) will "
+            "break.\nRepo segments scanned: "
+            f"{[s.name for s in repo_segments]}"
+        )
+
+        # 2. The corresponding source pg_wal segment must NOT contain the
+        #    marker — proof that WAL encryption was actually on at the
+        #    moment of the write, and the repo's plaintext was created by
+        #    the wrapper, not by an accidentally plaintext source.
+        assert marker_b not in src_bytes, (
+            f"Plaintext marker {marker!r} found in the SOURCE "
+            f"{src_seg.name}; WAL encryption is not active at the source "
+            "and the 'wrapper decrypted on archive' conclusion is moot."
+        )
+
+    def test_restore_encrypt_round_trip_keeps_wal_encrypted(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """
+        After a full restore with ``pg_tde_wal_restore=True``:
+
+          * The restored cluster must come up with ``pg_tde.wal_encrypt = on``
+            (otherwise the encryption-on-disk contract is broken on the
+            restored side).
+          * New WAL written by the restored cluster must be encrypted —
+            i.e. a marker inserted post-restore is *not* visible in the
+            restored ``pg_wal/<seg>`` (proves the cluster is still doing
+            WAL encryption end-to-end after going through the
+            pg_tde_restore_encrypt path).
+          * The original encrypted relation is readable on the restored
+            side (a sanity check that the WAL replayed through
+            pg_tde_restore_encrypt was correctly re-encrypted; otherwise
+            recovery would have read garbage WAL and corrupted the heap).
+        """
+        bm = self._setup_uncompressed_pgbackrest(
+            tde_primary, tmp_path, stanza="wrappers_rt"
+        )
+
+        tde_primary.execute(
+            "CREATE TABLE wrap_rt_t (id INT PRIMARY KEY, val TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO wrap_rt_t "
+            "SELECT g, md5(g::text) FROM generate_series(1, 200) g"
+        )
+        tde_primary.execute("CHECKPOINT")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "wrappers_rt_restore"
+        bm.restore(str(restore_dir), pg_tde_wal_restore=True)
+
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method,
+        )
+        try:
+            # Contract 1: the encryption GUC carried through.
+            assert restored.fetchone(
+                "SHOW pg_tde.wal_encrypt"
+            ) == "on", (
+                "pg_tde.wal_encrypt is OFF on the restored cluster — "
+                "the WAL written from this point will be plaintext, "
+                "breaking the encrypted-on-disk contract."
+            )
+
+            # Contract 2: the WAL stream the wrapper re-encrypted on the
+            # way back into pg_wal/ was readable enough for recovery to
+            # actually populate the heap.
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM wrap_rt_t"
+            ) == "200", (
+                "Pre-restore data is unreadable on the restored cluster — "
+                "pg_tde_restore_encrypt likely produced WAL recovery "
+                "couldn't decrypt."
+            )
+
+            # Contract 3: NEW writes on the restored cluster generate
+            # encrypted WAL. Insert a fresh marker, force a switch, then
+            # verify the just-closed segment doesn't contain it as
+            # plaintext.
+            post_marker = (
+                "MARKER-restored-pg_wal-must-stay-encrypted-9e2d"
+            )
+            restored.execute(
+                "CREATE TABLE wrap_post_t (id INT, payload TEXT) "
+                "USING tde_heap"
+            )
+            restored.execute(
+                f"INSERT INTO wrap_post_t VALUES (1, '{post_marker}')"
+            )
+            restored.execute("CHECKPOINT")
+            seg_name = restored.fetchone(
+                "SELECT pg_walfile_name(pg_current_wal_insert_lsn())"
+            )
+            seg_path = restored.data_dir / "pg_wal" / seg_name
+            assert seg_path.exists(), (
+                f"restored pg_wal missing segment {seg_name}"
+            )
+            seg_bytes_before_switch = seg_path.read_bytes()
+            restored.execute("SELECT pg_switch_wal()")
+
+            assert post_marker.encode() not in seg_bytes_before_switch, (
+                f"Plaintext marker {post_marker!r} found in restored "
+                f"pg_wal/{seg_name}; new WAL on the restored cluster is "
+                "not being encrypted even though pg_tde.wal_encrypt is on."
+            )
         finally:
             restored.stop()

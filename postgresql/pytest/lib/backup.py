@@ -127,7 +127,20 @@ class BackupManager:
         retention_full: int = 2,
         *,
         pg_bin: Optional[str] = None,
+        compress_type: Optional[str] = None,
     ) -> None:
+        """
+        Write the pgBackRest configuration file.
+
+        Args:
+            compress_type: Value for ``repo1-block-compress``/``compress-type``
+                (e.g. ``"none"``, ``"gz"``, ``"lz4"``, ``"zst"``). When set,
+                pgBackRest stores archive WAL and backups uncompressed (or with
+                the requested codec) instead of the default ``gz``. Tests that
+                byte-inspect the WAL repo (e.g. proving
+                ``pg_tde_archive_decrypt`` actually fired) need ``"none"``.
+                Leave at ``None`` for normal backups.
+        """
         self._pg1_path = pg_path
         self._pg1_port = pg_port
         self._pg1_socket_path = pg_socket_path
@@ -152,6 +165,8 @@ class BackupManager:
             "lock-path": str(lock_path),
             "spool-path": str(spool_path),
         }
+        if compress_type is not None:
+            cfg["global"]["compress-type"] = compress_type
         cfg[f"stanza:{self.stanza}"] = {
             "pg1-path": pg_path,
             "pg1-port": str(pg_port),
