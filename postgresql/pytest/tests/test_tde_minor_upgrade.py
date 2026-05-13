@@ -168,6 +168,33 @@ def _teardown_pair(nodeA: PgCluster, nodeB: PgCluster) -> None:
         shutil.rmtree(node.data_dir, ignore_errors=True)
 
 
+def _force_switch_and_wait_archived(
+    node: PgCluster, archive_dir: Path, *, timeout: int = 30
+) -> str:
+    """
+    Force a WAL segment switch on ``node`` and block until the segment
+    that was just closed lands in ``archive_dir``.
+
+    Returns the closed segment name. Raises ``AssertionError`` if the
+    archive_command didn't deliver within ``timeout`` seconds — that's a
+    real failure (archive_command broken / archiver process stuck) and
+    should NOT be swallowed by ``time.sleep`` heuristics elsewhere in
+    the file.
+    """
+    closed = (node.fetchone("SELECT pg_walfile_name(pg_switch_wal())") or "").strip()
+    assert closed, "pg_switch_wal() did not return a segment name"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if (archive_dir / closed).exists():
+            return closed
+        time.sleep(0.5)
+    raise AssertionError(
+        f"WAL segment {closed!r} was not archived to {archive_dir} within "
+        f"{timeout}s. archive_command may have failed; archive dir contains: "
+        f"{[p.name for p in archive_dir.iterdir() if p.is_file()]}"
+    )
+
+
 # ── Phase 0: pre-conditions ───────────────────────────────────────────────────
 
 
@@ -268,14 +295,21 @@ class TestTdeMinorUpgradePreConditions:
         Q5 (pre): A full pgBackRest backup must succeed before any package
         installation begins. This is the safety checkpoint that lets you roll
         back if the upgrade goes wrong.
+
+        Must route ``archive_command`` through pgBackRest (otherwise
+        pgBackRest exits 68: "archive_command ... must contain pgbackrest").
+        On a WAL-encrypted cluster we MUST wrap with
+        ``pg_tde_archive_decrypt`` so pgBackRest's repo holds plaintext
+        WAL — the wrapper integration is what
+        ``BackupManager.configure_postgres(..., pg_tde_wal_archiving=True)``
+        does, and it requires ``pg_bin`` to be set on the manager.
         """
         if not pgbackrest_installed():
             pytest.skip("pgbackrest not installed")
 
-        archive_dir = tmp_path / "wal_archive_pre"
-        nodeA, nodeB = _build_ha_cluster(
-            tmp_path, install_dir, io_method, with_archive=True, archive_dir=archive_dir
-        )
+        # Build a plain TDE HA pair WITHOUT a file-based archive_command.
+        # pgBackRest will own ``archive_command`` end-to-end below.
+        nodeA, nodeB = _build_ha_cluster(tmp_path, install_dir, io_method)
         try:
             nodeA.execute(
                 "CREATE TABLE pre_bkp (id INT) USING tde_heap; "
@@ -286,7 +320,10 @@ class TestTdeMinorUpgradePreConditions:
                 pg_path=str(nodeA.data_dir),
                 pg_port=nodeA.port,
                 pg_socket_path=str(tmp_path),
+                pg_bin=str(nodeA.bin),
             )
+            bm.configure_postgres(nodeA, pg_tde_wal_archiving=True)
+            nodeA.restart()
             bm.stanza_create()
             bm.backup(backup_type="full")
             info = bm.info()
@@ -789,21 +826,55 @@ class TestWalArchivingContinuity:
         PITR from a WAL archive that spans a rolling restart must succeed.
         This validates that the encrypted WAL produced under both the old and
         new library versions can be replayed to a consistent state.
+
+        Correct PITR flow (same shape as test_pitr.py::test_pitr_encrypted_wal):
+
+          1. INSERT the row we want to recover.
+          2. Stop nodeA cleanly and take a *cold copy of PGDATA* — that's
+             our pseudo base backup. The control-file checkpoint at this
+             moment defines where recovery starts replaying from.
+          3. Restart nodeA, capture ``pitr_time`` (T1), simulate the
+             rolling restart, then do the DELETE (after T1).
+          4. ``pg_switch_wal`` and **wait** for the closed segment to
+             actually land in ``archive_dir`` — otherwise the segment
+             holding the DELETE record never reaches the archive, and the
+             restored cluster can't find any post-T1 record to anchor
+             ``recovery_target_time`` to. That's the failure mode the
+             original test hit: ``recovery ended before configured
+             recovery target was reached``.
+          5. Restore from the cold copy, set recovery_target_time = T1,
+             promote. Recovery replays WAL from the cold-copy checkpoint
+             forward, sees the DELETE commit record's timestamp is > T1,
+             and stops just before it → row is recovered.
         """
         archive_dir = tmp_path / "wal_pitr"
         nodeA, nodeB = _build_ha_cluster(
-            tmp_path, install_dir, io_method, with_archive=True, archive_dir=archive_dir
+            tmp_path, install_dir, io_method,
+            with_archive=True, archive_dir=archive_dir,
         )
         try:
             nodeA.execute(
                 "CREATE TABLE pitr_target (id INT) USING tde_heap; "
                 "INSERT INTO pitr_target VALUES (42);"
             )
-            nodeA.execute("SELECT pg_switch_wal()")
-            pitr_time = nodeA.fetchone("SELECT now()")
-            time.sleep(1)
+            # Force the INSERT into a closed, archived segment.
+            _force_switch_and_wait_archived(nodeA, archive_dir, timeout=30)
 
-            # Rolling restart
+            # Cold copy = the recovery start point. Take it BEFORE the
+            # destructive DELETE — copying afterwards puts the control
+            # file's last-checkpoint past T1 and "redo is not required"
+            # kills the test.
+            nodeA.stop()
+            restore_dir = tmp_path / "pitr_restore"
+            shutil.copytree(str(nodeA.data_dir), str(restore_dir))
+            nodeA.start()
+            nodeA.wait_ready(timeout=60)
+
+            pitr_time = nodeA.fetchone("SELECT now()")
+            time.sleep(1)   # ensure T1 < any subsequent commit timestamp
+
+            # Rolling restart — the whole point of this test is that PITR
+            # still works across the restart window.
             nodeB.stop()
             nodeB.start()
             nodeB.wait_ready(timeout=60)
@@ -811,16 +882,17 @@ class TestWalArchivingContinuity:
             nodeA.start()
             nodeA.wait_ready(timeout=60)
 
-            # Write after restart — PITR should recover to pre-restart state
+            # Destructive write AFTER T1 — recovery must stop just before
+            # this record.
             nodeA.execute("DELETE FROM pitr_target")
-            nodeA.execute("SELECT pg_switch_wal()")
-            time.sleep(2)
+            # Synchronously archive the segment that contains the DELETE
+            # (was time.sleep(2); 2s is not enough when the archiver is
+            # busy or when archive_command is the pg_tde_archive_decrypt
+            # wrapper). The helper raises if the segment doesn't land.
+            _force_switch_and_wait_archived(nodeA, archive_dir, timeout=30)
             nodeA.stop()
 
             restore_port = allocate_port()
-            restore_dir = tmp_path / "pitr_restore"
-            shutil.copytree(str(nodeA.data_dir), str(restore_dir))
-
             restored = PgCluster(
                 restore_dir, restore_port, install_dir,
                 socket_dir=tmp_path, io_method=io_method,
@@ -1069,14 +1141,28 @@ class TestPostUpgradeState:
         - WAL segments during the upgrade window were produced by different
           library versions and may use different internal formats.
         - pgBackRest's manifest must be rebuilt against the post-upgrade state.
+
+        Two things must be right for pgBackRest to succeed on a TDE +
+        WAL-encryption cluster:
+
+          a. ``archive_command`` must route WAL through pgBackRest
+             (pgBackRest exit 68 otherwise).
+          b. WAL must be **decrypted** by ``pg_tde_archive_decrypt`` before
+             pgBackRest sees it — otherwise pgBackRest's prior-segment
+             check times out (exit 82, "WAL segment ... was not archived
+             before the 60000ms timeout") because it can't parse the
+             encrypted bytes.
+
+        Both are handled by ``configure_postgres(..., pg_tde_wal_archiving=True)``
+        — but that requires ``pg_bin`` on the manager. The cluster MUST NOT
+        be built with ``with_archive=True``, or pre-existing WAL would have
+        landed in a non-pgBackRest archive dir and pgBackRest would fail
+        the prior-segment check.
         """
         if not pgbackrest_installed():
             pytest.skip("pgbackrest not installed")
 
-        archive_dir = tmp_path / "wal_post_upgrade"
-        nodeA, nodeB = _build_ha_cluster(
-            tmp_path, install_dir, io_method, with_archive=True, archive_dir=archive_dir
-        )
+        nodeA, nodeB = _build_ha_cluster(tmp_path, install_dir, io_method)
         try:
             nodeA.execute(
                 "CREATE TABLE post_bkp_tbl (id INT, val TEXT) USING tde_heap; "
@@ -1092,8 +1178,9 @@ class TestPostUpgradeState:
                 pg_path=str(nodeA.data_dir),
                 pg_port=nodeA.port,
                 pg_socket_path=str(tmp_path),
+                pg_bin=str(nodeA.bin),
             )
-            bm.configure_postgres(nodeA)
+            bm.configure_postgres(nodeA, pg_tde_wal_archiving=True)
             nodeA.restart()
             bm.stanza_create()
             bm.backup(backup_type="full")
@@ -1109,14 +1196,18 @@ class TestPostUpgradeState:
         """
         Restore from the post-upgrade backup and verify all data is intact.
         This is the definitive proof that the backup is usable.
+
+        Restore must also wire ``pg_tde_restore_encrypt`` into
+        ``restore_command`` (``pg_tde_wal_restore=True``) — without it, the
+        restored cluster fetches plaintext WAL from pgBackRest's repo,
+        writes it into ``pg_wal/`` un-encrypted, and recovery FATALs
+        because the WAL stream doesn't match what the WAL encryption
+        layer expects.
         """
         if not pgbackrest_installed():
             pytest.skip("pgbackrest not installed")
 
-        archive_dir = tmp_path / "wal_restore_verify"
-        nodeA, nodeB = _build_ha_cluster(
-            tmp_path, install_dir, io_method, with_archive=True, archive_dir=archive_dir
-        )
+        nodeA, nodeB = _build_ha_cluster(tmp_path, install_dir, io_method)
         try:
             nodeA.execute(
                 "CREATE TABLE restore_verify (id INT, val TEXT) USING tde_heap; "
@@ -1132,15 +1223,16 @@ class TestPostUpgradeState:
                 pg_path=str(nodeA.data_dir),
                 pg_port=nodeA.port,
                 pg_socket_path=str(tmp_path),
+                pg_bin=str(nodeA.bin),
             )
-            bm.configure_postgres(nodeA)
+            bm.configure_postgres(nodeA, pg_tde_wal_archiving=True)
             nodeA.restart()
             bm.stanza_create()
             bm.backup(backup_type="full")
 
             restore_dir = tmp_path / "post_upgrade_restore"
             restore_port = allocate_port()
-            bm.restore(str(restore_dir))
+            bm.restore(str(restore_dir), pg_tde_wal_restore=True)
 
             restored = PgCluster(
                 restore_dir, restore_port, install_dir,
