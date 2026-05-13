@@ -1903,6 +1903,140 @@ class TestPgTdeAddDatabaseKeyProvider:
             f"after=({typ_after!r}, {opts_after!r})"
         )
 
+    # ── negative scenarios ────────────────────────────────────────────────
+
+    def test_add_with_empty_provider_name_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Empty provider name has no sane semantics — pg_tde must reject
+        it. Catches a silent ``''`` row showing up in the catalog that
+        would later break every WHERE-name-clause lookup the rest of
+        the API performs.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_empty_name"
+        )
+        with pytest.raises(RuntimeError):
+            _add_database_file_provider(
+                cluster, "", str(tmp_path / "x.kf")
+            )
+        assert "" not in _list_database_provider_names(cluster), (
+            "pg_tde appears to have accepted an empty provider name AND "
+            "stored it in the catalog"
+        )
+
+    def test_add_with_empty_path_fails(self, pg_factory, tmp_path):
+        """
+        An empty file path can never resolve to a keyring file — the add
+        must fail eagerly rather than store an unusable provider that
+        breaks at the next key-creation call.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_empty_path"
+        )
+        failed = False
+        try:
+            _add_database_file_provider(cluster, "blank_path", "")
+            # If pg_tde defers validation, the first key creation MUST
+            # then fail. If both succeed, that's a real bug.
+            cluster.execute(
+                "SELECT pg_tde_create_key_using_database_key_provider("
+                "'k'::text, 'blank_path'::text)"
+            )
+        except RuntimeError:
+            failed = True
+        assert failed, (
+            "pg_tde accepted an empty file path AND let it be used as "
+            "a backing keyring — operators would discover this only "
+            "after a key got 'lost'"
+        )
+
+    def test_add_database_provider_with_directory_as_path_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        A file provider configured to use a *directory* as its keyfile
+        path cannot work — either ``pg_tde_add_database_key_provider_file``
+        must reject it up front, or the first ``create_key`` against it
+        must fail. Silently surviving both calls would brick the cluster
+        the moment something tries to actually read/write the keyring.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_dir_path"
+        )
+        bad_path = tmp_path / "im_a_dir"
+        bad_path.mkdir()
+        failed = False
+        try:
+            _add_database_file_provider(
+                cluster, "dir_provider", str(bad_path)
+            )
+            cluster.execute(
+                "SELECT pg_tde_create_key_using_database_key_provider("
+                "'k'::text, 'dir_provider'::text)"
+            )
+        except RuntimeError:
+            failed = True
+        assert failed, (
+            "pg_tde silently accepted a directory as a file-provider "
+            "path AND used it to create a key"
+        )
+
+    def test_add_duplicate_global_provider_name_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Same contract as the database-scope duplicate test, but for the
+        global-scope path. Two providers cannot share a name at the
+        same scope — the second add must error and the first entry
+        must be untouched.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_dup_global"
+        )
+        first_path = tmp_path / "first.kf"
+        _add_global_file_provider(cluster, "dup_g", str(first_path))
+        with pytest.raises(RuntimeError):
+            _add_global_file_provider(
+                cluster, "dup_g", str(tmp_path / "second.kf")
+            )
+        _, opts = _provider_row(cluster, "dup_g", scope="global")
+        assert str(first_path) in opts, (
+            "duplicate-global-add appears to have partially overwritten "
+            f"the original options: {opts!r}"
+        )
+
+    def test_add_provider_with_unknown_type_via_generic_api_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        The generic ``pg_tde_add_database_key_provider(type, name,
+        options)`` entry point must reject provider types it does not
+        know. Otherwise an operator typo (``"vault"`` vs ``"vault-v2"``)
+        would silently create an unusable provider.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_bad_type"
+        )
+        if not _pg_tde_function_exists(
+            cluster, "pg_tde_add_database_key_provider"
+        ):
+            pytest.skip(
+                "generic pg_tde_add_database_key_provider not present "
+                "in this build"
+            )
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute(
+                "SELECT pg_tde_add_database_key_provider("
+                "'bogus_type'::text, 'p_generic'::text, '{}'::json)"
+            )
+        # Don't pin a phrase; just verify the catalog wasn't polluted.
+        assert "p_generic" not in _list_database_provider_names(cluster), (
+            f"pg_tde rejected the call (good: {exc.value!r}) but somehow "
+            "left a 'p_generic' entry in the catalog"
+        )
+
 
 # ── pg_tde_change_*_key_provider_* (online SQL) ───────────────────────────────
 
@@ -2154,3 +2288,99 @@ class TestPgTdeChangeKeyProviderSql:
             f"after={after!r}"
         )
         assert str(new_path) in after
+
+    # ── negative scenarios ────────────────────────────────────────────────
+
+    def test_change_with_empty_provider_name_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Passing an empty provider name to ``change_*_key_provider_file``
+        must fail and must not silently create/overwrite anything. Real
+        providers in the catalog must be untouched.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_empty_name"
+        )
+        real_path = tmp_path / "real.kf"
+        _add_database_file_provider(cluster, "real_p", str(real_path))
+
+        with pytest.raises(RuntimeError):
+            _change_database_file_provider(
+                cluster, "", str(tmp_path / "other.kf")
+            )
+
+        # Real provider's options must NOT have shifted.
+        _, opts = _provider_row(cluster, "real_p", scope="database")
+        assert str(real_path) in opts, (
+            "the existing 'real_p' provider was mutated by a "
+            f"failed empty-name change: {opts!r}"
+        )
+
+    def test_change_with_empty_path_fails(self, pg_factory, tmp_path):
+        """
+        Empty new path is never a valid keyfile target; the change must
+        fail and the existing options must stay intact.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_empty_path"
+        )
+        good_path = tmp_path / "good.kf"
+        _add_database_file_provider(cluster, "p", str(good_path))
+
+        with pytest.raises(RuntimeError):
+            _change_database_file_provider(cluster, "p", "")
+
+        _, opts = _provider_row(cluster, "p", scope="database")
+        assert str(good_path) in opts, (
+            f"options were mutated by a failed empty-path change: {opts!r}"
+        )
+
+    def test_change_database_function_against_global_only_provider_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        ``pg_tde_change_database_key_provider_file`` must not fall
+        through to the global-scope catalog. A name that exists only at
+        the *global* scope must look "nonexistent" from the database
+        function's point of view — and the global entry must stay
+        untouched as proof of namespace isolation.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_db_against_global"
+        )
+        global_path = tmp_path / "global.kf"
+        _add_global_file_provider(cluster, "only_global", str(global_path))
+        assert "only_global" not in _list_database_provider_names(cluster)
+
+        with pytest.raises(RuntimeError):
+            _change_database_file_provider(
+                cluster, "only_global", str(tmp_path / "other.kf")
+            )
+
+        # The global entry must be byte-identical.
+        _, opts = _provider_row(cluster, "only_global", scope="global")
+        assert str(global_path) in opts and str(tmp_path / "other.kf") not in opts, (
+            f"database-scope change leaked into the global entry: {opts!r}"
+        )
+
+    def test_change_global_function_against_database_only_provider_fails(
+        self, pg_factory, tmp_path
+    ):
+        """Reverse direction of the scope-isolation negative test."""
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_global_against_db"
+        )
+        db_path = tmp_path / "db.kf"
+        _add_database_file_provider(cluster, "only_db", str(db_path))
+        assert "only_db" not in _list_global_provider_names(cluster)
+
+        with pytest.raises(RuntimeError):
+            _change_global_file_provider(
+                cluster, "only_db", str(tmp_path / "other.kf")
+            )
+
+        _, opts = _provider_row(cluster, "only_db", scope="database")
+        assert str(db_path) in opts and str(tmp_path / "other.kf") not in opts, (
+            f"global-scope change leaked into the database entry: {opts!r}"
+        )

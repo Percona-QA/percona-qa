@@ -330,3 +330,301 @@ class TestPgTdeChangeKeyProviderCLI:
                 cluster.stop(check=False)
             except Exception:
                 pass
+
+    # ── deeper positive coverage ──────────────────────────────────────────
+
+    def test_change_persists_across_multiple_restart_cycles(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        The CLI's edit to ``$PGDATA/pg_tde/`` state must be durable
+        beyond the first post-change start: the cluster must stop and
+        restart cleanly several times in a row while still resolving
+        the principal key from the new path. Catches regressions where
+        the new path is honoured on the immediate restart but reverts
+        on the second one (write-amplification / cache invalidation
+        bugs in the offline editor).
+        """
+        old_keyfile = tmp_path / "multi_old.per"
+        new_keyfile = tmp_path / "multi_new.per"
+
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, old_keyfile)
+        try:
+            cluster.execute(
+                "CREATE TABLE multi_t (id INT, payload TEXT) USING tde_heap"
+            )
+            cluster.execute(
+                "INSERT INTO multi_t "
+                "SELECT i, md5(i::text) FROM generate_series(1, 75) i"
+            )
+            cluster.execute("CHECKPOINT")
+            db_oid = _postgres_db_oid(cluster)
+            cluster.stop()
+
+            shutil.copy(str(old_keyfile), str(new_keyfile))
+            old_keyfile.unlink()
+
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                str(db_oid),
+                "ckp_provider",
+                "file",
+                str(new_keyfile),
+            )
+            assert result.returncode == 0, (
+                f"pg_tde_change_key_provider failed: stdout={result.stdout!r},"
+                f" stderr={result.stderr!r}"
+            )
+
+            # Three stop/start cycles in a row.
+            for cycle in range(3):
+                cluster.start()
+                cluster.wait_ready(timeout=60)
+                count = cluster.fetchone("SELECT COUNT(*) FROM multi_t")
+                assert count == "75", (
+                    f"cycle {cycle}: encrypted data not readable "
+                    f"(count={count!r}); the CLI's edit may not have "
+                    "been durable across multiple restarts"
+                )
+                cluster.stop()
+
+            # Leave the cluster started so the finally-block can stop it.
+            cluster.start()
+            cluster.wait_ready(timeout=60)
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
+
+    def test_change_does_not_disturb_unrelated_providers(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        With two providers configured in the same database, changing one
+        offline must leave the other byte-identical. Catches regressions
+        where the CLI rewrites the entire pg_tde state file and
+        accidentally drops or mutates unrelated entries.
+        """
+        target_old = tmp_path / "target_old.per"
+        target_new = tmp_path / "target_new.per"
+        bystander_path = tmp_path / "bystander.per"
+
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, target_old)
+        try:
+            # Add a second, completely unrelated database provider. We
+            # deliberately do NOT set it as the principal key — it just
+            # sits in the catalog and must survive the offline edit.
+            _add_db_file_provider(
+                cluster, "bystander_provider", str(bystander_path)
+            )
+            bystander_opts_before = cluster.fetchone(
+                "SELECT options::text "
+                "FROM pg_tde_list_all_database_key_providers() "
+                "WHERE name = 'bystander_provider'"
+            )
+            assert bystander_opts_before and str(bystander_path) in bystander_opts_before
+
+            db_oid = _postgres_db_oid(cluster)
+            cluster.stop()
+
+            shutil.copy(str(target_old), str(target_new))
+
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                str(db_oid),
+                "ckp_provider",
+                "file",
+                str(target_new),
+            )
+            assert result.returncode == 0, (
+                f"pg_tde_change_key_provider failed: stderr={result.stderr!r}"
+            )
+
+            cluster.start()
+            cluster.wait_ready(timeout=60)
+
+            # Target provider points at the new path.
+            target_opts_after = cluster.fetchone(
+                "SELECT options::text "
+                "FROM pg_tde_list_all_database_key_providers() "
+                "WHERE name = 'ckp_provider'"
+            )
+            assert str(target_new) in (target_opts_after or "")
+
+            # Bystander provider must be byte-identical.
+            bystander_opts_after = cluster.fetchone(
+                "SELECT options::text "
+                "FROM pg_tde_list_all_database_key_providers() "
+                "WHERE name = 'bystander_provider'"
+            )
+            assert bystander_opts_after == bystander_opts_before, (
+                "bystander provider's options were mutated by an "
+                "unrelated CLI change:\n"
+                f"  before: {bystander_opts_before!r}\n"
+                f"  after:  {bystander_opts_after!r}"
+            )
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
+
+    # ── deeper negative coverage ──────────────────────────────────────────
+
+    def test_change_kp_fails_with_non_numeric_dboid(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        ``dbOid`` is documented as an integer. A non-numeric value must
+        be rejected at argument-parse time and must not silently default
+        to 0 (which would point at no real database).
+        """
+        keyfile = tmp_path / "nan_oid.per"
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, keyfile)
+        try:
+            cluster.stop()
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                "not_a_number",
+                "ckp_provider",
+                "file",
+                str(keyfile),
+            )
+            assert result.returncode != 0, (
+                "pg_tde_change_key_provider should reject a non-numeric "
+                f"dbOid; got returncode={result.returncode}, "
+                f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+            )
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
+
+    def test_change_kp_fails_with_negative_dboid(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        Negative ``dbOid`` is never valid (PostgreSQL OIDs are unsigned
+        4-byte integers). The CLI must reject it rather than wrap
+        around or coerce to an unrelated database.
+        """
+        keyfile = tmp_path / "neg_oid.per"
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, keyfile)
+        try:
+            cluster.stop()
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                "-1",
+                "ckp_provider",
+                "file",
+                str(keyfile),
+            )
+            assert result.returncode != 0, (
+                "pg_tde_change_key_provider should reject a negative "
+                f"dbOid; got returncode={result.returncode}, "
+                f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+            )
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
+
+    def test_change_kp_fails_with_nonexistent_data_dir(
+        self, install_dir: Path, tmp_path: Path
+    ):
+        """
+        ``-D`` pointing at a path that does not exist must produce a
+        non-zero exit. Silent success would imply the CLI created or
+        wrote to an unintended location.
+        """
+        missing = tmp_path / "does_not_exist_pgdata"
+        assert not missing.exists()
+        result = _run_change_kp(
+            install_dir,
+            "-D", str(missing),
+            "1234",
+            "any_provider",
+            "file",
+            str(tmp_path / "x.per"),
+        )
+        assert result.returncode != 0, (
+            "pg_tde_change_key_provider should fail with a missing -D "
+            f"path; got returncode={result.returncode}, "
+            f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+        )
+
+    def test_change_kp_fails_with_non_pgdata_directory(
+        self, install_dir: Path, tmp_path: Path
+    ):
+        """
+        ``-D`` pointing at an existing directory that is NOT a valid
+        PGDATA (no ``pg_tde`` state, no ``PG_VERSION``) must fail —
+        otherwise the tool could write into and corrupt an arbitrary
+        directory on the system.
+        """
+        bogus_dir = tmp_path / "empty_dir"
+        bogus_dir.mkdir()
+        # Confirm we really did pick a directory that has nothing
+        # resembling a PostgreSQL data dir.
+        assert not (bogus_dir / "PG_VERSION").exists()
+        assert not (bogus_dir / "pg_tde").exists()
+
+        result = _run_change_kp(
+            install_dir,
+            "-D", str(bogus_dir),
+            "1234",
+            "any_provider",
+            "file",
+            str(tmp_path / "x.per"),
+        )
+        assert result.returncode != 0, (
+            "pg_tde_change_key_provider should fail when -D is not a "
+            f"PostgreSQL data directory; got returncode={result.returncode},"
+            f" stdout={result.stdout!r}, stderr={result.stderr!r}"
+        )
+
+    def test_change_kp_fails_with_missing_path_for_file_type(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        ``file`` provider type requires a path argument. Omitting it
+        must produce a usage/argument error rather than silently
+        succeeding with an empty path (which would brick the cluster
+        on the next start).
+        """
+        keyfile = tmp_path / "missing_path.per"
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, keyfile)
+        try:
+            db_oid = _postgres_db_oid(cluster)
+            cluster.stop()
+            # Note: 'file' type but no path argument follows it.
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                str(db_oid),
+                "ckp_provider",
+                "file",
+            )
+            assert result.returncode != 0, (
+                "pg_tde_change_key_provider should reject 'file' provider "
+                "type with no path argument; got "
+                f"returncode={result.returncode}, "
+                f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+            )
+
+            # And the cluster must still start cleanly — proving the
+            # failed call did NOT half-write a broken state file.
+            cluster.start()
+            cluster.wait_ready(timeout=60)
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
