@@ -9,6 +9,9 @@ Covers scenarios from:
   - pg_tde_change_key_provider_utility.sh
   - pg_tde_dynamic_encryption_state_stress_test.sh
 """
+import os
+import re
+
 import pytest
 
 from lib import PgCluster, TdeManager
@@ -16,6 +19,18 @@ from lib.cluster import initdb_args_no_data_checksums
 
 
 pytestmark = pytest.mark.encryption
+
+
+# Pinned expected ``pg_tde_version()`` output for the current Percona build.
+# Bump this constant when intentionally moving to a newer pg_tde release;
+# the version-pinning test below treats any divergence as a regression so
+# that CI catches an unexpected swap of the underlying package.
+#
+# Override at test time without editing this file:
+#     PG_TDE_EXPECTED_VERSION=2.3.0 pytest tests/test_encryption.py -k Version
+EXPECTED_PG_TDE_VERSION = os.environ.get(
+    "PG_TDE_EXPECTED_VERSION", "2.2.0"
+)
 
 
 # ── basic setup ───────────────────────────────────────────────────────────────
@@ -51,6 +66,113 @@ class TestTdeSetup:
         )
         tde = TdeManager(tde_primary)
         assert not tde.is_table_encrypted("t_heap")
+
+
+# ── pg_tde version pinning ────────────────────────────────────────────────────
+
+
+# pg_tde_version() has historically returned either a bare ``X.Y.Z`` string
+# or a prefixed form such as ``pg_tde 2.1.2``. Accept both shapes when
+# extracting the semantic version number — assertions then pin on the
+# X.Y.Z payload.
+_PG_TDE_VERSION_RE = re.compile(r"\b(\d+)\.(\d+)\.(\d+)\b")
+
+
+def _extract_pg_tde_version(raw: str) -> str:
+    """Return the bare ``X.Y.Z`` payload from ``pg_tde_version()`` output."""
+    assert raw, "pg_tde_version() returned an empty / NULL result"
+    m = _PG_TDE_VERSION_RE.search(raw)
+    assert m is not None, (
+        f"pg_tde_version() returned {raw!r}; expected an X.Y.Z fragment "
+        "(e.g. '2.2.0' or 'pg_tde 2.2.0')."
+    )
+    return f"{m.group(1)}.{m.group(2)}.{m.group(3)}"
+
+
+class TestPgTdeVersion:
+    """
+    Pin the pg_tde version shipped by the build under test.
+
+    A version mismatch is one of the few "the wrong package was installed"
+    failure modes that can produce a fully-working cluster while still
+    being wrong for the test plan. These tests catch that early, before a
+    much harder-to-diagnose semantic-behaviour test fails downstream.
+
+    Expected version is taken from ``EXPECTED_PG_TDE_VERSION`` (default
+    pinned at the top of this module). Override with the
+    ``PG_TDE_EXPECTED_VERSION`` env var when CI moves to a new build.
+    """
+
+    def test_pg_tde_version_function_callable(self, tde_primary: PgCluster):
+        """``SELECT pg_tde_version()`` must be callable and non-empty."""
+        raw = tde_primary.fetchone("SELECT pg_tde_version()")
+        assert raw, (
+            "pg_tde_version() returned NULL/empty; the SQL function is "
+            "not present in this build."
+        )
+
+    def test_pg_tde_version_matches_expected(self, tde_primary: PgCluster):
+        """
+        ``SELECT pg_tde_version()`` must report exactly
+        ``EXPECTED_PG_TDE_VERSION`` (default 2.2.0). A mismatch means the
+        installed pg_tde package does not match the version the test plan
+        was written against — bump the constant or fix the build.
+        """
+        raw = tde_primary.fetchone("SELECT pg_tde_version()")
+        actual = _extract_pg_tde_version(raw or "")
+        assert actual == EXPECTED_PG_TDE_VERSION, (
+            f"pg_tde version mismatch: pg_tde_version()={raw!r} "
+            f"(parsed {actual!r}) but the test plan expects "
+            f"{EXPECTED_PG_TDE_VERSION!r}. Either install the correct "
+            "package or override via PG_TDE_EXPECTED_VERSION."
+        )
+
+    def test_pg_tde_version_format_is_semver(self, tde_primary: PgCluster):
+        """
+        Pin the output format so a future build that changes the shape
+        (e.g. adds a build suffix, drops the patch component, or returns
+        a SETOF record) trips this test instead of a downstream regex
+        elsewhere in the suite.
+        """
+        raw = (tde_primary.fetchone("SELECT pg_tde_version()") or "").strip()
+        # The raw output must contain a clean X.Y.Z fragment and nothing
+        # exotic like multiple version numbers.
+        matches = _PG_TDE_VERSION_RE.findall(raw)
+        assert len(matches) == 1, (
+            f"pg_tde_version() returned {raw!r}; expected exactly one "
+            f"X.Y.Z fragment, got {len(matches)}."
+        )
+
+    def test_extversion_aligned_with_pg_tde_version(
+        self, tde_primary: PgCluster
+    ):
+        """
+        ``pg_extension.extversion`` and the binary ``pg_tde_version()``
+        must agree on the major.minor portion. The control file's
+        ``default_version`` is typically ``X.Y`` (no patch component) so
+        we compare ``X.Y`` from both.
+
+        Catches the "binary upgraded but ALTER EXTENSION UPDATE wasn't
+        run" state — a build that ships pg_tde 2.2 but still has a 2.1
+        catalog entry, or vice versa.
+        """
+        ext_ver = tde_primary.fetchone(
+            "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
+        )
+        assert ext_ver, "pg_tde extension is not installed in the cluster"
+
+        bin_ver_raw = tde_primary.fetchone("SELECT pg_tde_version()")
+        bin_xyz = _extract_pg_tde_version(bin_ver_raw or "")
+
+        ext_major_minor = ".".join(ext_ver.split(".")[:2])
+        bin_major_minor = ".".join(bin_xyz.split(".")[:2])
+        assert ext_major_minor == bin_major_minor, (
+            "Catalog vs binary version mismatch: "
+            f"pg_extension.extversion={ext_ver!r} (major.minor "
+            f"{ext_major_minor!r}) vs pg_tde_version()={bin_ver_raw!r} "
+            f"(major.minor {bin_major_minor!r}). Run "
+            "`ALTER EXTENSION pg_tde UPDATE` or reinstall the package."
+        )
 
 
 # ── ALTER DATABASE ... SET TABLESPACE ────────────────────────────────────────
