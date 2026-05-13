@@ -628,3 +628,118 @@ class TestPgTdeChangeKeyProviderCLI:
                 cluster.stop(check=False)
             except Exception:
                 pass
+
+    def test_change_kp_fails_with_legacy_vault_provider_type(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        Per the Percona docs (https://docs.percona.com/pg-tde/
+        command-line-tools/pg-tde-change-key-provider.html) the only
+        accepted provider-type names are ``file``, ``vault-v2`` and
+        ``kmip``. The legacy spelling ``vault`` (no ``-v2``) appears in
+        older docs and must be rejected so operators copying obsolete
+        snippets get a clear error instead of a silently broken config.
+        """
+        keyfile = tmp_path / "legacy_vault.per"
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, keyfile)
+        try:
+            db_oid = _postgres_db_oid(cluster)
+            cluster.stop()
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                str(db_oid),
+                "ckp_provider",
+                "vault",                 # must be 'vault-v2'
+                "http://vault.local:8200",
+                "secret",
+                "/dev/null",
+            )
+            assert result.returncode != 0, (
+                "pg_tde_change_key_provider should reject the legacy "
+                "'vault' provider type (only 'vault-v2' is supported); "
+                f"got returncode={result.returncode}, "
+                f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+            )
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
+
+    def test_change_kp_fails_with_missing_vault_v2_required_args(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        ``vault-v2`` requires url + mount + token_path; ``ca_path`` is
+        the only optional positional. Supplying only url + mount (no
+        token_path) must produce a usage error — not a silent provider
+        that bricks the next restart.
+        """
+        keyfile = tmp_path / "missing_vault_args.per"
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, keyfile)
+        try:
+            db_oid = _postgres_db_oid(cluster)
+            cluster.stop()
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                str(db_oid),
+                "ckp_provider",
+                "vault-v2",
+                "http://vault.local:8200",
+                "secret",
+                # token_path intentionally absent
+            )
+            assert result.returncode != 0, (
+                "pg_tde_change_key_provider should reject vault-v2 with "
+                f"a missing token_path; got returncode={result.returncode}, "
+                f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+            )
+
+            # Cluster must still start cleanly afterwards.
+            cluster.start()
+            cluster.wait_ready(timeout=60)
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
+
+    def test_change_kp_fails_with_missing_kmip_required_args(
+        self, pg_factory, tmp_path: Path, install_dir: Path
+    ):
+        """
+        ``kmip`` requires host + port + cert_path + key_path; ``ca_path``
+        is the only optional positional. Supplying only host + port +
+        cert_path (no key_path) must be a usage error.
+        """
+        keyfile = tmp_path / "missing_kmip_args.per"
+        cluster = _build_db_tde_cluster(pg_factory, tmp_path, keyfile)
+        try:
+            db_oid = _postgres_db_oid(cluster)
+            cluster.stop()
+            result = _run_change_kp(
+                install_dir,
+                "-D", str(cluster.data_dir),
+                str(db_oid),
+                "ckp_provider",
+                "kmip",
+                "kmip.local",
+                "5696",
+                "/etc/kmip/client.pem",
+                # key_path intentionally absent
+            )
+            assert result.returncode != 0, (
+                "pg_tde_change_key_provider should reject kmip with a "
+                f"missing key_path; got returncode={result.returncode}, "
+                f"stdout={result.stdout!r}, stderr={result.stderr!r}"
+            )
+
+            cluster.start()
+            cluster.wait_ready(timeout=60)
+        finally:
+            try:
+                cluster.stop(check=False)
+            except Exception:
+                pass
