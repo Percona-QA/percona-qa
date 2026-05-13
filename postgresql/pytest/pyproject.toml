@@ -17,9 +17,22 @@ dependencies = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=long --strict-markers -ra"
-log_cli = true
+
+# Logging policy:
+#   * ``log_cli`` is OFF so passing tests don't stream "live log call"
+#     blocks into the terminal between PASSED/FAILED lines.
+#   * Logs are still **captured** per-test at INFO level and pytest will
+#     dump the captured log automatically when a test fails (via the
+#     "Captured log call" section of the failure report). That means we
+#     keep all the diagnostic value for debugging without polluting the
+#     happy-path output.
+#   * To re-enable live streaming for a single debug run, override on
+#     the command line: ``pytest -o log_cli=true --log-cli-level=INFO``.
+log_cli = false
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+log_level = "INFO"
+log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 timeout = 600   # 10-minute default per test
 
 markers = [
