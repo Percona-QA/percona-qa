@@ -996,8 +996,16 @@ class TestPartitionedTdeHeapCorners:
         even though the main heap is encrypted.
 
         Insert a wide value into an encrypted partition; verify the
-        round-trip works (proves decryption) and that the TOAST
-        relation reports as encrypted.
+        round-trip works (proves decryption) and inspect the TOAST
+        relation's encryption status.
+
+        Note on TOAST relation lookup: TOAST tables live in the
+        ``pg_toast`` schema which is not on the default search_path,
+        so we cannot pass the bare ``pg_toast_<oid>`` name to
+        ``'...'::regclass`` — the regclass cast would fail with
+        "relation does not exist". We pass the OID directly instead
+        (``c.reltoastrelid``) which bypasses search_path lookup
+        entirely.
         """
         tde_primary.execute(
             "CREATE TABLE toast_t (id INT, big TEXT) "
@@ -1019,20 +1027,22 @@ class TestPartitionedTdeHeapCorners:
         tde = TdeManager(tde_primary)
         assert tde.is_table_encrypted("toast_a")
 
-        # Find the TOAST relation for toast_a and verify it's encrypted.
-        toast_relname = tde_primary.fetchone(
-            "SELECT t.relname FROM pg_class c "
-            "JOIN pg_class t ON t.oid = c.reltoastrelid "
-            "WHERE c.relname = 'toast_a'"
+        # Pass the TOAST OID directly into pg_tde_is_encrypted to avoid
+        # the regclass-cast-via-search_path pitfall (pg_toast is not on
+        # the search_path by default).
+        toast_oid = tde_primary.fetchone(
+            "SELECT reltoastrelid::oid::text FROM pg_class "
+            "WHERE relname = 'toast_a' AND reltoastrelid <> 0"
         )
-        if toast_relname:
-            # Some pg_tde versions report on TOAST relations directly.
-            # Either 't' (encrypted) or '' (no opinion) is acceptable;
-            # 'f' would mean TOAST is actively plaintext, which is the
-            # regression.
-            toast_encrypted = _is_encrypted_raw(tde_primary, toast_relname)
+        if toast_oid:
+            # Either 't' (encrypted) or '' (no opinion / NULL) is
+            # acceptable; 'f' would mean TOAST is actively plaintext,
+            # which is the regression.
+            toast_encrypted = tde_primary.fetchone(
+                f"SELECT pg_tde_is_encrypted({toast_oid}::oid::regclass)"
+            ) or ""
             assert toast_encrypted != "f", (
-                f"TOAST relation {toast_relname} reports plaintext "
+                f"TOAST relation (oid={toast_oid}) reports plaintext "
                 "while its parent partition is on tde_heap — wide "
                 "values would leak in clear text on disk"
             )
