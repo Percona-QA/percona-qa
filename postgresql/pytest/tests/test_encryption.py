@@ -1260,21 +1260,30 @@ def _add_database_file_provider(
     )
 
 
-def _list_global_provider_names(cluster: PgCluster) -> list:
-    out = cluster.execute(
-        "SELECT provider_name FROM pg_tde_list_all_global_key_providers()"
-    )
+def _split_lines(out: str) -> list:
     return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def _list_global_provider_names(cluster: PgCluster) -> list:
+    # Per pg_tde catalog (utility_scripts/bash_scripts/tde_functions.log):
+    #   pg_tde_list_all_global_key_providers()
+    #       OUT id integer, OUT name text, OUT type text, OUT options json
+    # The TAP suite predates the column rename and still uses
+    # ``provider_name``; that column no longer exists on current builds.
+    out = cluster.execute(
+        "SELECT name FROM pg_tde_list_all_global_key_providers()"
+    )
+    return _split_lines(out)
 
 
 def _list_database_provider_names(
     cluster: PgCluster, dbname: str = "postgres"
 ) -> list:
     out = cluster.execute(
-        "SELECT provider_name FROM pg_tde_list_all_database_key_providers()",
+        "SELECT name FROM pg_tde_list_all_database_key_providers()",
         dbname,
     )
-    return [line.strip() for line in out.splitlines() if line.strip()]
+    return _split_lines(out)
 
 
 def _build_provider_test_cluster(
