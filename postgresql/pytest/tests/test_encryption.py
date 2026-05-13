@@ -11,6 +11,7 @@ Covers scenarios from:
 """
 import os
 import re
+import shutil
 
 import pytest
 
@@ -1665,3 +1666,491 @@ class TestPgTdeDeleteKeyProvider:
         assert "keep_me" in names, (
             "Unaffected provider 'keep_me' disappeared across restart"
         )
+
+
+# ── pg_tde_add_database_key_provider_* ────────────────────────────────────────
+
+
+def _provider_row(
+    cluster: PgCluster,
+    name: str,
+    *,
+    scope: str,
+    dbname: str = "postgres",
+) -> tuple:
+    """
+    Return ``(type, options_text)`` for a provider named ``name`` in the
+    requested scope (``"global"`` or ``"database"``). ``options`` is
+    returned as the raw json::text so the caller can do substring
+    assertions without depending on a json parser.
+    """
+    listing_fn = (
+        "pg_tde_list_all_global_key_providers"
+        if scope == "global"
+        else "pg_tde_list_all_database_key_providers"
+    )
+    row = cluster.execute(
+        f"SELECT type || '|' || options::text "
+        f"FROM {listing_fn}() WHERE name = '{name}'",
+        dbname,
+    ).strip()
+    assert row, (
+        f"provider {name!r} not found in {scope} listing on db={dbname!r}"
+    )
+    typ, opts = row.split("|", 1)
+    return typ.strip(), opts.strip()
+
+
+class TestPgTdeAddDatabaseKeyProvider:
+    """
+    Coverage for the database-scope add-provider SQL APIs:
+
+        pg_tde_add_database_key_provider_file(name, path)
+        pg_tde_add_database_key_provider(type, name, options json)     [generic]
+
+    The kmip / vault_v2 variants live in the TAP suite — they require
+    running external services and are mirrored from
+    ``t/069_change_database_key_provider_and_verify_data_integrity.pl``.
+    """
+
+    def test_add_database_file_provider_listed_with_correct_metadata(
+        self, pg_factory, tmp_path
+    ):
+        """
+        After ``pg_tde_add_database_key_provider_file('p1', '/path')`` the
+        provider must show up in ``pg_tde_list_all_database_key_providers()``
+        with ``type='file'`` and an ``options`` json that mentions the file
+        path. This pins the *output* shape that downstream tools (and
+        operators) rely on.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_db_listed"
+        )
+        keypath = tmp_path / "p1.kf"
+        _add_database_file_provider(cluster, "p1", str(keypath))
+
+        names = _list_database_provider_names(cluster)
+        assert "p1" in names, (
+            f"newly added provider 'p1' missing from listing: {names}"
+        )
+        typ, opts = _provider_row(cluster, "p1", scope="database")
+        assert typ == "file", f"expected type='file', got {typ!r}"
+        assert str(keypath) in opts, (
+            f"options json {opts!r} does not contain the configured path "
+            f"{str(keypath)!r}"
+        )
+
+    def test_add_database_file_provider_enables_key_creation(
+        self, pg_factory, tmp_path
+    ):
+        """
+        End-to-end smoke: after add_database_key_provider_file, the same
+        provider name must be usable in
+        ``pg_tde_create_key_using_database_key_provider`` and
+        ``pg_tde_set_key_using_database_key_provider`` without error.
+        Catches regressions where the add succeeds but the provider isn't
+        actually wired into the per-database key lookup path.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_db_use", with_tde_heap=True
+        )
+        _add_database_file_provider(
+            cluster, "use_me", str(tmp_path / "use_me.kf")
+        )
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_database_key_provider("
+            "'use_me_key'::text, 'use_me'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_database_key_provider("
+            "'use_me_key'::text, 'use_me'::text)"
+        )
+        cluster.execute(
+            "CREATE TABLE t_after_add (id INT) USING tde_heap"
+        )
+        cluster.execute(
+            "INSERT INTO t_after_add SELECT generate_series(1, 25)"
+        )
+        assert cluster.fetchone("SELECT COUNT(*) FROM t_after_add") == "25"
+
+    def test_add_duplicate_database_provider_name_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Re-adding a provider with the same name in the same database scope
+        must error — silently overwriting would clobber a configuration
+        an operator may not realise was already present.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_db_dup"
+        )
+        _add_database_file_provider(
+            cluster, "dup_name", str(tmp_path / "dup.kf")
+        )
+        with pytest.raises(RuntimeError) as exc:
+            _add_database_file_provider(
+                cluster, "dup_name", str(tmp_path / "dup_other.kf")
+            )
+        # Don't pin a specific phrase — pg_tde wording varies across
+        # versions. We just need the call to NOT silently succeed.
+        assert "dup_name" in str(exc.value) or "already" in str(exc.value).lower(), (
+            f"duplicate-add error message looks unexpected: {exc.value!r}"
+        )
+        # And the original options must still be in place.
+        _, opts = _provider_row(cluster, "dup_name", scope="database")
+        assert str(tmp_path / "dup.kf") in opts, (
+            "the original provider options were modified by the failed "
+            f"duplicate add: options={opts!r}"
+        )
+
+    def test_database_and_global_provider_namespaces_are_independent(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Adding ``shared_name`` as both a database provider and a global
+        provider must succeed: the two scopes have separate namespaces.
+        Each must appear *only* in its own listing.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "scope_ns"
+        )
+        _add_database_file_provider(
+            cluster, "shared_name", str(tmp_path / "db.kf")
+        )
+        _add_global_file_provider(
+            cluster, "shared_name", str(tmp_path / "global.kf")
+        )
+
+        db_names = _list_database_provider_names(cluster)
+        global_names = _list_global_provider_names(cluster)
+        assert "shared_name" in db_names
+        assert "shared_name" in global_names
+
+        # And the options on each side reflect the path that side was
+        # added with — proving they really are independent entries.
+        _, db_opts = _provider_row(cluster, "shared_name", scope="database")
+        _, global_opts = _provider_row(
+            cluster, "shared_name", scope="global"
+        )
+        assert str(tmp_path / "db.kf") in db_opts
+        assert str(tmp_path / "global.kf") in global_opts
+        assert db_opts != global_opts, (
+            "database and global 'shared_name' providers ended up with "
+            "identical options — the namespaces may have collided"
+        )
+
+    def test_database_provider_is_isolated_per_database(
+        self, pg_factory, tmp_path
+    ):
+        """
+        ``pg_tde_add_database_key_provider_*`` registers a provider in the
+        scope of the *current* database. Adding it in ``db_a`` must NOT
+        make it visible in ``db_b``.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "per_db_scope"
+        )
+        cluster.execute("CREATE DATABASE tdedb_a")
+        cluster.execute("CREATE DATABASE tdedb_b")
+        cluster.execute("CREATE EXTENSION pg_tde", "tdedb_a")
+        cluster.execute("CREATE EXTENSION pg_tde", "tdedb_b")
+
+        cluster.execute(
+            "SELECT pg_tde_add_database_key_provider_file("
+            f"'only_in_a'::text, '{tmp_path / 'a.kf'}'::text)",
+            "tdedb_a",
+        )
+
+        assert "only_in_a" in _list_database_provider_names(
+            cluster, "tdedb_a"
+        )
+        assert "only_in_a" not in _list_database_provider_names(
+            cluster, "tdedb_b"
+        ), (
+            "database-scope provider leaked from tdedb_a into tdedb_b — "
+            "per-database isolation is broken"
+        )
+
+    def test_added_database_provider_persists_across_restart(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Once added, a database provider's full metadata (name, type,
+        options json) must survive a server restart. Catches in-memory-
+        only registrations that look fine until the next pg_ctl restart.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "add_db_persist"
+        )
+        keypath = tmp_path / "persist.kf"
+        _add_database_file_provider(cluster, "persistp", str(keypath))
+        typ_before, opts_before = _provider_row(
+            cluster, "persistp", scope="database"
+        )
+
+        cluster.restart()
+
+        names = _list_database_provider_names(cluster)
+        assert "persistp" in names, (
+            "added database provider disappeared after restart"
+        )
+        typ_after, opts_after = _provider_row(
+            cluster, "persistp", scope="database"
+        )
+        assert (typ_before, opts_before) == (typ_after, opts_after), (
+            "provider metadata mutated across restart: "
+            f"before=({typ_before!r}, {opts_before!r}) "
+            f"after=({typ_after!r}, {opts_after!r})"
+        )
+
+
+# ── pg_tde_change_*_key_provider_* (online SQL) ───────────────────────────────
+
+
+def _change_database_file_provider(
+    cluster: PgCluster, name: str, new_path: str, dbname: str = "postgres"
+) -> None:
+    cluster.execute(
+        "SELECT pg_tde_change_database_key_provider_file("
+        f"'{name}'::text, '{new_path}'::text)",
+        dbname,
+    )
+
+
+def _change_global_file_provider(
+    cluster: PgCluster, name: str, new_path: str
+) -> None:
+    cluster.execute(
+        "SELECT pg_tde_change_global_key_provider_file("
+        f"'{name}'::text, '{new_path}'::text)"
+    )
+
+
+class TestPgTdeChangeKeyProviderSql:
+    """
+    Coverage for the *online* (server-running) provider-reconfiguration
+    SQL APIs:
+
+        pg_tde_change_database_key_provider_file(name, new_path)
+        pg_tde_change_global_key_provider_file(name, new_path)
+
+    Distinct from the *offline* ``pg_tde_change_key_provider`` CLI tool
+    (covered in ``test_change_key_provider.py``): the CLI rewrites the
+    on-disk config of a *stopped* cluster, while these SQL functions
+    update a *running* cluster's catalog and reload the provider
+    config on the fly.
+
+    File-provider scope only — vault / kmip variants need external
+    services and stay in the TAP suite for now.
+    """
+
+    def test_change_database_file_provider_updates_options(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Calling ``pg_tde_change_database_key_provider_file`` against an
+        existing provider must overwrite the ``options`` column to point
+        at the new path. Catches regressions where the call silently
+        no-ops (which would leave operators thinking they relocated the
+        keyring when in fact the cluster still reads the old path).
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_db_file"
+        )
+        old_path = tmp_path / "chg_old.kf"
+        new_path = tmp_path / "chg_new.kf"
+        _add_database_file_provider(cluster, "chg_p", str(old_path))
+        _, before = _provider_row(cluster, "chg_p", scope="database")
+        assert str(old_path) in before
+
+        _change_database_file_provider(cluster, "chg_p", str(new_path))
+
+        typ, after = _provider_row(cluster, "chg_p", scope="database")
+        assert typ == "file"
+        assert str(new_path) in after, (
+            f"options json {after!r} does not reference the new path "
+            f"{str(new_path)!r}"
+        )
+        assert str(old_path) not in after, (
+            f"options json {after!r} still references the OLD path "
+            f"{str(old_path)!r} — change_database_key_provider_file did "
+            "not overwrite the entry"
+        )
+
+    def test_change_global_file_provider_updates_options(
+        self, pg_factory, tmp_path
+    ):
+        """Global-scope counterpart of the database-scope update test."""
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_global_file"
+        )
+        old_path = tmp_path / "global_old.kf"
+        new_path = tmp_path / "global_new.kf"
+        _add_global_file_provider(cluster, "g_chg", str(old_path))
+        _change_global_file_provider(cluster, "g_chg", str(new_path))
+
+        typ, opts = _provider_row(cluster, "g_chg", scope="global")
+        assert typ == "file"
+        assert str(new_path) in opts
+        assert str(old_path) not in opts
+
+    def test_change_file_provider_while_in_use_keeps_data_readable(
+        self, pg_factory, tmp_path
+    ):
+        """
+        The canonical "relocate the keyring" workflow:
+
+          1. add file provider P with path A
+          2. set P as the database principal key
+          3. create + populate an encrypted table
+          4. copy A → B on disk
+          5. ``pg_tde_change_database_key_provider_file(P, B)``
+          6. existing encrypted data must still be readable
+             (the cluster must rebind the active key to path B)
+
+        Without this assertion a regression where the change is recorded
+        but not re-applied at runtime would only surface after the next
+        restart — by which point operators may have already deleted A.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_in_use", with_tde_heap=True
+        )
+        old_path = tmp_path / "inuse_old.kf"
+        new_path = tmp_path / "inuse_new.kf"
+        _add_database_file_provider(cluster, "inuse_p", str(old_path))
+        cluster.execute(
+            "SELECT pg_tde_create_key_using_database_key_provider("
+            "'inuse_k'::text, 'inuse_p'::text)"
+        )
+        cluster.execute(
+            "SELECT pg_tde_set_key_using_database_key_provider("
+            "'inuse_k'::text, 'inuse_p'::text)"
+        )
+        cluster.execute(
+            "CREATE TABLE inuse_t (id INT, payload TEXT) USING tde_heap"
+        )
+        cluster.execute(
+            "INSERT INTO inuse_t "
+            "SELECT i, md5(i::text) FROM generate_series(1, 100) i"
+        )
+        cluster.execute("CHECKPOINT")
+        assert old_path.exists(), (
+            "file provider did not create the configured keyfile on disk"
+        )
+
+        # Copy the keyring to the new path BEFORE rerouting the provider:
+        # the new path must contain the same key material or the cluster
+        # cannot decrypt the existing table.
+        shutil.copy(str(old_path), str(new_path))
+        _change_database_file_provider(cluster, "inuse_p", str(new_path))
+
+        count = cluster.fetchone("SELECT COUNT(*) FROM inuse_t")
+        assert count == "100", (
+            f"encrypted data not readable after online keyring relocation "
+            f"(count={count!r}); pg_tde may not have rebound the active "
+            "key to the new file path"
+        )
+
+        # Now restart and re-check — proves the change was persisted too.
+        cluster.restart()
+        count_after = cluster.fetchone("SELECT COUNT(*) FROM inuse_t")
+        assert count_after == "100", (
+            f"encrypted data unreadable after restart (count={count_after!r})"
+        )
+
+    def test_change_nonexistent_database_provider_fails(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Calling change_database_key_provider_file on a provider name that
+        was never registered must produce an error. Silent success would
+        mask typos — and worse, would suggest a successful reconfig.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_db_ghost"
+        )
+        with pytest.raises(RuntimeError) as exc:
+            _change_database_file_provider(
+                cluster, "ghost_p", str(tmp_path / "ghost.kf")
+            )
+        msg = str(exc.value).lower()
+        assert "ghost_p" in msg or "does not exist" in msg or "not found" in msg, (
+            f"expected an error referencing the missing provider; got: "
+            f"{exc.value!r}"
+        )
+
+    def test_change_nonexistent_global_provider_fails(
+        self, pg_factory, tmp_path
+    ):
+        """Global-scope counterpart of the missing-provider error path."""
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_global_ghost"
+        )
+        with pytest.raises(RuntimeError) as exc:
+            _change_global_file_provider(
+                cluster, "global_ghost", str(tmp_path / "ghost.kf")
+            )
+        msg = str(exc.value).lower()
+        assert (
+            "global_ghost" in msg
+            or "does not exist" in msg
+            or "not found" in msg
+        ), (
+            f"expected an error referencing the missing provider; got: "
+            f"{exc.value!r}"
+        )
+
+    def test_change_database_provider_does_not_affect_global_namespace(
+        self, pg_factory, tmp_path
+    ):
+        """
+        ``pg_tde_change_database_key_provider_file`` must only touch the
+        database-scope entry, even when a global provider exists with the
+        same name. Catches regressions where the function accidentally
+        falls through to the global table.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_scope_isolation"
+        )
+        db_old = tmp_path / "db_old.kf"
+        db_new = tmp_path / "db_new.kf"
+        global_path = tmp_path / "global_stable.kf"
+        _add_database_file_provider(cluster, "same", str(db_old))
+        _add_global_file_provider(cluster, "same", str(global_path))
+
+        _change_database_file_provider(cluster, "same", str(db_new))
+
+        _, db_opts = _provider_row(cluster, "same", scope="database")
+        _, global_opts = _provider_row(cluster, "same", scope="global")
+        assert str(db_new) in db_opts
+        assert str(global_path) in global_opts, (
+            f"global 'same' provider was modified by a database-scope "
+            f"change; global options now: {global_opts!r}"
+        )
+        assert str(db_new) not in global_opts, (
+            "database-scope change leaked into the global entry"
+        )
+
+    def test_changed_provider_persists_across_restart(
+        self, pg_factory, tmp_path
+    ):
+        """
+        The new options must survive a restart. Catches in-memory-only
+        updates that would silently revert on the next pg_ctl restart.
+        """
+        cluster = _build_provider_test_cluster(
+            pg_factory, tmp_path, "chg_persist"
+        )
+        old_path = tmp_path / "persist_old.kf"
+        new_path = tmp_path / "persist_new.kf"
+        _add_global_file_provider(cluster, "persist_p", str(old_path))
+        _change_global_file_provider(cluster, "persist_p", str(new_path))
+
+        _, before = _provider_row(cluster, "persist_p", scope="global")
+        cluster.restart()
+        _, after = _provider_row(cluster, "persist_p", scope="global")
+        assert before == after, (
+            f"provider options drifted across restart: before={before!r}, "
+            f"after={after!r}"
+        )
+        assert str(new_path) in after
