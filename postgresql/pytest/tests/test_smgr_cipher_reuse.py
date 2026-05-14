@@ -350,7 +350,24 @@ def _verify_core_encryption_and_data(cluster: PgCluster) -> None:
 
 
 def _verify_extended_scenarios(cluster: PgCluster) -> None:
-    """Mirrors bash ``verify_extended_scenarios``."""
+    """Mirrors bash ``verify_extended_scenarios``.
+
+    Note: the bash script asserts every relation via ``bool_and()`` which
+    is NULL-poisoned, so it implicitly assumed all listed relations would
+    return ``'t'``. The actual pg_tde contract — pinned by the dedicated
+    tests in ``test_partitioning.py`` and the
+    `Percona pg_tde Functions reference <https://docs.percona.com/pg-tde/functions.html#pg-tde-is-encrypted>`_ —
+    is that ``pg_tde_is_encrypted`` returns **NULL** for relations that
+    have no storage of their own. That covers two cases here:
+
+      * Partitioned table parent (``ctx_part``).
+      * Partitioned index parent (``ctx_part_pkey``) — declared on a
+        partitioned table, the per-leaf indexes are the encrypted ones.
+
+    All other relations (leaves, regular heaps, their PKs, TOAST heaps,
+    CTAS, COPY targets) must return ``'t'``.
+    """
+    storageless_rels = {"ctx_part", "ctx_part_pkey"}
     encrypted_rels = (
         "ctx_part", "ctx_part_p1", "ctx_part_p2", "ctx_part_p3",
         "ctx_toast", "ctx_ctas", "ctx_trunc",
@@ -361,10 +378,11 @@ def _verify_extended_scenarios(cluster: PgCluster) -> None:
     )
     for rel in encrypted_rels:
         got = cluster.fetchone(f"SELECT pg_tde_is_encrypted('{rel}'::regclass)") or ""
-        # Partitioned PARENT (ctx_part) has no storage → pg_tde_is_encrypted
-        # returns NULL by documented contract (see test_partitioning.py).
-        if rel == "ctx_part":
-            assert got in ("", "t"), f"ctx_part should return NULL or t, got {got!r}"
+        if rel in storageless_rels:
+            assert got in ("", "t"), (
+                f"{rel} is a partitioned parent — pg_tde_is_encrypted "
+                f"must return NULL (preferred) or 't', got {got!r}"
+            )
         else:
             assert got == "t", f"{rel} should be encrypted, got {got!r}"
 
