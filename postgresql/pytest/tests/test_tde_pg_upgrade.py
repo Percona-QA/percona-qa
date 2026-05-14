@@ -1577,6 +1577,219 @@ class TestPgTdeUpgradeComplexSchema:
         )
         new_cluster.stop()
 
+    def test_pg_tde_upgrade_views_sequences_checks_partial_indexes(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        Mirror of ``pg_tde_upgrade_scenarios_test.sh`` scenario #3
+        (Complex schema). Earlier tests cover btree/hash/brin indexes,
+        partitioning, and FK cascades, but the bash scenario also
+        exercises:
+
+          * A user sequence whose ``last_value`` must be preserved
+          * ``DEFAULT nextval(seq)`` on a column
+          * ``CHECK`` constraints (including a list-based one)
+          * A partial index (``WHERE status = 'pending'``)
+          * A view that filters on the encrypted heap
+
+        All of those live in the catalog rather than the heap, so they
+        rely on ``pg_tde_upgrade`` handing the dump/restore step off to
+        pg_upgrade correctly. Regression: if the catalog migration is
+        broken, the view returns wrong rows or the partial index is
+        rebuilt without its predicate.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "complex_schema.per")
+        old = self._build_tde_old(old_install_dir, tmp_path, io_method, keyfile)
+        old.execute(
+            "CREATE SEQUENCE order_seq START 1000; "
+            "CREATE TABLE orders ("
+            "  id       INT DEFAULT nextval('order_seq') PRIMARY KEY,"
+            "  customer TEXT          NOT NULL,"
+            "  amount   NUMERIC(12,2) CHECK (amount > 0),"
+            "  status   TEXT          NOT NULL DEFAULT 'pending'"
+            "                         CHECK (status IN ('pending','shipped','done')),"
+            "  created  TIMESTAMPTZ   NOT NULL DEFAULT now()"
+            ") USING tde_heap; "
+            "CREATE INDEX idx_orders_customer ON orders(customer); "
+            "CREATE INDEX idx_orders_pending  ON orders(created) "
+            "  WHERE status = 'pending'; "
+            "INSERT INTO orders (customer, amount, status) "
+            "  SELECT 'cust_' || (i % 20), "
+            "         (i * 3.14)::numeric(12,2), "
+            "         CASE i % 3 WHEN 0 THEN 'pending' "
+            "                    WHEN 1 THEN 'shipped' "
+            "                    ELSE 'done' END "
+            "  FROM generate_series(1, 300) i; "
+            "CREATE VIEW v_pending AS "
+            "  SELECT id, customer, amount FROM orders WHERE status = 'pending';"
+        )
+
+        pre_rows = old.fetchone("SELECT COUNT(*) FROM orders")
+        pre_seq = old.fetchone("SELECT last_value FROM order_seq")
+        pre_pending = old.fetchone("SELECT COUNT(*) FROM v_pending")
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method,
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, (
+            f"pg_tde_upgrade (complex schema) failed:\n{result.stderr}"
+        )
+        new_cluster.start()
+        new_cluster.wait_ready()
+
+        # Row, sequence and view counts must all survive.
+        assert new_cluster.fetchone("SELECT COUNT(*) FROM orders") == pre_rows
+        assert new_cluster.fetchone("SELECT last_value FROM order_seq") == pre_seq
+        assert new_cluster.fetchone("SELECT COUNT(*) FROM v_pending") == pre_pending
+
+        # Both indexes (including the partial one) must be present
+        # with their original predicates.
+        idx_count = new_cluster.fetchone(
+            "SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'orders'"
+        )
+        assert int(idx_count) >= 3, (
+            f"Expected ≥3 indexes on orders (pk + customer + pending), "
+            f"got {idx_count}"
+        )
+        partial_pred = new_cluster.fetchone(
+            "SELECT indexdef FROM pg_indexes "
+            "WHERE indexname = 'idx_orders_pending'"
+        )
+        assert "WHERE" in (partial_pred or "") and "pending" in (partial_pred or ""), (
+            f"Partial-index predicate dropped during upgrade: {partial_pred!r}"
+        )
+
+        # CHECK constraint still rejects bad input.
+        with pytest.raises(RuntimeError) as exc:
+            new_cluster.execute(
+                "INSERT INTO orders (customer, amount, status) "
+                "VALUES ('bad', -1, 'pending')"
+            )
+        assert "amount" in str(exc.value).lower() or "check" in str(exc.value).lower()
+
+        # The sequence default still works for new INSERTs.
+        new_cluster.execute(
+            "INSERT INTO orders (customer, amount) VALUES ('post-upgrade', 99)"
+        )
+        new_id = new_cluster.fetchone(
+            "SELECT id FROM orders WHERE customer = 'post-upgrade'"
+        )
+        assert int(new_id) > int(pre_seq), (
+            f"Post-upgrade INSERT got id={new_id}; sequence did not advance past {pre_seq}"
+        )
+
+        new_cluster.stop()
+
+    def test_pg_tde_upgrade_explicit_global_key_provider_migration(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        Mirror of ``pg_tde_upgrade_scenarios_test.sh`` scenario #6
+        (Global cluster-level key provider). Most existing upgrade
+        tests use the helper-driven setup which may pick the default
+        scope; this test explicitly:
+
+          * Adds a GLOBAL file provider via
+            ``pg_tde_add_global_key_provider_file``
+          * Creates and activates a key via
+            ``pg_tde_create_key_using_global_key_provider`` +
+            ``pg_tde_set_key_using_global_key_provider``
+          * Verifies that AFTER pg_tde_upgrade the new cluster still
+            reports the SAME provider in the GLOBAL scope (not silently
+            migrated to database scope) and the encrypted data is
+            readable.
+
+        Regression: if pg_tde_upgrade flattens the global provider into
+        a per-database one, queries succeed but ``inherit_global_providers``-
+        style features (and CREATE DATABASE inheritance) would silently
+        break.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "global_scope_upgrade.per")
+        old = _make_old_cluster(
+            old_install_dir, tmp_path, io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+
+        # Explicit global-scope provider + key (not via the auto-detect helper).
+        old.execute("CREATE EXTENSION pg_tde")
+        old.execute(
+            f"SELECT pg_tde_add_global_key_provider_file("
+            f"'global_vault'::text, '{keyfile}'::text)"
+        )
+        old.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'global_key'::text, 'global_vault'::text)"
+        )
+        old.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'global_key'::text, 'global_vault'::text)"
+        )
+        old.execute(
+            "CREATE TABLE global_enc (id INT PRIMARY KEY, data TEXT) USING tde_heap; "
+            "INSERT INTO global_enc SELECT i, 'global_' || i "
+            "FROM generate_series(1, 120) i"
+        )
+
+        pre_count = old.fetchone("SELECT COUNT(*) FROM global_enc")
+        pre_global_providers = old.fetchall(
+            "SELECT name FROM pg_tde_list_all_global_key_providers()"
+        )
+        assert "global_vault" in pre_global_providers, (
+            f"global_vault provider not visible in old cluster: {pre_global_providers!r}"
+        )
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method,
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, (
+            f"pg_tde_upgrade (global provider scope) failed:\n{result.stderr}"
+        )
+        new_cluster.start()
+        new_cluster.wait_ready()
+
+        # Data intact.
+        assert new_cluster.fetchone("SELECT COUNT(*) FROM global_enc") == pre_count
+        assert new_cluster.fetchone(
+            "SELECT data FROM global_enc WHERE id = 60"
+        ) == "global_60"
+
+        # Scope-preserved: provider must still be a GLOBAL provider
+        # post-upgrade — not silently migrated to database scope.
+        post_global = new_cluster.fetchall(
+            "SELECT name FROM pg_tde_list_all_global_key_providers()"
+        )
+        assert "global_vault" in post_global, (
+            f"global_vault provider lost from global scope after upgrade: {post_global!r}"
+        )
+        post_db = new_cluster.fetchall(
+            "SELECT name FROM pg_tde_list_all_database_key_providers()"
+        )
+        assert "global_vault" not in post_db, (
+            f"global_vault provider was silently migrated to database scope: {post_db!r}"
+        )
+
+        new_cluster.stop()
+
 class TestUpgradeBashScriptParity:
     """
     Direct translations of the bash test scripts ensuring 100% parity.

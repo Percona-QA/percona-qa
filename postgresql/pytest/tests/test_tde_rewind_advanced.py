@@ -2474,6 +2474,189 @@ class TestTdeRewindFullHaCycle:
             _teardown(standby, primary)
 
 
+# ── sysbench-driven sustained-workload rewind loop ────────────────────────────
+
+
+class TestTdeRewindSysbenchLoop:
+    """
+    Port of ``postgresql/automation/tests/pg_tde_rewind_loop_test.sh``.
+
+    The existing ``TestTdeRewindFullHaCycle.test_rewind_multiple_rounds_ha_lifecycle``
+    drives divergence with deterministic INSERT statements; the bash loop
+    test instead drives sustained OLTP traffic with ``sysbench`` between
+    role flips, so it catches:
+
+      * WAL-segment churn racing with rewind (many segments rotated per
+        iteration → restore_command / pg_wal ordering must be right)
+      * Cumulative ``pg_tde/`` key state degradation across N rounds
+      * Replication catch-up against an in-flight workload
+
+    Skipped automatically when ``sysbench`` is not in PATH; the bash
+    script has the same requirement.
+    """
+
+    @pytest.mark.skipif(
+        shutil.which("sysbench") is None,
+        reason="sysbench not installed — skipping sysbench-driven rewind loop",
+    )
+    def test_rewind_sysbench_driven_failover_loop(
+        self, install_dir: Path, tmp_path: Path, io_method: str
+    ):
+        """
+        Two alternating failover rounds (the bash script does three; we
+        do two to keep CI time reasonable but the contract is the same).
+
+        For each round:
+          1. Run a 10 s sysbench oltp_insert workload on the current primary
+          2. Immediate stop the current primary (simulated crash)
+          3. Promote the standby
+          4. Run sysbench again on the new primary (drives divergence)
+          5. Rewind the old primary against the new primary
+          6. Re-attach the old primary as streaming standby and assert catch-up
+          7. Verify a synthetic ``post_promotion`` marker row count matches
+             on both nodes.
+        """
+        # Locate a usable oltp_insert.lua. Most distros ship it under
+        # /usr/share/sysbench, but the homebrew / source builds drop it
+        # elsewhere. Skip cleanly when we cannot find one.
+        sysbench_bin = shutil.which("sysbench")
+        oltp_paths = [
+            "/usr/share/sysbench/oltp_insert.lua",
+            "/usr/local/share/sysbench/oltp_insert.lua",
+            "/opt/homebrew/share/sysbench/oltp_insert.lua",
+        ]
+        oltp_lua = next((p for p in oltp_paths if Path(p).is_file()), None)
+        if not oltp_lua:
+            pytest.skip(
+                "sysbench is installed but oltp_insert.lua not found in any "
+                f"standard path (checked: {oltp_paths})"
+            )
+
+        primary, standby, _, _ = _ha_pair(
+            install_dir,
+            tmp_path,
+            io_method,
+            wal_encrypt=True,
+        )
+
+        def _run_sysbench(target: PgCluster, *, op: str, threads: int = 2,
+                          tables: int = 1, table_size: int = 200,
+                          duration: int = 10) -> None:
+            """Run sysbench against ``target`` (prepare or run)."""
+            cmd = [
+                sysbench_bin,
+                oltp_lua,
+                f"--pgsql-host={target.socket_dir}",
+                f"--pgsql-port={target.port}",
+                f"--pgsql-user={libpq_superuser()}",
+                "--pgsql-db=postgres",
+                "--db-driver=pgsql",
+                f"--time={duration}",
+                f"--threads={threads}",
+                f"--tables={tables}",
+                f"--table-size={table_size}",
+                op,
+            ]
+            env = os.environ.copy()
+            lib_dir = str(install_dir / "lib")
+            env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=duration + 60)
+            assert result.returncode == 0, (
+                f"sysbench {op} failed on port {target.port}\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+
+        try:
+            # Synthetic marker table used to detect rewind/replication divergence.
+            primary.execute(
+                "CREATE TABLE verify_table ("
+                "  id BIGSERIAL PRIMARY KEY, ts TIMESTAMPTZ, source TEXT"
+                ")"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            # Tiny sysbench prepare — proves the workload runs at all.
+            _run_sysbench(primary, op="prepare", duration=1)
+
+            def failover_iteration(
+                current_primary: PgCluster, new_primary: PgCluster, label: str
+            ) -> None:
+                """
+                Mirrors ``failover_iteration`` in the bash script.
+                ``current_primary`` is killed; ``new_primary`` is promoted.
+                """
+                # Sustained workload on the current primary.
+                _run_sysbench(current_primary, op="run", duration=10)
+
+                # Crash simulation: SIGKILL via stop -m immediate.
+                current_primary.stop(mode="immediate")
+
+                # Promote the standby and write a marker so we can later
+                # verify the rewound + reattached node sees it.
+                _promote(new_primary)
+                new_primary.execute(
+                    f"INSERT INTO verify_table (ts, source) "
+                    f"VALUES (clock_timestamp(), 'post_promotion_{label}')"
+                )
+                _run_sysbench(new_primary, op="run", duration=10)
+
+                # Rewind the old primary against the new primary.
+                result = _run_rewind_pgdata(install_dir, current_primary, new_primary)
+                assert result.returncode == 0, (
+                    f"Round {label} pg_tde_rewind failed:\n{result.stderr}"
+                )
+
+                # Re-attach the rewound node as a streaming standby.
+                _repair_rewind_target_identity(current_primary)
+                _prepare_rewound_streaming_standby(
+                    current_primary, new_primary, streaming_only=False
+                )
+                _sanitize_promoted_leader_pgdata(new_primary)
+                if not new_primary.is_ready():
+                    new_primary.start()
+                    new_primary.wait_ready(timeout=60)
+                current_primary.start()
+                current_primary.wait_ready(timeout=90)
+                ReplicationManager(new_primary, current_primary).assert_catchup(timeout=120)
+
+                # Marker on the promoted node and the rewound node must match.
+                on_new = new_primary.fetchone(
+                    f"SELECT COUNT(*) FROM verify_table "
+                    f"WHERE source = 'post_promotion_{label}'"
+                )
+                on_rewound = current_primary.fetchone(
+                    f"SELECT COUNT(*) FROM verify_table "
+                    f"WHERE source = 'post_promotion_{label}'"
+                )
+                assert on_new == on_rewound, (
+                    f"Round {label}: post_promotion marker count diverged "
+                    f"(promoted={on_new!r}, rewound={on_rewound!r})"
+                )
+                assert int(on_new) >= 1, (
+                    f"Round {label}: no post_promotion marker visible on "
+                    f"the promoted node (count={on_new!r})"
+                )
+
+            # Round 1: primary → standby
+            failover_iteration(primary, standby, label="r1")
+            # Round 2: standby (now primary) → primary (now standby)
+            failover_iteration(standby, primary, label="r2")
+
+            # Final post-cycle sanity check — both nodes see both markers.
+            for node, name in ((primary, "primary"), (standby, "standby")):
+                if not node.is_ready():
+                    node.start()
+                    node.wait_ready(timeout=60)
+                total = node.fetchone(
+                    "SELECT COUNT(*) FROM verify_table WHERE source LIKE 'post_promotion_%'"
+                )
+                assert int(total) >= 2, (
+                    f"final: {name} only sees {total} post_promotion rows (expected ≥2)"
+                )
+        finally:
+            _teardown(standby, primary)
+
+
 # ── key provider edge cases ───────────────────────────────────────────────────
 
 

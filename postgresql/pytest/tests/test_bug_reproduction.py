@@ -375,3 +375,313 @@ class TestPG1806:
             )
             == "2"
         )
+
+
+class TestPG1806WalOptimiseSubScenarios:
+    """
+    Port of the remaining sub-scenarios in ``pg_tde_wal_optimise_test.sh``
+    (itself a port of upstream ``recovery/018_wal_optimize.pl``) that the
+    PG-1806 trigger above does not cover.
+
+    Every test runs the same crash-recovery contract:
+      1. wal_level=minimal, wal_skip_threshold=0
+      2. Run a DDL+DML pattern that historically skipped WAL on
+         encrypted heap
+      3. Immediate stop, restart
+      4. Verify data and (where applicable) index/constraint state.
+
+    A regression in pg_tde's WAL optimisation code path would manifest
+    as "invalid page in block N", a missing row, or a violated unique
+    constraint after recovery.
+    """
+
+    def _build_cluster(self, pg_factory, tmp_path: Path) -> tuple:
+        """Mirror the bash ``run_wal_optimize`` setup with TDE + extra tablespace."""
+        tsp_dir = tmp_path / "extra_tsp"
+        tsp_dir.mkdir()
+        keyfile = str(tmp_path / "wal_opt_key.per")
+        cluster = pg_factory("pg1806_walopt")
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
+        cluster.write_default_config(
+            extra_params={
+                "shared_preload_libraries": "'pg_tde'",
+                "default_table_access_method": "'tde_heap'",
+            }
+        )
+        cluster.add_hba_entry("local all all trust")
+        cluster.configure(
+            {
+                "wal_level": "minimal",
+                "wal_skip_threshold": "0",
+                "max_wal_senders": "0",
+                "max_prepared_transactions": "1",
+                "wal_log_hints": "on",
+            }
+        )
+        cluster.start()
+        tde = TdeManager(cluster)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+        tde.set_global_principal_key()
+        cluster.restart()
+        cluster.wait_ready()
+        cluster.execute(f"CREATE TABLESPACE extra_tsp LOCATION '{tsp_dir}'")
+        return cluster, tsp_dir
+
+    @staticmethod
+    def _write_copy_payload(tmp_path: Path) -> Path:
+        """3-row CSV file used by several scenarios (matches the bash COPYEOF)."""
+        f = tmp_path / "copy_data.txt"
+        f.write_text("20000,30000\n20001,30001\n20002,30002\n")
+        return f
+
+    @staticmethod
+    def _crash_restart(cluster: PgCluster) -> None:
+        cluster.stop(mode="immediate")
+        cluster.start()
+        cluster.wait_ready()
+
+    # ── 1. Truncation optimisation on an empty table ───────────────────────
+    def test_truncate_empty_table_survives_crash(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        cluster.execute(
+            "BEGIN; CREATE TABLE trunc (id SERIAL PRIMARY KEY); TRUNCATE trunc; COMMIT"
+        )
+        self._crash_restart(cluster)
+        assert cluster.fetchone("SELECT count(*) FROM trunc") == "0"
+
+    # ── 2. TRUNCATE + INSERT in the same transaction ───────────────────────
+    def test_truncate_then_insert_same_xact_survives_crash(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE ti (id SERIAL PRIMARY KEY);"
+            "INSERT INTO ti VALUES (DEFAULT);"
+            "TRUNCATE ti;"
+            "INSERT INTO ti VALUES (DEFAULT);"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        # bash expects count=1 min(id)=2 (sequence kept incrementing through TRUNCATE).
+        assert cluster.fetchone("SELECT count(*) FROM ti") == "1"
+        assert cluster.fetchone("SELECT min(id) FROM ti") == "2"
+
+    # ── 3. TRUNCATE + INSERT + PREPARE TRANSACTION ─────────────────────────
+    def test_truncate_insert_prepared_transaction_survives_crash(
+        self, pg_factory, tmp_path: Path
+    ):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE tp (id SERIAL PRIMARY KEY);"
+            "INSERT INTO tp VALUES (DEFAULT);"
+            "TRUNCATE tp;"
+            "INSERT INTO tp VALUES (DEFAULT);"
+            "PREPARE TRANSACTION 't'"
+        )
+        cluster.execute("COMMIT PREPARED 't'")
+        self._crash_restart(cluster)
+        assert cluster.fetchone("SELECT count(*) FROM tp") == "1"
+        assert cluster.fetchone("SELECT min(id) FROM tp") == "2"
+
+    # ── 4. End-of-xact WAL when wal_skip_threshold is huge (noskip) ────────
+    def test_noskip_wal_threshold_large_insert_survives(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        cluster.execute(
+            "SET wal_skip_threshold = '1GB';"
+            "BEGIN;"
+            "CREATE TABLE noskip (id SERIAL PRIMARY KEY);"
+            "INSERT INTO noskip SELECT generate_series(1, 20000);"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        assert cluster.fetchone("SELECT count(*) FROM noskip") == "20000"
+
+    # ── 5. TRUNCATE then COPY (bulk write after truncate) ──────────────────
+    def test_truncate_then_copy_survives_crash(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        copy_file = self._write_copy_payload(tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE tc (id SERIAL PRIMARY KEY, id2 INT);"
+            "INSERT INTO tc VALUES (DEFAULT, generate_series(1, 3000));"
+            "TRUNCATE tc;"
+            f"COPY tc FROM '{copy_file}' DELIMITER ',';"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        assert cluster.fetchone("SELECT count(*) FROM tc") == "3"
+
+    # ── 6. SET TABLESPACE rolled back via SAVEPOINT ────────────────────────
+    def test_set_tablespace_aborted_in_subtransaction_survives_crash(
+        self, pg_factory, tmp_path: Path
+    ):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        copy_file = self._write_copy_payload(tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE spc_abort (id SERIAL PRIMARY KEY, id2 INT);"
+            "INSERT INTO spc_abort VALUES (DEFAULT, generate_series(1, 3000));"
+            "TRUNCATE spc_abort;"
+            "SAVEPOINT s;"
+            "ALTER TABLE spc_abort SET TABLESPACE extra_tsp; ROLLBACK TO s;"
+            f"COPY spc_abort FROM '{copy_file}' DELIMITER ',';"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        assert cluster.fetchone("SELECT count(*) FROM spc_abort") == "3"
+
+    # ── 7. SET TABLESPACE deeply nested savepoints ─────────────────────────
+    def test_set_tablespace_nested_subtransactions_survives_crash(
+        self, pg_factory, tmp_path: Path
+    ):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        copy_file = self._write_copy_payload(tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE spc_nest (id SERIAL PRIMARY KEY, id2 INT);"
+            "INSERT INTO spc_nest VALUES (DEFAULT, generate_series(1, 3000));"
+            "TRUNCATE spc_nest;"
+            "SAVEPOINT s;"
+            "  ALTER TABLE spc_nest SET TABLESPACE extra_tsp;"
+            "  SAVEPOINT s2;"
+            "    ALTER TABLE spc_nest SET TABLESPACE pg_default;"
+            "  ROLLBACK TO s2;"
+            "  SAVEPOINT s2;"
+            "    ALTER TABLE spc_nest SET TABLESPACE pg_default;"
+            "  RELEASE s2;"
+            "ROLLBACK TO s;"
+            f"COPY spc_nest FROM '{copy_file}' DELIMITER ',';"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        assert cluster.fetchone("SELECT count(*) FROM spc_nest") == "3"
+
+    # ── 8. Unique index hint bits (LP_DEAD) after recovery ─────────────────
+    def test_unique_index_lp_dead_violation_after_crash(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE idx_hint (c INT PRIMARY KEY);"
+            "SAVEPOINT q; INSERT INTO idx_hint VALUES (1); ROLLBACK TO q;"
+            "CHECKPOINT;"
+            "INSERT INTO idx_hint VALUES (1);"
+            "INSERT INTO idx_hint VALUES (2);"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        # Reinserting an existing value must hit the unique constraint
+        # — proves the btree leaf was decrypted and read correctly after recovery.
+        with pytest.raises(RuntimeError) as exc:
+            cluster.execute("INSERT INTO idx_hint VALUES (2)")
+        assert "violates unique" in str(exc.value).lower(), (
+            f"Expected unique-violation error, got: {exc.value}"
+        )
+
+    # ── 9. COPY + INSERT triggers in a single transaction ──────────────────
+    def test_copy_with_insert_triggers_survives_crash(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        copy_file = self._write_copy_payload(tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE ins_trig (id SERIAL PRIMARY KEY, id2 TEXT);"
+            "CREATE FUNCTION ins_trig_before_row_trig() RETURNS trigger LANGUAGE plpgsql AS $$ "
+            "BEGIN "
+            "  IF NEW.id2 NOT LIKE 'triggered%' THEN "
+            "    INSERT INTO ins_trig VALUES (DEFAULT, 'triggered row before' || NEW.id2); "
+            "  END IF; "
+            "  RETURN NEW; "
+            "END; $$;"
+            "CREATE FUNCTION ins_trig_after_row_trig() RETURNS trigger LANGUAGE plpgsql AS $$ "
+            "BEGIN "
+            "  IF NEW.id2 NOT LIKE 'triggered%' THEN "
+            "    INSERT INTO ins_trig VALUES (DEFAULT, 'triggered row after' || NEW.id2); "
+            "  END IF; "
+            "  RETURN NEW; "
+            "END; $$;"
+            "CREATE TRIGGER t_before BEFORE INSERT ON ins_trig FOR EACH ROW "
+            "  EXECUTE PROCEDURE ins_trig_before_row_trig();"
+            "CREATE TRIGGER t_after AFTER INSERT ON ins_trig FOR EACH ROW "
+            "  EXECUTE PROCEDURE ins_trig_after_row_trig();"
+            f"COPY ins_trig FROM '{copy_file}' DELIMITER ',';"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        # 3 COPY rows × (1 self + 1 before-trigger + 1 after-trigger) = 9 rows.
+        assert cluster.fetchone("SELECT count(*) FROM ins_trig") == "9"
+
+    # ── 10. TRUNCATE + statement-level triggers + COPY ─────────────────────
+    def test_truncate_with_statement_triggers_survives_crash(
+        self, pg_factory, tmp_path: Path
+    ):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        copy_file = self._write_copy_payload(tmp_path)
+        cluster.execute(
+            "BEGIN;"
+            "CREATE TABLE trunc_trig (id SERIAL PRIMARY KEY, id2 TEXT);"
+            "CREATE FUNCTION tt_before() RETURNS trigger LANGUAGE plpgsql AS $$ "
+            "BEGIN INSERT INTO trunc_trig VALUES (DEFAULT, 'triggered stat before'); "
+            "RETURN NULL; END; $$;"
+            "CREATE FUNCTION tt_after() RETURNS trigger LANGUAGE plpgsql AS $$ "
+            "BEGIN INSERT INTO trunc_trig VALUES (DEFAULT, 'triggered stat before'); "
+            "RETURN NULL; END; $$;"
+            "CREATE TRIGGER tt_before_stat BEFORE TRUNCATE ON trunc_trig "
+            "  FOR EACH STATEMENT EXECUTE PROCEDURE tt_before();"
+            "CREATE TRIGGER tt_after_stat AFTER TRUNCATE ON trunc_trig "
+            "  FOR EACH STATEMENT EXECUTE PROCEDURE tt_after();"
+            "INSERT INTO trunc_trig VALUES (DEFAULT, 1);"
+            "TRUNCATE trunc_trig;"
+            f"COPY trunc_trig FROM '{copy_file}' DELIMITER ',';"
+            "COMMIT"
+        )
+        self._crash_restart(cluster)
+        # 1 before-trigger row + 1 after-trigger row + 3 COPY rows = 5? bash expects 4.
+        # The before-stmt trigger fires before TRUNCATE deletes; the after-stmt trigger
+        # runs once after TRUNCATE has cleared the table. So:
+        #   1 INSERT      → 1 row
+        #   TRUNCATE      → BEFORE trigger inserts 1 row (which survives the TRUNCATE
+        #                   because trigger executes BEFORE the truncation),
+        #                   then TRUNCATE wipes all rows (= 0),
+        #                   then AFTER trigger inserts 1 row.
+        #   COPY 3 rows   → +3 rows.
+        # Final = 1 (after-trigger) + 3 (COPY) = 4 rows.
+        assert cluster.fetchone("SELECT count(*) FROM trunc_trig") == "4"
+
+    # ── 11. Temp table cleaned up — no orphan relfilenodes after restart ───
+    def test_temp_table_leaves_no_orphan_relfilenodes(self, pg_factory, tmp_path: Path):
+        cluster, _ = self._build_cluster(pg_factory, tmp_path)
+        cluster.execute("CREATE TEMP TABLE temp_t (id SERIAL PRIMARY KEY, id2 TEXT)")
+        self._crash_restart(cluster)
+
+        # Build the two sets the bash check_orphan_relfilenodes uses:
+        #   files_on_disk      = numeric files in base/<db_oid>/
+        #   files_referenced   = pg_relation_filepath(oid) of every catalog row
+        db_oid = cluster.fetchone(
+            "SELECT oid FROM pg_database WHERE datname = 'postgres'"
+        )
+        db_dir = cluster.data_dir / "base" / db_oid
+        on_disk = sorted(
+            p.name for p in db_dir.iterdir() if p.is_file() and p.name.isdigit()
+        )
+        referenced_raw = cluster.execute(
+            "SELECT pg_relation_filepath(oid) "
+            "FROM pg_class "
+            "WHERE reltablespace = 0 AND relpersistence <> 't' "
+            "  AND pg_relation_filepath(oid) IS NOT NULL"
+        )
+        referenced = sorted(
+            line.rsplit("/", 1)[-1]
+            for line in referenced_raw.splitlines()
+            if line.strip()
+        )
+        # Every on-disk numeric file in base/<db_oid>/ must have a catalog row
+        # that points at it.  Allow numeric files that exist on disk but are
+        # not yet referenced ONLY if they look like a relfilenode that pg_class
+        # hasn't materialised yet (none expected after a clean restart).
+        orphans = sorted(set(on_disk) - set(referenced))
+        assert orphans == [], (
+            f"orphan relfilenodes found after temp-table crash recovery:\n"
+            f"  on_disk    : {on_disk}\n"
+            f"  referenced : {referenced}\n"
+            f"  orphans    : {orphans}"
+        )
