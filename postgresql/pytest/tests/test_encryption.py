@@ -8,6 +8,9 @@ Covers scenarios from:
   - pg_tde_checksums_test.sh
   - pg_tde_change_key_provider_utility.sh
   - pg_tde_dynamic_encryption_state_stress_test.sh
+
+Cipher-specific coverage (``pg_tde.cipher`` GUC contract + SMGR cipher-
+context reuse / PR #554) lives in ``tests/test_cipher.py``.
 """
 import os
 import re
@@ -496,159 +499,10 @@ class TestDynamicEncryptionState:
 
 
 # ── pg_tde.cipher GUC ─────────────────────────────────────────────────────────
-
-
-def _make_tde_cluster_with_cipher(
-    pg_factory,
-    name: str,
-    cipher: str,
-    keyfile: str,
-) -> PgCluster:
-    """
-    Build a fresh TDE cluster with ``pg_tde.cipher`` set to *cipher* before
-    any key or table is created. Returns the started cluster with pg_tde
-    set up (extension + file key provider + principal key).
-    """
-    cluster = pg_factory(name)
-    cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
-    cluster.write_default_config(
-        extra_params={
-            "shared_preload_libraries": "'pg_tde'",
-            "default_table_access_method": "'tde_heap'",
-            "pg_tde.cipher": f"'{cipher}'",
-        }
-    )
-    cluster.add_hba_entry("local all all trust")
-    cluster.start()
-    tde = TdeManager(cluster)
-    tde.create_extension()
-    tde.add_global_key_provider_file(keyfile=keyfile)
-    tde.set_global_principal_key()
-    return cluster
-
-
-class TestTdeCipher:
-    """
-    ``pg_tde.cipher`` GUC coverage.
-
-    pg_tde supports two AES variants for heap/WAL encryption:
-      - ``aes_128`` (default, 128-bit key)
-      - ``aes_256`` (256-bit key — stronger, slightly slower)
-
-    These tests verify the GUC is honoured, persists across restarts,
-    actually changes the produced ciphertext, and rejects bogus values.
-    """
-
-    def test_default_cipher_is_aes_128(self, tde_primary: PgCluster):
-        """Default cipher must be aes_128 (matches Percona docs)."""
-        assert tde_primary.fetchone("SHOW pg_tde.cipher") == "aes_128"
-
-    def test_aes_256_activation_and_table_usable(self, pg_factory, tmp_path):
-        """``pg_tde.cipher = aes_256`` is accepted; encrypted tables work normally."""
-        cluster = _make_tde_cluster_with_cipher(
-            pg_factory, "cipher_aes256",
-            cipher="aes_256",
-            keyfile=str(tmp_path / "key_aes256.per"),
-        )
-        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
-
-        cluster.execute("CREATE TABLE t_aes256 (id INT, val TEXT)")
-        cluster.execute(
-            "INSERT INTO t_aes256 "
-            "SELECT i, md5(i::text) FROM generate_series(1, 1000) i"
-        )
-        assert cluster.fetchone("SELECT COUNT(*) FROM t_aes256") == "1000"
-        assert TdeManager(cluster).is_table_encrypted("t_aes256")
-
-    def test_aes_256_ciphertext_is_not_plaintext(self, pg_factory, tmp_path):
-        """
-        On-disk heap pages encrypted with aes_256 must not contain the
-        plaintext marker we inserted — catches a regression where the GUC
-        is honoured at SHOW time but encryption is silently bypassed.
-        """
-        cluster = _make_tde_cluster_with_cipher(
-            pg_factory, "cipher_plaintext_check",
-            cipher="aes_256",
-            keyfile=str(tmp_path / "key_pt_check.per"),
-        )
-        marker = "MARKER-aes256-must-not-appear-on-disk-7f4c"
-        cluster.execute("CREATE TABLE pt_check (id INT, payload TEXT)")
-        cluster.execute(f"INSERT INTO pt_check VALUES (1, '{marker}')")
-        cluster.execute("CHECKPOINT")
-
-        relpath = cluster.fetchone("SELECT pg_relation_filepath('pt_check')")
-        heap_bytes = (cluster.data_dir / relpath).read_bytes()
-        assert marker.encode() not in heap_bytes, (
-            "Plaintext marker leaked into the encrypted heap file — "
-            "encryption may be off despite SHOW pg_tde.cipher = aes_256."
-        )
-
-    def test_ciphertext_differs_between_aes_128_and_aes_256(
-        self, pg_factory, tmp_path
-    ):
-        """
-        Same plaintext + same workflow but different ``pg_tde.cipher``
-        values must produce *different* on-disk bytes. Both clusters are
-        sanity-checked via SHOW so we know the GUC isn't being silently
-        ignored.
-        """
-        marker = "compare-cipher-payload-12345-x9"
-
-        cluster128 = _make_tde_cluster_with_cipher(
-            pg_factory, "cipher_compare_128",
-            cipher="aes_128",
-            keyfile=str(tmp_path / "key_compare_128.per"),
-        )
-        cluster256 = _make_tde_cluster_with_cipher(
-            pg_factory, "cipher_compare_256",
-            cipher="aes_256",
-            keyfile=str(tmp_path / "key_compare_256.per"),
-        )
-        assert cluster128.fetchone("SHOW pg_tde.cipher") == "aes_128"
-        assert cluster256.fetchone("SHOW pg_tde.cipher") == "aes_256"
-
-        for c in (cluster128, cluster256):
-            c.execute("CREATE TABLE cmp (id INT PRIMARY KEY, payload TEXT)")
-            c.execute(f"INSERT INTO cmp VALUES (1, '{marker}')")
-            c.execute("CHECKPOINT")
-
-        path128 = cluster128.fetchone("SELECT pg_relation_filepath('cmp')")
-        path256 = cluster256.fetchone("SELECT pg_relation_filepath('cmp')")
-        bytes128 = (cluster128.data_dir / path128).read_bytes()
-        bytes256 = (cluster256.data_dir / path256).read_bytes()
-
-        assert bytes128 != bytes256, (
-            "aes_128 and aes_256 produced byte-identical on-disk content — "
-            "the cipher GUC may not be taking effect on heap pages."
-        )
-        assert marker.encode() not in bytes128, "plaintext leaked under aes_128"
-        assert marker.encode() not in bytes256, "plaintext leaked under aes_256"
-
-    def test_cipher_setting_persists_after_restart(self, pg_factory, tmp_path):
-        """``pg_tde.cipher`` is written to postgresql.conf; it must survive a restart."""
-        cluster = _make_tde_cluster_with_cipher(
-            pg_factory, "cipher_restart",
-            cipher="aes_256",
-            keyfile=str(tmp_path / "key_restart.per"),
-        )
-        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
-        cluster.restart()
-        cluster.wait_ready()
-        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
-        # Data inserted before the restart must still be readable.
-        cluster.execute("CREATE TABLE persist_t (id INT)")
-        cluster.execute("INSERT INTO persist_t SELECT generate_series(1, 100)")
-        cluster.restart()
-        cluster.wait_ready()
-        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
-        assert cluster.fetchone("SELECT COUNT(*) FROM persist_t") == "100"
-
-    def test_invalid_cipher_rejected_at_runtime(self, tde_primary: PgCluster):
-        """An invalid enum value must be rejected by postgres at SET time."""
-        with pytest.raises(RuntimeError):
-            tde_primary.execute("SET pg_tde.cipher = 'aes_999'")
-        # The cluster must still be healthy after the rejected SET.
-        assert tde_primary.fetchone("SHOW pg_tde.cipher") in ("aes_128", "aes_256")
+#
+# The ``TestTdeCipher`` class and its ``_make_tde_cluster_with_cipher``
+# helper have moved to ``tests/test_cipher.py`` so all cipher-related
+# coverage (GUC contract + SMGR cipher-context reuse) lives in one place.
 
 
 # ── WAL segment size × WAL encryption ─────────────────────────────────────────

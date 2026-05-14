@@ -1,47 +1,65 @@
 """
-SMGR cipher context reuse regression coverage (PR #554 / PG-2278).
+pg_tde cipher tests — both layers in one place.
 
-Port of ``postgresql/automation/tests/test_smgr_cipher_context_reuse.sh``.
+This module groups every cipher-related contract pg_tde exposes:
 
-The pg_tde SMGR layer holds OpenSSL ``EVP_CIPHER_CTX`` objects on the read
-and write paths and re-keys them per relation. PR #554 changed the
-context to be **reused** across operations instead of being created fresh
-for each I/O. If that reuse is wrong (e.g. stale key/IV/padding state
-leaks between relations or between read and write paths) it produces
-silently-corrupted ciphertext that only shows up when:
+1. **``pg_tde.cipher`` GUC contract** (``TestTdeCipher``)
 
-  * pages are read off disk (not from shared buffers), or
-  * a partitioned/CTAS/TRUNCATE/REINDEX/CLUSTER cycle re-encrypts onto a
-    fresh relfilenode under the same process, or
-  * the server restarts and re-loads pg_tde / re-creates the contexts.
+   The user-facing knob that picks between ``aes_128`` (default) and
+   ``aes_256``. Verifies the GUC is honoured at SHOW time, that it
+   actually changes ciphertext bytes on disk, that it survives a
+   restart, and that bogus values are rejected.
 
-These tests reproduce that surface area in pytest:
+   Ported from:
+     - ``pg_tde_functions_test.sh`` (cipher portion)
+     - ``wal_encrypt_guc_test.sh`` (cipher portion)
 
-  * ``ctx_heap_a`` / ``ctx_heap_b`` — two encrypted heaps with different
-    relation keys; interleaved scans, UPDATE/DELETE/VACUUM.
-  * Partitioned ``tde_heap`` with three children (different relation
-    keys in one query tree).
-  * TOAST-heavy rows.
-  * CTAS + savepoint rollback.
-  * TRUNCATE + reload (new relfilenode under same context).
-  * REINDEX + CLUSTER (physical reorder).
-  * Index-preferred reads.
-  * Multi-relation interleaved scan via UNION ALL.
-  * Bulk wide-row / narrow-row seqscans with ``shared_buffers = 2MB``
-    so working sets exceed cache and pages must come from SMGR.
-  * Server-side ``COPY FROM STDIN`` into ``tde_heap``.
-  * Restart-then-verify aggregates match before/after.
+2. **SMGR cipher-context reuse contract** (``TestSmgrCipherReuse*``,
+   PR #554 / PG-2278)
 
-The bash script wraps ALL of those into one suite and runs it twice
-(``pg_tde.cipher = aes_128`` and ``aes_256``). We mirror that with
-``@pytest.mark.parametrize("cipher", CIPHERS)`` on the comprehensive
-"full suite" test, plus a few focused regression tests for individual
-code paths.
+   Port of ``postgresql/automation/tests/test_smgr_cipher_context_reuse.sh``.
 
-All tests use a **database-scope** key provider (matching the bash
-script) and ``shared_buffers = 2MB`` so bulk seqscans actually go
-through ``mdread`` → pg_tde SMGR decrypt off the device, not just out
-of cache.
+   The pg_tde SMGR layer holds OpenSSL ``EVP_CIPHER_CTX`` objects on
+   the read and write paths and re-keys them per relation. PR #554
+   changed the context to be **reused** across operations instead of
+   being created fresh for each I/O. If that reuse is wrong (stale
+   key/IV/padding state leaking between relations or between read and
+   write paths) it produces silently-corrupted ciphertext that only
+   shows up when:
+
+     * pages are read off disk (not from shared buffers), or
+     * a partitioned/CTAS/TRUNCATE/REINDEX/CLUSTER cycle re-encrypts
+       onto a fresh relfilenode under the same process, or
+     * the server restarts and re-loads pg_tde / re-creates the
+       contexts.
+
+   These tests reproduce that surface area in pytest:
+
+     * ``ctx_heap_a`` / ``ctx_heap_b`` — two encrypted heaps with
+       different relation keys; interleaved scans, UPDATE/DELETE/VACUUM.
+     * Partitioned ``tde_heap`` with three children (different relation
+       keys in one query tree).
+     * TOAST-heavy rows.
+     * CTAS + savepoint rollback.
+     * TRUNCATE + reload (new relfilenode under same context).
+     * REINDEX + CLUSTER (physical reorder).
+     * Index-preferred reads.
+     * Multi-relation interleaved scan via UNION ALL.
+     * Bulk wide-row / narrow-row seqscans with ``shared_buffers = 2MB``
+       so working sets exceed cache and pages must come from SMGR.
+     * Server-side ``COPY FROM STDIN`` into ``tde_heap``.
+     * Restart-then-verify aggregates match before/after.
+
+   The bash script wraps ALL of those into one suite and runs it twice
+   (``pg_tde.cipher = aes_128`` and ``aes_256``). We mirror that with
+   ``@pytest.mark.parametrize("cipher", CIPHERS)`` on the comprehensive
+   "full suite" test, plus a few focused regression tests for individual
+   code paths.
+
+   All SMGR tests use a **database-scope** key provider (matching the
+   bash script) and ``shared_buffers = 2MB`` so bulk seqscans actually
+   go through ``mdread`` → pg_tde SMGR decrypt off the device, not just
+   out of cache.
 """
 from __future__ import annotations
 
@@ -49,7 +67,7 @@ from pathlib import Path
 
 import pytest
 
-from lib import PgCluster
+from lib import PgCluster, TdeManager
 from lib.cluster import initdb_args_no_data_checksums, postgres_major_version
 
 
@@ -850,3 +868,164 @@ class TestSmgrCipherReuseFocused:
         cluster.execute("RESET enable_bitmapscan")
         # 101 rows, all with length(md5(...)*8) = 32*8 = 256.
         assert row == "101,256"
+
+
+# ── pg_tde.cipher GUC ─────────────────────────────────────────────────────────
+#
+# These tests cover the *user-facing* cipher contract (the GUC), as opposed
+# to the SMGR-context-reuse tests above which cover the *internal* cipher
+# code path. Kept in the same module so anyone hunting for "cipher tests"
+# finds the full surface area in one place.
+
+
+def _make_tde_cluster_with_cipher(
+    pg_factory,
+    name: str,
+    cipher: str,
+    keyfile: str,
+) -> PgCluster:
+    """
+    Build a fresh TDE cluster with ``pg_tde.cipher`` set to *cipher* before
+    any key or table is created. Returns the started cluster with pg_tde
+    set up (extension + file key provider + principal key).
+    """
+    cluster = pg_factory(name)
+    cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
+    cluster.write_default_config(
+        extra_params={
+            "shared_preload_libraries": "'pg_tde'",
+            "default_table_access_method": "'tde_heap'",
+            "pg_tde.cipher": f"'{cipher}'",
+        }
+    )
+    cluster.add_hba_entry("local all all trust")
+    cluster.start()
+    tde = TdeManager(cluster)
+    tde.create_extension()
+    tde.add_global_key_provider_file(keyfile=keyfile)
+    tde.set_global_principal_key()
+    return cluster
+
+
+class TestTdeCipher:
+    """
+    ``pg_tde.cipher`` GUC coverage.
+
+    pg_tde supports two AES variants for heap/WAL encryption:
+      - ``aes_128`` (default, 128-bit key)
+      - ``aes_256`` (256-bit key — stronger, slightly slower)
+
+    These tests verify the GUC is honoured, persists across restarts,
+    actually changes the produced ciphertext, and rejects bogus values.
+    """
+
+    def test_default_cipher_is_aes_128(self, tde_primary: PgCluster):
+        """Default cipher must be aes_128 (matches Percona docs)."""
+        assert tde_primary.fetchone("SHOW pg_tde.cipher") == "aes_128"
+
+    def test_aes_256_activation_and_table_usable(self, pg_factory, tmp_path):
+        """``pg_tde.cipher = aes_256`` is accepted; encrypted tables work normally."""
+        cluster = _make_tde_cluster_with_cipher(
+            pg_factory, "cipher_aes256",
+            cipher="aes_256",
+            keyfile=str(tmp_path / "key_aes256.per"),
+        )
+        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
+
+        cluster.execute("CREATE TABLE t_aes256 (id INT, val TEXT)")
+        cluster.execute(
+            "INSERT INTO t_aes256 "
+            "SELECT i, md5(i::text) FROM generate_series(1, 1000) i"
+        )
+        assert cluster.fetchone("SELECT COUNT(*) FROM t_aes256") == "1000"
+        assert TdeManager(cluster).is_table_encrypted("t_aes256")
+
+    def test_aes_256_ciphertext_is_not_plaintext(self, pg_factory, tmp_path):
+        """
+        On-disk heap pages encrypted with aes_256 must not contain the
+        plaintext marker we inserted — catches a regression where the GUC
+        is honoured at SHOW time but encryption is silently bypassed.
+        """
+        cluster = _make_tde_cluster_with_cipher(
+            pg_factory, "cipher_plaintext_check",
+            cipher="aes_256",
+            keyfile=str(tmp_path / "key_pt_check.per"),
+        )
+        marker = "MARKER-aes256-must-not-appear-on-disk-7f4c"
+        cluster.execute("CREATE TABLE pt_check (id INT, payload TEXT)")
+        cluster.execute(f"INSERT INTO pt_check VALUES (1, '{marker}')")
+        cluster.execute("CHECKPOINT")
+
+        relpath = cluster.fetchone("SELECT pg_relation_filepath('pt_check')")
+        heap_bytes = (cluster.data_dir / relpath).read_bytes()
+        assert marker.encode() not in heap_bytes, (
+            "Plaintext marker leaked into the encrypted heap file — "
+            "encryption may be off despite SHOW pg_tde.cipher = aes_256."
+        )
+
+    def test_ciphertext_differs_between_aes_128_and_aes_256(
+        self, pg_factory, tmp_path
+    ):
+        """
+        Same plaintext + same workflow but different ``pg_tde.cipher``
+        values must produce *different* on-disk bytes. Both clusters are
+        sanity-checked via SHOW so we know the GUC isn't being silently
+        ignored.
+        """
+        marker = "compare-cipher-payload-12345-x9"
+
+        cluster128 = _make_tde_cluster_with_cipher(
+            pg_factory, "cipher_compare_128",
+            cipher="aes_128",
+            keyfile=str(tmp_path / "key_compare_128.per"),
+        )
+        cluster256 = _make_tde_cluster_with_cipher(
+            pg_factory, "cipher_compare_256",
+            cipher="aes_256",
+            keyfile=str(tmp_path / "key_compare_256.per"),
+        )
+        assert cluster128.fetchone("SHOW pg_tde.cipher") == "aes_128"
+        assert cluster256.fetchone("SHOW pg_tde.cipher") == "aes_256"
+
+        for c in (cluster128, cluster256):
+            c.execute("CREATE TABLE cmp (id INT PRIMARY KEY, payload TEXT)")
+            c.execute(f"INSERT INTO cmp VALUES (1, '{marker}')")
+            c.execute("CHECKPOINT")
+
+        path128 = cluster128.fetchone("SELECT pg_relation_filepath('cmp')")
+        path256 = cluster256.fetchone("SELECT pg_relation_filepath('cmp')")
+        bytes128 = (cluster128.data_dir / path128).read_bytes()
+        bytes256 = (cluster256.data_dir / path256).read_bytes()
+
+        assert bytes128 != bytes256, (
+            "aes_128 and aes_256 produced byte-identical on-disk content — "
+            "the cipher GUC may not be taking effect on heap pages."
+        )
+        assert marker.encode() not in bytes128, "plaintext leaked under aes_128"
+        assert marker.encode() not in bytes256, "plaintext leaked under aes_256"
+
+    def test_cipher_setting_persists_after_restart(self, pg_factory, tmp_path):
+        """``pg_tde.cipher`` is written to postgresql.conf; it must survive a restart."""
+        cluster = _make_tde_cluster_with_cipher(
+            pg_factory, "cipher_restart",
+            cipher="aes_256",
+            keyfile=str(tmp_path / "key_restart.per"),
+        )
+        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
+        cluster.restart()
+        cluster.wait_ready()
+        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
+        # Data inserted before the restart must still be readable.
+        cluster.execute("CREATE TABLE persist_t (id INT)")
+        cluster.execute("INSERT INTO persist_t SELECT generate_series(1, 100)")
+        cluster.restart()
+        cluster.wait_ready()
+        assert cluster.fetchone("SHOW pg_tde.cipher") == "aes_256"
+        assert cluster.fetchone("SELECT COUNT(*) FROM persist_t") == "100"
+
+    def test_invalid_cipher_rejected_at_runtime(self, tde_primary: PgCluster):
+        """An invalid enum value must be rejected by postgres at SET time."""
+        with pytest.raises(RuntimeError):
+            tde_primary.execute("SET pg_tde.cipher = 'aes_999'")
+        # The cluster must still be healthy after the rejected SET.
+        assert tde_primary.fetchone("SHOW pg_tde.cipher") in ("aes_128", "aes_256")

@@ -22,7 +22,8 @@
 |---|---|---|---|
 | 1 | `test_bug_reproduction.py` | 6 | Bug-ticket regressions (PG-1805 / PG-1806) |
 | 2 | `test_change_key_provider.py` | 16 | `pg_tde_change_key_provider` CLI (offline) |
-| 3 | `test_encryption.py` | 100 | Core pg_tde encryption, GUCs, key providers, SQL API |
+| 2a | `test_cipher.py` | 18 | All cipher coverage: `pg_tde.cipher` GUC (6) + SMGR cipher-context reuse (12, PR #554 / PG-2278) |
+| 3 | `test_encryption.py` | 82 | Core pg_tde encryption, GUCs, key providers, SQL API (cipher tests have moved to `test_cipher.py`) |
 | 4 | `test_partitioning.py` | 21 | Partitioned tables × tde_heap |
 | 5 | `test_pg_basebackup.py` | 6 | `pg_basebackup` / `pg_tde_basebackup` |
 | 6 | `test_pgbackrest.py` | 23 | pgBackRest integration |
@@ -496,7 +497,9 @@ replication.
 
 ---
 
-## 3. `test_encryption.py` (100 tests)
+## 3. `test_encryption.py` (82 tests)
+
+> **Note:** the 6 `TestTdeCipher` tests previously in this file (`pg_tde.cipher` GUC contract) were moved into `tests/test_cipher.py` so all cipher coverage (GUC + SMGR-context reuse) lives in one module. The deep entries below for section 3.8 are kept as the canonical description; the tests themselves now run from `test_cipher.py`.
 
 The biggest module — covers core pg_tde encryption, GUCs, key
 providers, and the SQL API. Organized as 15 test classes.
@@ -572,6 +575,8 @@ copy across tablespaces can't decrypt).
 | 3.7.3 | `test_concurrent_key_rotation_during_dml` | Rotate the principal key while DML is in flight; no row loss / corruption. |
 
 ### 3.8 `TestTdeCipher` (6 tests) — `pg_tde.cipher` GUC
+
+> **Moved to `tests/test_cipher.py`** alongside the SMGR cipher-context-reuse tests (PR #554 / PG-2278). The class and the `_make_tde_cluster_with_cipher` helper now live there; the 6 tests below are unchanged.
 
 | # | Test | Purpose |
 |---|---|---|
