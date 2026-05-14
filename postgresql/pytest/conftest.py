@@ -97,6 +97,18 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=os.environ.get("OLD_INSTALL_DIR", ""),
         help="Older PG installation used as the upgrade source",
     )
+    parser.addoption(
+        "--upgrade-data-dir",
+        default=os.environ.get("PG_TDE_UPGRADE_DATA_DIR", ""),
+        help=(
+            "Persistent base directory for staged pg_tde minor-upgrade "
+            "tests. Setup run writes PGDATA + state.json under this "
+            "directory using --install-dir = OLD; the operator performs "
+            "the package upgrade externally; the Verify run reads the "
+            "same directory using --install-dir = NEW. CLI flag overrides "
+            "the PG_TDE_UPGRADE_DATA_DIR env var."
+        ),
+    )
 
 
 # ── session fixtures ─────────────────────────────────────────────────────────
@@ -162,6 +174,22 @@ def kmip_server_ca(request) -> str:
 @pytest.fixture(scope="session")
 def old_install_dir(request) -> Path:
     v = request.config.getoption("--old-install-dir")
+    return Path(v) if v else None
+
+
+@pytest.fixture(scope="session")
+def upgrade_data_dir(request):
+    """Persistent base directory for staged pg_tde minor-upgrade tests.
+
+    The Setup run prepares ``<upgrade_data_dir>/single/`` (or
+    ``<upgrade_data_dir>/ha/``); the operator performs the package
+    upgrade externally; the Verify run reads the same directory back.
+
+    Returns ``None`` if neither the ``--upgrade-data-dir`` CLI flag
+    nor the ``PG_TDE_UPGRADE_DATA_DIR`` env var is set; staged tests
+    skip in that case.
+    """
+    v = request.config.getoption("--upgrade-data-dir")
     return Path(v) if v else None
 
 

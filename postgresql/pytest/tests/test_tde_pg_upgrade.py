@@ -31,12 +31,18 @@ All tests are skipped unless --old-install-dir is provided.
 """
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
 import pytest
 
-from lib import PgCluster, TdeManager
+from lib import (
+    PgCluster,
+    TdeManager,
+    archive_restore_conf_values,
+    restore_conf_line_raw,
+)
 from lib.cluster import (
     initdb_args_no_data_checksums,
     initdb_extra_align_data_checksums_with_old,
@@ -1002,6 +1008,264 @@ class TestUpgradeWalEncryptionPaths:
             check_only=True,
         )
         assert result.returncode == 0, f"pg_upgrade --check with WAL enc on failed:\n{result.stderr}"
+
+
+class TestPgTdeUpgradePitrWithEncryptedWal:
+    """
+    PITR-after-pg_tde_upgrade with encrypted WAL.
+
+    Port of the bash automation script ``pg_tde_upgrade_pitr_test.sh``
+    (PG-2358 family) — verifies that the documented PITR procedure
+    survives a cross-major ``pg_tde_upgrade`` and that the
+    ``pg_tde_archive_decrypt`` / ``pg_tde_restore_encrypt`` WAL
+    wrappers correctly bridge the upgrade boundary.
+
+    End-to-end flow
+    ───────────────
+      1. OLD cluster (e.g. PG17) with pg_tde extension + a
+         ``pg_tde_archive_decrypt``-wrapped ``archive_command``. WAL
+         encryption itself is **off** in the old cluster — the wrapper
+         transparently passes plaintext WAL through, which is the
+         documented behaviour we rely on for crossings like this.
+      2. Create encrypted ``tde_heap`` table, INSERT 3 rows, stop.
+      3. ``pg_tde_upgrade`` to NEW major (e.g. PG18). Encrypted
+         ``tde_heap`` survives the upgrade (PG-2240 contract).
+      4. On NEW: re-arm ``archive_command`` with the NEW binary's
+         wrapper, start, **enable** ``pg_tde.wal_encrypt = on``,
+         restart. From here on, archived WAL is encrypted.
+      5. Take an online base backup with ``pg_tde_basebackup -E``.
+         ``TdeManager.tde_basebackup`` handles ``-E`` + pre-seeding
+         the target's ``pg_tde/`` directory (so the streamed WAL can
+         be encrypted on the way in).
+      6. INSERT 3 more rows (4,5,6) → capture ``T1 = now()``
+         (recovery target) → INSERT 2 more rows (7,8) → force a WAL
+         segment switch + CHECKPOINT + wait for the segment carrying
+         the post-``T1`` INSERT to land in the archive.
+      7. Stop the cluster.
+      8. Re-attach the base backup directory as a fresh cluster
+         configured for PITR:
+             ``pg_tde.wal_encrypt = on``
+             ``recovery_target_time = T1``
+             ``recovery_target_action = promote``
+             ``restore_command = pg_tde_restore_encrypt …``
+         Start → recovery replays archived WAL up to ``T1`` and
+         promotes the cluster.
+      9. Validate: rows 1..6 are present, rows 7..8 are NOT (they
+         were inserted AFTER ``T1``).
+
+    Skips cleanly when ``--old-install-dir`` is not provided.
+    """
+
+    def test_pitr_after_pg_tde_upgrade_with_encrypted_wal(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """One-shot end-to-end test of the bash script's flow.
+
+        Folded into a single test method because each phase depends
+        strictly on the previous one (upgrade requires populated old
+        cluster; base backup requires upgraded+WAL-encrypted new
+        cluster; PITR requires both archive segments and a viable
+        base backup). Splitting would either duplicate the heavy
+        ``pg_tde_upgrade`` step in every test or couple tests via
+        order, both worse than a single self-contained method.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "upgrade_pitr.per")
+        archive_dir = tmp_path / "archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        # ── 1. OLD cluster with pg_tde + wrapped archive_command ──────
+        old_arch_cmd, _ = archive_restore_conf_values(
+            old_install_dir, archive_dir, use_tde_wrappers=True
+        )
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params={
+                **_tde_params(keyfile),
+                "wal_level": "replica",
+                "archive_mode": "on",
+                "archive_command": old_arch_cmd,
+            },
+        )
+        old.start()
+        tde_old = TdeManager(old)
+        tde_old.create_extension()
+        tde_old.add_global_key_provider_file(keyfile=keyfile)
+        # set_global_principal_key sets BOTH the server (WAL) key and the
+        # database (table) key — matches the bash script which calls both
+        # pg_tde_set_key_using_global_key_provider and
+        # pg_tde_set_server_key_using_global_key_provider.
+        tde_old.set_global_principal_key(key_name="global-key")
+        old.execute(
+            "CREATE TABLE test_enc_pitr (id INT PRIMARY KEY) USING tde_heap; "
+            "INSERT INTO test_enc_pitr VALUES (1),(2),(3);"
+        )
+        assert tde_old.is_table_encrypted("test_enc_pitr"), (
+            "test_enc_pitr is not encrypted on the OLD cluster — setup wrong"
+        )
+        # Force a switch so the OLD cluster's WAL gets through the
+        # wrapper at least once before we tear it down.
+        old.execute("SELECT pg_switch_wal()")
+        old.stop()
+
+        # ── 2. UPGRADE: pg_tde_upgrade OLD → NEW major ────────────────
+        new_cluster, result = _upgrade(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, (
+            f"pg_tde_upgrade failed:\nstdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+
+        # ── 3. NEW cluster: archive_command with NEW binary wrapper ───
+        new_arch_cmd, _ = archive_restore_conf_values(
+            install_dir, archive_dir, use_tde_wrappers=True
+        )
+        new_cluster.configure(
+            {
+                "wal_level": "replica",
+                "archive_mode": "on",
+                "archive_command": new_arch_cmd,
+            }
+        )
+        new_cluster.start()
+        new_cluster.wait_ready(timeout=60)
+        tde_new = TdeManager(new_cluster)
+
+        # The upgraded cluster still has all 3 rows — sanity check before
+        # enabling WAL encryption (catches PG-2240 regressions here, not
+        # in the post-PITR assertion at the end).
+        assert new_cluster.fetchone(
+            "SELECT COUNT(*) FROM test_enc_pitr"
+        ) == "3", "Upgraded cluster lost pre-upgrade rows"
+
+        # ── 4. Enable WAL encryption on the upgraded cluster ──────────
+        tde_new.enable_wal_encryption()
+        assert tde_new.is_wal_encrypted(), (
+            "WAL encryption did not engage on the upgraded cluster — the "
+            "PITR replay will not exercise the pg_tde_restore_encrypt "
+            "wrapper."
+        )
+
+        # ── 5. Online base backup with pg_tde_basebackup -E ───────────
+        backup_dir = tmp_path / "backup_pitr"
+        # tde_basebackup handles -E + pre-seeds pg_tde/ in the target
+        # (equivalent to the bash script's manual `cp -R pg_tde` + -E).
+        tde_new.tde_basebackup(
+            str(backup_dir),
+            encrypt_wal=True,
+            extra_args=["-X", "stream"],
+        )
+        # tde_basebackup uses `-R` which writes standby.signal. For PITR
+        # we want recovery.signal only — drop the standby trigger so the
+        # restored cluster doesn't try to attach as a standby.
+        (backup_dir / "standby.signal").unlink(missing_ok=True)
+
+        # ── 6. Generate WAL spanning T1 ───────────────────────────────
+        # Pre-T1 INSERTs (must survive PITR).
+        new_cluster.execute("INSERT INTO test_enc_pitr VALUES (4),(5),(6);")
+        # Sleep so T1 lies strictly between the commit of (4,5,6) and the
+        # commit of (7,8). Without this gap the recovery target could
+        # land either side of either commit non-deterministically.
+        time.sleep(2)
+        recovery_target_time = (
+            new_cluster.fetchone("SELECT now()") or ""
+        ).strip()
+        assert recovery_target_time, "SELECT now() returned empty"
+        time.sleep(2)
+        # Post-T1 INSERTs (must NOT survive PITR).
+        new_cluster.execute("INSERT INTO test_enc_pitr VALUES (7),(8);")
+
+        # Force the segment carrying (7,8) into the archive — otherwise
+        # recovery can finish before reaching any post-T1 record and PG
+        # raises "recovery ended before configured recovery target was
+        # reached".
+        closed = (
+            new_cluster.fetchone(
+                "SELECT pg_walfile_name(pg_switch_wal())"
+            ) or ""
+        ).strip()
+        assert closed, "pg_switch_wal() did not return a segment name"
+        new_cluster.execute("CHECKPOINT")
+
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            if (archive_dir / closed).exists():
+                break
+            time.sleep(0.5)
+        else:
+            raise AssertionError(
+                f"WAL segment {closed!r} was not archived within 30s; "
+                f"archive dir contains: "
+                f"{sorted(p.name for p in archive_dir.iterdir())}"
+            )
+
+        new_cluster.stop()
+
+        # ── 7-8. PITR: re-attach base backup with recovery config ─────
+        restore_port = allocate_port()
+        restored = PgCluster(
+            backup_dir, restore_port, install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        # write_default_config rewrites postgresql.conf and re-adds
+        # include_if_exists=postgresql.auto.conf, so the recovery
+        # parameters we write next will be picked up.
+        restored.write_default_config(extra_params=_tde_params(keyfile))
+        # Overwrite postgresql.auto.conf rather than append: the basebackup
+        # carried over ALTER SYSTEM lines (port, archive_command pointing
+        # at the now-stopped primary, etc.) which would otherwise clash.
+        auto_conf = backup_dir / "postgresql.auto.conf"
+        with auto_conf.open("w") as f:
+            f.write("pg_tde.wal_encrypt = 'on'\n")
+            f.write(f"recovery_target_time = '{recovery_target_time}'\n")
+            f.write("recovery_target_action = 'promote'\n")
+            f.write(
+                restore_conf_line_raw(
+                    archive_dir, install_dir, use_tde_wrappers=True
+                )
+            )
+        restored.add_hba_entry("local all all trust")
+        (backup_dir / "recovery.signal").touch()
+
+        restored.start()
+        restored.wait_ready(timeout=120)
+
+        # ── 9. Validate: exactly rows 1..6, NOT 7..8 ──────────────────
+        try:
+            count = restored.fetchone("SELECT COUNT(*) FROM test_enc_pitr")
+            assert count == "6", (
+                f"PITR landed at the wrong target — got {count} rows; "
+                f"expected 6 (rows 1..6 inserted before T1)."
+            )
+            ids = restored.fetchone(
+                "SELECT string_agg(id::text, ',' ORDER BY id) "
+                "FROM test_enc_pitr"
+            )
+            assert ids == "1,2,3,4,5,6", (
+                f"Recovered row ids: {ids!r}; expected '1,2,3,4,5,6'. "
+                f"This shape catches PITR landing too early (some 4/5/6 "
+                f"missing) or too late (7 or 8 present)."
+            )
+        finally:
+            try:
+                restored.stop(check=False)
+            except Exception:
+                pass
+
 
 class TestUpgradeEnforceEncryption:
     """
