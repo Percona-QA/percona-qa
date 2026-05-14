@@ -125,7 +125,7 @@ from lib import (
     restore_conf_line_raw,
 )
 from lib.backup import BackupManager, pgbackrest_installed
-from lib.cluster import initdb_args_no_data_checksums
+from lib.cluster import initdb_args_no_data_checksums, postgres_major_version
 
 pytestmark = [pytest.mark.upgrade, pytest.mark.encryption, pytest.mark.slow]
 
