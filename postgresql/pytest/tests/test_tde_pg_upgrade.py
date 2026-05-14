@@ -1169,6 +1169,12 @@ class TestPgTdeUpgradePitrWithEncryptedWal:
             encrypt_wal=True,
             extra_args=["-X", "stream"],
         )
+        # PG refuses to start with "data directory has invalid
+        # permissions ... should be u=rwx (0700)" when the basebackup
+        # target was created by pg_basebackup under the test runner's
+        # default umask (often 0022 → 0755). The bash original does
+        # `chmod 700 $RUN_DIR/backup_pitr` for the same reason.
+        backup_dir.chmod(0o700)
         # tde_basebackup uses `-R` which writes standby.signal. For PITR
         # we want recovery.signal only — drop the standby trigger so the
         # restored cluster doesn't try to attach as a standby.

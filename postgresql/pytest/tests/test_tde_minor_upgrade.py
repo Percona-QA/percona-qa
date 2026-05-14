@@ -3,81 +3,81 @@ pg_tde extension minor-version upgrade tests.
 
 Scope
 ─────
-"Minor upgrade" here means swapping the **pg_tde extension** from one
-minor release to the next on the same PostgreSQL major version,
-e.g. pg_tde **2.1.2 → 2.2.0**. The PostgreSQL binary major version is
-unchanged; the data dir is reused as-is; only the pg_tde ``.so`` (and
-its bundled SQL upgrade script + control file) change.
+"Minor upgrade" here means an operator-driven, **in-place** package
+upgrade of the pg_tde extension on a running PostgreSQL major
+version — e.g. pg_tde **2.1.2 → 2.2.0** on PG 18. In production this
+is just ``yum upgrade percona-postgresql-tde-extension`` (or the apt
+equivalent): the package replaces the installed pg_tde ``.so``,
+``pg_tde--*.sql`` migration scripts and ``pg_tde.control`` *in place*
+at the existing install prefix; PGDATA is untouched; PostgreSQL major
+is unchanged. There is **no "old install dir" vs "new install dir"** —
+``--install-dir`` is one and the same before and after the upgrade.
+
+(Cross-major upgrades — e.g. PG 17 → PG 18 — are a different procedure
+and live in ``tests/test_tde_pg_upgrade.py`` / ``tests/test_upgrade.py``.)
 
 The file has two layers:
 
-1. **Procedural-safety tests (36 tests, single binary)** —
-   ``TestTdeMinorUpgradePreConditions`` / ``TestAlterExtensionUpdate`` /
+1. **Procedural-safety tests (single binary, single pytest invocation)**
+   — ``TestTdeMinorUpgradePreConditions`` / ``TestAlterExtensionUpdate`` /
    ``TestRollingRestart`` / ``TestWalArchivingContinuity`` /
    ``TestPostUpgradeState``.
 
-   These run against a single ``--install-dir`` and exercise the
-   procedure independent of whether a real binary swap occurred:
-   ``ALTER EXTENSION pg_tde UPDATE`` is idempotent, a rolling restart
-   preserves WAL encryption and key providers, archiving stays
-   continuous through the restart window, etc. These tests catch
-   procedural regressions (e.g. ALTER EXTENSION dropping providers)
-   without needing two pg_tde builds locally.
+   These run against a single ``--install-dir`` and validate the
+   procedural invariants the minor upgrade must preserve:
 
-2. **Auto-swap tests (single pytest invocation, two install dirs)** —
-   ``TestPgTdeMinorBinaryUpgrade`` (single-node, ≈9 tests) and
-   ``TestPgTdeMinorBinaryUpgradeRollingHA`` (HA, ≈3 tests). These
-   auto-skip unless ``--old-install-dir`` is provided.
+   - ``ALTER EXTENSION pg_tde UPDATE`` is idempotent (no row churn
+     in ``pg_extension`` after the migration script runs).
+   - A rolling restart of a Patroni-style HA pair preserves WAL
+     encryption, principal keys and key providers on both nodes.
+   - WAL archiving stays continuous across a restart (no gaps in
+     ``pg_stat_archiver``, ``archive_command`` keeps decrypting the
+     replayed segments).
+   - The post-upgrade catalog state — extversion, ``pg_tde.cipher``,
+     ``shared_preload_libraries``, providers list, principal key name,
+     ``pg_tde_is_encrypted`` results — matches the pre-upgrade snapshot.
 
-   Mechanic when ``--old-install-dir`` is set:
+   These tests are deliberately *binary-agnostic*: they exercise the
+   procedure (the surfaces an in-place package upgrade can break)
+   without needing two pg_tde builds installed locally.
 
-       # 1. initdb under --old-install-dir (e.g. PG+pg_tde 2.1.2)
-       old = PgCluster(data_dir, port, old_install_dir, ...)
-       old.initdb(); old.write_default_config(...); old.start()
-       TdeManager(old).create_extension()       # extversion = '2.1'
-       # populate encrypted state...
-       old.stop()
-
-       # 2. SAME data dir, new binaries (--install-dir = pg_tde 2.2.0)
-       new = PgCluster(old.data_dir, port, install_dir, ...)
-       new.start()                              # newer .so loads
-       new.execute("ALTER EXTENSION pg_tde UPDATE")   # 2.1 → 2.2
-       # verify: extversion bumped, data readable, providers intact,
-       #         WAL encryption still active, new writes work...
-
-3. **Staged Setup / Verify tests (two pytest invocations around an
-   operator-driven package upgrade)** —
+2. **Staged Setup → operator upgrade → Verify (two pytest invocations,
+   same install dir, persistent PGDATA)** —
    ``TestPgTdeMinorUpgradeSetup`` / ``TestPgTdeMinorUpgradeVerify``
    (single-node) and ``TestPgTdeMinorUpgradeSetupHA`` /
    ``TestPgTdeMinorUpgradeVerifyHA`` (HA). These auto-skip unless
    ``--upgrade-data-dir`` (or ``PG_TDE_UPGRADE_DATA_DIR`` env var) is
-   provided.
+   provided so the data directory survives across the two runs.
 
-   Workflow — pytest *never* swaps binaries itself:
+   Workflow — pytest never touches the installed package itself; the
+   real package swap happens *between* the two pytest invocations,
+   exactly as it does in production:
 
-       # Run 1: install OLD pg_tde, prepare persistent state
+       # Run 1 (OLD pg_tde already installed at --install-dir):
        pytest tests/test_tde_minor_upgrade.py \\
-           --install-dir=/opt/percona/pg18-with-pg_tde-2.1.2 \\
+           --install-dir=/usr/pgsql-18 \\
            --upgrade-data-dir=/var/lib/pg_tde_upgrade_test \\
            -k Setup
 
-       # Operator step: yum/apt upgrade the pg_tde package (2.1.2 → 2.2.0)
+       # Operator step (outside pytest, same install prefix):
+       sudo yum upgrade -y percona-postgresql-tde-extension
+       #   (or: sudo apt install --only-upgrade percona-pg-tde-18)
 
-       # Run 2: validate persistent state under NEW pg_tde
+       # Run 2 (NEW pg_tde now installed at the SAME --install-dir):
        pytest tests/test_tde_minor_upgrade.py \\
-           --install-dir=/opt/percona/pg18-with-pg_tde-2.2.0 \\
+           --install-dir=/usr/pgsql-18 \\
            --upgrade-data-dir=/var/lib/pg_tde_upgrade_test \\
            -k Verify
 
-   A small ``upgrade_state.json`` in the persistent directory captures
+   A small ``upgrade_state.json`` in ``--upgrade-data-dir`` captures
    the pre-upgrade invariants (extversion, ``pg_tde_version()``,
    provider count, principal key name, row count, per-row digest) so
    the Verify run asserts exact preservation across the operator's
    real package upgrade.
 
 Common cluster shape used throughout the file:
-  - PostgreSQL major version: whatever ``--install-dir`` (and, when
-    set, ``--old-install-dir``) provide; same major across both.
+  - PostgreSQL major version: whatever ``--install-dir`` provides;
+    same major before and after the upgrade.
   - WAL encryption enabled (``pg_tde.wal_encrypt = on``)
   - File-based key provider
   - pgBackRest for backups (with pg_tde WAL wrappers where applicable)
@@ -91,18 +91,16 @@ Phase 1  ALTER EXTENSION safety     TestAlterExtensionUpdate
 Phase 2  Rolling restart            TestRollingRestart
 Phase 3  WAL archiving              TestWalArchivingContinuity
 Phase 4  Post-upgrade state         TestPostUpgradeState
-Phase 5  Auto binary swap           TestPgTdeMinorBinaryUpgrade
-Phase 6  Auto HA rolling swap       TestPgTdeMinorBinaryUpgradeRollingHA
-Phase 7  Staged Setup / Verify      TestPgTdeMinorUpgradeSetup
+Phase 5  Staged Setup / Verify      TestPgTdeMinorUpgradeSetup
                                     TestPgTdeMinorUpgradeVerify
-Phase 8  Staged HA Setup / Verify   TestPgTdeMinorUpgradeSetupHA
+Phase 6  Staged HA Setup / Verify   TestPgTdeMinorUpgradeSetupHA
                                     TestPgTdeMinorUpgradeVerifyHA
 
 Answers embedded in docstrings
 ───────────────────────────────
 Q1  ALTER EXTENSION required?        → TestAlterExtensionUpdate
-Q2  Breaking changes / migrations?   → TestAlterExtensionUpdate / TestPgTdeMinorBinaryUpgrade
-Q3  Install order vs restart order?  → TestRollingRestart / TestPgTdeMinorBinaryUpgradeRollingHA
+Q2  Breaking changes / migrations?   → TestAlterExtensionUpdate / TestPgTdeMinorUpgradeVerify
+Q3  Install order vs restart order?  → TestRollingRestart / TestPgTdeMinorUpgradeVerifyHA
 Q4  WAL encryption precautions?      → TestWalArchivingContinuity
 Q5  Post-upgrade backup needed?      → TestPostUpgradeState
 """
@@ -125,7 +123,7 @@ from lib import (
     restore_conf_line_raw,
 )
 from lib.backup import BackupManager, pgbackrest_installed
-from lib.cluster import initdb_args_no_data_checksums, postgres_major_version
+from lib.cluster import initdb_args_no_data_checksums
 
 pytestmark = [pytest.mark.upgrade, pytest.mark.encryption, pytest.mark.slow]
 
@@ -1339,801 +1337,33 @@ class TestPostUpgradeState:
             _teardown_pair(nodeA, nodeB)
 
 
-# ── Phase 5: real pg_tde binary swap (single-node) ────────────────────────────
-
-
-def _skip_if_no_old_install(old_install_dir: Optional[Path]) -> None:
-    """Skip cleanly when --old-install-dir was not provided on the command line.
-
-    The binary-swap tests need TWO distinct pg_tde builds; if the test
-    runner only has one, there is nothing to verify and the right
-    behaviour is a skip (not a failure).
-    """
-    if old_install_dir is None:
-        pytest.skip(
-            "--old-install-dir not provided; cannot exercise a real "
-            "pg_tde binary swap (e.g. 2.1.2 → 2.2.0)."
-        )
-
-
-def _swap_install_dir(node: PgCluster, new_install_dir: Path) -> PgCluster:
-    """Return a fresh ``PgCluster`` pointing at the same data dir but using
-    binaries from ``new_install_dir``.
-
-    The caller MUST have stopped ``node`` first. Port / socket_dir /
-    io_method are carried over so the swapped cluster can be reached
-    by the same connection parameters. The new cluster is returned
-    *not yet started* — the caller must call ``.start()`` and
-    ``.wait_ready()``.
-    """
-    return PgCluster(
-        node.data_dir,
-        node.port,
-        new_install_dir,
-        socket_dir=node.socket_dir,
-        io_method=node.io_method,
-    )
-
-
-def _build_single_node_old(
-    tmp_path: Path,
-    old_install_dir: Path,
-    io_method: str,
-    *,
-    subdir: str = "nodeA",
-    wal_encrypt: bool = True,
-) -> PgCluster:
-    """Create and start a single-node TDE cluster on the OLD pg_tde binary.
-
-    Mirrors the relevant subset of ``_build_ha_cluster``'s nodeA setup
-    but takes the install dir explicitly so the caller can later swap
-    binaries.
-    """
-    node = PgCluster(
-        tmp_path / subdir,
-        allocate_port(),
-        old_install_dir,
-        socket_dir=tmp_path,
-        io_method=io_method,
-    )
-    node.initdb(extra_args=initdb_args_no_data_checksums(old_install_dir))
-    node.write_default_config(extra_params=dict(_TDE_PARAMS))
-    node.add_hba_entry("local all all trust")
-    node.add_hba_entry("local replication all trust")
-    node.add_hba_entry("host  all all 127.0.0.1/32 trust")
-    node.add_hba_entry("host  replication all 127.0.0.1/32 trust")
-    node.start()
-
-    tde = TdeManager(node)
-    tde.create_extension()
-    tde.add_global_key_provider_file(keyfile=_KEYFILE)
-    tde.set_global_principal_key()
-    if wal_encrypt:
-        tde.enable_wal_encryption()
-        node.restart()
-    return node
-
-
-def _cleanup_swap_candidates(*candidates: Optional[PgCluster]) -> None:
-    """Stop and remove the data dir of every non-None cluster.
-
-    Used by binary-swap tests' ``finally`` blocks. Both the pre-swap
-    ``node`` and the post-swap ``swapped`` reference the SAME data
-    dir, so this function is robust to the failure mode where the
-    swap never completed: only one of them is started, the other is
-    None or already stopped. Errors are swallowed — the goal is best-
-    effort cleanup, not to mask the test-body failure that triggered
-    the ``finally`` in the first place.
-    """
-    for n in candidates:
-        if n is None:
-            continue
-        try:
-            if n.is_ready():
-                n.stop(check=False)
-        except Exception:
-            pass
-    # The data dir is shared between candidates; remove once based on
-    # whichever cluster object still has the path attribute.
-    for n in candidates:
-        if n is None:
-            continue
-        try:
-            shutil.rmtree(n.data_dir, ignore_errors=True)
-        except Exception:
-            pass
-        break
-
-
-def _binary_swap_node(node: PgCluster, new_install_dir: Path) -> PgCluster:
-    """Stop *node*, return a new ``PgCluster`` started against
-    ``new_install_dir`` using the same data dir.
-
-    This is the central primitive of every binary-swap test: clean
-    stop on the old binaries → new binaries pointed at the existing
-    PGDATA → start. After this returns, the caller still needs to
-    run ``ALTER EXTENSION pg_tde UPDATE`` if the catalog
-    ``default_version`` moved between builds.
-    """
-    node.stop()
-    swapped = _swap_install_dir(node, new_install_dir)
-    swapped.start()
-    swapped.wait_ready(timeout=90)
-    return swapped
-
-
-def _read_extversion(node: PgCluster) -> str:
-    return node.fetchone(
-        "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
-    ) or ""
-
-
-def _read_binary_version(node: PgCluster) -> str:
-    raw = node.fetchone("SELECT pg_tde_version()") or ""
-    # Outputs look like 'pg_tde 2.1.2' OR '2.1.2'; normalise to the bare X.Y.Z.
-    return raw.strip().split()[-1] if raw.strip() else ""
-
-
-class TestPgTdeMinorBinaryUpgrade:
-    """
-    Real pg_tde extension minor upgrade — e.g. 2.1.2 → 2.2.0.
-
-    Each test runs the full procedure end-to-end:
-
-      1. initdb + configure pg_tde under ``--old-install-dir`` (the
-         older pg_tde minor build, e.g. ships with pg_tde 2.1.2).
-      2. Populate encrypted state: file key provider, principal key,
-         WAL encryption on, ``tde_heap`` table with data, optionally
-         a second database with the extension.
-      3. Clean stop.
-      4. Same data dir restarted against ``--install-dir`` (the newer
-         pg_tde minor build, e.g. ships with pg_tde 2.2.0).
-      5. ``ALTER EXTENSION pg_tde UPDATE`` (runs the bundled
-         ``pg_tde--X.Y--A.B.sql`` migration when ``default_version``
-         differs between builds).
-      6. Verify the contract: catalog version advanced, on-disk data
-         readable, key providers + principal key intact, WAL still
-         encrypted, new writes succeed.
-
-    All tests skip cleanly when ``--old-install-dir`` is not supplied.
-    """
-
-    def test_extension_extversion_advances_after_alter_update(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """``extversion`` must equal the new build's ``default_version``
-        after the swap + ``ALTER EXTENSION pg_tde UPDATE``.
-
-        This is the headline acceptance criterion: when 2.1.2 → 2.2.0,
-        the catalog should advance from '2.1' to '2.2'. The exact
-        before/after strings are not hard-coded so the test works for
-        any pair of minor builds the user has installed.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            ext_before = _read_extversion(node)
-            bin_before = _read_binary_version(node)
-            assert ext_before, "pg_tde extversion empty on old build"
-
-            swapped = _binary_swap_node(node, install_dir)
-            ext_after_swap = _read_extversion(swapped)
-            bin_after_swap = _read_binary_version(swapped)
-
-            # Before ALTER EXTENSION UPDATE the catalog entry still
-            # reflects the OLD build (catalog state lives in the data
-            # dir, not the .so).
-            assert ext_after_swap == ext_before, (
-                f"extversion changed merely by swapping binaries: "
-                f"{ext_before!r} → {ext_after_swap!r} (ALTER EXTENSION was not run yet)"
-            )
-
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-            ext_after_alter = _read_extversion(swapped)
-
-            # If the binary's default_version moved, extversion must
-            # advance to it; if it did not move (same X.Y line), the
-            # value must stay put. Both are valid outcomes — what the
-            # test pins down is that extversion now matches the
-            # NEW binary's reported major.minor.
-            assert bin_after_swap.startswith(ext_after_alter), (
-                f"After ALTER EXTENSION pg_tde UPDATE, extversion "
-                f"({ext_after_alter!r}) is not a prefix of the new "
-                f"binary version ({bin_after_swap!r}). Old binary "
-                f"reported {bin_before!r}."
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_encrypted_data_readable_immediately_after_binary_swap(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """Encrypted heap rows written under the OLD pg_tde binary must
-        be readable under the NEW binary even BEFORE
-        ``ALTER EXTENSION pg_tde UPDATE``.
-
-        The on-disk encrypted format is the contract that survives a
-        minor upgrade; ``ALTER EXTENSION`` migrates the catalog, not
-        the encrypted blocks. Pinning the "readable immediately after
-        swap" invariant catches regressions where a new minor build
-        accidentally changes block format.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            node.execute(
-                "CREATE TABLE minor_upgrade_data (id INT, payload TEXT) USING tde_heap; "
-                "INSERT INTO minor_upgrade_data "
-                "SELECT i, md5(i::text) FROM generate_series(1, 500) i;"
-            )
-            checksum_before = node.fetchone(
-                "SELECT md5(string_agg(payload, ',' ORDER BY id)) "
-                "FROM minor_upgrade_data"
-            )
-
-            swapped = _binary_swap_node(node, install_dir)
-            count = swapped.fetchone("SELECT COUNT(*) FROM minor_upgrade_data")
-            assert count == "500", (
-                f"Row count after binary swap: {count} (expected 500). "
-                f"Encrypted heap is not readable on the new pg_tde binary."
-            )
-            checksum_after = swapped.fetchone(
-                "SELECT md5(string_agg(payload, ',' ORDER BY id)) "
-                "FROM minor_upgrade_data"
-            )
-            assert checksum_before == checksum_after, (
-                "Per-row payload digest changed across binary swap — "
-                "encrypted heap decoded to different plaintext on the "
-                "new build."
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_encrypted_data_still_readable_after_alter_extension_update(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """Even after the SQL migration (``pg_tde--X.Y--A.B.sql``)
-        runs, the same encrypted rows must still come back unchanged.
-        Catches catalog migrations that accidentally drop / rewrite
-        the relation's key state.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            node.execute(
-                "CREATE TABLE migrate_data (id INT, payload TEXT) USING tde_heap; "
-                "INSERT INTO migrate_data "
-                "SELECT i, md5(i::text) FROM generate_series(1, 250) i;"
-            )
-            digest_before = node.fetchone(
-                "SELECT md5(string_agg(payload, ',' ORDER BY id)) FROM migrate_data"
-            )
-
-            swapped = _binary_swap_node(node, install_dir)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-
-            count = swapped.fetchone("SELECT COUNT(*) FROM migrate_data")
-            digest_after = swapped.fetchone(
-                "SELECT md5(string_agg(payload, ',' ORDER BY id)) FROM migrate_data"
-            )
-            assert count == "250", f"Row count after ALTER EXTENSION UPDATE: {count}"
-            assert digest_before == digest_after, (
-                "Per-row payload digest changed across "
-                "ALTER EXTENSION pg_tde UPDATE — the migration "
-                "rewrote relation key state or broke decryption."
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_key_providers_survive_minor_binary_upgrade(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """Global key providers + principal key name must be unchanged
-        after the swap + ALTER EXTENSION UPDATE.
-
-        A regression here would brick every encrypted table because
-        the new build would have no way to derive the data keys.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            tde_old = TdeManager(node)
-            providers_before = tde_old.list_key_providers(scope="global")
-            key_before = tde_old.principal_key_name()
-            assert providers_before >= 1, "No key providers before upgrade"
-            assert key_before, "No principal key before upgrade"
-
-            swapped = _binary_swap_node(node, install_dir)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-
-            tde_new = TdeManager(swapped)
-            providers_after = tde_new.list_key_providers(scope="global")
-            key_after = tde_new.principal_key_name()
-
-            assert providers_after == providers_before, (
-                f"Key provider count changed across minor upgrade: "
-                f"{providers_before} → {providers_after}"
-            )
-            assert key_after == key_before, (
-                f"Principal key name changed across minor upgrade: "
-                f"{key_before!r} → {key_after!r}"
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_wal_encryption_remains_active_after_minor_binary_upgrade(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """``pg_tde.wal_encrypt`` was on under the OLD build; it must
-        still be on after the swap + ALTER EXTENSION UPDATE. The
-        encrypted WAL produced by the old build must still be readable
-        by the new build's startup recovery.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(
-            tmp_path, old_install_dir, io_method, wal_encrypt=True
-        )
-        swapped: Optional[PgCluster] = None
-        try:
-            wal_before = node.fetchone("SHOW pg_tde.wal_encrypt")
-            assert wal_before in ("on", "true", "1", "yes"), (
-                f"WAL encryption was not on before swap: {wal_before!r}"
-            )
-
-            # Generate some encrypted WAL so the new build has to
-            # decode old-format WAL during startup recovery.
-            node.execute("CREATE TABLE wal_check (id INT) USING tde_heap")
-            node.execute("INSERT INTO wal_check SELECT generate_series(1, 200)")
-            node.execute("SELECT pg_switch_wal()")
-            node.execute("CHECKPOINT")
-
-            swapped = _binary_swap_node(node, install_dir)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-
-            wal_after = swapped.fetchone("SHOW pg_tde.wal_encrypt")
-            assert wal_after in ("on", "true", "1", "yes"), (
-                f"WAL encryption disabled by minor upgrade: {wal_after!r}"
-            )
-            # Sanity check: data inserted before the swap survives.
-            assert swapped.fetchone("SELECT COUNT(*) FROM wal_check") == "200"
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_pg_tde_version_function_reflects_new_binary(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """After the swap, ``SELECT pg_tde_version()`` must report the
-        NEW binary's version string (not the cached old one). The
-        function is implemented in the C library, so its return value
-        flips the moment the new ``.so`` is loaded — regardless of
-        whether ``ALTER EXTENSION pg_tde UPDATE`` has run yet.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            bin_before = _read_binary_version(node)
-            assert bin_before, "pg_tde_version() returned empty on old build"
-
-            swapped = _binary_swap_node(node, install_dir)
-            bin_after = _read_binary_version(swapped)
-            assert bin_after, "pg_tde_version() returned empty on new build"
-
-            # If the two install dirs ship the same pg_tde build,
-            # there is no real upgrade to verify — skip rather than
-            # pretend the test exercised the swap.
-            if bin_before == bin_after:
-                pytest.skip(
-                    f"--old-install-dir and --install-dir both report "
-                    f"pg_tde {bin_after!r}; there is no minor upgrade "
-                    f"to test against."
-                )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_new_writes_to_existing_tde_heap_work_after_minor_upgrade(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """A ``tde_heap`` created under the OLD build must accept new
-        INSERTs (and the new rows must be encrypted) under the NEW
-        build after ALTER EXTENSION UPDATE.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            node.execute(
-                "CREATE TABLE post_upgrade_write (id INT, val TEXT) USING tde_heap; "
-                "INSERT INTO post_upgrade_write "
-                "SELECT i, md5(i::text) FROM generate_series(1, 100) i;"
-            )
-
-            swapped = _binary_swap_node(node, install_dir)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-
-            swapped.execute(
-                "INSERT INTO post_upgrade_write "
-                "SELECT i, md5(i::text) FROM generate_series(101, 300) i;"
-            )
-            total = swapped.fetchone("SELECT COUNT(*) FROM post_upgrade_write")
-            assert total == "300", (
-                f"Post-upgrade INSERT lost rows: {total}/300"
-            )
-            tde_new = TdeManager(swapped)
-            assert tde_new.is_table_encrypted("post_upgrade_write"), (
-                "tde_heap created under old binary reports unencrypted "
-                "after minor upgrade — relation key state lost."
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_create_new_tde_heap_after_minor_upgrade(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """The new build must allow creating fresh ``tde_heap`` relations
-        and encrypt them correctly — the upgraded extension is fully
-        functional, not just backward-compatible.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            swapped = _binary_swap_node(node, install_dir)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-
-            swapped.execute(
-                "CREATE TABLE fresh_post_upgrade (id INT, val TEXT) USING tde_heap; "
-                "INSERT INTO fresh_post_upgrade "
-                "SELECT i, md5(i::text) FROM generate_series(1, 150) i;"
-            )
-            assert swapped.fetchone(
-                "SELECT COUNT(*) FROM fresh_post_upgrade"
-            ) == "150"
-            tde_new = TdeManager(swapped)
-            assert tde_new.is_table_encrypted("fresh_post_upgrade"), (
-                "Newly-created tde_heap after minor upgrade is not encrypted."
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-    def test_alter_extension_update_idempotent_after_minor_swap(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """After the swap, ``ALTER EXTENSION pg_tde UPDATE`` may do real
-        work the first time; the second time it MUST be a clean no-op
-        that leaves ``extversion`` unchanged.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        node = _build_single_node_old(tmp_path, old_install_dir, io_method)
-        swapped: Optional[PgCluster] = None
-        try:
-            swapped = _binary_swap_node(node, install_dir)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-            ext_after_first = _read_extversion(swapped)
-            swapped.execute("ALTER EXTENSION pg_tde UPDATE")
-            ext_after_second = _read_extversion(swapped)
-            assert ext_after_first == ext_after_second, (
-                f"ALTER EXTENSION pg_tde UPDATE is not idempotent after "
-                f"minor swap: extversion {ext_after_first!r} → "
-                f"{ext_after_second!r} on the second run."
-            )
-        finally:
-            _cleanup_swap_candidates(swapped, node)
-
-
-# ── Phase 6: HA rolling pg_tde binary swap ────────────────────────────────────
-
-
-def _build_ha_cluster_explicit_install(
-    tmp_path: Path,
-    install_dir: Path,
-    io_method: str,
-    *,
-    wal_encrypt: bool = True,
-) -> Tuple[PgCluster, PgCluster]:
-    """Variant of ``_build_ha_cluster`` that takes the install_dir
-    explicitly (no implicit ``install_dir`` fixture). Used by the
-    rolling-swap tests so caller-side code can pass ``old_install_dir``
-    for the initial bring-up.
-
-    Body is intentionally aligned with ``_build_ha_cluster`` to avoid
-    drift: any future change to the bring-up should be applied here too.
-    """
-    return _build_ha_cluster(
-        tmp_path,
-        install_dir,
-        io_method,
-        wal_encrypt=wal_encrypt,
-    )
-
-
-def _rolling_swap_pair(
-    nodeA: PgCluster,
-    nodeB: PgCluster,
-    new_install_dir: Path,
-) -> Tuple[PgCluster, PgCluster]:
-    """Patroni-style rolling swap: replica first, then primary.
-
-    Steps (matching the documented procedure exercised by
-    ``TestRollingRestart`` but with a real binary change):
-
-      1. Stop nodeB (replica) on old binaries.
-      2. Re-create nodeB against ``new_install_dir`` (same data dir);
-         start it. It reconnects to nodeA (still on old binaries) and
-         catches up via streaming replication. The replication
-         protocol is stable across pg_tde minor versions, so this
-         must succeed.
-      3. Stop nodeA (primary) on old binaries.
-      4. Re-create nodeA against ``new_install_dir``; start it.
-      5. Run ``ALTER EXTENSION pg_tde UPDATE`` on the now-primary
-         (nodeA). The standby will replay the catalog migration via
-         WAL — no separate ALTER EXTENSION needed on the replica.
-
-    Returns the new (nodeA, nodeB) cluster objects.
-    """
-    # Replica first.
-    nodeB.stop()
-    new_nodeB = _swap_install_dir(nodeB, new_install_dir)
-    new_nodeB.start()
-    new_nodeB.wait_ready(timeout=90)
-
-    # Primary second.
-    nodeA.stop()
-    new_nodeA = _swap_install_dir(nodeA, new_install_dir)
-    new_nodeA.start()
-    new_nodeA.wait_ready(timeout=90)
-
-    # Catalog migration on the primary; standby replays via WAL.
-    new_nodeA.execute("ALTER EXTENSION pg_tde UPDATE")
-    return new_nodeA, new_nodeB
-
-
-class TestPgTdeMinorBinaryUpgradeRollingHA:
-    """
-    Two-node HA rolling pg_tde extension minor upgrade.
-
-    Mirrors the documented Patroni rolling-upgrade procedure for a
-    real pg_tde binary swap (e.g. 2.1.2 → 2.2.0):
-
-      1. Bring up nodeA (primary) + nodeB (replica) under the OLD
-         pg_tde build (``--old-install-dir``).
-      2. Populate encrypted state, generate WAL traffic.
-      3. Stop nodeB, swap to NEW binaries, restart against same PGDATA.
-      4. Stop nodeA, swap to NEW binaries, restart against same PGDATA.
-      5. ``ALTER EXTENSION pg_tde UPDATE`` on the primary; replica
-         replays via WAL.
-      6. Verify replication still works, data is intact, WAL is still
-         encrypted on both nodes.
-
-    Skips cleanly when ``--old-install-dir`` is not provided.
-    """
-
-    def test_rolling_minor_binary_swap_succeeds_on_both_nodes(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """End-to-end happy path: bring up under old binaries, do the
-        rolling swap, verify both nodes are healthy under new binaries
-        and replicating.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        nodeA, nodeB = _build_ha_cluster_explicit_install(
-            tmp_path, old_install_dir, io_method
-        )
-        new_A = new_B = None
-        try:
-            nodeA.execute(
-                "CREATE TABLE rolling_minor (id INT, val TEXT) USING tde_heap; "
-                "INSERT INTO rolling_minor "
-                "SELECT i, md5(i::text) FROM generate_series(1, 200) i;"
-            )
-            ReplicationManager(nodeA, nodeB).assert_catchup(timeout=30)
-
-            new_A, new_B = _rolling_swap_pair(nodeA, nodeB, install_dir)
-
-            # Both nodes must be reachable and report a sensible state.
-            assert new_A.is_ready(), "primary not ready after rolling swap"
-            assert new_B.is_ready(), "replica not ready after rolling swap"
-            assert new_A.fetchone("SELECT pg_is_in_recovery()") == "f", (
-                "primary is in recovery after rolling swap"
-            )
-            assert new_B.fetchone("SELECT pg_is_in_recovery()") == "t", (
-                "replica is not in recovery after rolling swap"
-            )
-        finally:
-            for n in (new_B, new_A, nodeB, nodeA):
-                if n is None:
-                    continue
-                try:
-                    if n.is_ready():
-                        n.stop(check=False)
-                except Exception:
-                    pass
-
-    def test_data_continuity_through_rolling_minor_binary_swap(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """Rows written BEFORE and AFTER the rolling swap must appear
-        on both nodes when the swap completes.
-
-        This catches the most insidious failure mode: replication
-        appears to work but a chunk of pre-swap WAL is silently
-        skipped on the new binary.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        nodeA, nodeB = _build_ha_cluster_explicit_install(
-            tmp_path, old_install_dir, io_method
-        )
-        new_A = new_B = None
-        try:
-            # Pre-swap workload.
-            nodeA.execute(
-                "CREATE TABLE pre_post (id INT, when_phase TEXT) USING tde_heap; "
-                "INSERT INTO pre_post "
-                "SELECT i, 'pre' FROM generate_series(1, 100) i;"
-            )
-            ReplicationManager(nodeA, nodeB).assert_catchup(timeout=30)
-
-            new_A, new_B = _rolling_swap_pair(nodeA, nodeB, install_dir)
-
-            # Post-swap workload on the (new) primary.
-            new_A.execute(
-                "INSERT INTO pre_post "
-                "SELECT i, 'post' FROM generate_series(101, 250) i;"
-            )
-
-            repl = ReplicationManager(new_A, new_B)
-            repl.assert_catchup(timeout=60)
-            repl.assert_row_counts_match("pre_post")
-
-            # Both phases present and accounted for.
-            phases = new_B.fetchone(
-                "SELECT string_agg(DISTINCT when_phase, ',' ORDER BY when_phase) "
-                "FROM pre_post"
-            )
-            assert phases == "post,pre", (
-                f"Pre/post phase mix on replica after rolling swap: {phases!r}"
-            )
-            total_primary = new_A.fetchone("SELECT COUNT(*) FROM pre_post")
-            total_replica = new_B.fetchone("SELECT COUNT(*) FROM pre_post")
-            assert total_primary == total_replica == "250", (
-                f"Row counts diverge after rolling minor swap: "
-                f"primary={total_primary} replica={total_replica}"
-            )
-        finally:
-            for n in (new_B, new_A, nodeB, nodeA):
-                if n is None:
-                    continue
-                try:
-                    if n.is_ready():
-                        n.stop(check=False)
-                except Exception:
-                    pass
-
-    def test_wal_encryption_and_key_state_intact_after_rolling_minor_swap(
-        self,
-        old_install_dir: Optional[Path],
-        install_dir: Path,
-        tmp_path: Path,
-        io_method: str,
-    ):
-        """WAL encryption stays on, principal key name is preserved,
-        and provider count is preserved on both nodes after the
-        rolling minor binary upgrade.
-        """
-        _skip_if_no_old_install(old_install_dir)
-        nodeA, nodeB = _build_ha_cluster_explicit_install(
-            tmp_path, old_install_dir, io_method, wal_encrypt=True
-        )
-        new_A = new_B = None
-        try:
-            tde_old = TdeManager(nodeA)
-            providers_before = tde_old.list_key_providers(scope="global")
-            key_before = tde_old.principal_key_name()
-            assert providers_before >= 1, "No providers under old build"
-            assert key_before, "No principal key under old build"
-
-            new_A, new_B = _rolling_swap_pair(nodeA, nodeB, install_dir)
-
-            for node, label in ((new_A, "primary"), (new_B, "replica")):
-                val = node.fetchone("SHOW pg_tde.wal_encrypt")
-                assert val in ("on", "true", "1", "yes"), (
-                    f"WAL encryption off on {label} after rolling swap: {val!r}"
-                )
-
-            tde_new = TdeManager(new_A)
-            providers_after = tde_new.list_key_providers(scope="global")
-            key_after = tde_new.principal_key_name()
-            assert providers_after == providers_before, (
-                f"Provider count changed across rolling swap: "
-                f"{providers_before} → {providers_after}"
-            )
-            assert key_after == key_before, (
-                f"Principal key changed across rolling swap: "
-                f"{key_before!r} → {key_after!r}"
-            )
-        finally:
-            for n in (new_B, new_A, nodeB, nodeA):
-                if n is None:
-                    continue
-                try:
-                    if n.is_ready():
-                        n.stop(check=False)
-                except Exception:
-                    pass
-
-
-# ── Phase 7 & 8: staged Setup / Verify flow ───────────────────────────────────
+# ── Phase 5 & 6: staged Setup / Verify flow ───────────────────────────────────
 #
 # These classes model the *real* operator-driven minor upgrade. pytest never
-# swaps binaries itself: the Setup run prepares a persistent PGDATA under
-# --install-dir = OLD, the operator (or CI step) performs the package upgrade
-# externally, then the Verify run validates the same PGDATA under
-# --install-dir = NEW.
+# touches the installed package itself: the Setup run prepares a persistent
+# PGDATA against the currently installed pg_tde, the operator (or CI step)
+# performs the package upgrade EXTERNALLY at the same install prefix, then
+# the Verify run validates the same PGDATA against the now-upgraded pg_tde.
+# ``--install-dir`` is identical across both runs — the package contents at
+# that path change underneath the test harness, exactly as in production.
 #
 #   pytest tests/test_tde_minor_upgrade.py \
-#       --install-dir=/opt/percona/pg18-with-pg_tde-2.1.2 \
+#       --install-dir=/usr/pgsql-18 \
 #       --upgrade-data-dir=/var/lib/pg_tde_upgrade_test \
 #       -k Setup
 #
-#   <operator>: yum upgrade -y percona-postgresql-tde-extension      # 2.1.2 → 2.2.0
+#   <operator>: sudo yum upgrade -y percona-postgresql-tde-extension
+#                # in-place upgrade, e.g. pg_tde 2.1.2 → 2.2.0
 #
 #   pytest tests/test_tde_minor_upgrade.py \
-#       --install-dir=/opt/percona/pg18-with-pg_tde-2.2.0 \
+#       --install-dir=/usr/pgsql-18 \
 #       --upgrade-data-dir=/var/lib/pg_tde_upgrade_test \
 #       -k Verify
 #
 # A small JSON state file in --upgrade-data-dir captures the pre-upgrade
 # invariants (extversion, pg_tde_version, provider count, principal key
 # name, row count, data digest) so the Verify run can assert exact
-# preservation across the binary upgrade.
+# preservation across the in-place package upgrade.
 
 
 _STATE_FILENAME = "upgrade_state.json"
@@ -2439,6 +1669,36 @@ class TestPgTdeMinorUpgradeVerify:
         missing = required - set(state.keys())
         assert not missing, f"state file is missing keys: {sorted(missing)}"
 
+    def test_install_dir_unchanged_across_upgrade(
+        self,
+        install_dir: Path,
+        _verify_single_cluster,
+    ):
+        """``--install-dir`` at Verify time must equal ``--install-dir`` at
+        Setup time.
+
+        In production a pg_tde minor upgrade is an *in-place* package
+        replacement: ``yum upgrade percona-postgresql-tde-extension``
+        replaces ``pg_tde.so`` and the bundled SQL migration scripts at
+        the SAME install prefix. There is no second install directory.
+
+        If the two pytest runs (Setup, Verify) are launched against
+        different ``--install-dir`` paths, the harness is no longer
+        simulating an in-place upgrade — it's simulating side-by-side
+        binaries, which is a different (and unsupported) procedure.
+        Fail loudly so the operator knows their invocation is wrong.
+        """
+        _cluster, state = _verify_single_cluster
+        setup_dir = Path(state["old_install_dir"]).resolve()
+        verify_dir = Path(install_dir).resolve()
+        assert setup_dir == verify_dir, (
+            f"--install-dir changed between Setup and Verify runs: "
+            f"Setup={setup_dir} Verify={verify_dir}. A pg_tde minor "
+            f"upgrade is an in-place package replacement — both runs "
+            f"must point at the SAME install prefix and the operator "
+            f"upgrades the package contents at that prefix between runs."
+        )
+
     def test_cluster_boots_under_new_binary(self, _verify_single_cluster):
         """The fixture already started the cluster; this test pins down
         that ``is_ready()`` returns True and the new binary reports a
@@ -2736,6 +1996,31 @@ class TestPgTdeMinorUpgradeVerifyHA:
     ``ALTER EXTENSION pg_tde UPDATE`` on the primary is replayed by
     the replica via WAL.
     """
+
+    def test_install_dir_unchanged_across_upgrade(
+        self,
+        install_dir: Path,
+        _verify_ha_pair,
+    ):
+        """HA mirror of the single-node sanity check: ``--install-dir``
+        at Verify time must equal ``--install-dir`` at Setup time.
+
+        A real Patroni minor upgrade replaces the pg_tde package
+        contents in place on every node; the install prefix never
+        changes. If the operator passes different ``--install-dir``
+        paths to Setup and Verify they are exercising a different
+        (and unsupported) procedure — fail fast.
+        """
+        _primary, _replica, state = _verify_ha_pair
+        setup_dir = Path(state["old_install_dir"]).resolve()
+        verify_dir = Path(install_dir).resolve()
+        assert setup_dir == verify_dir, (
+            f"--install-dir changed between HA Setup and Verify runs: "
+            f"Setup={setup_dir} Verify={verify_dir}. The Patroni minor "
+            f"upgrade procedure is an in-place package replacement on "
+            f"every node — both pytest runs must point at the SAME "
+            f"install prefix."
+        )
 
     def test_ha_pair_boots_under_new_binary(self, _verify_ha_pair):
         """Both nodes must be live; primary is read-write, replica is
