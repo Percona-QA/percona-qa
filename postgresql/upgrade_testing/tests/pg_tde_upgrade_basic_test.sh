@@ -58,7 +58,11 @@ echo "3. Stopping old cluster..."
 stop_pg "$OLD_PGDATA" "$OLD_INSTALL_DIR"
 
 echo "4. Initializing new cluster (no start)..."
-initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR" "--no-data-checksums"
+if [ "$OLD_MAJOR" == "17" ]; then
+  initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR" "--no-data-checksums"
+else
+  initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR"
+fi
 enable_pg_tde "$NEW_PGDATA"
 
 echo "5. Running pg_upgrade (PG-${OLD_MAJOR} -> PG-${NEW_MAJOR})..."
@@ -72,7 +76,6 @@ $NEW_INSTALL_DIR/bin/pg_tde_upgrade --no-sync \
   --new-port "$NEW_PORT"
 
 if [ $? -ne 0 ]; then
-    echo "❌ pg_upgrade failed"
     echo "[FAIL] pg_upgrade failed"
     exit 1
 fi
