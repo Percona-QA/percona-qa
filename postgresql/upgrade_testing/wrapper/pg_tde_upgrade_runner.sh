@@ -17,8 +17,8 @@ export HELPER_DIR
 ############################################
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --server_build_path) SERVER_BUILD_PATH="$2"; shift;;
     --old_server_build_path) OLD_SERVER_BUILD_PATH="$2"; shift;;
+    --new_server_build_path) NEW_SERVER_BUILD_PATH="$2"; shift;;
     --testname) TESTNAME="$2"; shift;;
     --skip_test) SKIP_LIST="$2"; shift;;
     --io_method) IO_METHOD="$2"; shift;;
@@ -41,11 +41,11 @@ fi
 ############################################
 # Load env + common functions
 ############################################
-source "$WRAPPER_DIR/env.sh" \
-  "$SERVER_BUILD_PATH" \
+source "$WRAPPER_DIR/pg_tde_upgrade_env.sh" \
+  "$OLD_SERVER_BUILD_PATH" \
+  "$NEW_SERVER_BUILD_PATH" \
   "$TESTNAME" \
-  "$IO_METHOD" \
-  "${OLD_SERVER_BUILD_PATH:-}"
+  "$IO_METHOD"
 
 ############################################
 # Dependency Checks
@@ -64,6 +64,7 @@ check_dependency unzip
 check_dependency tar
 check_dependency jq
 check_dependency go
+check_dependency nc
 
 if (( ${#MISSING[@]} > 0 )); then
     echo ""
@@ -72,7 +73,7 @@ if (( ${#MISSING[@]} > 0 )); then
     exit 1
 fi
 
-source "$WRAPPER_DIR/common.sh"
+source "$WRAPPER_DIR/pg_tde_upgrade_common.sh"
 source "$HELPER_DIR/setup_vault.sh"
 source "$HELPER_DIR/setup_openbao.sh"
 source "$HELPER_DIR/setup_kmip.sh"
@@ -130,7 +131,8 @@ fi
 ############################################
 echo "==============================================="
 echo "Starting pg_tde Test Suite"
-echo "Server Build path: $SERVER_BUILD_PATH"
+echo "Old Server Build Path: $OLD_SERVER_BUILD_PATH"
+echo "New Server Build Path: $NEW_SERVER_BUILD_PATH"
 echo "IO_METHOD: $IO_METHOD"
 echo "==============================================="
 
@@ -177,9 +179,6 @@ for testscript in "${TESTS[@]}"; do
 	
         # Copy PGDATA(s) if exist
         [[ -d "$PGDATA" ]] && cp -r "$PGDATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$ARCHIVE_DIR" ]] && cp -r "$ARCHIVE_DIR" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
         # Copy test log
         cp "$LOGFILE" "$FAIL_SAVE_DIR/"
