@@ -54,7 +54,7 @@ echo "4. Upgrading to PG$NEW_MAJOR..."
 stop_pg "$OLD_PGDATA" "$OLD_INSTALL_DIR"
 
 old_server_cleanup "$NEW_PGDATA" "$NEW_PORT"
-if [ "$OLD_MAJOR" == "17" && "$NEW_MAJOR" != "17" ]; then
+if [[ "$OLD_MAJOR" == "17" && "$NEW_MAJOR" != "17" ]]; then
   initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR" "--no-data-checksums"
 else
   initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR"
@@ -171,4 +171,7 @@ $psql_new -c "SELECT * FROM test_enc_pitr LIMIT 1;" > /dev/null
 
 stop_pg "$NEW_PGDATA" "$NEW_INSTALL_DIR"
 
+# Cleanup
+rm -f $WRAPPER_DIR/update_extensions.sql
+rm -f $WRAPPER_DIR/delete_old_cluster.sh
 echo "=== DONE ==="

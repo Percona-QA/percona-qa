@@ -58,7 +58,7 @@ echo "3. Stopping old cluster..."
 stop_pg "$OLD_PGDATA" "$OLD_INSTALL_DIR"
 
 echo "4. Initializing new cluster (no start)..."
-if [ "$OLD_MAJOR" == "17" && "$NEW_MAJOR" != "17" ]; then
+if [[ "$OLD_MAJOR" == "17" && "$NEW_MAJOR" != "17" ]]; then
   initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR" "--no-data-checksums"
 else
   initialize_server "$NEW_PGDATA" "$NEW_PORT" "$NEW_INSTALL_DIR"
@@ -126,4 +126,7 @@ else
     exit 1
 fi
 
+# Cleanup
+rm -f $WRAPPER_DIR/update_extensions.sql
+rm -f $WRAPPER_DIR/delete_old_cluster.sh
 echo "=== DONE: pg_tde pg_upgrade test completed ==="
