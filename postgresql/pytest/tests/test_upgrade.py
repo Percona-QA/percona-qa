@@ -22,9 +22,12 @@ import pytest
 
 from lib import PgCluster, TdeManager
 from lib.cluster import (
+    copy_pg_tde_dir,
     initdb_args_no_data_checksums,
     initdb_extra_align_data_checksums_with_old,
     prepend_install_lib_dirs,
+    resolve_pg_upgrade_binary,
+    write_pg_upgrade_target_config,
 )
 from conftest import allocate_port
 
@@ -35,10 +38,11 @@ pytestmark = [pytest.mark.upgrade, pytest.mark.slow]
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
-def _upgrade_bin(new_install_dir: Path) -> Path:
-    """Prefer ``pg_tde_upgrade`` (handles pg_tde state, PG-2240) when present."""
-    wrapper = new_install_dir / "bin" / "pg_tde_upgrade"
-    return wrapper if wrapper.exists() else new_install_dir / "bin" / "pg_upgrade"
+def _upgrade_bin(new_install_dir: Path, *, use_tde_wrapper: bool = False) -> Path:
+    """Return pg_upgrade binary; wrapper only when explicitly requested."""
+    return resolve_pg_upgrade_binary(
+        new_install_dir, use_tde_wrapper=use_tde_wrapper
+    )
 
 
 def _run_pg_upgrade(
@@ -48,10 +52,14 @@ def _run_pg_upgrade(
     new_port: int,
     tmp_path: Path,
     check_only: bool = False,
+    *,
+    use_tde_wrapper: bool = False,
+    copy_pg_tde: bool = True,
 ) -> subprocess.CompletedProcess:
     new_bin = new_install_dir / "bin"
+    upgrade_bin = _upgrade_bin(new_install_dir, use_tde_wrapper=use_tde_wrapper)
     cmd = [
-        str(_upgrade_bin(new_install_dir)),
+        str(upgrade_bin),
         "-b", str(old_cluster.bin),
         "-B", str(new_bin),
         "-d", str(old_cluster.data_dir),
@@ -62,12 +70,18 @@ def _run_pg_upgrade(
     if check_only:
         cmd.append("--check")
     env = os.environ.copy()
-    # New install_dir must come first so new pg_upgrade / psql pick up the newer
-    # libpq.so (PQfullProtocolVersion etc.) — see test_tde_pg_upgrade.py.
     prepend_install_lib_dirs(env, new_install_dir, old_cluster.install_dir)
-    return subprocess.run(
+    result = subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
     )
+    if (
+        result.returncode == 0
+        and not check_only
+        and copy_pg_tde
+        and upgrade_bin.name == "pg_upgrade"
+    ):
+        copy_pg_tde_dir(old_cluster.data_dir, new_data_dir)
+    return result
 
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -274,8 +288,10 @@ class TestUpgradeExtensions:
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path)
         assert result.returncode == 0, f"pg_upgrade with TDE failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _finalize_upgrade_target_cluster(
+            new_cluster, {"shared_preload_libraries": "'pg_tde'"}
+        )
+        _start_cluster_after_pg_upgrade(new_cluster)
         count = new_cluster.fetchone("SELECT COUNT(*) FROM tde_upgrade_data")
         assert count == "500"
         new_cluster.stop()
@@ -334,6 +350,24 @@ def _make_old_cluster(
     return cluster
 
 
+def _finalize_upgrade_target_cluster(
+    cluster: PgCluster, extra_params: Optional[dict]
+) -> None:
+    cluster.write_default_config(extra_params=extra_params)
+    cluster.add_hba_entry("local all all trust")
+    cluster.add_hba_entry("host  all all 127.0.0.1/32 trust")
+
+
+def _start_cluster_after_pg_upgrade(
+    cluster: PgCluster, *, ready_timeout: int = 90
+) -> None:
+    """Start upgraded cluster; migrate pg_tde 2.1.x → 2.2.x when extension is present."""
+    cluster.start()
+    cluster.wait_ready(timeout=ready_timeout)
+    if cluster.fetchone("SELECT 1 FROM pg_extension WHERE extname='pg_tde'"):
+        cluster.execute("ALTER EXTENSION pg_tde UPDATE")
+
+
 def _upgrade(
     old_cluster: PgCluster,
     install_dir: Path,
@@ -345,6 +379,7 @@ def _upgrade(
     extra_params: Optional[dict] = None,
     pg_upgrade_extra: Optional[list] = None,
     check_only: bool = False,
+    use_tde_wrapper: Optional[bool] = None,
 ) -> tuple:
     new_port = allocate_port()
     new_data = tmp_path / new_subdir
@@ -354,12 +389,18 @@ def _upgrade(
             old_cluster, install_dir, extra_initdb
         )
     )
-    new_cluster.write_default_config(extra_params=extra_params)
+    write_pg_upgrade_target_config(new_cluster, extra_params)
     new_cluster.stop(check=False)
 
+    if use_tde_wrapper is None:
+        use_tde_wrapper = bool(pg_upgrade_extra)
+
+    upgrade_bin = resolve_pg_upgrade_binary(
+        install_dir, use_tde_wrapper=use_tde_wrapper
+    )
     new_bin = install_dir / "bin"
     cmd = [
-        str(_upgrade_bin(install_dir)),
+        str(upgrade_bin),
         "-b", str(old_cluster.bin),
         "-B", str(new_bin),
         "-d", str(old_cluster.data_dir),
@@ -376,6 +417,10 @@ def _upgrade(
     result = subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
     )
+    if result.returncode == 0 and not check_only:
+        if upgrade_bin.name == "pg_upgrade":
+            copy_pg_tde_dir(old_cluster.data_dir, new_data)
+        _finalize_upgrade_target_cluster(new_cluster, extra_params)
     return new_cluster, result
 
 
@@ -1305,8 +1350,7 @@ class TestUpgradeTdeCornerCases:
         )
         assert result.returncode == 0, f"TDE upgrade failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         count = new_cluster.fetchone("SELECT COUNT(*) FROM sensitive")
         assert count == "200"
         new_cluster.stop()
@@ -1338,8 +1382,7 @@ class TestUpgradeTdeCornerCases:
         )
         assert result.returncode == 0, f"TDE WAL-encrypted upgrade failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM wal_enc_tbl") == "2"
         new_cluster.stop()
 
@@ -1374,8 +1417,7 @@ class TestUpgradeTdeCornerCases:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM plain_tbl") == "50"
         assert new_cluster.fetchone("SELECT COUNT(*) FROM enc_tbl") == "75"
         new_cluster.stop()
@@ -1425,8 +1467,7 @@ class TestUpgradeTdeCornerCases:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM enc1") == "1"
         assert new_cluster.fetchone("SELECT COUNT(*) FROM enc2", dbname="db2") == "2"
         new_cluster.stop()
@@ -1459,8 +1500,7 @@ class TestUpgradeTdeCornerCases:
         )
         assert result.returncode == 0, f"Upgrade after key rotation failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM rotated_data") == "1"
         new_cluster.stop()
 

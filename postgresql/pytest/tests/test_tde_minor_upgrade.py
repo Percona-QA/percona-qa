@@ -4,7 +4,17 @@ pg_tde extension minor-version upgrade tests.
 Scope
 ─────
 "Minor upgrade" here means an operator-driven, **in-place** package
-upgrade of the pg_tde extension on a running PostgreSQL major version.
+upgrade of the pg_tde extension on the **same** PostgreSQL major version
+(e.g. pg_tde 2.1.2 → 2.2.0 at ``/usr/pgsql-18`` with the same data dir).
+
+This is **not** a PG major upgrade (17 → 18). For that path see
+``tests/test_tde_pg_upgrade.py``, which runs ``pg_upgrade`` and then
+``ALTER EXTENSION pg_tde UPDATE`` on the new cluster when the source had
+pg_tde 2.1.x and the target ships 2.2.x.
+
+Staged Verify tests here (``TestPgTdeMinorUpgradeVerify*``) run the same
+``ALTER EXTENSION pg_tde UPDATE`` step after the operator replaces the
+package — that is the 2.1 → 2.2 catalog migration for in-place minor upgrades.
 """
 
 import json

@@ -2,15 +2,19 @@
 pg_tde major-version upgrade tests: PPG→PSP, PSP→PSP, heap↔tde_heap permutations, WAL paths.
 
 Regression coverage for PG-2240: vanilla ``pg_upgrade`` does not migrate ``$PGDATA/pg_tde/``,
-so encrypted ``tde_heap`` data could not be decrypted on the new cluster. These tests run
-``pg_tde_upgrade`` (the Percona wrapper around ``pg_upgrade``), which carries over pg_tde–
-specific state including the ``pg_tde`` directory — the historical manual ``shutil.copytree``
-workaround is not used here.
+so encrypted ``tde_heap`` data could not be decrypted on the new cluster unless that
+directory is copied. Most tests run plain ``pg_upgrade`` plus ``copy_pg_tde_dir()`` (same
+as the bash automation scripts). ``pg_tde_upgrade`` is used only for ``--link`` /
+``--clone`` / ``-j`` variants.
 
 Upgrade flavours tested
 ───────────────────────
-  PPG (<17) → PSP (≥17)    Old pkg build → new source/pkg build; may need ALTER EXTENSION UPDATE.
+  PPG (<17) → PSP (≥17)    Old pkg build → new source/pkg build.
   PSP (17)  → PSP (18)     Same-flavour major-version bump; identical key-provider API.
+
+After each successful upgrade, ``_start_cluster_after_pg_upgrade()`` runs
+``ALTER EXTENSION pg_tde UPDATE`` when pg_tde is installed — required for
+PG17+pg_tde 2.1.x → PG18+pg_tde 2.2.x; no-op when both sides are already 2.2.x.
 
 Access-method permutations
 ──────────────────────────
@@ -44,9 +48,12 @@ from lib import (
     restore_conf_line_raw,
 )
 from lib.cluster import (
+    copy_pg_tde_dir,
     initdb_args_no_data_checksums,
     initdb_extra_align_data_checksums_with_old,
     prepend_install_lib_dirs,
+    resolve_pg_upgrade_binary,
+    write_pg_upgrade_target_config,
 )
 from conftest import allocate_port
 
@@ -80,6 +87,34 @@ def _make_old_cluster(
     return cluster
 
 
+def _finalize_upgrade_target_cluster(
+    cluster: PgCluster, extra_params: Optional[dict]
+) -> None:
+    """Apply full cluster settings after pg_upgrade (hba + PG18 io_method, etc.)."""
+    cluster.write_default_config(extra_params=extra_params)
+    cluster.add_hba_entry("local all all trust")
+    cluster.add_hba_entry("host  all all 127.0.0.1/32 trust")
+
+
+def _start_cluster_after_pg_upgrade(
+    cluster: PgCluster, *, ready_timeout: int = 90
+) -> None:
+    """Start the upgraded cluster and run ``ALTER EXTENSION pg_tde UPDATE``.
+
+    After a major upgrade (e.g. PG17+pg_tde 2.1.2 → PG18+pg_tde 2.2.0),
+    ``pg_upgrade`` carries the extension catalog row at the old ``extversion``
+    (e.g. ``2.1``). The bundled migration scripts (``pg_tde--2.1--2.2.sql``)
+    run only via ``ALTER EXTENSION pg_tde UPDATE`` on the **new** cluster.
+    Skipped when pg_tde is not installed (e.g. extension was dropped before
+    upgrade). No-op when source and target already share the same pg_tde minor
+    (e.g. 2.2.0 → 2.2.0).
+    """
+    cluster.start()
+    cluster.wait_ready(timeout=ready_timeout)
+    if cluster.fetchone("SELECT 1 FROM pg_extension WHERE extname='pg_tde'"):
+        cluster.execute("ALTER EXTENSION pg_tde UPDATE")
+
+
 def _upgrade(
     old_cluster: PgCluster,
     install_dir: Path,
@@ -91,6 +126,7 @@ def _upgrade(
     extra_params: Optional[dict] = None,
     pg_upgrade_extra: Optional[list] = None,
     check_only: bool = False,
+    use_tde_wrapper: Optional[bool] = None,
 ) -> tuple:
     new_port = allocate_port()
     new_data = tmp_path / new_subdir
@@ -102,12 +138,21 @@ def _upgrade(
             old_cluster, install_dir, extra_initdb
         )
     )
-    new_cluster.write_default_config(extra_params=extra_params)
+    # Minimal target config during pg_upgrade (matches bash automation scripts).
+    write_pg_upgrade_target_config(new_cluster, extra_params)
     new_cluster.stop(check=False)
 
+    if use_tde_wrapper is None:
+        # Default: plain pg_upgrade + pg_tde/ copy (reliable on PG17→PG18).
+        # Use the wrapper only for --link / --clone / -j tests.
+        use_tde_wrapper = bool(pg_upgrade_extra)
+
+    upgrade_bin = resolve_pg_upgrade_binary(
+        install_dir, use_tde_wrapper=use_tde_wrapper
+    )
     new_bin = install_dir / "bin"
     cmd = [
-        str(new_bin / "pg_tde_upgrade"),
+        str(upgrade_bin),
         "-b", str(old_cluster.bin),
         "-B", str(new_bin),
         "-d", str(old_cluster.data_dir),
@@ -121,14 +166,15 @@ def _upgrade(
         cmd.extend(pg_upgrade_extra)
 
     env = os.environ.copy()
-
-    # FIX: The NEW install_dir must be prepended first so that the new pg_upgrade
-    # and psql binaries load the newer libpq.so containing PQfullProtocolVersion.
     prepend_install_lib_dirs(env, install_dir, old_cluster.install_dir)
 
     result = subprocess.run(
         cmd, capture_output=True, text=True, cwd=str(tmp_path), env=env
     )
+    if result.returncode == 0 and not check_only:
+        if upgrade_bin.name == "pg_upgrade":
+            copy_pg_tde_dir(old_cluster.data_dir, new_data)
+        _finalize_upgrade_target_cluster(new_cluster, extra_params)
     return new_cluster, result
 
 
@@ -185,8 +231,7 @@ class TestPpgToPspUpgrade:
         )
         assert result.returncode == 0, f"pg_upgrade failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         count = new_cluster.fetchone("SELECT COUNT(*) FROM secrets")
         assert count == "500", f"Expected 500 rows, got {count}"
         new_cluster.stop()
@@ -234,9 +279,8 @@ class TestPpgToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
-        # ALTER EXTENSION UPDATE is a no-op if already at latest; must not error.
+        _start_cluster_after_pg_upgrade(new_cluster)
+        # Idempotency: second ALTER EXTENSION must not error or change data.
         new_cluster.execute("ALTER EXTENSION pg_tde UPDATE")
         assert new_cluster.fetchone("SELECT COUNT(*) FROM ext_update_tbl") == "3"
         new_cluster.stop()
@@ -270,11 +314,19 @@ class TestPpgToPspUpgrade:
         old.execute("CREATE DATABASE db_alpha")
         old.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname="db_alpha")
 
-        # FIX: The provider is global, so it already exists. We just need to
-        # create a new key using that provider, and set it for this specific DB.
-        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_alpha', 'file_provider')", dbname="db_alpha")
-        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_alpha', 'file_provider')", dbname="db_alpha")
-        old.execute("SELECT pg_tde_set_key_using_global_key_provider('key_alpha', 'file_provider')", dbname="db_alpha")
+        # Global provider already exists; bind a distinct *database* principal
+        # key for db_alpha. Do NOT call set_server_key here — server/WAL key is
+        # cluster-wide and was set on postgres via set_global_principal_key.
+        old.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'key_alpha', 'file_provider')",
+            dbname="db_alpha",
+        )
+        old.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'key_alpha', 'file_provider')",
+            dbname="db_alpha",
+        )
 
         old.execute(
             "CREATE TABLE pg_secrets (v INT) USING tde_heap; "
@@ -296,8 +348,7 @@ class TestPpgToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM pg_secrets") == "1"
         assert new_cluster.fetchone("SELECT COUNT(*) FROM alpha_secrets", dbname="db_alpha") == "20"
         new_cluster.stop()
@@ -393,8 +444,7 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, f"PSP→PSP upgrade failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         count = new_cluster.fetchone("SELECT COUNT(*) FROM enc_rows")
         assert count == "1000"
         # Verify table is still using tde_heap on the new cluster
@@ -432,11 +482,18 @@ class TestPspToPspUpgrade:
         old.execute("CREATE DATABASE db_b")
         old.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname="db_b")
 
-        # FIX: The provider is global, so it already exists. We just need to
-        # create a new key using that provider, and set it for this specific DB.
-        old.execute("SELECT pg_tde_create_key_using_global_key_provider('key_v2', 'file_provider')", dbname="db_b")
-        old.execute("SELECT pg_tde_set_server_key_using_global_key_provider('key_v2', 'file_provider')", dbname="db_b")
-        old.execute("SELECT pg_tde_set_key_using_global_key_provider('key_v2', 'file_provider')", dbname="db_b")
+        # Global provider already exists; bind a distinct *database* principal
+        # key for db_b (server/WAL key stays key_v1 from postgres).
+        old.execute(
+            "SELECT pg_tde_create_key_using_global_key_provider("
+            "'key_v2', 'file_provider')",
+            dbname="db_b",
+        )
+        old.execute(
+            "SELECT pg_tde_set_key_using_global_key_provider("
+            "'key_v2', 'file_provider')",
+            dbname="db_b",
+        )
 
         old.execute("CREATE TABLE rows_a (n INT) USING tde_heap; INSERT INTO rows_a VALUES (1),(2)")
         old.execute(
@@ -454,8 +511,7 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM rows_a") == "2"
         assert new_cluster.fetchone("SELECT COUNT(*) FROM rows_b", dbname="db_b") == "30"
         new_cluster.stop()
@@ -496,8 +552,7 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
         # Provider count should be ≥1 (preserved from old catalog via pg_upgrade)
@@ -548,8 +603,7 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM wal_data") == "1"
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
@@ -590,8 +644,7 @@ class TestUpgradeAccessMethodPermutations:
         new_cluster, result = _upgrade(old, install_dir, tmp_path, io_method)
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM heap_tbl") == "300"
         am = new_cluster.fetchone(
             "SELECT am.amname FROM pg_class c JOIN pg_am am ON c.relam = am.oid "
@@ -647,8 +700,7 @@ class TestUpgradeAccessMethodPermutations:
         )
         assert result.returncode == 0, f"pg_upgrade (all tde_heap) failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM tbl_a") == "400"
@@ -698,8 +750,7 @@ class TestUpgradeAccessMethodPermutations:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM plain") == "100"
@@ -737,8 +788,7 @@ class TestUpgradeAccessMethodPermutations:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         # Enable TDE on the new cluster for the first time
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
@@ -791,12 +841,15 @@ class TestUpgradeAccessMethodPermutations:
         old.execute("DROP EXTENSION pg_tde;")
         old.stop()
 
-        # No pg_tde shared_preload_libraries on new cluster — purely plain upgrade
-        new_cluster, result = _upgrade(old, install_dir, tmp_path, io_method)
-        assert result.returncode == 0, result.stderr
+        # Plain pg_upgrade (extension dropped; no pg_tde wrapper / no pg_tde preload).
+        new_cluster, result = _upgrade(
+            old, install_dir, tmp_path, io_method, use_tde_wrapper=False
+        )
+        assert result.returncode == 0, (
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM was_encrypted") == "250"
         am = new_cluster.fetchone(
             "SELECT am.amname FROM pg_class c JOIN pg_am am ON c.relam = am.oid "
@@ -852,8 +905,7 @@ class TestUpgradeWalEncryptionPaths:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM wal_off") == "50"
@@ -902,8 +954,7 @@ class TestUpgradeWalEncryptionPaths:
         )
         assert result.returncode == 0, f"pg_upgrade after WAL enc disable failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
         assert new_cluster.fetchone("SELECT COUNT(*) FROM wal_on_data") == "80"
@@ -951,8 +1002,7 @@ class TestUpgradeWalEncryptionPaths:
         )
         assert result.returncode == 0, result.stderr
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         tde_new = TdeManager(new_cluster)
         tde_new.create_extension()
         # Re-enable WAL encryption on the upgraded cluster
@@ -1141,8 +1191,7 @@ class TestPgTdeUpgradePitrWithEncryptedWal:
                 "archive_command": new_arch_cmd,
             }
         )
-        new_cluster.start()
-        new_cluster.wait_ready(timeout=60)
+        _start_cluster_after_pg_upgrade(new_cluster, ready_timeout=60)
         tde_new = TdeManager(new_cluster)
 
         # The upgraded cluster still has all 3 rows — sanity check before
@@ -1361,8 +1410,7 @@ class TestUpgradeEnforceEncryption:
         )
         assert result.returncode == 0, f"pg_upgrade failed with enforce_encryption=on:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # 4. CRITICAL CHECK: The legacy table MUST remain plain heap.
         # If enforce_encryption overrode the AM during pg_upgrade, this SELECT will crash.
@@ -1481,8 +1529,7 @@ class TestPgTdeUpgradeModes:
             f"pg_tde_upgrade --link failed:\n{result.stderr}"
         )
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM mode_t") == "500"
         # Encryption survived the link upgrade.
         am = new_cluster.fetchone(
@@ -1532,8 +1579,7 @@ class TestPgTdeUpgradeModes:
             f"pg_tde_upgrade --clone failed:\n{result.stdout}\n{result.stderr}"
         )
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM mode_t") == "500"
         new_cluster.stop()
 
@@ -1583,8 +1629,7 @@ class TestPgTdeUpgradeModes:
             f"pg_tde_upgrade -j 4 failed:\n{result.stderr}"
         )
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         for i in range(10):
             assert new_cluster.fetchone(
                 f"SELECT COUNT(*) FROM par_t_{i}"
@@ -1664,8 +1709,7 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (partitioned) failed:\n{result.stderr}"
         )
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM part_t") == "4"
         assert new_cluster.fetchone(
             "SELECT COUNT(*) FROM part_t_2024"
@@ -1716,8 +1760,7 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (FK cascade) failed:\n{result.stderr}"
         )
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # Baseline counts preserved.
         assert new_cluster.fetchone("SELECT COUNT(*) FROM parent_t") == "3"
@@ -1764,8 +1807,7 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (indexes) failed:\n{result.stderr}"
         )
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM idx_t") == "500"
         # All three indexes survived.
         idx_count = new_cluster.fetchone(
@@ -1834,8 +1876,7 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (multi-provider) failed:\n{result.stderr}"
         )
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone(
             "SELECT COUNT(*) FROM multi_kp_t"
         ) == "100"
@@ -1913,8 +1954,7 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (complex schema) failed:\n{result.stderr}"
         )
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # Row, sequence and view counts must all survive.
         assert new_cluster.fetchone("SELECT COUNT(*) FROM orders") == pre_rows
@@ -2034,8 +2074,7 @@ class TestPgTdeUpgradeComplexSchema:
         assert result.returncode == 0, (
             f"pg_tde_upgrade (global provider scope) failed:\n{result.stderr}"
         )
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # Data intact.
         assert new_cluster.fetchone("SELECT COUNT(*) FROM global_enc") == pre_count
@@ -2115,8 +2154,7 @@ class TestUpgradeBashScriptParity:
         )
         assert result.returncode == 0, f"pg_tde_upgrade failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # 5. Verify Data and Schema
         assert new_cluster.fetchone("SELECT COUNT(*) FROM test_enc;") == "2"
@@ -2178,8 +2216,7 @@ class TestUpgradeBashScriptParity:
         )
         assert result.returncode == 0, f"pg_tde_upgrade failed with WAL encryption active:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         assert new_cluster.fetchone("SELECT COUNT(*) FROM test_enc_global;") == "3"
 
@@ -2233,8 +2270,7 @@ class TestTdeUpgradeExtremeCornerCases:
         )
         assert result.returncode == 0, f"pg_tde_upgrade (TOAST) failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # Verify the TOAST data was successfully decrypted on the new cluster
         length = new_cluster.fetchone("SELECT length(massive_payload) FROM toast_t WHERE id = 1;")
@@ -2288,8 +2324,7 @@ class TestTdeUpgradeExtremeCornerCases:
         )
         assert result.returncode == 0, f"pg_tde_upgrade (Key Rotation) failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # Verify ALL generations of data can be read
         count = new_cluster.fetchone("SELECT COUNT(*) FROM rot_t;")
@@ -2335,8 +2370,7 @@ class TestTdeUpgradeExtremeCornerCases:
         )
         assert result.returncode == 0, f"pg_tde_upgrade (Unlogged) failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         count = new_cluster.fetchone("SELECT COUNT(*) FROM unlogged_t;")
         assert int(count) == 3, "Unlogged encrypted data did not survive upgrade!"
@@ -2383,8 +2417,7 @@ class TestTdeUpgradeExtremeCornerCases:
         )
         assert result.returncode == 0, f"pg_tde_upgrade (Custom Schema) failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
         assert new_cluster.fetchone("SELECT COUNT(*) FROM custom_schema_t;") == "1"
         new_cluster.stop()
 
@@ -2434,8 +2467,7 @@ class TestTdeUpgradeExtremeCornerCases:
         )
         assert result.returncode == 0, f"pg_tde_upgrade (Ghost Relfilenodes) failed:\n{result.stderr}"
 
-        new_cluster.start()
-        new_cluster.wait_ready()
+        _start_cluster_after_pg_upgrade(new_cluster)
 
         # Must return exactly 1 row (value=2). If it fails, the catalog map is broken.
         val = new_cluster.fetchone("SELECT id FROM ghost_t;")

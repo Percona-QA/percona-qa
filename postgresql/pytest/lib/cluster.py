@@ -478,3 +478,56 @@ def initdb_extra_align_data_checksums_with_old(
     elif new_maj < 18:
         extra.append("--data-checksums")
     return extra or None
+
+
+def copy_pg_tde_dir(old_data_dir: Path, new_data_dir: Path) -> bool:
+    """Copy ``$PGDATA/pg_tde`` after ``pg_upgrade`` (PG-2240).
+
+    Vanilla ``pg_upgrade`` does not migrate the encrypted key-material tree;
+    the bash automation scripts apply this copy before starting the new cluster.
+    Returns True when a directory was copied.
+    """
+    src = Path(old_data_dir) / "pg_tde"
+    if not src.is_dir():
+        return False
+    dst = Path(new_data_dir) / "pg_tde"
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst)
+    return True
+
+
+def write_pg_upgrade_target_config(
+    cluster: "PgCluster",
+    extra_params: Optional[Dict[str, str]] = None,
+) -> None:
+    """Minimal ``postgresql.conf`` for the pg_upgrade *target* cluster.
+
+    Bash upgrade scripts only set port, socket dir, and (when needed)
+    ``shared_preload_libraries``. Full ``PgCluster.write_default_config()``
+    (``logging_collector``, PG18 ``io_method``, etc.) is applied *after*
+    pg_upgrade succeeds. Using the full config on the empty target breaks
+    some ``pg_tde_upgrade`` builds when the wrapper starts the target
+    postmaster during the schema-dump phase.
+    """
+    cluster.socket_dir.mkdir(parents=True, exist_ok=True)
+    params: Dict[str, str] = {
+        "port": str(cluster.port),
+        "unix_socket_directories": f"'{cluster.socket_dir}'",
+    }
+    if extra_params:
+        params.update(extra_params)
+    cluster.configure(params, append=False)
+    with (cluster.data_dir / "postgresql.conf").open("a") as f:
+        f.write("include_if_exists = 'postgresql.auto.conf'\n")
+
+
+def resolve_pg_upgrade_binary(
+    install_dir: Path, *, use_tde_wrapper: bool
+) -> Path:
+    """Return ``pg_tde_upgrade`` or plain ``pg_upgrade`` under *install_dir*."""
+    new_bin = Path(install_dir) / "bin"
+    wrapper = new_bin / "pg_tde_upgrade"
+    if use_tde_wrapper and wrapper.is_file():
+        return wrapper
+    return new_bin / "pg_upgrade"
