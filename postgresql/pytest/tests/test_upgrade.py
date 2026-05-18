@@ -25,8 +25,10 @@ from lib.cluster import (
     copy_pg_tde_dir,
     initdb_args_no_data_checksums,
     initdb_extra_align_data_checksums_with_old,
+    pg_upgrade_target_params,
     prepend_install_lib_dirs,
     resolve_pg_upgrade_binary,
+    should_use_pg_tde_upgrade_wrapper,
     write_pg_upgrade_target_config,
 )
 from conftest import allocate_port
@@ -53,9 +55,13 @@ def _run_pg_upgrade(
     tmp_path: Path,
     check_only: bool = False,
     *,
-    use_tde_wrapper: bool = False,
+    use_tde_wrapper: Optional[bool] = None,
     copy_pg_tde: bool = True,
 ) -> subprocess.CompletedProcess:
+    if use_tde_wrapper is None:
+        use_tde_wrapper = should_use_pg_tde_upgrade_wrapper(
+            old_cluster, new_install_dir
+        )
     new_bin = new_install_dir / "bin"
     upgrade_bin = _upgrade_bin(new_install_dir, use_tde_wrapper=use_tde_wrapper)
     cmd = [
@@ -389,11 +395,14 @@ def _upgrade(
             old_cluster, install_dir, extra_initdb
         )
     )
-    write_pg_upgrade_target_config(new_cluster, extra_params)
+    target_params = pg_upgrade_target_params(extra_params)
+    write_pg_upgrade_target_config(new_cluster, target_params)
     new_cluster.stop(check=False)
 
     if use_tde_wrapper is None:
-        use_tde_wrapper = bool(pg_upgrade_extra)
+        use_tde_wrapper = bool(pg_upgrade_extra) or should_use_pg_tde_upgrade_wrapper(
+            old_cluster, install_dir, extra_params=extra_params
+        )
 
     upgrade_bin = resolve_pg_upgrade_binary(
         install_dir, use_tde_wrapper=use_tde_wrapper

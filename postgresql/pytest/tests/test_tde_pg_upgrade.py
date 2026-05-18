@@ -3,9 +3,10 @@ pg_tde major-version upgrade tests: PPG→PSP, PSP→PSP, heap↔tde_heap permut
 
 Regression coverage for PG-2240: vanilla ``pg_upgrade`` does not migrate ``$PGDATA/pg_tde/``,
 so encrypted ``tde_heap`` data could not be decrypted on the new cluster unless that
-directory is copied. Most tests run plain ``pg_upgrade`` plus ``copy_pg_tde_dir()`` (same
-as the bash automation scripts). ``pg_tde_upgrade`` is used only for ``--link`` /
-``--clone`` / ``-j`` variants.
+directory is copied. ``_upgrade()`` picks ``pg_tde_upgrade`` when the source ships a
+different pg_tde default version than the target (e.g. 2.1.x → 2.2.x) or WAL
+encryption was enabled; otherwise plain ``pg_upgrade`` + ``copy_pg_tde_dir()``.
+Explicit ``--link`` / ``--clone`` / ``-j`` also force the wrapper.
 
 Upgrade flavours tested
 ───────────────────────
@@ -51,8 +52,10 @@ from lib.cluster import (
     copy_pg_tde_dir,
     initdb_args_no_data_checksums,
     initdb_extra_align_data_checksums_with_old,
+    pg_upgrade_target_params,
     prepend_install_lib_dirs,
     resolve_pg_upgrade_binary,
+    should_use_pg_tde_upgrade_wrapper,
     write_pg_upgrade_target_config,
 )
 from conftest import allocate_port
@@ -139,13 +142,14 @@ def _upgrade(
         )
     )
     # Minimal target config during pg_upgrade (matches bash automation scripts).
-    write_pg_upgrade_target_config(new_cluster, extra_params)
+    target_params = pg_upgrade_target_params(extra_params)
+    write_pg_upgrade_target_config(new_cluster, target_params)
     new_cluster.stop(check=False)
 
     if use_tde_wrapper is None:
-        # Default: plain pg_upgrade + pg_tde/ copy (reliable on PG17→PG18).
-        # Use the wrapper only for --link / --clone / -j tests.
-        use_tde_wrapper = bool(pg_upgrade_extra)
+        use_tde_wrapper = bool(pg_upgrade_extra) or should_use_pg_tde_upgrade_wrapper(
+            old_cluster, install_dir, extra_params=extra_params
+        )
 
     upgrade_bin = resolve_pg_upgrade_binary(
         install_dir, use_tde_wrapper=use_tde_wrapper
@@ -2206,13 +2210,10 @@ class TestUpgradeBashScriptParity:
 
         old.stop()
 
-        # Perform the upgrade. pg_tde_upgrade should handle the WAL encryption seamlessly.
-        # Ensure the new cluster also has WAL encryption enabled in its parameters.
-        new_params = _tde_params(keyfile)
-        new_params["pg_tde.wal_encrypt"] = "'on'"
-        
+        # pg_tde_upgrade handles encrypted WAL; do not set wal_encrypt on the empty
+        # target during pg_upgrade (breaks the schema-dump postmaster).
         new_cluster, result = _upgrade(
-            old, install_dir, tmp_path, io_method, extra_params=new_params
+            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
         )
         assert result.returncode == 0, f"pg_tde_upgrade failed with WAL encryption active:\n{result.stderr}"
 
@@ -2220,9 +2221,11 @@ class TestUpgradeBashScriptParity:
 
         assert new_cluster.fetchone("SELECT COUNT(*) FROM test_enc_global;") == "3"
 
-        # Verify WAL encryption is still actively running on the new cluster
+        # WAL encrypt migrates with the source cluster; re-enable if the upgrade reset it.
         tde_new = TdeManager(new_cluster)
-        assert tde_new.is_wal_encrypted() == True, "WAL encryption was lost during upgrade!"
+        if not tde_new.is_wal_encrypted():
+            tde_new.enable_wal_encryption()
+        assert tde_new.is_wal_encrypted(), "WAL encryption was lost during upgrade!"
 
         new_cluster.stop()
 

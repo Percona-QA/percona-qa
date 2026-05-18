@@ -480,6 +480,96 @@ def initdb_extra_align_data_checksums_with_old(
     return extra or None
 
 
+def read_pg_tde_default_version(install_dir: Path) -> Optional[str]:
+    """Return ``default_version`` from ``pg_tde.control`` (e.g. ``'2.1'``, ``'2.2'``)."""
+    root = Path(install_dir)
+    for ctrl in (
+        root / "share" / "postgresql" / "extension" / "pg_tde.control",
+        root / "share" / "extension" / "pg_tde.control",
+    ):
+        if not ctrl.is_file():
+            continue
+        for line in ctrl.read_text().splitlines():
+            if line.strip().startswith("default_version"):
+                return line.split("=", 1)[1].strip().strip("'\"")
+    return None
+
+
+def cluster_has_pg_tde_data(cluster: "PgCluster") -> bool:
+    return (Path(cluster.data_dir) / "pg_tde").is_dir()
+
+
+def cluster_wal_encryption_enabled(cluster: "PgCluster") -> bool:
+    """True when ``pg_tde.wal_encrypt`` is ``on`` in the source cluster config."""
+    for path in (
+        Path(cluster.data_dir) / "postgresql.auto.conf",
+        Path(cluster.data_dir) / "postgresql.conf",
+    ):
+        if not path.is_file():
+            continue
+        for line in path.read_text().splitlines():
+            if "pg_tde.wal_encrypt" not in line.lower():
+                continue
+            stripped = line.split("#", 1)[0].strip().lower()
+            if "=" not in stripped:
+                continue
+            val = stripped.split("=", 1)[1].strip().strip("'\"")
+            if val == "on":
+                return True
+    return False
+
+
+def should_use_pg_tde_upgrade_wrapper(
+    old_cluster: "PgCluster",
+    new_install_dir: Path,
+    *,
+    extra_params: Optional[Dict[str, str]] = None,
+) -> bool:
+    """Choose ``pg_tde_upgrade`` over plain ``pg_upgrade`` + ``pg_tde/`` copy.
+
+  Use the Percona wrapper when the source has pg_tde key material and either:
+
+  - the old/new installs ship different pg_tde extension default versions
+    (e.g. 2.1.x on PG17 → 2.2.x on PG18), or
+  - WAL encryption was enabled on the source cluster.
+
+  Plain ``pg_upgrade`` + ``copy_pg_tde_dir`` is sufficient for same pg_tde
+  minor across a PG major bump (e.g. 2.2.0 → 2.2.0).
+    """
+    if not cluster_has_pg_tde_data(old_cluster):
+        return False
+
+    old_ver = read_pg_tde_default_version(old_cluster.install_dir)
+    new_ver = read_pg_tde_default_version(new_install_dir)
+    if old_ver and new_ver and old_ver != new_ver:
+        return True
+
+    if cluster_wal_encryption_enabled(old_cluster):
+        return True
+
+    if extra_params:
+        wal = extra_params.get("pg_tde.wal_encrypt", "").strip().strip("'\"")
+        if wal.lower() == "on":
+            return True
+
+    return False
+
+
+def pg_upgrade_target_params(
+    extra_params: Optional[Dict[str, str]] = None,
+) -> Optional[Dict[str, str]]:
+    """Parameters safe for the *empty* target cluster during ``pg_upgrade``.
+
+    ``pg_tde.wal_encrypt`` on the target before migration prevents the upgrade
+    postmaster from starting (bash scripts never set it pre-upgrade).
+    """
+    if not extra_params:
+        return None
+    drop = {"pg_tde.wal_encrypt"}
+    filtered = {k: v for k, v in extra_params.items() if k not in drop}
+    return filtered or None
+
+
 def copy_pg_tde_dir(old_data_dir: Path, new_data_dir: Path) -> bool:
     """Copy ``$PGDATA/pg_tde`` after ``pg_upgrade`` (PG-2240).
 
