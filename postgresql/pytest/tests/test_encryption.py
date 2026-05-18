@@ -2287,7 +2287,7 @@ class TestPgTdeAddGlobalKeyProviderGenericApi:
         cluster.execute(
             "SELECT pg_tde_add_global_key_provider("
             f"'file'::text, 'g_generic'::text, "
-            f"'{{\"type\":\"file\",\"path\":\"{keyfile}\"}}'::json)"
+            f"'{{\"path\":\"{keyfile}\"}}'::json)"
         )
 
         # (a) Listed in the global catalog.
