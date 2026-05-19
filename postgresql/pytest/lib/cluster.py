@@ -480,13 +480,51 @@ def initdb_extra_align_data_checksums_with_old(
     return extra or None
 
 
+def pg_tde_control_file_candidates(install_dir: Path) -> List[Path]:
+    """Paths to ``pg_tde.control`` for *install_dir* (source build vs Debian/Ubuntu packages)."""
+    root = Path(install_dir)
+    candidates: List[Path] = []
+    try:
+        maj = postgres_major_version(root)
+        candidates.append(
+            Path(f"/usr/share/postgresql/{maj}/extension/pg_tde.control")
+        )
+    except (subprocess.CalledProcessError, ValueError, IndexError):
+        pass
+    pg_config = root / "bin" / "pg_config"
+    if pg_config.is_file():
+        try:
+            env = os.environ.copy()
+            prepend_install_lib_dirs(env, root)
+            sharedir = subprocess.run(
+                [str(pg_config), "--sharedir"],
+                capture_output=True,
+                text=True,
+                check=True,
+                env=env,
+            ).stdout.strip()
+            candidates.append(Path(sharedir) / "extension" / "pg_tde.control")
+        except subprocess.CalledProcessError:
+            pass
+    candidates.extend(
+        (
+            root / "share" / "postgresql" / "extension" / "pg_tde.control",
+            root / "share" / "extension" / "pg_tde.control",
+        )
+    )
+    seen: set = set()
+    unique: List[Path] = []
+    for p in candidates:
+        key = str(p)
+        if key not in seen:
+            seen.add(key)
+            unique.append(p)
+    return unique
+
+
 def read_pg_tde_default_version(install_dir: Path) -> Optional[str]:
     """Return ``default_version`` from ``pg_tde.control`` (e.g. ``'2.1'``, ``'2.2'``)."""
-    root = Path(install_dir)
-    for ctrl in (
-        root / "share" / "postgresql" / "extension" / "pg_tde.control",
-        root / "share" / "extension" / "pg_tde.control",
-    ):
+    for ctrl in pg_tde_control_file_candidates(install_dir):
         if not ctrl.is_file():
             continue
         for line in ctrl.read_text().splitlines():

@@ -38,7 +38,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import pytest
 
@@ -55,6 +55,7 @@ from lib.cluster import (
     pg_upgrade_target_params,
     prepend_install_lib_dirs,
     resolve_pg_upgrade_binary,
+    read_pg_tde_default_version,
     should_use_pg_tde_upgrade_wrapper,
     write_pg_upgrade_target_config,
 )
@@ -100,7 +101,10 @@ def _finalize_upgrade_target_cluster(
 
 
 def _start_cluster_after_pg_upgrade(
-    cluster: PgCluster, *, ready_timeout: int = 90
+    cluster: PgCluster,
+    *,
+    ready_timeout: int = 90,
+    alter_databases: Optional[List[str]] = None,
 ) -> None:
     """Start the upgraded cluster and run ``ALTER EXTENSION pg_tde UPDATE``.
 
@@ -111,11 +115,18 @@ def _start_cluster_after_pg_upgrade(
     Skipped when pg_tde is not installed (e.g. extension was dropped before
     upgrade). No-op when source and target already share the same pg_tde minor
     (e.g. 2.2.0 → 2.2.0).
+
+    For multiple databases with distinct principal keys (PG-2379), pass every
+    database that has ``CREATE EXTENSION pg_tde`` in *alter_databases*.
     """
     cluster.start()
     cluster.wait_ready(timeout=ready_timeout)
-    if cluster.fetchone("SELECT 1 FROM pg_extension WHERE extname='pg_tde'"):
-        cluster.execute("ALTER EXTENSION pg_tde UPDATE")
+    for dbname in alter_databases or ["postgres"]:
+        if cluster.fetchone(
+            "SELECT 1 FROM pg_extension WHERE extname='pg_tde'",
+            dbname=dbname,
+        ):
+            cluster.execute("ALTER EXTENSION pg_tde UPDATE", dbname=dbname)
 
 
 def _upgrade(
@@ -184,6 +195,91 @@ def _upgrade(
 
 def _tde_params(keyfile: str) -> dict:
     return {"shared_preload_libraries": "'pg_tde'"}
+
+
+def _bind_database_principal_key(
+    cluster: PgCluster,
+    dbname: str,
+    key_name: str,
+    *,
+    provider: str = "file_provider",
+    create_extension: bool = False,
+) -> None:
+    """Create/set a per-database principal key (global provider must exist)."""
+    if create_extension:
+        cluster.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname=dbname)
+    cluster.execute(
+        f"SELECT pg_tde_create_key_using_global_key_provider("
+        f"'{key_name}', '{provider}')",
+        dbname=dbname,
+    )
+    cluster.execute(
+        f"SELECT pg_tde_set_key_using_global_key_provider("
+        f"'{key_name}', '{provider}')",
+        dbname=dbname,
+    )
+
+
+def _principal_key_name_in_db(
+    cluster: PgCluster, dbname: str = "postgres"
+) -> Optional[str]:
+    """Return the active principal key name for *dbname* (first supported SRF)."""
+    tde = TdeManager(cluster)
+    for fn in (
+        "pg_tde_key_info",
+        "pg_tde_principal_key_info",
+        "pg_tde_get_principal_key_info",
+    ):
+        if tde._nargs(fn) < 0:
+            continue
+        row = cluster.fetchone(f"SELECT key_name FROM {fn}()", dbname=dbname)
+        if row:
+            return row
+    return None
+
+
+def _setup_multidb_distinct_keys(
+    cluster: PgCluster,
+    keyfile: str,
+    db_keys: List[tuple],
+) -> None:
+    """
+    Configure one global file provider and distinct principal keys per database.
+
+    *db_keys* is ``[(dbname, key_name, row_count), ...]``; ``postgres`` must be
+    first. Creates ``tde_heap`` table ``enc_<dbname>`` with *row_count* rows.
+    """
+    tde = TdeManager(cluster)
+    tde.create_extension()
+    tde.add_global_key_provider_file(keyfile=keyfile)
+    first_db, first_key, first_rows = db_keys[0]
+    assert first_db == "postgres"
+    tde.set_global_principal_key(key_name=first_key)
+    cluster.execute(
+        f"CREATE TABLE enc_{first_db} (id INT) USING tde_heap; "
+        f"INSERT INTO enc_{first_db} SELECT generate_series(1, {first_rows});",
+        dbname=first_db,
+    )
+    for dbname, key_name, row_count in db_keys[1:]:
+        cluster.execute(f"CREATE DATABASE {dbname}")
+        _bind_database_principal_key(
+            cluster, dbname, key_name, create_extension=True
+        )
+        cluster.execute(
+            f"CREATE TABLE enc_{dbname} (id INT) USING tde_heap; "
+            f"INSERT INTO enc_{dbname} SELECT generate_series(1, {row_count});",
+            dbname=dbname,
+        )
+
+
+def _assert_multidb_rows(
+    cluster: PgCluster, db_keys: List[tuple]
+) -> None:
+    for dbname, _key_name, row_count in db_keys:
+        count = cluster.fetchone(
+            f"SELECT COUNT(*) FROM enc_{dbname}", dbname=dbname
+        )
+        assert count == str(row_count)
 
 
 # ── PPG (<17) → PSP (≥17) ────────────────────────────────────────────────────
@@ -352,7 +448,9 @@ class TestPpgToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        _start_cluster_after_pg_upgrade(new_cluster)
+        _start_cluster_after_pg_upgrade(
+            new_cluster, alter_databases=["postgres", "db_alpha"]
+        )
         assert new_cluster.fetchone("SELECT COUNT(*) FROM pg_secrets") == "1"
         assert new_cluster.fetchone("SELECT COUNT(*) FROM alpha_secrets", dbname="db_alpha") == "20"
         new_cluster.stop()
@@ -515,7 +613,9 @@ class TestPspToPspUpgrade:
         )
         assert result.returncode == 0, result.stderr
 
-        _start_cluster_after_pg_upgrade(new_cluster)
+        _start_cluster_after_pg_upgrade(
+            new_cluster, alter_databases=["postgres", "db_b"]
+        )
         assert new_cluster.fetchone("SELECT COUNT(*) FROM rows_a") == "2"
         assert new_cluster.fetchone("SELECT COUNT(*) FROM rows_b", dbname="db_b") == "30"
         new_cluster.stop()
@@ -2476,3 +2576,329 @@ class TestTdeUpgradeExtremeCornerCases:
         val = new_cluster.fetchone("SELECT id FROM ghost_t;")
         assert int(val) == 2, "pg_tde_upgrade mixed up the dropped table's relfilenode!"
         new_cluster.stop()
+
+
+# ── PG-2379: per-database principal keys during 2.1→2.2 smgr key migration ───
+# https://github.com/percona/pg_tde/pull/581
+
+
+class TestPg2379MultiDbKeyMigration:
+    """
+    Regression tests for PG-2379 / PR #581: ``pg_tde_migrate_smgr_keys_file()``
+    must use each database's own principal key when migrating relation key files
+    during ``ALTER EXTENSION pg_tde UPDATE`` (2.1 → 2.2).
+    """
+
+    def test_three_databases_three_keys_major_upgrade(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """Three DBs with distinct principal keys survive pg_upgrade + migration."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "pg2379_three_db.per")
+        db_keys = [
+            ("postgres", "key_pg", 5),
+            ("db_a", "key_a", 11),
+            ("db_b", "key_b", 17),
+        ]
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2379_old3",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _setup_multidb_distinct_keys(old, keyfile, db_keys)
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            new_subdir="pg2379_new3",
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, result.stderr
+
+        _start_cluster_after_pg_upgrade(
+            new_cluster,
+            alter_databases=["postgres", "db_a", "db_b"],
+        )
+        _assert_multidb_rows(new_cluster, db_keys)
+        assert _principal_key_name_in_db(new_cluster, "postgres") == "key_pg"
+        assert _principal_key_name_in_db(new_cluster, "db_a") == "key_a"
+        assert _principal_key_name_in_db(new_cluster, "db_b") == "key_b"
+        new_cluster.stop()
+
+    def test_alter_extension_order_postgres_first_then_secondary(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "pg2379_order1.per")
+        db_keys = [("postgres", "key_v1", 2), ("db_b", "key_v2", 30)]
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2379_ord1_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _setup_multidb_distinct_keys(old, keyfile, db_keys)
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            new_subdir="pg2379_ord1_new",
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, result.stderr
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+        new_cluster.execute("ALTER EXTENSION pg_tde UPDATE", dbname="postgres")
+        new_cluster.execute("ALTER EXTENSION pg_tde UPDATE", dbname="db_b")
+        _assert_multidb_rows(new_cluster, db_keys)
+        new_cluster.stop()
+
+    def test_alter_extension_order_secondary_first_then_postgres(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "pg2379_order2.per")
+        db_keys = [("postgres", "key_v1", 2), ("db_b", "key_v2", 30)]
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2379_ord2_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _setup_multidb_distinct_keys(old, keyfile, db_keys)
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            new_subdir="pg2379_ord2_new",
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, result.stderr
+
+        new_cluster.start()
+        new_cluster.wait_ready()
+        new_cluster.execute("ALTER EXTENSION pg_tde UPDATE", dbname="db_b")
+        new_cluster.execute("ALTER EXTENSION pg_tde UPDATE", dbname="postgres")
+        _assert_multidb_rows(new_cluster, db_keys)
+        new_cluster.stop()
+
+    def test_same_principal_key_on_two_databases(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """Control: two databases sharing one principal key still migrate cleanly."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "pg2379_samekey.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2379_same_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        tde = TdeManager(old)
+        tde.create_extension()
+        tde.add_global_key_provider_file(keyfile=keyfile)
+        tde.set_global_principal_key(key_name="shared_key")
+        old.execute(
+            "CREATE TABLE enc_postgres (id INT) USING tde_heap; "
+            "INSERT INTO enc_postgres VALUES (1);"
+        )
+        old.execute("CREATE DATABASE db_shared")
+        _bind_database_principal_key(
+            old, "db_shared", "shared_key", create_extension=True
+        )
+        old.execute(
+            "CREATE TABLE enc_db_shared (id INT) USING tde_heap; "
+            "INSERT INTO enc_db_shared SELECT generate_series(1, 8);",
+            dbname="db_shared",
+        )
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            new_subdir="pg2379_same_new",
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, result.stderr
+
+        _start_cluster_after_pg_upgrade(
+            new_cluster, alter_databases=["postgres", "db_shared"]
+        )
+        assert new_cluster.fetchone("SELECT COUNT(*) FROM enc_postgres") == "1"
+        assert (
+            new_cluster.fetchone(
+                "SELECT COUNT(*) FROM enc_db_shared", dbname="db_shared"
+            )
+            == "8"
+        )
+        new_cluster.stop()
+
+    def test_extension_only_database_without_tde_tables(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """DB with pg_tde but no tde_heap tables must not break other DB migration."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        keyfile = str(tmp_path / "pg2379_empty.per")
+        db_keys = [("postgres", "key_pg", 3), ("db_b", "key_b", 12)]
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2379_empty_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _setup_multidb_distinct_keys(old, keyfile, db_keys)
+        old.execute("CREATE DATABASE db_empty")
+        old.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname="db_empty")
+        _bind_database_principal_key(old, "db_empty", "key_empty")
+        old.stop()
+
+        new_cluster, result = _upgrade(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            new_subdir="pg2379_empty_new",
+            extra_params=_tde_params(keyfile),
+        )
+        assert result.returncode == 0, result.stderr
+
+        _start_cluster_after_pg_upgrade(
+            new_cluster,
+            alter_databases=["postgres", "db_b", "db_empty"],
+        )
+        _assert_multidb_rows(new_cluster, db_keys)
+        assert _principal_key_name_in_db(new_cluster, "db_empty") == "key_empty"
+        new_cluster.stop()
+
+    def test_in_place_package_upgrade_multidb_distinct_keys(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        Same PG major, pg_tde 2.1.x → 2.2.x on one ``$PGDATA`` (no pg_upgrade).
+
+        Mirrors production: stop → package upgrade → restart on new binary →
+        ``ALTER EXTENSION`` per database. Requires different ``default_version``
+        in ``pg_tde.control`` on old vs new install paths.
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+
+        old_ver = read_pg_tde_default_version(old_install_dir)
+        new_ver = read_pg_tde_default_version(install_dir)
+        if not old_ver or not new_ver or old_ver == new_ver:
+            pytest.skip(
+                f"needs different pg_tde control versions (old={old_ver!r} "
+                f"new={new_ver!r})"
+            )
+
+        keyfile = str(tmp_path / "pg2379_inplace.per")
+        db_keys = [("postgres", "key_pg", 4), ("db_b", "key_b", 9)]
+        data_dir = tmp_path / "pg2379_inplace_data"
+        port = allocate_port()
+        cluster = PgCluster(
+            data_dir,
+            port,
+            old_install_dir,
+            socket_dir=tmp_path,
+            io_method=io_method,
+        )
+        cluster.initdb(
+            extra_args=initdb_args_no_data_checksums(old_install_dir)
+        )
+        cluster.write_default_config(extra_params=_tde_params(keyfile))
+        cluster.add_hba_entry("local all all trust")
+        cluster.start()
+        _setup_multidb_distinct_keys(cluster, keyfile, db_keys)
+        cluster.stop()
+
+        upgraded = PgCluster(
+            data_dir,
+            port,
+            install_dir,
+            socket_dir=tmp_path,
+            io_method=io_method,
+        )
+        upgraded.start()
+        upgraded.wait_ready()
+        bin_ver = (upgraded.fetchone("SELECT pg_tde_version()") or "").strip()
+        assert new_ver in bin_ver or "2.2" in bin_ver, (
+            f"expected new pg_tde binary, got {bin_ver!r}"
+        )
+        _assert_multidb_rows(upgraded, db_keys)
+
+        for dbname in ("postgres", "db_b"):
+            upgraded.execute("ALTER EXTENSION pg_tde UPDATE", dbname=dbname)
+
+        ext_pg = upgraded.fetchone(
+            "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
+        )
+        assert ext_pg == new_ver
+        _assert_multidb_rows(upgraded, db_keys)
+        assert _principal_key_name_in_db(upgraded, "db_b") == "key_b"
+        upgraded.stop()
+        upgraded.start()
+        upgraded.wait_ready()
+        _assert_multidb_rows(upgraded, db_keys)
+        upgraded.stop()
