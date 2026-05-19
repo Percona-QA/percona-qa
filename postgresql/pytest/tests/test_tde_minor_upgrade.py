@@ -445,6 +445,10 @@ def _capture_pre_upgrade_state(
     cluster: PgCluster, scenario: str, install_dir: Path, **extras: Any
 ) -> Dict[str, Any]:
     tde = TdeManager(cluster)
+    extra = dict(extras)
+    churn_table = extra.pop("churn_table", None)
+    churn_expected_id = extra.pop("churn_expected_id", None)
+
     payload: Dict[str, Any] = {
         "scenario": scenario,
         "old_install_dir": str(install_dir),
@@ -462,14 +466,18 @@ def _capture_pre_upgrade_state(
         ).lower() in ("on", "true", "1", "yes"),
         "key_provider_count": tde.list_key_providers(scope="global"),
         "principal_key_name": tde.principal_key_name() or "",
-        "test_table": _PERSIST_TEST_TABLE,
-        "row_count": _PERSIST_ROW_COUNT,
-        "data_digest": cluster.fetchone(
+    }
+    if churn_table:
+        payload["churn_table"] = churn_table
+        payload["churn_expected_id"] = churn_expected_id or "2"
+    else:
+        payload["test_table"] = _PERSIST_TEST_TABLE
+        payload["row_count"] = _PERSIST_ROW_COUNT
+        payload["data_digest"] = cluster.fetchone(
             f"SELECT md5(string_agg(payload, ',' ORDER BY id)) "
             f"FROM {_PERSIST_TEST_TABLE}"
-        ),
-    }
-    payload.update(extras)
+        )
+    payload.update(extra)
     return payload
 
 
@@ -555,6 +563,11 @@ class TestPgTdeMinorUpgradeSetup:
                     cluster.stop(check=False)
             except Exception:
                 pass
+
+
+@pytest.mark.minor_upgrade
+class TestPg2381MinorUpgradeSetup:
+    """Staged Setup for PG-2381 churn; opt-in via ``--with-pg2381`` / explicit pytest path."""
 
     def test_prepare_pg2381_churn_for_minor_upgrade(
         self,

@@ -90,7 +90,31 @@ Re-running a **Setup** test calls `_reset_scenario_root()` and **deletes only th
 
 ---
 
-## Staged workflow (recommended)
+## Automated script (recommended on CI / fresh VM)
+
+From `postgresql/pytest`:
+
+```bash
+sudo mkdir -p /var/lib/pg_tde_minor_upgrade
+sudo chown "$USER" /var/lib/pg_tde_minor_upgrade
+
+bash run_minor_upgrade_workflow.sh
+# optional: bash run_minor_upgrade_workflow.sh --with-pg2381
+```
+
+The script:
+
+1. `setup_test_env.sh --install-pkgs --pg-major 18.3 --repo-component release`
+2. `TestPgTdeMinorUpgradeSetup` + `TestPgTdeMinorUpgradeSetupHA`
+3. `setup_test_env.sh --install-pkgs --pg-major 18.4 --repo-component testing`
+4. `TestPgTdeMinorUpgradeVerify` + `TestPgTdeMinorUpgradeVerifyHA`
+
+Options: `--help`, `--skip-install`, `--setup-only`, `--verify-only`, `--upgrade-only`,
+`--upgrade-data-dir PATH`, `--with-pg2381`.
+
+---
+
+## Staged workflow (manual)
 
 ### Phase 1 — Setup (old packages)
 
@@ -209,7 +233,7 @@ pytest tests/test_tde_minor_upgrade.py::TestPgTdeMinorUpgradeVerify \
 | Scenario dir | Setup | Verify |
 |--------------|-------|--------|
 | `single/` | `TestPgTdeMinorUpgradeSetup::test_prepare_persistent_state_for_minor_upgrade` | `TestPgTdeMinorUpgradeVerify::test_minor_upgrade_verification_flow` |
-| `single_pg2381/` | `TestPgTdeMinorUpgradeSetup::test_prepare_pg2381_churn_for_minor_upgrade` | `TestPg2381MinorUpgradeVerify::test_verify_pg2381_churn_after_minor_upgrade` |
+| `single_pg2381/` | `TestPg2381MinorUpgradeSetup::test_prepare_pg2381_churn_for_minor_upgrade` (opt-in) | `TestPg2381MinorUpgradeVerify::test_verify_pg2381_churn_after_minor_upgrade` |
 | `ha/` | `TestPgTdeMinorUpgradeSetupHA::test_prepare_persistent_ha_state_for_minor_upgrade` | `TestPgTdeMinorUpgradeVerifyHA::test_ha_minor_upgrade_verification_flow` |
 
 ### Non-staged (single pytest run, `tmp_path`, one `--install-dir`)
