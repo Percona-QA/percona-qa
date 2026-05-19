@@ -595,15 +595,30 @@ def should_use_pg_tde_upgrade_wrapper(
 
 def pg_upgrade_target_params(
     extra_params: Optional[Dict[str, str]] = None,
+    *,
+    old_install_dir: Optional[Path] = None,
+    new_install_dir: Optional[Path] = None,
 ) -> Optional[Dict[str, str]]:
     """Parameters safe for the *empty* target cluster during ``pg_upgrade``.
 
     ``pg_tde.wal_encrypt`` on the target before migration prevents the upgrade
     postmaster from starting (bash scripts never set it pre-upgrade).
+
+    When pg_tde crosses extension versions (e.g. 2.1 on PG17 → 2.2 on PG18),
+    ``pg_tde_upgrade`` can copy ``$PGDATA/pg_tde`` from the source before the
+    schema-dump target postmaster starts. Preloading ``pg_tde`` on the new major
+    then loads 2.1 key material and fails with ``failed to decrypt key``. Omit
+    ``shared_preload_libraries`` on the empty target; apply it after upgrade in
+    ``write_default_config`` / ``_finalize_upgrade_target_cluster``.
     """
     if not extra_params:
         return None
     drop = {"pg_tde.wal_encrypt"}
+    if old_install_dir is not None and new_install_dir is not None:
+        old_ver = read_pg_tde_default_version(old_install_dir)
+        new_ver = read_pg_tde_default_version(new_install_dir)
+        if old_ver and new_ver and old_ver != new_ver:
+            drop.add("shared_preload_libraries")
     filtered = {k: v for k, v in extra_params.items() if k not in drop}
     return filtered or None
 
@@ -631,8 +646,9 @@ def write_pg_upgrade_target_config(
 ) -> None:
     """Minimal ``postgresql.conf`` for the pg_upgrade *target* cluster.
 
-    Bash upgrade scripts only set port, socket dir, and (when needed)
-    ``shared_preload_libraries``. Full ``PgCluster.write_default_config()``
+    Bash upgrade scripts set port and socket dir on the target; they avoid
+    ``shared_preload_libraries`` when pg_tde crosses 2.1→2.2 (see
+    ``pg_upgrade_target_params``). Full ``PgCluster.write_default_config()``
     (``logging_collector``, PG18 ``io_method``, etc.) is applied *after*
     pg_upgrade succeeds. Using the full config on the empty target breaks
     some ``pg_tde_upgrade`` builds when the wrapper starts the target

@@ -395,7 +395,11 @@ def _upgrade(
             old_cluster, install_dir, extra_initdb
         )
     )
-    target_params = pg_upgrade_target_params(extra_params)
+    target_params = pg_upgrade_target_params(
+        extra_params,
+        old_install_dir=old_cluster.install_dir,
+        new_install_dir=install_dir,
+    )
     write_pg_upgrade_target_config(new_cluster, target_params)
     new_cluster.stop(check=False)
 
