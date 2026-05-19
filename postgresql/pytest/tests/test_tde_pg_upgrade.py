@@ -154,11 +154,7 @@ def _upgrade(
         )
     )
     # Minimal target config during pg_upgrade (matches bash automation scripts).
-    target_params = pg_upgrade_target_params(
-        extra_params,
-        old_install_dir=old_cluster.install_dir,
-        new_install_dir=install_dir,
-    )
+    target_params = pg_upgrade_target_params(extra_params)
     write_pg_upgrade_target_config(new_cluster, target_params)
     new_cluster.stop(check=False)
 
@@ -179,6 +175,7 @@ def _upgrade(
         "-D", str(new_data),
         "-p", str(old_cluster.port),
         "-P", str(new_port),
+        "--socketdir", str(tmp_path),
     ]
     if check_only:
         cmd.append("--check")
