@@ -55,6 +55,7 @@ from lib.cluster import (
     pg_upgrade_target_params,
     prepend_install_lib_dirs,
     resolve_pg_upgrade_binary,
+    postgres_major_version,
     read_pg_tde_default_version,
     should_use_pg_tde_upgrade_wrapper,
     write_pg_upgrade_target_config,
@@ -204,15 +205,17 @@ def _bind_database_principal_key(
     *,
     provider: str = "file_provider",
     create_extension: bool = False,
+    create_key: bool = True,
 ) -> None:
     """Create/set a per-database principal key (global provider must exist)."""
     if create_extension:
         cluster.execute("CREATE EXTENSION IF NOT EXISTS pg_tde", dbname=dbname)
-    cluster.execute(
-        f"SELECT pg_tde_create_key_using_global_key_provider("
-        f"'{key_name}', '{provider}')",
-        dbname=dbname,
-    )
+    if create_key:
+        cluster.execute(
+            f"SELECT pg_tde_create_key_using_global_key_provider("
+            f"'{key_name}', '{provider}')",
+            dbname=dbname,
+        )
     cluster.execute(
         f"SELECT pg_tde_set_key_using_global_key_provider("
         f"'{key_name}', '{provider}')",
@@ -2565,10 +2568,20 @@ class TestTdeUpgradeExtremeCornerCases:
         old.execute("VACUUM FULL;")
         old.stop()
 
+        # Plain pg_upgrade + pg_tde/ copy: pg_tde_upgrade often cannot start the
+        # empty target during schema dump (2.1→2.2); relfilenode mapping is validated
+        # after upgrade + ALTER EXTENSION on the new cluster.
         new_cluster, result = _upgrade(
-            old, install_dir, tmp_path, io_method, extra_params=_tde_params(keyfile)
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            extra_params=_tde_params(keyfile),
+            use_tde_wrapper=False,
         )
-        assert result.returncode == 0, f"pg_tde_upgrade (Ghost Relfilenodes) failed:\n{result.stderr}"
+        assert result.returncode == 0, (
+            f"pg_upgrade (ghost relfilenode) failed:\n{result.stdout}\n{result.stderr}"
+        )
 
         _start_cluster_after_pg_upgrade(new_cluster)
 
@@ -2750,8 +2763,13 @@ class TestPg2379MultiDbKeyMigration:
             "INSERT INTO enc_postgres VALUES (1);"
         )
         old.execute("CREATE DATABASE db_shared")
+        # shared_key already exists in the global provider from postgres.
         _bind_database_principal_key(
-            old, "db_shared", "shared_key", create_extension=True
+            old,
+            "db_shared",
+            "shared_key",
+            create_extension=True,
+            create_key=False,
         )
         old.execute(
             "CREATE TABLE enc_db_shared (id INT) USING tde_heap; "
@@ -2840,10 +2858,22 @@ class TestPg2379MultiDbKeyMigration:
 
         Mirrors production: stop → package upgrade → restart on new binary →
         ``ALTER EXTENSION`` per database. Requires different ``default_version``
-        in ``pg_tde.control`` on old vs new install paths.
+        in ``pg_tde.control`` on old vs new install paths, and the **same**
+        PostgreSQL major on both ``--old-install-dir`` and ``--install-dir``
+        (not a PG17→PG18 ``pg_upgrade`` run).
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
+
+        if postgres_major_version(old_install_dir) != postgres_major_version(
+            install_dir
+        ):
+            pytest.skip(
+                "in-place pg_tde minor upgrade requires the same PostgreSQL major "
+                f"(old={postgres_major_version(old_install_dir)}, "
+                f"new={postgres_major_version(install_dir)}); use "
+                "test_tde_pg_upgrade major-upgrade tests for PG17→PG18"
+            )
 
         old_ver = read_pg_tde_default_version(old_install_dir)
         new_ver = read_pg_tde_default_version(install_dir)
