@@ -4,7 +4,7 @@
 > `postgresql/pytest/tests/` actually does, why it exists, and what
 > regression it guards against.
 >
-> **Scope**: 412 tests across 16 test modules. Tests are listed in the
+> **Scope**: 446 tests across 19 test modules. Tests are listed in the
 > order they appear in the source files. Each test is documented with:
 >
 > * **Purpose** — one-line statement of what's under test.
@@ -12,7 +12,8 @@
 > * **Asserts / catches** — what proves pass/fail and what regression
 >   it would catch.
 >
-> Last refreshed: 2026-05-14.
+> Last refreshed: 2026-05-14 (§11 + §17 updated 2026-05-19 — see
+> [`coverage_2026-05-19.md`](coverage_2026-05-19.md)).
 
 ---
 
@@ -31,12 +32,13 @@
 | 8 | `test_recovery.py` | 10 | Crash recovery + WAL utilities |
 | 9 | `test_replication.py` | 13 | Streaming + logical replication |
 | 10 | `test_tde_cli_tools.py` | 12 | `pg_tde_checksums` / `_resetwal` / `_archive_decrypt` / `_restore_encrypt` |
-| 11 | `test_tde_minor_upgrade.py` | 36 | pg_tde minor-version upgrade procedure |
-| 12 | `test_tde_pg_upgrade.py` | 41 | Major version upgrade via `pg_tde_upgrade` |
+| 11 | `test_tde_minor_upgrade.py` | **11** | **Staged in-place** pg_tde minor upgrade (`--upgrade-data-dir`) |
+| 12 | `test_tde_pg_upgrade.py` | 45 | **Major** version upgrade via `pg_tde_upgrade` (`--old-install-dir`) |
 | 13 | `test_tde_rewind_advanced.py` | 78 | `pg_tde_rewind` HA/lifecycle |
 | 14 | `test_template_databases.py` | 14 | `CREATE DATABASE ... TEMPLATE` × pg_tde |
-| 15 | `test_upgrade.py` | 62 | Mixed/negative upgrade scenarios |
+| 15 | `test_upgrade.py` | 47 | **`pg_upgrade`** major bump (heap + TDE via new PGDATA) — not 18.3→18.4 in-place |
 | 16 | `test_waldump.py` | 33 | `pg_tde_waldump` |
+| 17 | `test_pdg_migration.py` | **10** | Percona Distribution migration doc (same/different server) |
 
 **Conventions used in this document**
 
@@ -828,75 +830,49 @@ file preserves the pg_tde key metadata block.
 
 ---
 
-## 11. `test_tde_minor_upgrade.py` (36 tests)
+## 11. `test_tde_minor_upgrade.py` (11 tests) — refreshed 2026-05-19
 
-Minor-version upgrade procedure for pg_tde (e.g. 2.1 → 2.2). Organized
-around five operational questions from the upgrade checklist.
+In-place **pg_tde** minor upgrade (e.g. PG **18.3** + pg_tde **2.1** → PG **18.4** +
+pg_tde **2.2**, **same** `$PGDATA`). Uses staged persistence under
+`--upgrade-data-dir` / `PG_TDE_UPGRADE_DATA_DIR`, not `--old-install-dir`.
 
-### 11.1 `TestTdeMinorUpgradePreConditions` (5 tests) — Q0 pre-flight
+**Automation:** `run_minor_upgrade_workflow.sh` · **Runbook:** `docs/minor_upgrade.md`
 
-| # | Test | Purpose |
-|---|---|---|
-| 11.1.1 | `test_catalog_version_vs_binary_version` | Percona ships 2.1.x with `default_version='2.1'` in the control file; the test pins this matrix. |
-| 11.1.2 | `test_wal_encryption_active_on_both_nodes` | Both Patroni nodes report `wal_encrypt=on` before the upgrade starts. |
-| 11.1.3 | `test_key_provider_registered_on_primary` | File provider + principal key present before upgrade. |
-| 11.1.4 | `test_encrypted_tables_readable_before_upgrade` | `tde_heap` rows accessible on both nodes. |
-| 11.1.5 | `test_pre_upgrade_full_backup_succeeds` | A full pgBackRest backup succeeds before any package change (Q5 pre-condition). |
+**Markers:** `encryption`, `slow`; staged classes also `minor_upgrade` (not `upgrade`).
 
-### 11.2 `TestAlterExtensionUpdate` (7 tests) — Q1: is `ALTER EXTENSION UPDATE` required?
+### 11.1 Ephemeral clusters (`tmp_path`, current packages)
 
 | # | Test | Purpose |
 |---|---|---|
-| 11.2.1 | `test_alter_extension_update_does_not_fail` | The command must not raise even when already at latest. |
-| 11.2.2 | `test_alter_extension_update_is_idempotent` | Running it twice is safe. |
-| 11.2.3 | `test_extversion_unchanged_when_catalog_version_matches` | When the control file `default_version` equals installed `extversion`, no version bump occurs. |
-| 11.2.4 | `test_alter_extension_update_does_not_drop_key_providers` | Provider registrations survive the UPDATE. |
-| 11.2.5 | `test_alter_extension_update_preserves_wal_encryption` | `pg_tde.wal_encrypt = on` remains on. |
-| 11.2.6 | `test_alter_extension_update_on_multiple_databases` | Must succeed on every database where pg_tde is installed. |
-| 11.2.7 | `test_encrypted_tables_accessible_after_alter_extension_update` | `tde_heap` rows written before the UPDATE are still readable after. |
+| 11.1.1 | `TestTdeMinorUpgradePreConditions::test_catalog_version_vs_binary_version` | `extversion` is a prefix of `pg_tde_version()`. |
+| 11.1.2 | `TestTdeMinorUpgradePreConditions::test_wal_encryption_active_on_both_nodes` | WAL encryption on primary and replica in a fresh HA pair. |
+| 11.1.3 | `TestAlterExtensionUpdate::test_alter_extension_update_safety_and_idempotency` | Double `ALTER EXTENSION pg_tde UPDATE`; keys and WAL enc preserved. |
+| 11.1.4 | `TestRollingRestart::test_rolling_restart_preserves_cluster_state` | Standby-first, then primary restart; encrypted data + replication. |
+| 11.1.5 | `TestWalArchivingContinuity::test_pitr_from_archive_works_after_rolling_restart` | PITR after rolling restart with encrypted WAL archive. |
 
-### 11.3 `TestRollingRestart` (6 tests) — Q3: rolling-restart order
+### 11.2 Staged Setup (source packages, e.g. 18.3 release)
 
-Order: install new packages on both nodes → restart standby (nodeB) →
-verify healthy → restart leader (nodeA).
-
-| # | Test | Purpose |
+| # | Test | Writes |
 |---|---|---|
-| 11.3.1 | `test_standby_restart_does_not_lose_data` | NodeB restart first must not lose data on nodeA. |
-| 11.3.2 | `test_writes_during_standby_restart_are_not_lost` | Rows written to nodeA while nodeB is down catch up afterwards. |
-| 11.3.3 | `test_leader_restart_after_standby_is_healthy` | After nodeB healthy, restart nodeA. |
-| 11.3.4 | `test_encryption_active_on_both_nodes_after_rolling_restart` | WAL encryption on after full rolling restart. |
-| 11.3.5 | `test_key_provider_intact_after_rolling_restart` | Provider + principal key still present. |
-| 11.3.6 | `test_new_encrypted_writes_work_after_full_rolling_restart` | New `tde_heap` inserts and reads work after both nodes restarted. |
+| 11.2.1 | `TestPgTdeMinorUpgradeSetup::test_prepare_persistent_state_for_minor_upgrade` | `single/pgdata`, 500-row `tde_heap`, WAL enc, `upgrade_state.json` |
+| 11.2.2 | `TestPg2381MinorUpgradeSetup::test_prepare_pg2381_churn_for_minor_upgrade` | `single_pg2381/` — drop/recreate + `VACUUM FULL` (opt-in) |
+| 11.2.3 | `TestPgTdeMinorUpgradeSetupHA::test_prepare_persistent_ha_state_for_minor_upgrade` | `ha/nodeA`, `ha/nodeB`, replication snapshot |
 
-### 11.4 `TestWalArchivingContinuity` (5 tests) — Q4: WAL archiving during upgrade
+### 11.3 Staged Verify (target packages, e.g. 18.4 testing)
 
-| # | Test | Purpose |
+| # | Test | Validates |
 |---|---|---|
-| 11.4.1 | `test_archive_command_survives_standby_restart` | WAL segments generated before+after nodeB restart all archived. |
-| 11.4.2 | `test_archive_command_survives_leader_restart` | Archive process resumes after nodeA restart. |
-| 11.4.3 | `test_wal_segments_archived_while_standby_was_down` | Segments generated during nodeB downtime end up in the archive. |
-| 11.4.4 | `test_pitr_from_archive_works_after_rolling_restart` | PITR from a WAL archive spanning a rolling restart succeeds. |
-| 11.4.5 | `test_no_archiving_errors_in_full_upgrade_window` | Full simulation: no `archive_command` failures recorded throughout. |
+| 11.3.1 | `TestPgTdeMinorUpgradeVerify::test_minor_upgrade_verification_flow` | Boot → digest → `ALTER EXTENSION` → new writes |
+| 11.3.2 | `TestPg2381MinorUpgradeVerify::test_verify_pg2381_churn_after_minor_upgrade` | PG-2381 table survives catalog migration |
+| 11.3.3 | `TestPgTdeMinorUpgradeVerifyHA::test_ha_minor_upgrade_verification_flow` | Replication rewired; extension sync on replica |
 
-### 11.5 `TestPostUpgradeState` (8 tests) — Q5: post-upgrade state + new backup
-
-| # | Test | Purpose |
-|---|---|---|
-| 11.5.1 | `test_encrypted_tables_accessible_after_full_upgrade_procedure` | Pre-upgrade `tde_heap` rows readable. |
-| 11.5.2 | `test_replication_continues_after_full_upgrade_procedure` | New writes replicate. |
-| 11.5.3 | `test_key_provider_functional_after_full_upgrade_procedure` | Provider usable for creating new keys. |
-| 11.5.4 | `test_wal_encryption_persists_after_full_upgrade_procedure` | `pg_tde.wal_encrypt` still on. |
-| 11.5.5 | `test_pg_tde_version_and_server_key_info_queryable` | Checklist verify commands run cleanly. |
-| 11.5.6 | `test_standby_encryption_state_matches_primary` | NodeB's encryption state mirrors nodeA. |
-| 11.5.7 | `test_post_upgrade_full_backup_succeeds` | New full backup succeeds. |
-| 11.5.8 | `test_post_upgrade_restore_from_backup_recovers_data` | Restore from post-upgrade backup yields intact data. |
-
-### 11.6 Module also contains nested test classes for pgBackRest-specific contracts (4 tests not in the per-question grouping above): `test_pre_upgrade_full_backup_succeeds`, `test_post_upgrade_full_backup_succeeds`, and PITR/restore variants — these all sit under the `TestPostUpgradeState` or `TestTdeMinorUpgradePreConditions` classes per the structure.
+**Not covered in staged minor path (see `test_tde_pg_upgrade.py`):** partitions,
+tablespaces, database-scoped keys, rich SQL types — use major-upgrade tests or
+extend staged scenarios.
 
 ---
 
-## 12. `test_tde_pg_upgrade.py` (41 tests)
+## 12. `test_tde_pg_upgrade.py` (45 tests)
 
 Major-version upgrade via `pg_tde_upgrade` wrapper. Regression coverage
 for PG-2240 (vanilla `pg_upgrade` doesn't migrate `$PGDATA/pg_tde/`).
@@ -1157,7 +1133,21 @@ needed for `CREATE DATABASE` from an encrypted template.
 
 ---
 
-## 15. `test_upgrade.py` (62 tests)
+## 17. `test_pdg_migration.py` (10 tests) — added 2026-05-19
+
+Ports [Percona PG 18 migration](https://docs.percona.com/postgresql/18/migration.html)
+workflows using ephemeral clusters (`pytest.mark.migration`).
+
+| Class | Tests | Purpose |
+|---|---|---|
+| `TestMigrateOnSameServer` | 3 | Config backup/restore; same PGDATA stop/start; `pg_dumpall` round-trip |
+| `TestMigrateOnDifferentServer` | 3 | `pg_dumpall` to new cluster; cold PGDATA copy; `pg_basebackup` seed |
+| `TestMigrateWithPgTde` | 3 | TDE stop/start; `pg_dumpall` with encrypted table; config backup |
+| `TestMigratePgTdeCrossMinorVersion` | 1 | Same-datadir package swap simulation (same PG major on both install dirs) |
+
+---
+
+## 15. `test_upgrade.py` (47 tests)
 
 General `pg_upgrade` testing — complements the dedicated TDE upgrade
 file. Skipped without `--old-install-dir`.

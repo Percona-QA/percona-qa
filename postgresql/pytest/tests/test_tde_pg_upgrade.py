@@ -286,16 +286,39 @@ def _assert_multidb_rows(
         assert count == str(row_count)
 
 
+def _pg_tde_control_versions(
+    old_install_dir: Path, install_dir: Path
+) -> tuple[Optional[str], Optional[str]]:
+    return (
+        read_pg_tde_default_version(old_install_dir),
+        read_pg_tde_default_version(install_dir),
+    )
+
+
 def _skip_unless_pg_tde_cross_minor(
     old_install_dir: Path, install_dir: Path
 ) -> None:
-    """PG-2381 / PR #582: empty smgr key slots after DROP + empty files after VACUUM FULL."""
-    old_ver = read_pg_tde_default_version(old_install_dir)
-    new_ver = read_pg_tde_default_version(install_dir)
+    """pg_tde 2.1→2.2 smgr key migration (PR #582) during upgrade startup."""
+    old_ver, new_ver = _pg_tde_control_versions(old_install_dir, install_dir)
     if not old_ver or not new_ver or old_ver == new_ver:
         pytest.skip(
-            f"needs pg_tde cross-minor (old={old_ver!r} new={new_ver!r}); "
-            "see TestPg2381 in-place test for same-version package bump"
+            f"needs different pg_tde control versions (old={old_ver!r} new={new_ver!r}); "
+            "for PG17→PG18 with the same pg_tde on both installs use "
+            "TestPg2381MajorUpgradeSamePgTdeControl; for in-place package bump use "
+            "test_tde_minor_upgrade.py"
+        )
+
+
+def _skip_unless_pg_tde_same_control_version(
+    old_install_dir: Path, install_dir: Path
+) -> None:
+    """Major ``pg_upgrade`` with identical ``pg_tde.control`` (e.g. 2.2 on PG17 and PG18)."""
+    old_ver, new_ver = _pg_tde_control_versions(old_install_dir, install_dir)
+    if not old_ver or not new_ver or old_ver != new_ver:
+        pytest.skip(
+            f"needs the same pg_tde control version on both install dirs "
+            f"(old={old_ver!r} new={new_ver!r}); for 2.1→2.2 migration use "
+            "TestPg2381EmptyKeyMigration"
         )
 
 
@@ -2635,7 +2658,6 @@ class TestTdeUpgradeExtremeCornerCases:
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
-        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
 
         keyfile = str(tmp_path / "ghost_upgrade.per")
         old = _make_old_cluster(
@@ -2845,6 +2867,130 @@ class TestPg2381EmptyKeyMigration:
         upgraded.wait_ready(timeout=60)
         assert upgraded.fetchone("SELECT id FROM ghost_t") == "2"
         upgraded.stop()
+
+
+class TestPg2381MajorUpgradeSamePgTdeControl:
+    """
+    Major PostgreSQL upgrade (e.g. PG17→PG18) when **both** install trees ship the
+    same ``pg_tde.control`` ``default_version`` (e.g. 2.2 on old and new).
+
+    Uses plain ``pg_upgrade`` + ``copy_pg_tde_dir`` unless WAL encryption forces
+    ``pg_tde_upgrade`` (see ``should_use_pg_tde_upgrade_wrapper``). These tests
+    complement ``TestPg2381EmptyKeyMigration`` (2.1→2.2 smgr migration) and
+    ``test_tde_minor_upgrade.py`` (in-place package bump on one PG major).
+    """
+
+    def test_major_upgrade_ghost_repro_same_pg_tde_control(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """Drop/recreate + ``VACUUM FULL``; ghost relfilenode must read ``id=2``."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_same_control_version(old_install_dir, install_dir)
+
+        keyfile = str(tmp_path / "pg2381_maj_ghost.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2381_maj_ghost_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_drop_recreate_vacuum_full(old)
+        assert old.fetchone("SELECT id FROM ghost_t") == "2"
+        old.stop()
+
+        _pg2381_major_upgrade_after_churn(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            keyfile,
+            new_subdir="pg2381_maj_ghost_new",
+            verify_sql="SELECT id FROM ghost_t",
+            expected_value="2",
+        )
+
+    def test_major_upgrade_vacuum_full_same_pg_tde_control(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """``VACUUM FULL`` churn must not break major upgrade when pg_tde minor matches."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_same_control_version(old_install_dir, install_dir)
+
+        keyfile = str(tmp_path / "pg2381_maj_vf.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2381_maj_vf_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_vacuum_full_only(old, "vf_t")
+        old.stop()
+
+        _pg2381_major_upgrade_after_churn(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            keyfile,
+            new_subdir="pg2381_maj_vf_new",
+            verify_sql="SELECT COUNT(*) FROM vf_t",
+            expected_value="50",
+        )
+
+    def test_major_upgrade_drop_table_same_pg_tde_control(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """``DROP TABLE`` churn + major upgrade; ``active_t`` rows must survive."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_same_control_version(old_install_dir, install_dir)
+
+        keyfile = str(tmp_path / "pg2381_maj_drop.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2381_maj_drop_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_drop_table_only(old)
+        old.stop()
+
+        _pg2381_major_upgrade_after_churn(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            keyfile,
+            new_subdir="pg2381_maj_drop_new",
+            verify_sql="SELECT COUNT(*) FROM active_t",
+            expected_value="30",
+        )
 
 
 # ── PG-2379: per-database principal keys during 2.1→2.2 smgr key migration ───
@@ -3127,8 +3273,9 @@ class TestPg2379MultiDbKeyMigration:
             pytest.skip(
                 "in-place pg_tde minor upgrade requires the same PostgreSQL major "
                 f"(old={postgres_major_version(old_install_dir)}, "
-                f"new={postgres_major_version(install_dir)}); use "
-                "test_tde_pg_upgrade major-upgrade tests for PG17→PG18"
+                f"new={postgres_major_version(install_dir)}); for PG major bump with "
+                "the same pg_tde control on both installs use "
+                "TestPg2381MajorUpgradeSamePgTdeControl"
             )
 
         old_ver = read_pg_tde_default_version(old_install_dir)

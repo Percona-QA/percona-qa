@@ -2,7 +2,9 @@
 
 This document describes how to run **pg_tde extension minor-version upgrades** with the pytest suite in `tests/test_tde_minor_upgrade.py`.
 
-For **PostgreSQL major upgrades** (e.g. PG 17 → 18 via `pg_upgrade`), see `tests/test_tde_pg_upgrade.py` and use `--old-install-dir` plus `--install-dir`.
+For **PostgreSQL major upgrades** (e.g. PG 17 → 18 via `pg_upgrade`), see `tests/test_tde_pg_upgrade.py` and use `--old-install-dir` plus `--install-dir`. Do **not** use `tests/test_upgrade.py` for in-place PG 18.3→18.4 — that module runs `pg_upgrade` into a new data directory.
+
+Coverage: [`coverage_reports/coverage_2026-05-19.md`](../coverage_reports/coverage_2026-05-19.md).
 
 ---
 
