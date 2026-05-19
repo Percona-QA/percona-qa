@@ -21,10 +21,11 @@ must succeed regardless of packaging:
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import pytest
 
@@ -33,6 +34,7 @@ from lib import PgCluster, ReplicationManager, TdeManager
 from lib.cluster import (
     initdb_args_no_data_checksums,
     libpq_superuser,
+    postgres_major_version,
     prepend_install_lib_dirs,
     read_pg_tde_default_version,
 )
@@ -86,6 +88,41 @@ def _pg_dumpall(cluster: PgCluster, dump_path: Path) -> None:
         capture_output=True,
         text=True,
     )
+
+
+def _bootstrap_roles_for_restore() -> Set[str]:
+    """Roles initdb already created on a fresh target cluster."""
+    return {libpq_superuser(), "postgres"}
+
+
+def _role_name_from_role_ddl(line: str) -> Optional[str]:
+    """Extract role name from a one-line CREATE/ALTER ROLE statement."""
+    m = re.match(r"^(?:CREATE|ALTER)\s+ROLE\s+([^\s;]+)", line, re.IGNORECASE)
+    if not m:
+        return None
+    return m.group(1).strip('"')
+
+
+def _filter_dumpall_for_fresh_cluster(dump_path: Path) -> Path:
+    """
+    ``pg_dumpall`` emits CREATE/ALTER ROLE for the cluster superuser; a target
+    cluster from initdb already has that role (typically the OS user, e.g.
+    ``ubuntu``).  Drop those lines so ``psql -v ON_ERROR_STOP=1`` can proceed.
+    """
+    skip_roles = _bootstrap_roles_for_restore()
+    filtered = dump_path.with_name(f"{dump_path.stem}.restore.sql")
+    kept: List[str] = []
+    for line in dump_path.read_text().splitlines():
+        name = _role_name_from_role_ddl(line)
+        if name and name in skip_roles:
+            continue
+        kept.append(line)
+    filtered.write_text("\n".join(kept) + "\n")
+    return filtered
+
+
+def _restore_pg_dumpall(cluster: PgCluster, dump_path: Path) -> None:
+    _psql_file(cluster, _filter_dumpall_for_fresh_cluster(dump_path))
 
 
 def _psql_file(cluster: PgCluster, sql_path: Path) -> None:
@@ -219,7 +256,7 @@ class TestMigrateOnSameServer:
         )
         restored.start()
         restored.wait_ready()
-        _psql_file(restored, dump_file)
+        _restore_pg_dumpall(restored, dump_file)
 
         assert restored.fetchone("SELECT COUNT(*) FROM pdg_migrate_tbl") == "200"
         restored.stop()
@@ -249,7 +286,7 @@ class TestMigrateOnDifferentServer:
 
         target.start()
         target.wait_ready()
-        _psql_file(target, dump_file)
+        _restore_pg_dumpall(target, dump_file)
 
         assert target.fetchone("SELECT COUNT(*) FROM pdg_migrate_tbl") == "200"
         target.stop()
@@ -386,7 +423,7 @@ class TestMigrateWithPgTde:
 
         target.start()
         target.wait_ready()
-        _psql_file(target, dump_file)
+        _restore_pg_dumpall(target, dump_file)
 
         assert target.fetchone("SELECT COUNT(*) FROM tde_remote") == "3"
         target.stop()
@@ -445,6 +482,15 @@ class TestMigratePgTdeCrossMinorVersion:
             pytest.skip(
                 f"needs different pg_tde control versions (got old={old_ver!r} "
                 f"new={new_ver!r})"
+            )
+
+        old_major = postgres_major_version(old_install_dir)
+        new_major = postgres_major_version(install_dir)
+        if old_major != new_major:
+            pytest.skip(
+                "in-place pg_tde minor upgrade requires the same PostgreSQL major "
+                f"(old={old_major}, new={new_major}); use test_tde_pg_upgrade for "
+                "PG major bumps"
             )
 
         keyfile = str(tmp_path / "cross_minor.per")
