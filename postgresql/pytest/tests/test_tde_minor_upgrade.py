@@ -12,6 +12,9 @@ This is **not** a PG major upgrade (17 → 18). For that path see
 ``ALTER EXTENSION pg_tde UPDATE`` on the new cluster when the source had
 pg_tde 2.1.x and the target ships 2.2.x.
 
+PG-2381 (empty smgr key files / slots after ``VACUUM FULL`` / ``DROP TABLE``)
+is covered in ``TestPg2381EmptyKeyMigration`` and staged ``single_pg2381`` here.
+
 Staged Verify tests here (``TestPgTdeMinorUpgradeVerify*``) run the same
 ``ALTER EXTENSION pg_tde UPDATE`` step after the operator replaces the
 package — that is the 2.1 → 2.2 catalog migration for in-place minor upgrades.
@@ -477,6 +480,22 @@ def _populate_encrypted_table(cluster: PgCluster) -> None:
     )
 
 
+def _populate_pg2381_churn_table(cluster: PgCluster) -> None:
+    """
+    PG-2381 repro churn on ``pg2381_churn_t`` (drop/recreate + ``VACUUM FULL``).
+
+    https://github.com/percona/pg_tde/pull/582
+    """
+    table = "pg2381_churn_t"
+    cluster.execute(f"DROP TABLE IF EXISTS {table}")
+    cluster.execute(f"CREATE TABLE {table} (id INT PRIMARY KEY) USING tde_heap")
+    cluster.execute(f"INSERT INTO {table} VALUES (1)")
+    cluster.execute(f"DROP TABLE {table}")
+    cluster.execute(f"CREATE TABLE {table} (id INT PRIMARY KEY) USING tde_heap")
+    cluster.execute(f"INSERT INTO {table} VALUES (2)")
+    cluster.execute("VACUUM FULL")
+
+
 # ── Phase 7: single-node staged Setup / Verify ────────────────────────────────
 
 
@@ -522,6 +541,63 @@ class TestPgTdeMinorUpgradeSetup:
                 cluster, scenario="single_node", install_dir=install_dir,
                 data_dir=str(data_dir), socket_dir=str(socket_dir),
                 keyfile=keyfile,
+            )
+            _write_state(scenario_root, payload)
+        finally:
+            try:
+                if cluster.is_ready():
+                    cluster.stop(check=False)
+            except Exception:
+                pass
+
+    def test_prepare_pg2381_churn_for_minor_upgrade(
+        self,
+        upgrade_data_dir: Optional[Path],
+        install_dir: Path,
+        io_method: str,
+    ):
+        """
+        Staged Setup: PG-2381 churn (``VACUUM FULL`` + drop/recreate) on pg_tde 2.1.
+
+        Run Verify after swapping to pg_tde 2.2 packages on the **same** PG major
+        (``--upgrade-data-dir`` + ``test_verify_pg2381_churn_after_minor_upgrade``).
+        """
+        _skip_if_no_upgrade_dir(upgrade_data_dir)
+        scenario_root = _scenario_root(upgrade_data_dir, "single_pg2381")
+        _reset_scenario_root(scenario_root)
+
+        data_dir = scenario_root / "pgdata"
+        socket_dir = scenario_root / "sock"
+        socket_dir.mkdir(parents=True, exist_ok=True)
+        keyfile = _persist_keyfile_path(scenario_root)
+
+        cluster = PgCluster(
+            data_dir, allocate_port(), install_dir,
+            socket_dir=socket_dir, io_method=io_method,
+        )
+        cluster.initdb(extra_args=initdb_args_no_data_checksums(install_dir))
+        cluster.write_default_config(extra_params=dict(_TDE_PARAMS))
+        cluster.add_hba_entry("local all all trust")
+        cluster.add_hba_entry("host  all all 127.0.0.1/32 trust")
+        cluster.start()
+
+        try:
+            tde = TdeManager(cluster)
+            tde.create_extension()
+            tde.add_global_key_provider_file(keyfile=keyfile)
+            tde.set_global_principal_key()
+            _populate_pg2381_churn_table(cluster)
+            assert cluster.fetchone("SELECT id FROM pg2381_churn_t") == "2"
+
+            payload = _capture_pre_upgrade_state(
+                cluster,
+                scenario="single_pg2381",
+                install_dir=install_dir,
+                data_dir=str(data_dir),
+                socket_dir=str(socket_dir),
+                keyfile=keyfile,
+                churn_table="pg2381_churn_t",
+                churn_expected_id="2",
             )
             _write_state(scenario_root, payload)
         finally:
@@ -622,6 +698,54 @@ class TestPgTdeMinorUpgradeVerify:
             f"SELECT COUNT(*) FROM {state['test_table']}"
         )
         assert new_count == str(state["row_count"] + 100)
+
+
+@pytest.fixture(scope="class")
+def _verify_pg2381_cluster(
+    upgrade_data_dir, install_dir, io_method
+) -> Generator[Tuple[PgCluster, Dict[str, Any]], None, None]:
+    _skip_if_no_upgrade_dir(upgrade_data_dir)
+    scenario_root = _scenario_root(upgrade_data_dir, "single_pg2381")
+    state = _read_state(scenario_root)
+    if state.get("scenario") != "single_pg2381":
+        pytest.skip("State is not for single_pg2381 (run Setup PG-2381 test first)")
+
+    socket_dir = Path(state["socket_dir"])
+    socket_dir.mkdir(parents=True, exist_ok=True)
+    cluster = _bind_cluster_to_persistent_data_dir(
+        install_dir, Path(state["data_dir"]), socket_dir, io_method
+    )
+    cluster.start()
+    cluster.wait_ready(timeout=90)
+
+    try:
+        yield cluster, state
+    finally:
+        try:
+            if cluster.is_ready():
+                cluster.stop(check=False)
+        except Exception:
+            pass
+
+
+class TestPg2381MinorUpgradeVerify:
+    """Staged Verify for PG-2381 after in-place pg_tde 2.1→2.2 package swap."""
+
+    def test_verify_pg2381_churn_after_minor_upgrade(self, _verify_pg2381_cluster):
+        cluster, state = _verify_pg2381_cluster
+        churn_table = state.get("churn_table", "pg2381_churn_t")
+        expected_id = state.get("churn_expected_id", "2")
+
+        assert cluster.fetchone(f"SELECT id FROM {churn_table}") == expected_id
+
+        cluster.execute("ALTER EXTENSION pg_tde UPDATE")
+
+        assert cluster.fetchone(f"SELECT id FROM {churn_table}") == expected_id
+
+        cluster.execute(
+            f"INSERT INTO {churn_table} (id) VALUES (99) ON CONFLICT (id) DO NOTHING"
+        )
+        assert cluster.fetchone(f"SELECT id FROM {churn_table} WHERE id = 99") == "99"
 
 
 # ── Phase 8: HA staged Setup / Verify ─────────────────────────────────────────

@@ -289,6 +289,97 @@ def _assert_multidb_rows(
         assert count == str(row_count)
 
 
+def _skip_unless_pg_tde_cross_minor(
+    old_install_dir: Path, install_dir: Path
+) -> None:
+    """PG-2381 / PR #582: empty smgr key slots after DROP + empty files after VACUUM FULL."""
+    old_ver = read_pg_tde_default_version(old_install_dir)
+    new_ver = read_pg_tde_default_version(install_dir)
+    if not old_ver or not new_ver or old_ver == new_ver:
+        pytest.skip(
+            f"needs pg_tde cross-minor (old={old_ver!r} new={new_ver!r}); "
+            "see TestPg2381 in-place test for same-version package bump"
+        )
+
+
+def _zero_byte_files_under_pg_tde(data_dir: Path) -> List[Path]:
+    root = data_dir / "pg_tde"
+    if not root.is_dir():
+        return []
+    return [
+        p for p in root.rglob("*")
+        if p.is_file() and p.stat().st_size == 0
+    ]
+
+
+def _pg2381_setup_tde_heap(
+    cluster: PgCluster, keyfile: str, *, key_name: str = "test_key"
+) -> TdeManager:
+    tde = TdeManager(cluster)
+    tde.create_extension()
+    tde.add_global_key_provider_file(keyfile=keyfile)
+    tde.set_global_principal_key(key_name=key_name)
+    return tde
+
+
+def _pg2381_churn_vacuum_full_only(cluster: PgCluster, table: str = "vf_t") -> None:
+    """VACUUM FULL can leave zero-byte ``*_keys`` files (PG-2381)."""
+    cluster.execute(f"CREATE TABLE {table} (id INT) USING tde_heap")
+    cluster.execute(f"INSERT INTO {table} SELECT generate_series(1, 50)")
+    cluster.execute(f"VACUUM FULL {table}")
+
+
+def _pg2381_churn_drop_table_only(cluster: PgCluster, table: str = "drop_t") -> None:
+    """DROP TABLE can leave empty slots in smgr key files (PG-2381)."""
+    cluster.execute(f"CREATE TABLE {table} (id INT) USING tde_heap")
+    cluster.execute(f"INSERT INTO {table} VALUES (1)")
+    cluster.execute(f"DROP TABLE {table}")
+    cluster.execute(
+        "CREATE TABLE active_t (id INT) USING tde_heap; "
+        "INSERT INTO active_t SELECT generate_series(1, 30)"
+    )
+
+
+def _pg2381_churn_drop_recreate_vacuum_full(
+    cluster: PgCluster, table: str = "ghost_t"
+) -> None:
+    """Combined churn from the original relfilenode repro (PG-2381 + relfilenode check)."""
+    cluster.execute(f"CREATE TABLE {table} (id INT) USING tde_heap")
+    cluster.execute(f"INSERT INTO {table} VALUES (1)")
+    cluster.execute(f"DROP TABLE {table}")
+    cluster.execute(f"CREATE TABLE {table} (id INT) USING tde_heap")
+    cluster.execute(f"INSERT INTO {table} VALUES (2)")
+    cluster.execute("VACUUM FULL")
+
+
+def _pg2381_major_upgrade_after_churn(
+    old: PgCluster,
+    install_dir: Path,
+    tmp_path: Path,
+    io_method: str,
+    keyfile: str,
+    *,
+    new_subdir: str = "new",
+    verify_sql: str,
+    expected_value: str,
+) -> None:
+    """Run pg_tde_upgrade after churn; assert post-upgrade query (PR #582 path)."""
+    new_cluster, result = _upgrade(
+        old,
+        install_dir,
+        tmp_path,
+        io_method,
+        new_subdir=new_subdir,
+        extra_params=_tde_params(keyfile),
+    )
+    assert result.returncode == 0, (
+        f"pg_tde_upgrade failed (PG-2381 churn):\n{result.stdout}\n{result.stderr}"
+    )
+    _start_cluster_after_pg_upgrade(new_cluster)
+    assert new_cluster.fetchone(verify_sql) == expected_value
+    new_cluster.stop()
+
+
 # ── PPG (<17) → PSP (≥17) ────────────────────────────────────────────────────
 
 
@@ -2540,12 +2631,14 @@ class TestTdeUpgradeExtremeCornerCases:
         io_method: str,
     ):
         """
-        Relfilenode ghosting: Creates a table, drops it, and creates a new one
-        with the exact same name. Forces pg_tde_upgrade to resolve the correct
-        active relfilenode mapping and discard the dead ones.
+        Relfilenode ghosting: drop/recreate ``ghost_t`` + ``VACUUM FULL``.
+
+        Uses ``pg_tde_upgrade`` (PG-2381 smgr migration). After upgrade, ``id``
+        must be ``2`` (active relfilenode), not ``1`` (ghost).
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
 
         keyfile = str(tmp_path / "ghost_upgrade.per")
         old = _make_old_cluster(
@@ -2554,45 +2647,207 @@ class TestTdeUpgradeExtremeCornerCases:
             extra_params=_tde_params(keyfile),
         )
         old.start()
-        tde = TdeManager(old)
-        tde.create_extension()
-        tde.add_global_key_provider_file(keyfile=keyfile)
-        tde.set_global_principal_key()
-
-        # Version 1 (Will be ghosted)
-        old.execute("CREATE TABLE ghost_t (id INT) USING tde_heap;")
-        old.execute("INSERT INTO ghost_t VALUES (1);")
-        old.execute("DROP TABLE ghost_t;")
-
-        # Version 2 (Active)
-        old.execute("CREATE TABLE ghost_t (id INT) USING tde_heap;")
-        old.execute("INSERT INTO ghost_t VALUES (2);")
-
-        # Force catalog cleanup
-        old.execute("VACUUM FULL;")
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_drop_recreate_vacuum_full(old)
+        assert old.fetchone("SELECT id FROM ghost_t") == "2"
         old.stop()
 
-        # Plain pg_upgrade + pg_tde/ copy: pg_tde_upgrade often cannot start the
-        # empty target during schema dump (2.1→2.2); relfilenode mapping is validated
-        # after upgrade + ALTER EXTENSION on the new cluster.
-        new_cluster, result = _upgrade(
+        _pg2381_major_upgrade_after_churn(
             old,
             install_dir,
             tmp_path,
             io_method,
+            keyfile,
+            verify_sql="SELECT id FROM ghost_t",
+            expected_value="2",
+        )
+
+
+# ── PG-2381: smgr key migration with empty files / empty slots ───────────────
+# https://github.com/percona/pg_tde/pull/582
+
+
+class TestPg2381EmptyKeyMigration:
+    """
+    Regression for PG-2381 / PR #582: ``pg_tde_migrate_smgr_keys_file()`` must
+    skip zero-byte key files (e.g. after ``VACUUM FULL``) and empty smgr slots
+    (e.g. after ``DROP TABLE``). Without the fix, startup during ``pg_tde_upgrade``
+    failed with ``failed to decrypt key`` (misread as a ``pg_tde_upgrade`` bug).
+    """
+
+    def test_major_upgrade_after_vacuum_full_empty_key_file(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """``VACUUM FULL`` may create 0-byte ``*_keys`` files; upgrade must succeed."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
+
+        keyfile = str(tmp_path / "pg2381_vf.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2381_vf_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
             extra_params=_tde_params(keyfile),
-            use_tde_wrapper=False,
         )
-        assert result.returncode == 0, (
-            f"pg_upgrade (ghost relfilenode) failed:\n{result.stdout}\n{result.stderr}"
+        old.start()
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_vacuum_full_only(old, "vf_t")
+        _zero_byte_files_under_pg_tde(old.data_dir)
+        old.stop()
+
+        _pg2381_major_upgrade_after_churn(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            keyfile,
+            new_subdir="pg2381_vf_new",
+            verify_sql="SELECT COUNT(*) FROM vf_t",
+            expected_value="50",
         )
 
-        _start_cluster_after_pg_upgrade(new_cluster)
+    def test_major_upgrade_after_drop_table_empty_key_slot(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """``DROP TABLE`` may leave empty smgr key entries; upgrade must succeed."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
 
-        # Must return exactly 1 row (value=2). If it fails, the catalog map is broken.
-        val = new_cluster.fetchone("SELECT id FROM ghost_t;")
-        assert int(val) == 2, "pg_tde_upgrade mixed up the dropped table's relfilenode!"
-        new_cluster.stop()
+        keyfile = str(tmp_path / "pg2381_drop.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2381_drop_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_drop_table_only(old)
+        old.stop()
+
+        _pg2381_major_upgrade_after_churn(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            keyfile,
+            new_subdir="pg2381_drop_new",
+            verify_sql="SELECT COUNT(*) FROM active_t",
+            expected_value="30",
+        )
+
+    def test_major_upgrade_combined_churn_matches_ghost_repro(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """Full drop/recreate + ``VACUUM FULL`` (bash ``relfile_issue.sh``)."""
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
+
+        keyfile = str(tmp_path / "pg2381_ghost.per")
+        old = _make_old_cluster(
+            old_install_dir,
+            tmp_path,
+            io_method,
+            subdir="pg2381_ghost_old",
+            extra_initdb=initdb_args_no_data_checksums(old_install_dir),
+            extra_params=_tde_params(keyfile),
+        )
+        old.start()
+        _pg2381_setup_tde_heap(old, keyfile)
+        _pg2381_churn_drop_recreate_vacuum_full(old)
+        old.stop()
+
+        _pg2381_major_upgrade_after_churn(
+            old,
+            install_dir,
+            tmp_path,
+            io_method,
+            keyfile,
+            new_subdir="pg2381_ghost_new",
+            verify_sql="SELECT id FROM ghost_t",
+            expected_value="2",
+        )
+
+    def test_inplace_same_datadir_startup_after_churn(
+        self,
+        old_install_dir: Optional[Path],
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+    ):
+        """
+        In-place pg_tde 2.1→2.2 on the same PG major (package bump): migration at
+        postmaster start + ``ALTER EXTENSION pg_tde UPDATE``.
+
+        ``--old-install-dir`` and ``--install-dir`` must be the same PostgreSQL
+        major (e.g. two PG17 trees with pg_tde 2.1 vs 2.2 control files).
+        """
+        if not old_install_dir:
+            pytest.skip("--old-install-dir not provided")
+        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
+        if postgres_major_version(old_install_dir) != postgres_major_version(
+            install_dir
+        ):
+            pytest.skip(
+                "in-place PG-2381 test needs same PG major on old and new install_dir"
+            )
+
+        keyfile = str(tmp_path / "pg2381_inplace.per")
+        data_dir = tmp_path / "pg2381_inplace_data"
+        port = allocate_port()
+        old_cluster = PgCluster(
+            data_dir,
+            port,
+            old_install_dir,
+            socket_dir=tmp_path,
+            io_method=io_method,
+        )
+        old_cluster.initdb(
+            extra_args=initdb_args_no_data_checksums(old_install_dir)
+        )
+        old_cluster.write_default_config(extra_params=_tde_params(keyfile))
+        old_cluster.add_hba_entry("local all all trust")
+        old_cluster.start()
+        _pg2381_setup_tde_heap(old_cluster, keyfile)
+        _pg2381_churn_drop_recreate_vacuum_full(old_cluster)
+        assert old_cluster.fetchone("SELECT id FROM ghost_t") == "2"
+        old_cluster.stop()
+
+        upgraded = PgCluster(
+            data_dir,
+            port,
+            install_dir,
+            socket_dir=tmp_path,
+            io_method=io_method,
+        )
+        upgraded.start()
+        upgraded.wait_ready(timeout=90)
+        upgraded.execute("ALTER EXTENSION pg_tde UPDATE")
+        assert upgraded.fetchone("SELECT id FROM ghost_t") == "2"
+        upgraded.stop()
+        upgraded.start()
+        upgraded.wait_ready(timeout=60)
+        assert upgraded.fetchone("SELECT id FROM ghost_t") == "2"
+        upgraded.stop()
 
 
 # ── PG-2379: per-database principal keys during 2.1→2.2 smgr key migration ───
