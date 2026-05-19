@@ -223,7 +223,7 @@ These assume you are **already** on the target pg_tde build. They exercise behav
 | `TestRollingRestart` | Patroni-style restart order with encrypted data |
 | `TestWalArchivingContinuity` | PITR from archive after rolling restart |
 
-Markers: `upgrade`, `encryption`, `slow` (see `pyproject.toml`).
+Markers: `minor_upgrade` (staged Setup/Verify only), `encryption`, `slow`. Do **not** tag this file with `upgrade` — that marker is for major `pg_upgrade` tests and requires `--old-install-dir`.
 
 ---
 

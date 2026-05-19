@@ -223,10 +223,14 @@ def pytest_collection_modifyitems(config, items):
     vault_addr = config.getoption("--vault-addr")
     kmip_addr = config.getoption("--kmip-server-address")
     old_dir = config.getoption("--old-install-dir")
+    upgrade_data_dir = config.getoption("--upgrade-data-dir")
 
     skip_vault = pytest.mark.skip(reason="--vault-addr not provided")
     skip_kmip = pytest.mark.skip(reason="--kmip-server-address not provided")
     skip_upgrade = pytest.mark.skip(reason="--old-install-dir not provided")
+    skip_minor_upgrade = pytest.mark.skip(
+        reason="--upgrade-data-dir not provided (or set PG_TDE_UPGRADE_DATA_DIR)"
+    )
     skip_docker = pytest.mark.skip(reason="docker not found in PATH")
     skip_pgbackrest = pytest.mark.skip(reason="pgbackrest not installed or not on PATH")
 
@@ -240,6 +244,8 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_kmip)
         if "upgrade" in item.keywords and not old_dir:
             item.add_marker(skip_upgrade)
+        if "minor_upgrade" in item.keywords and not upgrade_data_dir:
+            item.add_marker(skip_minor_upgrade)
         if "docker" in item.keywords and not docker_available:
             item.add_marker(skip_docker)
         if "pgbackrest" in item.keywords and not pgbr_ok:

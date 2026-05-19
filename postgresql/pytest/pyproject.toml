@@ -41,6 +41,7 @@ markers = [
     "backup: backup and PITR tests (including pg_basebackup)",
     "pgbackrest: tests that require the pgbackrest CLI",
     "upgrade: pg_upgrade major-version upgrade tests",
+    "minor_upgrade: staged in-place pg_tde minor upgrade (Setup/Verify; needs --upgrade-data-dir)",
     "migration: Percona Distribution migration doc scenarios (community to PDG)",
     "recovery: crash recovery, pg_rewind, and WAL tests",
     "bug: bug reproduction tests (PG-XXXX)",

@@ -40,7 +40,10 @@ from lib import (
 )
 from lib.cluster import initdb_args_no_data_checksums
 
-pytestmark = [pytest.mark.upgrade, pytest.mark.encryption, pytest.mark.slow]
+# Do not use pytest.mark.upgrade here: conftest skips ``upgrade`` tests when
+# ``--old-install-dir`` is unset (major pg_upgrade). Staged Setup/Verify classes
+# use ``pytest.mark.minor_upgrade`` and require ``--upgrade-data-dir`` instead.
+pytestmark = [pytest.mark.encryption, pytest.mark.slow]
 
 # ── constants ─────────────────────────────────────────────────────────────────
 
@@ -501,6 +504,7 @@ def _populate_pg2381_churn_table(cluster: PgCluster) -> None:
 # ── Phase 7: single-node staged Setup / Verify ────────────────────────────────
 
 
+@pytest.mark.minor_upgrade
 class TestPgTdeMinorUpgradeSetup:
 
     def test_prepare_persistent_state_for_minor_upgrade(
@@ -638,6 +642,7 @@ def _verify_single_cluster(
             pass
 
 
+@pytest.mark.minor_upgrade
 class TestPgTdeMinorUpgradeVerify:
 
     def test_minor_upgrade_verification_flow(self, _verify_single_cluster):
@@ -730,6 +735,7 @@ def _verify_pg2381_cluster(
             pass
 
 
+@pytest.mark.minor_upgrade
 class TestPg2381MinorUpgradeVerify:
     """Staged Verify for PG-2381 after in-place pg_tde 2.1→2.2 package swap."""
 
@@ -761,6 +767,7 @@ def _ha_replica_dir(scenario_root: Path) -> Path:
     return scenario_root / "nodeB"
 
 
+@pytest.mark.minor_upgrade
 class TestPgTdeMinorUpgradeSetupHA:
 
     def test_prepare_persistent_ha_state_for_minor_upgrade(
@@ -852,6 +859,7 @@ def _verify_ha_pair(
                 pass
 
 
+@pytest.mark.minor_upgrade
 class TestPgTdeMinorUpgradeVerifyHA:
 
     def test_ha_minor_upgrade_verification_flow(self, _verify_ha_pair):
