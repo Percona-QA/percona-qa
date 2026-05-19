@@ -18,6 +18,8 @@ is covered in ``TestPg2381EmptyKeyMigration`` and staged ``single_pg2381`` here.
 Staged Verify tests here (``TestPgTdeMinorUpgradeVerify*``) run the same
 ``ALTER EXTENSION pg_tde UPDATE`` step after the operator replaces the
 package — that is the 2.1 → 2.2 catalog migration for in-place minor upgrades.
+
+Runbook: ``docs/minor_upgrade.md`` (Setup → package upgrade → Verify).
 """
 
 import json
