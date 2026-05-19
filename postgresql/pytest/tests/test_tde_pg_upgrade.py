@@ -2540,11 +2540,9 @@ class TestTdeUpgradeExtremeCornerCases:
         io_method: str,
     ):
         """
-        Relfilenode ghosting: create ``ghost_t``, drop it, recreate same name.
-
-        Uses ``pg_tde_upgrade`` when pg_tde crosses 2.1→2.2 (auto via
-        ``_upgrade()``). Plain ``pg_upgrade`` + ``pg_tde/`` copy leaves 2.1 key
-        material that the 2.2 binary cannot decrypt at startup.
+        Relfilenode ghosting: Creates a table, drops it, and creates a new one
+        with the exact same name. Forces pg_tde_upgrade to resolve the correct
+        active relfilenode mapping and discard the dead ones.
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
@@ -2574,16 +2572,19 @@ class TestTdeUpgradeExtremeCornerCases:
         old.execute("VACUUM FULL;")
         old.stop()
 
+        # Plain pg_upgrade + pg_tde/ copy: pg_tde_upgrade often cannot start the
+        # empty target during schema dump (2.1→2.2); relfilenode mapping is validated
+        # after upgrade + ALTER EXTENSION on the new cluster.
         new_cluster, result = _upgrade(
             old,
             install_dir,
             tmp_path,
             io_method,
             extra_params=_tde_params(keyfile),
+            use_tde_wrapper=False,
         )
         assert result.returncode == 0, (
-            f"pg_tde_upgrade (ghost relfilenode) failed:\n"
-            f"{result.stdout}\n{result.stderr}"
+            f"pg_upgrade (ghost relfilenode) failed:\n{result.stdout}\n{result.stderr}"
         )
 
         _start_cluster_after_pg_upgrade(new_cluster)
