@@ -493,6 +493,65 @@ def _populate_encrypted_table(cluster: PgCluster) -> None:
     )
 
 
+def _staged_table_digest(
+    cluster: PgCluster, table: str, *, max_id: Optional[int] = None
+) -> Optional[str]:
+    if max_id is not None:
+        return cluster.fetchone(
+            f"SELECT md5(string_agg(payload, ',' ORDER BY id)) "
+            f"FROM {table} WHERE id <= {max_id}"
+        )
+    return cluster.fetchone(
+        f"SELECT md5(string_agg(payload, ',' ORDER BY id)) "
+        f"FROM {table}"
+    )
+
+
+def _assert_staged_table_baseline(
+    cluster: PgCluster, state: Dict[str, Any]
+) -> bool:
+    """
+    Validate encrypted table rows against Setup snapshot.
+
+    Returns True if a previous Verify run already appended the +100 probe rows.
+    """
+    table = state["test_table"]
+    base = int(state["row_count"])
+    count = int(cluster.fetchone(f"SELECT COUNT(*) FROM {table}") or "0")
+    if count == base:
+        assert _staged_table_digest(cluster, table) == state["data_digest"]
+        return False
+    if count == base + 100:
+        assert _staged_table_digest(cluster, table, max_id=base) == state["data_digest"]
+        return True
+    pytest.fail(
+        f"Unexpected row count on {table}: got {count}, "
+        f"expected {base} (after Setup) or {base + 100} (after a completed Verify). "
+        f"Re-run Setup to reset PGDATA: "
+        f"pytest ...TestPgTdeMinorUpgradeSetup::test_prepare_persistent_state_for_minor_upgrade"
+    )
+
+
+def _alter_extension_if_needed(cluster: PgCluster, state: Dict[str, Any]) -> str:
+    """Run ``ALTER EXTENSION pg_tde UPDATE`` unless catalog already migrated."""
+    old_ext = (state.get("old_extversion") or "").strip()
+    ext = (
+        cluster.fetchone(
+            "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
+        )
+        or ""
+    ).strip()
+    if old_ext and ext and ext != old_ext:
+        return ext
+    cluster.execute("ALTER EXTENSION pg_tde UPDATE")
+    return (
+        cluster.fetchone(
+            "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
+        )
+        or ""
+    ).strip()
+
+
 def _populate_pg2381_churn_table(cluster: PgCluster) -> None:
     """
     PG-2381 repro churn on ``pg2381_churn_t`` (drop/recreate + ``VACUUM FULL``).
@@ -673,29 +732,21 @@ class TestPgTdeMinorUpgradeVerify:
         assert bin_ver
 
         # 2. Data is readable BEFORE ALTER EXTENSION UPDATE.
-        count = cluster.fetchone(f"SELECT COUNT(*) FROM {state['test_table']}")
-        assert count == str(state["row_count"])
+        already_wrote_probe = _assert_staged_table_baseline(cluster, state)
 
-        digest = cluster.fetchone(
-            f"SELECT md5(string_agg(payload, ',' ORDER BY id)) "
-            f"FROM {state['test_table']}"
-        )
-        assert digest == state["data_digest"]
-
-        # 3. Perform the upgrade migration.
-        cluster.execute("ALTER EXTENSION pg_tde UPDATE")
+        # 3. Perform the upgrade migration (idempotent if re-run).
+        ext_after = _alter_extension_if_needed(cluster, state)
 
         # 4. Check migration state.
-        ext_after = cluster.fetchone(
-            "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
-        ) or ""
         bin_after = bin_ver.split()[-1]
-        assert bin_after.startswith(ext_after)
+        assert bin_after.startswith(ext_after), (
+            f"binary {bin_after!r} vs catalog ext {ext_after!r}"
+        )
 
-        # 5. Data remains readable AFTER migration.
-        digest_after = cluster.fetchone(
-            f"SELECT md5(string_agg(payload, ',' ORDER BY id)) "
-            f"FROM {state['test_table']}"
+        # 5. Data remains readable AFTER migration (baseline rows only).
+        row_count = int(state["row_count"])
+        digest_after = _staged_table_digest(
+            cluster, state["test_table"], max_id=row_count
         )
         assert digest_after == state["data_digest"]
 
@@ -708,16 +759,17 @@ class TestPgTdeMinorUpgradeVerify:
             val = (cluster.fetchone("SHOW pg_tde.wal_encrypt") or "").lower()
             assert val in ("on", "true", "1", "yes")
 
-        # 7. New writes succeed.
-        cluster.execute(
-            f"INSERT INTO {state['test_table']} "
-            f"SELECT i, md5(i::text) FROM generate_series("
-            f"{state['row_count'] + 1}, {state['row_count'] + 100}) i"
-        )
+        # 7. New writes succeed (skip if a previous Verify already inserted them).
+        if not already_wrote_probe:
+            cluster.execute(
+                f"INSERT INTO {state['test_table']} "
+                f"SELECT i, md5(i::text) FROM generate_series("
+                f"{row_count + 1}, {row_count + 100}) i"
+            )
         new_count = cluster.fetchone(
             f"SELECT COUNT(*) FROM {state['test_table']}"
         )
-        assert new_count == str(state["row_count"] + 100)
+        assert new_count == str(row_count + 100)
 
 
 @pytest.fixture(scope="class")
@@ -851,15 +903,11 @@ def _verify_ha_pair(
 
     primary.start()
     primary.wait_ready(timeout=90)
+    repl = ReplicationManager(primary, replica)
+    repl.rewire_standby_conninfo()
     replica.start()
     replica.wait_ready(timeout=90)
-
-    deadline = time.time() + 30
-    while time.time() < deadline:
-        n = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
-        if n and int(n) >= 1:
-            break
-        time.sleep(1)
+    repl.assert_streaming_connected(timeout=60)
 
     try:
         yield primary, replica, state
@@ -887,21 +935,14 @@ class TestPgTdeMinorUpgradeVerifyHA:
         assert primary.fetchone("SELECT pg_is_in_recovery()") == "f"
         assert replica.fetchone("SELECT pg_is_in_recovery()") == "t"
 
-        n = primary.fetchone("SELECT COUNT(*) FROM pg_stat_replication")
-        assert n and int(n) >= 1
+        ReplicationManager(primary, replica).assert_streaming_connected(timeout=10)
 
         # 2. Data verification BEFORE update.
         for node in (primary, replica):
-            count = node.fetchone(f"SELECT COUNT(*) FROM {state['test_table']}")
-            digest = node.fetchone(
-                f"SELECT md5(string_agg(payload, ',' ORDER BY id)) "
-                f"FROM {state['test_table']}"
-            )
-            assert count == str(state["row_count"])
-            assert digest == state["data_digest"]
+            _assert_staged_table_baseline(node, state)
 
         # 3. Perform migration and replicate.
-        primary.execute("ALTER EXTENSION pg_tde UPDATE")
+        _alter_extension_if_needed(primary, state)
         primary.execute("SELECT pg_switch_wal()")
         ReplicationManager(primary, replica).assert_catchup(timeout=30)
 

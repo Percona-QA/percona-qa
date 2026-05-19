@@ -78,16 +78,70 @@ class ReplicationManager:
     def _write_standby_signal(self) -> None:
         (self.standby.data_dir / "standby.signal").touch()
 
-    def _write_primary_conninfo(self) -> None:
+    def _primary_conninfo_line(self) -> str:
         conninfo = (
             f"host={self.primary.socket_dir} "
             f"port={self.primary.port} "
             f"user={libpq_superuser()} "
             f"application_name=replica"
         )
+        return f"primary_conninfo = '{conninfo}'"
+
+    def _write_primary_conninfo(self) -> None:
         auto_conf = self.standby.data_dir / "postgresql.auto.conf"
         with auto_conf.open("a") as f:
-            f.write(f"primary_conninfo = '{conninfo}'\n")
+            f.write(self._primary_conninfo_line() + "\n")
+
+    def rewire_standby_conninfo(self) -> None:
+        """
+        Point the standby at the current primary socket/port.
+
+        Required after copying ``$PGDATA`` to a persistent path: the saved
+        ``postgresql.auto.conf`` still references the ephemeral port from Setup.
+        """
+        auto_conf = self.standby.data_dir / "postgresql.auto.conf"
+        lines: list[str] = []
+        if auto_conf.exists():
+            lines = [
+                ln
+                for ln in auto_conf.read_text().splitlines()
+                if not ln.strip().startswith("primary_conninfo")
+            ]
+        lines.append(self._primary_conninfo_line())
+        auto_conf.write_text("\n".join(lines) + "\n")
+        (self.standby.data_dir / "standby.signal").touch(exist_ok=True)
+        log.info(
+            "Rewired standby %s -> primary port %s",
+            self.standby.data_dir,
+            self.primary.port,
+        )
+
+    def wait_for_streaming_connection(self, timeout: int = 60) -> bool:
+        """Wait until primary shows at least one streaming replication peer."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            n = self.primary.fetchone(
+                "SELECT COUNT(*) FROM pg_stat_replication "
+                "WHERE state = 'streaming'"
+            )
+            if n and int(n) >= 1:
+                return True
+            time.sleep(1)
+        return False
+
+    def assert_streaming_connected(self, timeout: int = 60) -> None:
+        if self.wait_for_streaming_connection(timeout):
+            return
+        senders = self.primary.fetchone(
+            "SELECT COUNT(*) FROM pg_stat_replication"
+        ) or "0"
+        in_recovery = self.standby.fetchone("SELECT pg_is_in_recovery()") or "?"
+        raise AssertionError(
+            f"No streaming replication within {timeout}s "
+            f"(pg_stat_replication={senders}, standby in_recovery={in_recovery})\n"
+            f"Primary log:\n{self.primary.read_log(20)}\n"
+            f"Standby log:\n{self.standby.read_log(20)}"
+        )
 
     # ── catchup / lag ─────────────────────────────────────────────────────
 
