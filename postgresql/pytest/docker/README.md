@@ -195,7 +195,7 @@ Set on the host before `docker compose run` (or in `.env`) to change behavior:
 |---|---|---|
 | `PG_MAJOR` | `17` | Picks the PG major (pkg mode) |
 | `OLD_PG_MAJOR` | `16` | Old PG for pg_upgrade (pkg mode) |
-| `IO_METHOD` | `worker` | **PG 18+ only:** `worker` / `sync` / `io_uring` (`io_uring` needs `--with-liburing`). Ignored on PG 17 installs. |
+| `IO_METHOD` | `worker` | **PG 18+ only:** `worker` / `sync` / `io_uring`. `io_uring` also needs OS setup (memlock + sysctl); see `docs/io_uring_system_setup.md`. |
 | `VAULT_ADDR` | empty | Vault endpoint (`http://vault:8200` if using the compose service) |
 | `VAULT_TOKEN` | empty | Vault token (`root` for the dev service) |
 | `PGQA_UID` | `1001` | UID of the container user — set to host UID to avoid permission churn on the bind mount |

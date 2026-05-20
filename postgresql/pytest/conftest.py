@@ -20,6 +20,11 @@ from lib.cluster import (
     PG_IO_METHOD_MIN_MAJOR,
     io_method_guc_supported,
     io_method_param_values,
+    io_methods_available,
+    io_method_usable,
+    io_uring_build_supported,
+    io_uring_runtime_ready,
+    io_uring_status_lines,
 )
 
 # ── port allocator ──────────────────────────────────────────────────────────
@@ -191,32 +196,86 @@ def pytest_configure(config):
     config._skip_sections = resolved  # noqa: SLF001
     config._skip_section_markers = markers_for_sections(resolved)
 
+    _configure_io_method_for_install(config)
+
+
+def _configure_io_method_for_install(config) -> None:
     install_dir = Path(config.getoption("--install-dir"))
+    method = config.getoption("--io-method")
+    matrix = config.getoption("--io-method-matrix")
+
     try:
-        if io_method_guc_supported(install_dir):
-            return
+        available = io_methods_available(install_dir)
     except (OSError, ValueError, IndexError):
+        config._io_methods_available = list(IO_METHOD_VALUES)  # noqa: SLF001
         return
 
-    method = config.getoption("--io-method")
-    if config.getoption("--io-method-matrix"):
-        config._io_method_pg17_note = (  # noqa: SLF001 — pytest config bag
-            f"--io-method-matrix ignored: {install_dir} is not PostgreSQL "
-            f"{PG_IO_METHOD_MIN_MAJOR}+ (io_method GUC does not exist)"
+    config._io_methods_available = available  # noqa: SLF001
+
+    if not io_method_guc_supported(install_dir):
+        if matrix:
+            config._io_method_pg17_note = (  # noqa: SLF001
+                f"--io-method-matrix ignored: {install_dir} is not PostgreSQL "
+                f"{PG_IO_METHOD_MIN_MAJOR}+ (io_method GUC does not exist)"
+            )
+        if method != IO_METHOD_LEGACY_PLACEHOLDER:
+            pytest.exit(
+                f"--io-method={method!r} requires PostgreSQL {PG_IO_METHOD_MIN_MAJOR}+ "
+                f"under --install-dir={install_dir}; on older versions omit the flag.",
+                returncode=2,
+            )
+        return
+
+    config._io_uring_status = io_uring_status_lines(install_dir)  # noqa: SLF001
+
+    if matrix:
+        omitted = [m for m in IO_METHOD_VALUES if m not in available]
+        if omitted:
+            parts = [f"io-method-matrix uses {', '.join(available)} only"]
+            if "io_uring" in omitted:
+                _ready, issues = io_uring_runtime_ready(install_dir)
+                if io_uring_build_supported(install_dir) and issues:
+                    parts.append(
+                        "io_uring needs system setup: " + "; ".join(issues)
+                    )
+                    parts.append("see postgresql/pytest/docs/io_uring_system_setup.md")
+                else:
+                    parts.append(
+                        "io_uring not in PostgreSQL build at " + str(install_dir)
+                    )
+            else:
+                parts.append(f"omitted: {', '.join(omitted)}")
+            config._io_method_install_note = "; ".join(parts)  # noqa: SLF001
+        return
+
+    if method not in available:
+        detail = (
+            " See postgresql/pytest/docs/io_uring_system_setup.md."
+            if method == "io_uring"
+            else ""
         )
-    if method != IO_METHOD_LEGACY_PLACEHOLDER:
+        if method == "io_uring" and io_uring_build_supported(install_dir):
+            _r, issues = io_uring_runtime_ready(install_dir)
+            hint = "; ".join(issues) if issues else "unknown system block"
+            pytest.exit(
+                f"--io-method=io_uring is not ready on this host ({hint}).{detail}",
+                returncode=2,
+            )
         pytest.exit(
-            f"--io-method={method!r} requires PostgreSQL {PG_IO_METHOD_MIN_MAJOR}+ "
-            f"under --install-dir={install_dir}; on older versions omit the flag.",
+            f"--io-method={method!r} is not available (supported: "
+            f"{', '.join(available)}).{detail}",
             returncode=2,
         )
 
 
 def pytest_report_header(config):
     lines = []
-    note = getattr(config, "_io_method_pg17_note", None)
-    if note:
-        lines.append(note)
+    for attr in ("_io_method_pg17_note", "_io_method_install_note"):
+        note = getattr(config, attr, None)
+        if note:
+            lines.append(note)
+    for line in getattr(config, "_io_uring_status", []):
+        lines.append(line)
     skipped = getattr(config, "_skip_sections", None)
     if skipped:
         lines.append(f"skip-sections: {', '.join(skipped)}")
@@ -224,24 +283,31 @@ def pytest_report_header(config):
 
 
 def pytest_generate_tests(metafunc):
-    """Parametrize ``io_method`` (PG 18+ matrix or single value; PG 17 → worker only)."""
+    """Parametrize ``io_method`` from install + system capabilities (see ``pytest_configure``)."""
     if "io_method" not in metafunc.fixturenames:
         return
     config = metafunc.config
-    install_dir = Path(config.getoption("--install-dir"))
-    try:
-        values = io_method_param_values(
-            install_dir,
-            matrix=config.getoption("--io-method-matrix"),
-            single=config.getoption("--io-method"),
-        )
-    except (OSError, ValueError, IndexError):
-        # Install tree absent at collection time; defer major check to test run.
+    cached = getattr(config, "_io_methods_available", None)
+    if cached is not None:
         values = (
-            list(IO_METHOD_VALUES)
+            list(cached)
             if config.getoption("--io-method-matrix")
             else [config.getoption("--io-method")]
         )
+    else:
+        install_dir = Path(config.getoption("--install-dir"))
+        try:
+            values = io_method_param_values(
+                install_dir,
+                matrix=config.getoption("--io-method-matrix"),
+                single=config.getoption("--io-method"),
+            )
+        except (OSError, ValueError, IndexError):
+            values = (
+                list(IO_METHOD_VALUES)
+                if config.getoption("--io-method-matrix")
+                else [config.getoption("--io-method")]
+            )
     metafunc.parametrize(
         "io_method",
         values,
@@ -251,11 +317,9 @@ def pytest_generate_tests(metafunc):
 
 @pytest.fixture(autouse=True)
 def _skip_unsupported_io_method(request, install_dir):
-    """Skip ``io_uring`` when the build lacks liburing; PG 17 never runs sync/io_uring."""
+    """Safety net when parametrization and runtime environment diverge."""
     if "io_method" not in request.fixturenames:
         return
-    from lib.cluster import io_method_guc_supported, io_method_usable
-
     method = request.getfixturevalue("io_method")
     if not io_method_guc_supported(install_dir):
         if method != IO_METHOD_LEGACY_PLACEHOLDER:
@@ -265,10 +329,14 @@ def _skip_unsupported_io_method(request, install_dir):
             )
         return
     if not io_method_usable(install_dir, method):
-        pytest.skip(
-            f"io_method={method!r} is not supported by {install_dir} "
-            "(io_uring needs --with-liburing)"
-        )
+        if method == "io_uring":
+            _ready, issues = io_uring_runtime_ready(install_dir)
+            reason = "; ".join(issues) if issues else "not available on this host"
+            pytest.skip(
+                f"io_method=io_uring skipped ({reason}); "
+                "see docs/io_uring_system_setup.md"
+            )
+        pytest.skip(f"io_method={method!r} is not available under {install_dir}")
 
 
 @pytest.fixture(scope="session")

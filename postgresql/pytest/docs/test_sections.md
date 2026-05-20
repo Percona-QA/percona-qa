@@ -60,3 +60,27 @@ pytest tests/ -m "not rewind"            # pytest marker expression
 
 Conditional skips (missing `--old-install-dir`, Vault, pgBackRest, etc.) are
 unchanged and independent of `--skip-sections`.
+
+## `io_method` / `io_uring` (build **and** system)
+
+On PostgreSQL 18+, packages may include io_uring support while the **host** still
+blocks it (low `memlock` for `ec2-user`, `kernel.io_uring_disabled=2`, etc.).
+
+The harness checks:
+
+1. **Build** — `initdb --set io_method=io_uring` succeeds  
+2. **System** — `ulimit -l` unlimited (memlock) and `kernel.io_uring_disabled=0`
+
+Manual setup: **`docs/io_uring_system_setup.md`** (limits.conf, sysctl, re-login).
+
+```bash
+# After system fixes, confirm from pytest directory:
+python3 -c "
+from pathlib import Path
+from lib.cluster import io_uring_status_lines
+for l in io_uring_status_lines(Path('$INSTALL_DIR')): print(l)
+"
+
+pytest tests/ --io-method-matrix -v   # includes io_uring only when both checks pass
+pytest tests/ --io-method=io_uring -v
+```

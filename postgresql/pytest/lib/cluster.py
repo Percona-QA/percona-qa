@@ -5,6 +5,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -69,6 +70,109 @@ def initdb_io_method_args(install_dir: Path, io_method: str) -> List[str]:
     return ["--set", f"io_method={io_method}"]
 
 
+def _kernel_io_uring_disabled() -> Optional[int]:
+    """Read ``/proc/sys/kernel/io_uring_disabled`` (Linux only)."""
+    proc = Path("/proc/sys/kernel/io_uring_disabled")
+    if not proc.is_file():
+        return None
+    try:
+        return int(proc.read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def io_uring_system_ready() -> Tuple[bool, List[str]]:
+    """
+    OS prerequisites for ``io_method=io_uring`` under the current user.
+
+    Matches manual setup in ``docs/io_uring_system_setup.md`` (memlock + sysctl).
+    """
+    issues: List[str] = []
+    if sys.platform != "linux":
+        return True, issues
+
+    try:
+        import resource
+
+        soft, _hard = resource.getrlimit(resource.RLIMIT_MEMLOCK)
+        if soft != resource.RLIM_INFINITY:
+            issues.append(
+                f"memlock soft limit is {soft} bytes (need unlimited); set "
+                f"'{getpass.getuser()} soft/hard memlock unlimited' in "
+                "/etc/security/limits.conf and re-login (ulimit -l)"
+            )
+    except (AttributeError, OSError, ValueError):
+        pass
+
+    disabled = _kernel_io_uring_disabled()
+    if disabled == 1:
+        issues.append(
+            "kernel.io_uring_disabled=1 (io_uring disabled); "
+            "sysctl -w kernel.io_uring_disabled=0"
+        )
+    elif disabled == 2:
+        issues.append(
+            "kernel.io_uring_disabled=2 (admin-only); "
+            "sysctl -w kernel.io_uring_disabled=0 for non-root users"
+        )
+
+    return (len(issues) == 0, issues)
+
+
+def io_uring_build_supported(install_dir: Path) -> bool:
+    """True when installed ``initdb`` accepts ``--set io_method=io_uring``."""
+    if not io_method_guc_supported(install_dir):
+        return False
+    initdb = Path(install_dir) / "bin" / "initdb"
+    env = os.environ.copy()
+    prepend_install_lib_dirs(env, install_dir)
+    with tempfile.TemporaryDirectory(prefix="pg_io_probe_") as td:
+        try:
+            subprocess.run(
+                [str(initdb), "-D", td, "--set", "io_method=io_uring"],
+                capture_output=True,
+                text=True,
+                check=True,
+                env=env,
+            )
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+
+def io_uring_runtime_ready(install_dir: Path) -> Tuple[bool, List[str]]:
+    """Build **and** system checks for running tests with ``io_uring``."""
+    if not io_uring_build_supported(install_dir):
+        return (
+            False,
+            [
+                f"PostgreSQL at {install_dir} does not accept "
+                "initdb --set io_method=io_uring (not built with liburing?)"
+            ],
+        )
+    ok, issues = io_uring_system_ready()
+    return ok, issues
+
+
+def io_method_usable(install_dir: Path, io_method: str) -> bool:
+    """Whether tests may use this ``io_method`` on this install **and** host."""
+    if io_method not in IO_METHOD_VALUES and io_method != IO_METHOD_LEGACY_PLACEHOLDER:
+        return False
+    if not io_method_guc_supported(install_dir):
+        return io_method == IO_METHOD_LEGACY_PLACEHOLDER
+    if io_method != "io_uring":
+        return True
+    ready, _issues = io_uring_runtime_ready(install_dir)
+    return ready
+
+
+def io_methods_available(install_dir: Path) -> List[str]:
+    """``io_method`` values usable for ``--io-method-matrix`` on this host."""
+    if not io_method_guc_supported(install_dir):
+        return [IO_METHOD_LEGACY_PLACEHOLDER]
+    return [m for m in IO_METHOD_VALUES if io_method_usable(install_dir, m)]
+
+
 def io_method_param_values(
     install_dir: Path,
     *,
@@ -78,39 +182,32 @@ def io_method_param_values(
     """
     Values for the pytest ``io_method`` fixture.
 
-    PG 18+: full matrix or the requested single value.
-    PG 17 and below: always ``worker`` (placeholder; GUC is not configured).
+    PG 18+ matrix: only methods supported by **build and** (for io_uring) **system**.
     """
     if not io_method_guc_supported(install_dir):
         return [IO_METHOD_LEGACY_PLACEHOLDER]
     if matrix:
-        return list(IO_METHOD_VALUES)
+        return io_methods_available(install_dir)
     return [single]
 
 
-def io_method_usable(install_dir: Path, io_method: str) -> bool:
-    """Return whether ``initdb`` accepts this ``io_method`` for the given build."""
-    if io_method not in IO_METHOD_VALUES and io_method != IO_METHOD_LEGACY_PLACEHOLDER:
-        return False
+def io_uring_status_lines(install_dir: Path) -> List[str]:
+    """Diagnostic lines for ``pytest --report-header`` or manual inspection."""
+    lines: List[str] = []
     if not io_method_guc_supported(install_dir):
-        return io_method == IO_METHOD_LEGACY_PLACEHOLDER
-    if io_method != "io_uring":
-        return True
-    initdb = Path(install_dir) / "bin" / "initdb"
-    env = os.environ.copy()
-    prepend_install_lib_dirs(env, install_dir)
-    with tempfile.TemporaryDirectory(prefix="pg_io_probe_") as td:
-        try:
-            subprocess.run(
-                [str(initdb), "-D", td, "--set", f"io_method=io_uring"],
-                capture_output=True,
-                text=True,
-                check=True,
-                env=env,
-            )
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return False
+        lines.append("io_uring: N/A (PostgreSQL < 18)")
+        return lines
+    if not io_uring_build_supported(install_dir):
+        lines.append(
+            "io_uring: not in PostgreSQL build (initdb rejects io_method=io_uring)"
+        )
+        return lines
+    sys_ok, issues = io_uring_system_ready()
+    if sys_ok:
+        lines.append("io_uring: build OK, system OK (memlock + kernel)")
+    else:
+        lines.append("io_uring: build OK, system NOT ready — " + "; ".join(issues))
+    return lines
 
 
 def initdb_args_no_data_checksums(install_dir: Path) -> List[str]:
