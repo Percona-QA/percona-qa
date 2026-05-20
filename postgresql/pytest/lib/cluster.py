@@ -5,11 +5,19 @@ import os
 import shutil
 import signal
 import subprocess
+import tempfile
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
+
+# The ``io_method`` GUC exists only from PostgreSQL 18 onward (worker, sync,
+# io_uring). Earlier majors ignore the setting in this harness.
+PG_IO_METHOD_MIN_MAJOR = 18
+IO_METHOD_VALUES: Tuple[str, ...] = ("worker", "sync", "io_uring")
+# Placeholder passed to tests on PG < 18; never written to postgresql.conf.
+IO_METHOD_LEGACY_PLACEHOLDER = "worker"
 
 
 def prepend_install_lib_dirs(env: Dict[str, str], *install_roots: Path) -> None:
@@ -47,6 +55,62 @@ def postgres_major_version(install_dir: Path) -> int:
     )
     # "postgres (PostgreSQL) 17.2" → 17
     return int(result.stdout.split()[2].split(".")[0])
+
+
+def io_method_guc_supported(install_dir: Path) -> bool:
+    """True when ``--install-dir`` is PostgreSQL 18+ and the ``io_method`` GUC applies."""
+    return postgres_major_version(install_dir) >= PG_IO_METHOD_MIN_MAJOR
+
+
+def initdb_io_method_args(install_dir: Path, io_method: str) -> List[str]:
+    """``initdb --set io_method=…`` only for PostgreSQL 18+."""
+    if not io_method_guc_supported(install_dir):
+        return []
+    return ["--set", f"io_method={io_method}"]
+
+
+def io_method_param_values(
+    install_dir: Path,
+    *,
+    matrix: bool,
+    single: str,
+) -> List[str]:
+    """
+    Values for the pytest ``io_method`` fixture.
+
+    PG 18+: full matrix or the requested single value.
+    PG 17 and below: always ``worker`` (placeholder; GUC is not configured).
+    """
+    if not io_method_guc_supported(install_dir):
+        return [IO_METHOD_LEGACY_PLACEHOLDER]
+    if matrix:
+        return list(IO_METHOD_VALUES)
+    return [single]
+
+
+def io_method_usable(install_dir: Path, io_method: str) -> bool:
+    """Return whether ``initdb`` accepts this ``io_method`` for the given build."""
+    if io_method not in IO_METHOD_VALUES and io_method != IO_METHOD_LEGACY_PLACEHOLDER:
+        return False
+    if not io_method_guc_supported(install_dir):
+        return io_method == IO_METHOD_LEGACY_PLACEHOLDER
+    if io_method != "io_uring":
+        return True
+    initdb = Path(install_dir) / "bin" / "initdb"
+    env = os.environ.copy()
+    prepend_install_lib_dirs(env, install_dir)
+    with tempfile.TemporaryDirectory(prefix="pg_io_probe_") as td:
+        try:
+            subprocess.run(
+                [str(initdb), "-D", td, "--set", f"io_method=io_uring"],
+                capture_output=True,
+                text=True,
+                check=True,
+                env=env,
+            )
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
 
 
 def initdb_args_no_data_checksums(install_dir: Path) -> List[str]:
@@ -123,7 +187,7 @@ class PgCluster:
             "log_statement": "'all'",
             "max_wal_senders": "5",
         }
-        if self.major_version >= 18:
+        if self.major_version >= PG_IO_METHOD_MIN_MAJOR:
             params["io_method"] = f"'{self.io_method}'"
         if role == "replica":
             params.update(

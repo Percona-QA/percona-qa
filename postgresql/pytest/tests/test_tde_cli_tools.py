@@ -45,7 +45,7 @@ from lib import (
     restore_conf_line_raw,
     wrappers_available,
 )
-from lib.cluster import initdb_args_no_data_checksums
+from lib.cluster import initdb_args_no_data_checksums, initdb_io_method_args
 
 
 pytestmark = [pytest.mark.encryption]
@@ -74,8 +74,42 @@ def _bin_or_skip(install_dir: Path, name: str) -> Path:
 # ── pg_tde_checksums ──────────────────────────────────────────────────────────
 
 
+def _checksum_initdb_args(install_dir: Path, io_method: str) -> list[str]:
+    """Match ``pg_tde_checksums_test.sh``: ``initdb -k`` + pg_tde preload + io_method."""
+    args = ["-k", "--set", "shared_preload_libraries=pg_tde"]
+    args.extend(initdb_io_method_args(install_dir, io_method))
+    return args
+
+
+def _make_initdb_only_checksum_cluster(
+    pg_factory, install_dir: Path, io_method: str
+) -> PgCluster:
+    """Fresh PGDATA with checksums on; extension not created (bash steps 1–3)."""
+    cluster = pg_factory("tde_checksums_initdb")
+    cluster.initdb(extra_args=_checksum_initdb_args(install_dir, io_method))
+    return cluster
+
+
+def _run_pg_checksums(
+    install_dir: Path, *args: str
+) -> subprocess.CompletedProcess:
+    bin_path = install_dir / "bin" / "pg_checksums"
+    if not bin_path.is_file():
+        pytest.skip(f"pg_checksums not present at {bin_path}")
+    return subprocess.run(
+        [str(bin_path), *args],
+        capture_output=True,
+        text=True,
+        env=_env(install_dir),
+    )
+
+
 def _build_tde_cluster_with_checksums(
-    pg_factory, tmp_path: Path, *, wal_encrypt: bool = True
+    pg_factory,
+    tmp_path: Path,
+    *,
+    io_method: str,
+    wal_encrypt: bool = True,
 ) -> PgCluster:
     """
     Build a cluster with **data checksums enabled** (``initdb -k``) and
@@ -85,7 +119,7 @@ def _build_tde_cluster_with_checksums(
     immediately and there's nothing meaningful to assert.
     """
     cluster = pg_factory("tde_checksums")
-    cluster.initdb(extra_args=["-k"])
+    cluster.initdb(extra_args=_checksum_initdb_args(cluster.install_dir, io_method))
     cluster.write_default_config(extra_params={
         "shared_preload_libraries": "'pg_tde'",
         "default_table_access_method": "'tde_heap'",
@@ -143,8 +177,11 @@ class TestPgTdeChecksumsCLI:
     verification, while still validating plain heap relations the same
     way as upstream ``pg_checksums``.
 
-    The bash matrix (``pg_tde_checksums_test.sh``) covers exactly four
-    steady-state outcomes; the tests below pin all four.
+    Parity with ``pg_tde_checksums_test.sh``:
+
+    * Pre-extension ``pg_checksums`` / ``pg_tde_checksums`` on stopped PGDATA
+    * Combined verify with ``tde_heap`` + ``heap`` before corruption
+    * Encrypted vs plain corruption outcomes (existing tests)
     """
 
     def test_binary_exists(self, install_dir: Path):
@@ -155,11 +192,82 @@ class TestPgTdeChecksumsCLI:
             "ship the wrapper."
         )
 
+    def test_fresh_initdb_pg_checksums_before_extension(
+        self, pg_factory, install_dir: Path, io_method: str
+    ):
+        """Bash step 2: healthy initdb cluster passes vanilla ``pg_checksums -c``."""
+        cluster = _make_initdb_only_checksum_cluster(
+            pg_factory, install_dir, io_method
+        )
+        result = _run_pg_checksums(install_dir, "-c", "-D", str(cluster.data_dir))
+        assert result.returncode == 0, (
+            "pg_checksums failed on a fresh checksum-enabled cluster "
+            "without pg_tde extension:\n"
+            f"  stdout: {result.stdout}\n  stderr: {result.stderr}"
+        )
+
+    def test_fresh_initdb_pg_tde_checksums_before_extension(
+        self, pg_factory, install_dir: Path, io_method: str
+    ):
+        """Bash step 3: same PGDATA passes ``pg_tde_checksums -c`` before CREATE EXTENSION."""
+        _bin_or_skip(install_dir, "pg_tde_checksums")
+        cluster = _make_initdb_only_checksum_cluster(
+            pg_factory, install_dir, io_method
+        )
+        result = _run_checksums(install_dir, "-c", "-D", str(cluster.data_dir))
+        assert result.returncode == 0, (
+            "pg_tde_checksums failed on a fresh cluster without encryption:\n"
+            f"  stdout: {result.stdout}\n  stderr: {result.stderr}"
+        )
+
+    def test_verify_encrypted_and_plain_tables_before_corruption(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
+    ):
+        """Bash step 7: both ``tde_heap`` and ``heap`` relations pass verify before corruption."""
+        cluster = _build_tde_cluster_with_checksums(
+            pg_factory, tmp_path, io_method=io_method
+        )
+        try:
+            cluster.execute(
+                "CREATE TABLE test (id INT, val TEXT) USING tde_heap"
+            )
+            cluster.execute(
+                "INSERT INTO test VALUES (1, 'before corruption')"
+            )
+            cluster.execute(
+                "CREATE TABLE test1 (id INT, val TEXT) USING heap"
+            )
+            cluster.execute(
+                "INSERT INTO test1 VALUES (1, 'before corruption')"
+            )
+            cluster.execute("CHECKPOINT")
+            cluster.stop()
+
+            result = _run_checksums(
+                install_dir, "-c", "-D", str(cluster.data_dir)
+            )
+            assert result.returncode == 0, (
+                "pg_tde_checksums failed before corruption with both table types:\n"
+                f"  stdout: {result.stdout}\n  stderr: {result.stderr}"
+            )
+        finally:
+            cluster.stop(check=False)
+
     def test_clean_tde_cluster_passes(
-        self, pg_factory, tmp_path: Path, install_dir: Path
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
     ):
         """A freshly populated TDE cluster (no corruption) must pass verify."""
-        cluster = _build_tde_cluster_with_checksums(pg_factory, tmp_path)
+        cluster = _build_tde_cluster_with_checksums(
+            pg_factory, tmp_path, io_method=io_method
+        )
         try:
             cluster.execute(
                 "CREATE TABLE chk_clean (id INT, val TEXT) USING tde_heap"
@@ -182,7 +290,11 @@ class TestPgTdeChecksumsCLI:
             cluster.stop(check=False)
 
     def test_ignores_corruption_on_encrypted_relation(
-        self, pg_factory, tmp_path: Path, install_dir: Path
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
     ):
         """
         Corrupting an encrypted ``tde_heap`` page must **not** trigger a
@@ -195,7 +307,9 @@ class TestPgTdeChecksumsCLI:
         the verify altogether; that's the whole reason the TDE wrapper
         exists. We pin both ends to make the contrast explicit.
         """
-        cluster = _build_tde_cluster_with_checksums(pg_factory, tmp_path)
+        cluster = _build_tde_cluster_with_checksums(
+            pg_factory, tmp_path, io_method=io_method
+        )
         try:
             cluster.execute(
                 "CREATE TABLE chk_enc (id INT, val TEXT) USING tde_heap"
@@ -244,14 +358,20 @@ class TestPgTdeChecksumsCLI:
             cluster.stop(check=False)
 
     def test_detects_corruption_on_plain_heap_relation(
-        self, pg_factory, tmp_path: Path, install_dir: Path
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
     ):
         """
         A plain ``heap`` relation in the same cluster *is* validated
         normally, and corruption to its first data page must cause
         ``pg_tde_checksums -c`` to exit non-zero.
         """
-        cluster = _build_tde_cluster_with_checksums(pg_factory, tmp_path)
+        cluster = _build_tde_cluster_with_checksums(
+            pg_factory, tmp_path, io_method=io_method
+        )
         try:
             cluster.execute(
                 "CREATE TABLE chk_plain (id INT, val TEXT) USING heap"
@@ -283,7 +403,11 @@ class TestPgTdeChecksumsCLI:
             cluster.stop(check=False)
 
     def test_passes_with_wal_encryption_disabled(
-        self, pg_factory, tmp_path: Path, install_dir: Path
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
     ):
         """
         ``pg_tde_checksums`` operates on relation files (``base/...``), not
@@ -292,7 +416,7 @@ class TestPgTdeChecksumsCLI:
         the two.
         """
         cluster = _build_tde_cluster_with_checksums(
-            pg_factory, tmp_path, wal_encrypt=False
+            pg_factory, tmp_path, io_method=io_method, wal_encrypt=False
         )
         try:
             cluster.execute(

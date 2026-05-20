@@ -31,7 +31,7 @@
 | 7 | `test_pitr.py` | 2 | Point-in-time recovery |
 | 8 | `test_recovery.py` | 10 | Crash recovery + WAL utilities |
 | 9 | `test_replication.py` | 13 | Streaming + logical replication |
-| 10 | `test_tde_cli_tools.py` | 12 | `pg_tde_checksums` / `_resetwal` / `_archive_decrypt` / `_restore_encrypt` |
+| 10 | `test_tde_cli_tools.py` | 15 | `pg_tde_checksums` / `_resetwal` / `_archive_decrypt` / `_restore_encrypt` |
 | 11 | `test_tde_minor_upgrade.py` | **11** | **Staged in-place** pg_tde minor upgrade (`--upgrade-data-dir`) |
 | 12 | `test_tde_pg_upgrade.py` | 45 | **Major** version upgrade via `pg_tde_upgrade` (`--old-install-dir`) |
 | 13 | `test_tde_rewind_advanced.py` | 78 | `pg_tde_rewind` HA/lifecycle |
@@ -789,24 +789,29 @@ pgBackRest integration with pg_tde and `pg_tde.wal_encrypt`.
 
 ---
 
-## 10. `test_tde_cli_tools.py` (12 tests)
+## 10. `test_tde_cli_tools.py` (15 tests)
 
 Direct CLI coverage for `pg_tde_checksums`, `pg_tde_resetwal`,
 `pg_tde_archive_decrypt`, `pg_tde_restore_encrypt`.
 
-### 10.1 `TestPgTdeChecksumsCLI` (5 tests)
+### 10.1 `TestPgTdeChecksumsCLI` (8 tests)
 
 `pg_tde_checksums` is the TDE-aware counterpart to `pg_checksums`: it
 **skips** encrypted pages (because encrypted page bytes don't satisfy
-PG's standard CRC) but validates plain-heap pages normally.
+PG's standard CRC) but validates plain-heap pages normally. Full parity
+with ``automation/tests/pg_tde_checksums_test.sh`` (initdb ``-k``, ``io_method``,
+pre-extension smoke, combined ``tde_heap`` + ``heap`` verify, corruption matrix).
 
 | # | Test | Purpose |
 |---|---|---|
 | 10.1.1 | `test_binary_exists` | Binary present in install. |
-| 10.1.2 | `test_clean_tde_cluster_passes` | A freshly populated TDE cluster verifies clean. |
-| 10.1.3 | `test_ignores_corruption_on_encrypted_relation` | Manually overwrite a few bytes of an encrypted `tde_heap` page on disk → `pg_tde_checksums` exits 0 (vs `pg_checksums` which would flag it). |
-| 10.1.4 | `test_detects_corruption_on_plain_heap_relation` | Same corruption applied to a plain heap relation in the same cluster → `pg_tde_checksums` correctly flags it. |
-| 10.1.5 | `test_passes_with_wal_encryption_disabled` | Tool operates on relation files in `base/...`, not WAL — must work regardless of `wal_encrypt` setting. |
+| 10.1.2 | `test_fresh_initdb_pg_checksums_before_extension` | Bash step 2: ``pg_checksums -c`` on stopped PGDATA before ``CREATE EXTENSION``. |
+| 10.1.3 | `test_fresh_initdb_pg_tde_checksums_before_extension` | Bash step 3: ``pg_tde_checksums -c`` on same pre-extension PGDATA. |
+| 10.1.4 | `test_verify_encrypted_and_plain_tables_before_corruption` | Bash step 7: both ``test`` (``tde_heap``) and ``test1`` (``heap``) pass verify. |
+| 10.1.5 | `test_clean_tde_cluster_passes` | A freshly populated TDE cluster verifies clean. |
+| 10.1.6 | `test_ignores_corruption_on_encrypted_relation` | Corrupt ``tde_heap`` page → ``pg_tde_checksums`` exits 0 (optional ``pg_checksums`` contrast). |
+| 10.1.7 | `test_detects_corruption_on_plain_heap_relation` | Corrupt plain ``heap`` page → non-zero exit + failure message. |
+| 10.1.8 | `test_passes_with_wal_encryption_disabled` | Tool operates on relation files in `base/...`, not WAL — must work regardless of `wal_encrypt` setting. |
 
 ### 10.2 `TestPgTdeResetWal` (3 tests)
 

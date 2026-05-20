@@ -8,6 +8,13 @@ from pathlib import Path
 import pytest
 
 from lib.backup import pgbackrest_installed
+from lib.cluster import (
+    IO_METHOD_LEGACY_PLACEHOLDER,
+    IO_METHOD_VALUES,
+    PG_IO_METHOD_MIN_MAJOR,
+    io_method_guc_supported,
+    io_method_param_values,
+)
 
 # ── port allocator ──────────────────────────────────────────────────────────
 
@@ -49,8 +56,22 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--io-method",
         default=os.environ.get("IO_METHOD", "worker"),
-        choices=["worker", "mmap", "posix"],
-        help="PostgreSQL I/O method (only relevant for PG 18+)",
+        choices=list(IO_METHOD_VALUES),
+        help=(
+            f"PostgreSQL {PG_IO_METHOD_MIN_MAJOR}+ io_method GUC only "
+            f"({', '.join(IO_METHOD_VALUES)}). Ignored on older majors and "
+            "when --io-method-matrix is set."
+        ),
+    )
+    parser.addoption(
+        "--io-method-matrix",
+        action="store_true",
+        default=False,
+        help=(
+            f"PostgreSQL {PG_IO_METHOD_MIN_MAJOR}+ only: run each test that uses "
+            "io_method once per "
+            f"{', '.join(IO_METHOD_VALUES)}. No-op on PG 17 and below."
+        ),
     )
     parser.addoption(
         "--vault-addr",
@@ -126,9 +147,82 @@ def run_dir(request) -> Path:
     return p
 
 
-@pytest.fixture(scope="session")
-def io_method(request) -> str:
-    return request.config.getoption("--io-method")
+def pytest_configure(config):
+    """Reject non-default ``io_method`` when ``--install-dir`` is PG 17 or older."""
+    install_dir = Path(config.getoption("--install-dir"))
+    try:
+        if io_method_guc_supported(install_dir):
+            return
+    except (OSError, ValueError, IndexError):
+        return
+
+    method = config.getoption("--io-method")
+    if config.getoption("--io-method-matrix"):
+        config._io_method_pg17_note = (  # noqa: SLF001 — pytest config bag
+            f"--io-method-matrix ignored: {install_dir} is not PostgreSQL "
+            f"{PG_IO_METHOD_MIN_MAJOR}+ (io_method GUC does not exist)"
+        )
+    if method != IO_METHOD_LEGACY_PLACEHOLDER:
+        pytest.exit(
+            f"--io-method={method!r} requires PostgreSQL {PG_IO_METHOD_MIN_MAJOR}+ "
+            f"under --install-dir={install_dir}; on older versions omit the flag.",
+            returncode=2,
+        )
+
+
+def pytest_report_header(config):
+    note = getattr(config, "_io_method_pg17_note", None)
+    if note:
+        return [note]
+    return []
+
+
+def pytest_generate_tests(metafunc):
+    """Parametrize ``io_method`` (PG 18+ matrix or single value; PG 17 → worker only)."""
+    if "io_method" not in metafunc.fixturenames:
+        return
+    config = metafunc.config
+    install_dir = Path(config.getoption("--install-dir"))
+    try:
+        values = io_method_param_values(
+            install_dir,
+            matrix=config.getoption("--io-method-matrix"),
+            single=config.getoption("--io-method"),
+        )
+    except (OSError, ValueError, IndexError):
+        # Install tree absent at collection time; defer major check to test run.
+        values = (
+            list(IO_METHOD_VALUES)
+            if config.getoption("--io-method-matrix")
+            else [config.getoption("--io-method")]
+        )
+    metafunc.parametrize(
+        "io_method",
+        values,
+        ids=[f"io={v}" for v in values],
+    )
+
+
+@pytest.fixture(autouse=True)
+def _skip_unsupported_io_method(request, install_dir):
+    """Skip ``io_uring`` when the build lacks liburing; PG 17 never runs sync/io_uring."""
+    if "io_method" not in request.fixturenames:
+        return
+    from lib.cluster import io_method_guc_supported, io_method_usable
+
+    method = request.getfixturevalue("io_method")
+    if not io_method_guc_supported(install_dir):
+        if method != IO_METHOD_LEGACY_PLACEHOLDER:
+            pytest.skip(
+                f"io_method={method!r} applies only to PostgreSQL "
+                f"{PG_IO_METHOD_MIN_MAJOR}+"
+            )
+        return
+    if not io_method_usable(install_dir, method):
+        pytest.skip(
+            f"io_method={method!r} is not supported by {install_dir} "
+            "(io_uring needs --with-liburing)"
+        )
 
 
 @pytest.fixture(scope="session")
@@ -233,11 +327,20 @@ def pytest_collection_modifyitems(config, items):
     )
     skip_docker = pytest.mark.skip(reason="docker not found in PATH")
     skip_pgbackrest = pytest.mark.skip(reason="pgbackrest not installed or not on PATH")
+    io_matrix = config.getoption("--io-method-matrix")
+    skip_io_matrix_staged = pytest.mark.skip(
+        reason=(
+            "--io-method-matrix is incompatible with staged minor_upgrade "
+            "(PGDATA is tied to the io_method used during Setup)"
+        )
+    )
 
     docker_available = shutil.which("docker") is not None
     pgbr_ok = pgbackrest_installed()
 
     for item in items:
+        if io_matrix and "minor_upgrade" in item.keywords:
+            item.add_marker(skip_io_matrix_staged)
         if "vault" in item.keywords and not vault_addr:
             item.add_marker(skip_vault)
         if "kmip" in item.keywords and not kmip_addr:

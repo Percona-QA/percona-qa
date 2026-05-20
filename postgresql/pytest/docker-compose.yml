@@ -43,7 +43,7 @@
 
 x-common-test-env: &common-env
   # Picked up by conftest.py as CLI defaults; see conftest.pytest_addoption
-  IO_METHOD: worker          # mmap | posix | worker (worker is default for < PG18)
+  IO_METHOD: worker          # worker | sync | io_uring (PG 18+; io_uring needs liburing)
   VAULT_ADDR: ""             # override: http://vault:8200
   VAULT_TOKEN: ""
 
