@@ -35,7 +35,7 @@ from conftest import allocate_port
 from lib import PgCluster, ReplicationManager, TdeManager, archive_restore_conf_values
 from lib.cluster import initdb_args_no_data_checksums, libpq_superuser
 
-pytestmark = [pytest.mark.recovery, pytest.mark.slow]
+pytestmark = [pytest.mark.rewind, pytest.mark.slow]
 
 
 # ── module-level helpers ──────────────────────────────────────────────────────

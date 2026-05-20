@@ -8,6 +8,12 @@ from pathlib import Path
 import pytest
 
 from lib.backup import pgbackrest_installed
+from lib.test_sections import (
+    resolve_skip_sections,
+    sections_help_text,
+    markers_for_sections,
+    item_matches_skipped_section,
+)
 from lib.cluster import (
     IO_METHOD_LEGACY_PLACEHOLDER,
     IO_METHOD_VALUES,
@@ -130,6 +136,23 @@ def pytest_addoption(parser: pytest.Parser) -> None:
             "the PG_TDE_UPGRADE_DATA_DIR env var."
         ),
     )
+    parser.addoption(
+        "--skip-sections",
+        default=os.environ.get("SKIP_SECTIONS", ""),
+        metavar="LIST",
+        help=(
+            "Comma-separated test sections to skip (user-controlled). "
+            f"{sections_help_text()}. "
+            "Aliases: pg_rewind, pg_tde_rewind → rewind. "
+            "Env: SKIP_SECTIONS. See docs/test_sections.md."
+        ),
+    )
+    parser.addoption(
+        "--list-test-sections",
+        action="store_true",
+        default=False,
+        help="Print available section names and exit.",
+    )
 
 
 # ── session fixtures ─────────────────────────────────────────────────────────
@@ -148,7 +171,26 @@ def run_dir(request) -> Path:
 
 
 def pytest_configure(config):
-    """Reject non-default ``io_method`` when ``--install-dir`` is PG 17 or older."""
+    if config.getoption("--list-test-sections"):
+        from lib.test_sections import TEST_SECTIONS, section_names
+
+        print("Available test sections (--skip-sections):\n")
+        for name in section_names():
+            print(
+                f"  {name:16}  markers: {', '.join(sorted(TEST_SECTIONS[name]))}"
+            )
+        pytest.exit("", returncode=0)
+
+    resolved, unknown = resolve_skip_sections(config.getoption("--skip-sections"))
+    if unknown:
+        pytest.exit(
+            f"Unknown --skip-sections: {', '.join(unknown)}. "
+            f"{sections_help_text()}",
+            returncode=2,
+        )
+    config._skip_sections = resolved  # noqa: SLF001
+    config._skip_section_markers = markers_for_sections(resolved)
+
     install_dir = Path(config.getoption("--install-dir"))
     try:
         if io_method_guc_supported(install_dir):
@@ -171,10 +213,14 @@ def pytest_configure(config):
 
 
 def pytest_report_header(config):
+    lines = []
     note = getattr(config, "_io_method_pg17_note", None)
     if note:
-        return [note]
-    return []
+        lines.append(note)
+    skipped = getattr(config, "_skip_sections", None)
+    if skipped:
+        lines.append(f"skip-sections: {', '.join(skipped)}")
+    return lines or None
 
 
 def pytest_generate_tests(metafunc):
@@ -337,6 +383,21 @@ def pytest_collection_modifyitems(config, items):
 
     docker_available = shutil.which("docker") is not None
     pgbr_ok = pgbackrest_installed()
+    skip_section_markers = getattr(config, "_skip_section_markers", frozenset())
+    skip_sections = getattr(config, "_skip_sections", [])
+    if skip_sections:
+        deselected = []
+        kept = []
+        for item in items:
+            if item_matches_skipped_section(
+                set(item.keywords), skip_section_markers
+            ):
+                deselected.append(item)
+            else:
+                kept.append(item)
+        if deselected:
+            config.hook.pytest_deselected(items=deselected)
+            items[:] = kept
 
     for item in items:
         if io_matrix and "minor_upgrade" in item.keywords:
