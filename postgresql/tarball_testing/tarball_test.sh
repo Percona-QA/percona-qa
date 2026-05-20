@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PG_VERSION=18.1
+export PG_VERSION=18.4
 export PG_MAJOR=$(echo "$PG_VERSION" | cut -d. -f1)
 
 for os in debian11 debian12 ol8 ol9 ubuntu20 ubuntu22 ubuntu24; do

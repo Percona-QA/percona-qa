@@ -115,7 +115,7 @@ EOF
 # ──────────────────────────────────────────────────────────
 echo ""
 echo "5. Running pg_upgrade (PG-${OLD_MAJOR} -> PG-${NEW_MAJOR})..."
-"$NEW_BIN/pg_upgrade" --no-sync \
+"$NEW_BIN/pg_tde_upgrade" --no-sync \
     --old-datadir "$OLD_DATA" \
     --new-datadir "$NEW_DATA" \
     --old-bindir "$OLD_BIN" \
@@ -129,13 +129,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "[PASS] pg_upgrade completed"
-
-# Carry over the pg_tde key directory so the new cluster can read encrypted data.
-# pg_upgrade copies relation files but pg_tde's internal key store lives in $PGDATA/pg_tde.
-if [ ! -d "$NEW_DATA/pg_tde" ] && [ -d "$OLD_DATA/pg_tde" ]; then
-    echo "    Copying pg_tde key directory from old cluster to new cluster..."
-    cp -R "$OLD_DATA/pg_tde" "$NEW_DATA/pg_tde"
-fi
 
 # ──────────────────────────────────────────────────────────
 # Step 4 – Start new cluster and verify data

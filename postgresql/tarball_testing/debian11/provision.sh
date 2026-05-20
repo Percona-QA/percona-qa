@@ -13,7 +13,7 @@ sudo apt-get install -y libreadline-dev
 # Debian11 comes with OpenSSL1.1.1 by default and does not have OpenSSL3.0. To test tarballs built with ssl3
 # we need to install OpenSSL 3.0 explicitly on Debian11
 # Install dependencies
-sudo apt-get install -y build-essential checkinstall zlib1g-dev
+sudo apt-get install -y build-essential checkinstall zlib1g-dev libnuma-dev
 
 current_openssl_version=$($(command -v openssl) version | awk '{print $2}')
 echo "Current OpenSSL version: $current_openssl_version"

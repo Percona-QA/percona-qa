@@ -100,7 +100,7 @@ EOF
 }
 
 _run_pg_upgrade() {
-    "$NEW_BIN/pg_upgrade" --no-sync \
+    "$NEW_BIN/pg_tde_upgrade" --no-sync \
         --old-datadir "$S_OLD_DATA" \
         --new-datadir "$S_NEW_DATA" \
         --old-bindir  "$OLD_BIN" \
@@ -188,7 +188,7 @@ scenario_multi_db() {
     _stop_old_cluster
     _init_new_cluster || return 1
     _run_pg_upgrade   || return 1
-    _copy_pg_tde_keys
+    #_copy_pg_tde_keys
     _start_new_cluster || return 1
 
     local c1 c2
@@ -239,7 +239,7 @@ SQL
     _stop_old_cluster
     _init_new_cluster || return 1
     _run_pg_upgrade   || return 1
-    _copy_pg_tde_keys
+    #_copy_pg_tde_keys
     _start_new_cluster || return 1
 
     local enc_after plain_after fk_ok
@@ -308,7 +308,7 @@ SQL
     _stop_old_cluster
     _init_new_cluster || return 1
     _run_pg_upgrade   || return 1
-    _copy_pg_tde_keys
+    #_copy_pg_tde_keys
     _start_new_cluster || return 1
 
     local row_after seq_after pending_after idx_count
@@ -364,7 +364,7 @@ SQL
     _stop_old_cluster
     _init_new_cluster || return 1
     _run_pg_upgrade   || return 1
-    _copy_pg_tde_keys
+    #_copy_pg_tde_keys
     _start_new_cluster || return 1
 
     local total_after row_count tag_check
@@ -438,7 +438,7 @@ SQL
     _stop_old_cluster
     _init_new_cluster || return 1
     _run_pg_upgrade   || return 1
-    _copy_pg_tde_keys
+    #_copy_pg_tde_keys
     _start_new_cluster || return 1
 
     local total_a p2023_a p2024_a p2025_a
@@ -481,7 +481,7 @@ SQL
     _stop_old_cluster
     _init_new_cluster || return 1
     _run_pg_upgrade   || return 1
-    _copy_pg_tde_keys
+    #_copy_pg_tde_keys
     _start_new_cluster || return 1
 
     local row_after spot_check
