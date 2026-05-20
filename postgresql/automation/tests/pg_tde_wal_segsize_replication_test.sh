@@ -127,8 +127,8 @@ for phase in {1..4}; do
     --pgsql-host=127.0.0.1 \
     --threads=2 \
     --tables=10 \
-    --time=30 \
-    --report-interval=10 \
+    --time=20 \
+    --report-interval=5 \
     run
 
   echo "============================"

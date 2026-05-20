@@ -65,8 +65,8 @@ EOF
   run &
 
     if [[ $phase -lt 4 ]]; then
-      echo "Killing PostgreSQL server after 30 s..."
-      sleep 30
+      echo "Killing PostgreSQL server after 10 s..."
+      sleep 10
       $INSTALL_DIR/bin/pg_ctl -D "$data_dir" -m immediate stop
       sleep 2
       echo "Restarting PostgreSQL server..."
