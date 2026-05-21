@@ -30,7 +30,7 @@ sudo rm -rf $BACKREST_CONFIG || true
 rm -rf $BACKREST_REPO $BACKREST_LOGS || true
 rm -rf $KEYRING || true
 
-mkdir -p $BACKREST_REPO $BACKREST_LOGS
+mkdir -p $BACKREST_LOGS
 chmod 755 $BACKREST_LOGS
 
 #############################################
@@ -134,7 +134,7 @@ $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-user=$USER \
   --pgsql-db=postgres \
   --db-driver=pgsql \
-  --tables=50 --table-size=1000 prepare
+  --tables=10 --table-size=1000 prepare
 
 ########################################################
 echo "Create Differential Backup after initial data prep"
@@ -157,7 +157,7 @@ while true; do
     --pgsql-user=$USER \
     --pgsql-db=postgres \
     --db-driver=pgsql \
-    --time=60 --threads=10 --tables=50 run
+    --time=60 --threads=5 --tables=10 run
 done
 ) &
 
@@ -192,7 +192,7 @@ $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-user=$USER \
   --pgsql-db=postgres \
   --db-driver=pgsql \
-  --time=60 --threads=10 --tables=50 run
+  --time=60 --threads=5 --tables=10 run
 
 #############################################
 echo "Rebuild old PRIMARY using DELTA"

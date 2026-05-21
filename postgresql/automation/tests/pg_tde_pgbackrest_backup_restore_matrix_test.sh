@@ -136,7 +136,8 @@ for i in {1..3}; do
   $PG_BACKREST --stanza=$STANZA backup &
   BKP_PID=$!
   sleep 3
-  kill -9 $BKP_PID
+  kill -9 $BKP_PID || true
+  sleep 3
 done
 
 echo "Resuming backup"
