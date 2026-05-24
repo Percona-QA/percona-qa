@@ -101,9 +101,9 @@ EOF
     result=$($PSQL -p "$WAL_OPT_PORT" -d postgres -h "$PGHOST" -t -A -c "SELECT count(*) FROM moved;")
     [ "$result" = "1" ] || { echo "   [FAIL] Expected count 1 from moved, got $result"; exit 1; }
     echo "   [PASS] moved count = 1 (wal_level=$wal_level, CREATE+SET TABLESPACE)."
-    result=$($PSQL -p "$WAL_OPT_PORT" -d postgres -h "$PGHOST" -t -A -c "
-        INSERT INTO originated VALUES (1) ON CONFLICT (id) DO UPDATE set id = originated.id + 1 RETURNING id;" | head -1)
-    [ "$result" = "2" ] || { echo "   [FAIL] Expected 2 from originated conflict, got $result"; exit 1; }
+    result=$($PSQL -q -p "$WAL_OPT_PORT" -d postgres -h "$PGHOST" -t -A -c "
+        INSERT INTO originated VALUES (1) ON CONFLICT (id) DO UPDATE set id = originated.id + 1 RETURNING id;" | tr -d '\r\n ')
+    [ "$result" = "2" ] || { echo "   [FAIL] Expected 2 from originated conflict, got '$result'"; exit 1; }
     echo "   [PASS] originated ON CONFLICT (wal_level=$wal_level)."
 
     echo "3. Test direct truncation optimization (empty table)..."
