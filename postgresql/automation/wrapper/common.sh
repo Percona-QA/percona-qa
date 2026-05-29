@@ -135,7 +135,6 @@ logging_collector = on
 log_directory = '$PGDATA'
 log_filename = 'server.log'
 log_statement = 'all'
-default_table_access_method = 'tde_heap'
 max_wal_senders = 5
 EOF
 

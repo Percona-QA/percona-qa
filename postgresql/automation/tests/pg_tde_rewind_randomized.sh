@@ -39,6 +39,49 @@ maybe_restart() {
 }
 
 #############################################
+# WAIT FOR ARCHIVE
+#############################################
+wait_for_archive() {
+  local port=$1
+
+  local wal=$($PSQL -p "$port" -t -A -c \
+    "SELECT pg_walfile_name(pg_current_wal_lsn());")
+
+  wal=$(echo "$wal" | tr -d '[:space:]')
+
+  echo "⏳ Waiting for WAL archive: $wal"
+
+  timeout=180
+
+  while [ $timeout -gt 0 ]; do
+    if [ -f "$ARCHIVE_DIR/$wal" ]; then
+      echo "✅ WAL archived: $wal"
+      return 0
+    fi
+
+    sleep 1
+    timeout=$((timeout-1))
+  done
+
+  echo "❌ WAL not archived: $wal"
+  return 1
+}
+
+#############################################
+# FORCE ARCHIVE STABILITY
+#############################################
+force_wal_archive() {
+  local port=$1
+
+  echo "📦 Forcing WAL archival on port $port"
+
+  $PSQL -p "$port" -c "SELECT pg_switch_wal();"
+  $PSQL -p "$port" -c "CHECKPOINT;"
+
+  wait_for_archive "$port"
+}
+
+#############################################
 # ADVANCED RANDOM HELPERS
 #############################################
 
@@ -67,6 +110,12 @@ random_wal_boundary() {
 
 random_stop() {
   local datadir=$1
+  local port=$2
+
+  #############################################
+  # ENSURE WAL IS ARCHIVED BEFORE STOP
+  #############################################
+  force_wal_archive "$port"
 
   case $((RANDOM % 3)) in
     0) mode="smart" ;;
@@ -159,6 +208,8 @@ wal_level=replica
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
+
+archive_timeout='10s'
 EOF
 
 echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
@@ -181,6 +232,8 @@ $PSQL -p $PRIMARY_PORT -c "CREATE TABLE t1(id INT) USING tde_heap;"
 $PSQL -p $PRIMARY_PORT -c "INSERT INTO t1 SELECT generate_series(1,10000);"
 $PSQL -p $PRIMARY_PORT -c "CHECKPOINT;"
 
+force_wal_archive "$PRIMARY_PORT"
+
 #############################################
 # CREATE REPLICA
 #############################################
@@ -191,11 +244,25 @@ cp -R "$PRIMARY_DATA/pg_tde" "$REPLICA_DATA/"
 
 $PG_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
 
-cat >> $REPLICA_DATA/postgresql.conf <<EOF
+cat > $REPLICA_DATA/postgresql.conf <<EOF
 port=$REPLICA_PORT
 unix_socket_directories='$RUN_DIR'
 shared_preload_libraries='pg_tde'
+listen_addresses='*'
+
+logging_collector=on
+log_directory='$REPLICA_DATA'
+log_filename='server.log'
+log_statement='all'
+
+max_wal_senders=5
+wal_level=replica
+
+archive_mode=on
+archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
+
+archive_timeout='10s'
 EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT
@@ -207,10 +274,17 @@ maybe_restart $PRIMARY_DATA $PRIMARY_PORT
 maybe_restart $REPLICA_DATA $REPLICA_PORT
 
 #############################################
+# FORCE WAL STABILITY BEFORE PROMOTION
+#############################################
+force_wal_archive "$PRIMARY_PORT"
+
+#############################################
 # PROMOTE REPLICA
 #############################################
+echo "Promoting replica"
 $PG_CTL -D $REPLICA_DATA promote
 sleep 2
+force_wal_archive "$REPLICA_PORT"
 
 #############################################
 # WORKLOAD
@@ -262,6 +336,11 @@ else
 fi
 
 #############################################
+# ENSURE WAL ARCHIVED AFTER DIVERGENCE
+#############################################
+force_wal_archive "$REPLICA_PORT"
+
+#############################################
 # ASYMMETRY
 #############################################
 $PSQL -p $REPLICA_PORT -c "CREATE TABLE target_only(id INT) USING tde_heap;"
@@ -278,6 +357,8 @@ maybe_divergence_chaos $PRIMARY_PORT
 maybe_relfilenode_churn $PRIMARY_PORT
 random_wal_boundary $PRIMARY_PORT
 
+force_wal_archive "$PRIMARY_PORT"
+
 #############################################
 # RANDOM RESTART BEFORE REWIND
 #############################################
@@ -288,16 +369,26 @@ maybe_restart $REPLICA_DATA $REPLICA_PORT
 # REWIND
 #############################################
 echo "Running rewind"
-random_stop $PRIMARY_DATA
-stop_pg $REPLICA_DATA
+random_stop "$PRIMARY_DATA" "$PRIMARY_PORT"
 
-# Taking backup of the $PRIMARY_DATA/postgresql.conf since pg_tde_rewind is going to overwrite it
+#############################################
+# ENSURE REPLICA WAL SAFE BEFORE STOP
+#############################################
+force_wal_archive "$REPLICA_PORT"
+stop_pg "$REPLICA_DATA"
+
+####################################################################
+# BACKUP CONFIGS (pg_tde_rewind is going to overwrite config files)
+####################################################################
 cp $PRIMARY_DATA/postgresql.conf $RUN_DIR/postgresql_bk.conf
 cp $PRIMARY_DATA/postgresql.auto.conf $RUN_DIR/postgresql.auto.conf
 
 $PG_REWIND --target-pgdata=$PRIMARY_DATA \
-           --source-pgdata=$REPLICA_DATA -c
+           --source-pgdata=$REPLICA_DATA -c --debug
 
+#############################################
+# RESTORE CONFIGS
+#############################################
 mv $RUN_DIR/postgresql_bk.conf $PRIMARY_DATA/postgresql.conf
 mv $RUN_DIR/postgresql.auto.conf $PRIMARY_DATA/postgresql.auto.conf
 
@@ -315,11 +406,11 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 
 # Disabling Validation due to several upstream Bugs
 # PG-2357, PG-2330
-#echo "Validating data"
-#$PSQL -p $REPLICA_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
-#$PSQL -p $PRIMARY_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
-#$PSQL -p $REPLICA_PORT -c "SELECT count(*) FROM target_only;"
-#$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM target_only;"
+echo "Validating data"
+$PSQL -p $REPLICA_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
+$PSQL -p $PRIMARY_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
+$PSQL -p $REPLICA_PORT -c "SELECT count(*) FROM target_only;"
+$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM target_only;"
 
 echo "✅ RUN $i completed"
 
