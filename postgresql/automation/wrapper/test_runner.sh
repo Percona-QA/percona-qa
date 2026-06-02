@@ -145,6 +145,7 @@ mkdir -p "$LOG_DIR"
 ############################################
 save_test_configs() {
     local base="${1%.sh}"
+    local test_start="${2}"
     local test_dir="$LOG_DIR/$base"
     mkdir -p "$test_dir"
 
@@ -161,8 +162,21 @@ save_test_configs() {
         [[ -f "$dir/postgresql.auto.conf" ]] && cp "$dir/postgresql.auto.conf" "$test_dir/${dirname}-postgresql.auto.conf" 2>/dev/null || true
     done
 
-    # pgbackrest config (written to /etc/pgbackrest/ by pgbackrest tests)
-    [[ -f "/etc/pgbackrest/pgbackrest.conf" ]] && cp "/etc/pgbackrest/pgbackrest.conf" "$test_dir/pgbackrest.conf" 2>/dev/null || true
+    # pgbackrest config — only if written/modified during this test
+    if [[ -f "/etc/pgbackrest/pgbackrest.conf" ]] && \
+       [[ "/etc/pgbackrest/pgbackrest.conf" -nt "$test_start" ]]; then
+        cp "/etc/pgbackrest/pgbackrest.conf" "$test_dir/pgbackrest.conf" 2>/dev/null || true
+    fi
+
+    # Vault log — only if written/modified during this test
+    if [[ -f "$LOG_DIR/vault.log" ]] && \
+       [[ "$LOG_DIR/vault.log" -nt "$test_start" ]]; then
+        cp "$LOG_DIR/vault.log" "$test_dir/vault.log" 2>/dev/null || true
+    fi
+
+    # OpenBao server log — only if written/modified during this test
+    find "$RUN_DIR" -maxdepth 2 -name "bao_server.log" -newer "$test_start" 2>/dev/null \
+        -exec cp {} "$test_dir/bao_server.log" \; || true
 }
 
 ############################################
@@ -178,6 +192,10 @@ for testscript in "${TESTS[@]}"; do
 
     LOGFILE="$LOG_DIR/${testname%.sh}.log"
 
+    # Record test start time via a temp marker file (used by save_test_configs
+    # to detect which infra files were written during this specific test)
+    TEST_START_MARKER=$(mktemp "$RUN_DIR/.test_start_XXXXXX")
+
     # Run test and capture exit code
     set +e
 
@@ -191,7 +209,8 @@ for testscript in "${TESTS[@]}"; do
 
     # Save server logs and config files immediately after each test, before
     # the next test wipes the data directories via initialize_server() / old_server_cleanup()
-    save_test_configs "$testname"
+    save_test_configs "$testname" "$TEST_START_MARKER"
+    rm -f "$TEST_START_MARKER"
 
     if (( exitcode == 0 )); then
         echo "✅ PASS: $testname"
