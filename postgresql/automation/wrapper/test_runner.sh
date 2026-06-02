@@ -141,6 +141,31 @@ rm -rf "$LOG_DIR"
 mkdir -p "$LOG_DIR"
 
 ############################################
+# Save per-test server logs before next test wipes data dirs
+############################################
+save_test_configs() {
+    local base="${1%.sh}"
+    local test_dir="$LOG_DIR/$base"
+    mkdir -p "$test_dir"
+
+    # Move the test stdout/stderr log into the per-test folder
+    [[ -f "$LOG_DIR/${base}.log" ]] && mv "$LOG_DIR/${base}.log" "$test_dir/${base}.log" 2>/dev/null || true
+
+    # Server logs and config files from each data directory
+    for dir in "$PGDATA" "$PRIMARY_DATA" "$REPLICA_DATA"; do
+        local dirname
+        dirname=$(basename "$dir")
+        [[ -f "$dir/server.log"           ]] && cp "$dir/server.log"           "$test_dir/${dirname}-server.log"           2>/dev/null || true
+        [[ -f "$dir/postgresql.conf"      ]] && cp "$dir/postgresql.conf"      "$test_dir/${dirname}-postgresql.conf"      2>/dev/null || true
+        [[ -f "$dir/pg_hba.conf"          ]] && cp "$dir/pg_hba.conf"          "$test_dir/${dirname}-pg_hba.conf"          2>/dev/null || true
+        [[ -f "$dir/postgresql.auto.conf" ]] && cp "$dir/postgresql.auto.conf" "$test_dir/${dirname}-postgresql.auto.conf" 2>/dev/null || true
+    done
+
+    # pgbackrest config (written to /etc/pgbackrest/ by pgbackrest tests)
+    [[ -f "/etc/pgbackrest/pgbackrest.conf" ]] && cp "/etc/pgbackrest/pgbackrest.conf" "$test_dir/pgbackrest.conf" 2>/dev/null || true
+}
+
+############################################
 # Execute Tests
 ############################################
 
@@ -164,25 +189,29 @@ for testscript in "${TESTS[@]}"; do
     exitcode=$?
     set -e
 
+    # Save server logs and config files immediately after each test, before
+    # the next test wipes the data directories via initialize_server() / old_server_cleanup()
+    save_test_configs "$testname"
+
     if (( exitcode == 0 )); then
         echo "✅ PASS: $testname"
-        echo "   Log: $LOGFILE"
+        echo "   Log: $LOG_DIR/${testname%.sh}/${testname%.sh}.log"
     else
         echo "❌ FAIL: $testname"
-        echo "   Log: $LOGFILE"
-	
-	echo "Saving failed test artifacts..."
-	FAIL_SAVE_DIR="$FAILED_DIR/${testname%.sh}_$(date +%Y%m%d_%H%M%S)"
-	mkdir -p "$FAIL_SAVE_DIR"
-	
+        echo "   Log: $LOG_DIR/${testname%.sh}/${testname%.sh}.log"
+
+        echo "Saving failed test artifacts..."
+        FAIL_SAVE_DIR="$FAILED_DIR/${testname%.sh}_$(date +%Y%m%d_%H%M%S)"
+        mkdir -p "$FAIL_SAVE_DIR"
+
         # Copy PGDATA(s) if exist
         [[ -d "$PGDATA" ]] && cp -r "$PGDATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
         [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
         [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
         [[ -d "$ARCHIVE_DIR" ]] && cp -r "$ARCHIVE_DIR" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
-        # Copy test log
-        cp "$LOGFILE" "$FAIL_SAVE_DIR/"
+        # Copy test log (now lives in per-test folder)
+        cp "$LOG_DIR/${testname%.sh}/${testname%.sh}.log" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
         echo "Artifacts saved at: $FAIL_SAVE_DIR"
     fi
