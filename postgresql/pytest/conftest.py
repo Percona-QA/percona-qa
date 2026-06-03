@@ -152,6 +152,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="KMIP server CA certificate path",
     )
     parser.addoption(
+        "--kmip-revalidate-profiles",
+        default=os.environ.get("KMIP_REVALIDATE_PROFILES", ""),
+        help=(
+            "KMIP server revalidation profiles (comma-separated or 'all'); "
+            "see docs/kmip_revalidation.md"
+        ),
+    )
+    parser.addoption(
         "--old-install-dir",
         default=os.environ.get("OLD_INSTALL_DIR", ""),
         help="Older PG installation used as the upgrade source",
@@ -589,7 +597,11 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_vault)
             elif not (vault_cfg and vault_cfg.namespace.strip()):
                 item.add_marker(skip_openbao)
-        if "kmip" in item.keywords and not kmip_ready:
+        if (
+            "kmip" in item.keywords
+            and "kmip_revalidation" not in item.keywords
+            and not kmip_ready
+        ):
             item.add_marker(skip_kmip)
         if "upgrade" in item.keywords and not old_dir:
             item.add_marker(skip_upgrade)

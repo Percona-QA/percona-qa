@@ -60,6 +60,19 @@ pytest tests/ --skip-sections=kmip -v   # omit entire KMIP section
 | `TestKmipDeleteKeyProvider` | t/064 | catalog delete rules |
 | `TestKmipChangeKeyProviderCLI` | change_key_provider utility | offline `kmip` CLI |
 | `TestKmipLibkmipClientPr595` | — | bad host errors; `ldd` C++ link check |
+| `TestKmipServerRevalidation` | — | **per-server matrix** after libkmip rewrite |
+
+### Revalidate all supported KMIP servers
+
+After PR #595, re-run the checklist on **every** documented KMIP backend
+(PyKMIP Docker, Fortanix, Thales, Cosmian, Akeyless). See
+**[kmip_revalidation.md](kmip_revalidation.md)** and:
+
+```bash
+./scripts/run_kmip_revalidation.sh
+export KMIP_REVALIDATE_PROFILES=fortanix
+pytest tests/test_kmip_server_revalidation.py -v
+```
 
 Vault / OpenBao: `tests/test_vault_providers.py` and [vault.md](vault.md).
 

@@ -1,0 +1,134 @@
+"""
+Supported KMIP server profiles for post–PR-595 revalidation.
+
+Percona documents KMIP-compatible providers (see
+https://docs.percona.com/pg-tde/global-key-provider-configuration/overview.html):
+
+  * Generic KMIP / PyKMIP (dev & CI)
+  * Fortanix DSM
+  * Thales CipherTrust Manager
+  * Cosmian KMS
+  * Akeyless (KMIP endpoint)
+
+HashiCorp Vault's KMIP engine is explicitly **not** a validated pg_tde target;
+use Vault KV v2 tests instead (``test_vault_providers.py``).
+"""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+from lib.kmip import KmipConfig, kmip_config_from_options, kmip_runtime_ready
+
+
+@dataclass(frozen=True)
+class KmipServerProfile:
+    """Named KMIP backend for matrix revalidation."""
+
+    name: str
+    vendor: str
+    docs_url: str
+    env_prefix: str
+    notes: str = ""
+    ci_automated: bool = False
+
+    def load_config(self) -> Optional[KmipConfig]:
+        """Build ``KmipConfig`` from profile-specific or default env vars."""
+        if self.env_prefix == "KMIP_":
+            return kmip_config_from_options(
+                host=os.environ.get("KMIP_SERVER_ADDRESS", ""),
+                port=os.environ.get("KMIP_SERVER_PORT", ""),
+                client_cert=os.environ.get("KMIP_CLIENT_CA", ""),
+                client_key=os.environ.get("KMIP_CLIENT_KEY", ""),
+                server_ca=os.environ.get("KMIP_SERVER_CA", ""),
+            )
+        prefix = self.env_prefix
+        return kmip_config_from_options(
+            host=os.environ.get(f"{prefix}HOST", ""),
+            port=os.environ.get(f"{prefix}PORT", "5696"),
+            client_cert=os.environ.get(f"{prefix}CLIENT_CERT", ""),
+            client_key=os.environ.get(f"{prefix}CLIENT_KEY", ""),
+            server_ca=os.environ.get(f"{prefix}SERVER_CA", ""),
+        )
+
+    def readiness(self) -> Tuple[bool, str]:
+        cfg = self.load_config()
+        if cfg is None:
+            return False, f"{self.name}: host not configured (set {self.env_prefix}HOST)"
+        return kmip_runtime_ready(cfg)
+
+
+# Keys are CLI/env profile ids (``KMIP_REVALIDATE_PROFILES``).
+SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
+    "pykmip_docker": KmipServerProfile(
+        name="pykmip_docker",
+        vendor="PyKMIP (Docker)",
+        docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/kmip-server.html",
+        env_prefix="KMIP_",
+        notes="mohitpercona/kmip image; ``scripts/setup_kmip_for_pytest.sh``",
+        ci_automated=True,
+    ),
+    "fortanix": KmipServerProfile(
+        name="fortanix",
+        vendor="Fortanix DSM",
+        docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/fortanix.html",
+        env_prefix="KMIP_FORTANIX_",
+        notes="Revalidate after libkmip C++ client (PR #595)",
+    ),
+    "thales": KmipServerProfile(
+        name="thales",
+        vendor="Thales CipherTrust Manager",
+        docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/thales.html",
+        env_prefix="KMIP_THALES_",
+        notes="Also sold as CipherTrust; same KMIP SQL API",
+    ),
+    "cosmian": KmipServerProfile(
+        name="cosmian",
+        vendor="Cosmian KMS",
+        docs_url="https://docs.cosmian.com/key_management_system/integrations/databases/percona/",
+        env_prefix="KMIP_COSMIAN_",
+    ),
+    "akeyless": KmipServerProfile(
+        name="akeyless",
+        vendor="Akeyless",
+        docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html",
+        env_prefix="KMIP_AKEYLESS_",
+    ),
+}
+
+# Alias used in docs/scripts.
+SUPPORTED_KMIP_SERVER_PROFILES["pykmip"] = SUPPORTED_KMIP_SERVER_PROFILES["pykmip_docker"]
+
+ALL_KMIP_PROFILE_NAMES: Tuple[str, ...] = tuple(
+    k for k in SUPPORTED_KMIP_SERVER_PROFILES if k != "pykmip"
+)
+
+
+def parse_revalidate_profile_list(raw: str) -> List[str]:
+    """Parse ``KMIP_REVALIDATE_PROFILES`` (comma-separated or ``all``)."""
+    raw = (raw or "pykmip_docker").strip()
+    if raw.lower() == "all":
+        return list(ALL_KMIP_PROFILE_NAMES)
+    return [p.strip().lower() for p in raw.replace(" ", ",").split(",") if p.strip()]
+
+
+def resolve_kmip_profiles(raw: str) -> List[KmipServerProfile]:
+    """Return profile objects; unknown names raise ``ValueError``."""
+    names = parse_revalidate_profile_list(raw)
+    out: List[KmipServerProfile] = []
+    for name in names:
+        key = name.lower()
+        if key not in SUPPORTED_KMIP_SERVER_PROFILES:
+            raise ValueError(
+                f"Unknown KMIP profile {name!r}. "
+                f"Supported: {', '.join(ALL_KMIP_PROFILE_NAMES)}"
+            )
+        prof = SUPPORTED_KMIP_SERVER_PROFILES[key]
+        if prof not in out:
+            out.append(prof)
+    return out
+
+
+def profiles_help_text() -> str:
+    return "Profiles: " + ", ".join(ALL_KMIP_PROFILE_NAMES) + " (or 'all')"
