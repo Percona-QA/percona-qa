@@ -34,6 +34,25 @@ pytest tests/ -m kmip -v
 pytest --list-test-sections       # section name: kmip
 ```
 
+### Docker permission or name conflict
+
+If you see `permission denied` on `docker.sock` or `container name "/kmip" is already in use`:
+
+```bash
+# Reuse the running container (exports KMIP_* from /tmp/certs):
+source scripts/setup_kmip_for_pytest.sh
+
+# Or use sudo for all docker commands:
+export KMIP_DOCKER='sudo docker'
+source scripts/setup_kmip_for_pytest.sh
+
+# Or add your user to the docker group (re-login required):
+sudo usermod -aG docker "$USER"
+```
+
+Always **source** `setup_kmip_for_pytest.sh` (not `./` in a subshell) so `KMIP_*` stays
+in your shell before `pytest`. `run_kmip_revalidation.sh` sources it automatically.
+
 ### Without Docker
 
 Use this when Docker is not installed (common on bare-metal build VMs) but a KMIP

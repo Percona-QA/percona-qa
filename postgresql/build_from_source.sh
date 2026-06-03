@@ -70,9 +70,9 @@ step() { echo ""; echo -e "${CYAN}═══════════════�
 
 step "1. System dependencies"
 
-# Package list from pg_tde/ci_scripts/ubuntu-deps.sh
+# Package list from pg_tde/ci_scripts/ubuntu-deps.sh (+ cmake for libkmip subproject)
 DEPS=(
-    bison docbook-xml docbook-xsl flex gettext
+    bison cmake docbook-xml docbook-xsl flex gettext
     libcurl4-openssl-dev libicu-dev libipc-run-perl libkrb5-dev
     libldap2-dev liblz4-dev libnuma-dev libpam0g-dev libperl-dev
     libreadline-dev libselinux1-dev libssl-dev libsystemd-dev
@@ -213,7 +213,15 @@ if [[ "$DO_TDE" -eq 1 ]]; then
         rm -rf "$TDE_BUILD"
     fi
 
+    command -v cmake >/dev/null \
+        || fail "cmake not found — required for subproject libkmip (apt install cmake)"
+
     cd "$TDE_SRC"
+    if [[ -d "$TDE_BUILD" && ! -f "$TDE_BUILD/meson-private/build.dat" ]]; then
+        warn "Stale pg_tde meson dir (missing meson-private/build.dat) — removing"
+        rm -rf "$TDE_BUILD"
+    fi
+
     if [[ ! -d "$TDE_BUILD" ]]; then
         # shellcheck disable=SC2086
         meson setup $MESON_ARGS "$TDE_BUILD"
