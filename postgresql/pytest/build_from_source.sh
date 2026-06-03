@@ -247,6 +247,12 @@ if [[ "$DO_TDE" -eq 1 ]]; then
         fi
 
         cd "$TDE_SRC"
+        # Incomplete dirs (e.g. partial rm, failed setup) break meson configure.
+        if [[ -d "$TDE_BUILD" && ! -f "$TDE_BUILD/meson-private/build.dat" ]]; then
+            warn "Stale pg_tde meson dir (missing meson-private/build.dat) — removing"
+            rm -rf "$TDE_BUILD"
+        fi
+
         if [[ ! -d "$TDE_BUILD" ]]; then
             # shellcheck disable=SC2086
             meson setup $MESON_ARGS "$TDE_BUILD"
