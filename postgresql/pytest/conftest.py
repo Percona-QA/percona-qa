@@ -14,6 +14,8 @@ from lib.test_sections import (
     markers_for_sections,
     item_matches_skipped_section,
 )
+from lib.kmip import kmip_config_from_options, kmip_runtime_ready
+from lib.vault import vault_config_from_options, vault_runtime_ready
 from lib.cluster import (
     IO_METHOD_LEGACY_PLACEHOLDER,
     IO_METHOD_VALUES,
@@ -97,7 +99,32 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--vault-namespace",
         default=os.environ.get("VAULT_NAMESPACE", ""),
-        help="Vault/OpenBao namespace (optional)",
+        help="Vault/OpenBao namespace (optional; required for @pytest.mark.openbao)",
+    )
+    parser.addoption(
+        "--vault-secret-mount",
+        default=os.environ.get("VAULT_SECRET_MOUNT", ""),
+        help="KV mount point (default: secret; OpenBao setup uses pg_tde)",
+    )
+    parser.addoption(
+        "--vault-token-file",
+        default=os.environ.get("VAULT_TOKEN_FILE", ""),
+        help="Path to Vault token file (preferred over inline --vault-token)",
+    )
+    parser.addoption(
+        "--vault-ca-path",
+        default=os.environ.get("VAULT_CA_PATH", ""),
+        help="CA bundle for HTTPS Vault (optional)",
+    )
+    parser.addoption(
+        "--vault-kv-only-token-file",
+        default=os.environ.get("VAULT_KV_ONLY_TOKEN_FILE", ""),
+        help="Restricted OpenBao token (PG-1959 mount-metadata test)",
+    )
+    parser.addoption(
+        "--openbao-bin",
+        default=os.environ.get("OPENBAO_BIN", ""),
+        help="Path to ``bao`` CLI (for creating PG-1959 kv-only token in tests)",
     )
     parser.addoption(
         "--kmip-server-address",
@@ -355,6 +382,39 @@ def vault_namespace(request) -> str:
 
 
 @pytest.fixture(scope="session")
+def vault_config(request):
+    """
+    Parsed Vault/OpenBao settings when ``--vault-addr`` is set.
+
+    See ``docs/vault.md``.
+    """
+    cfg = vault_config_from_options(
+        addr=request.config.getoption("--vault-addr"),
+        token=request.config.getoption("--vault-token"),
+        token_path=request.config.getoption("--vault-token-file"),
+        secret_mount=request.config.getoption("--vault-secret-mount"),
+        ca_path=request.config.getoption("--vault-ca-path"),
+        namespace=request.config.getoption("--vault-namespace"),
+    )
+    if cfg is None:
+        pytest.skip("--vault-addr not provided")
+    ready, reason = vault_runtime_ready(cfg)
+    if not ready:
+        pytest.skip(reason)
+    return cfg
+
+
+@pytest.fixture(scope="session")
+def vault_kv_only_token_file(request) -> str:
+    return request.config.getoption("--vault-kv-only-token-file")
+
+
+@pytest.fixture(scope="session")
+def openbao_bin(request) -> str:
+    return request.config.getoption("--openbao-bin")
+
+
+@pytest.fixture(scope="session")
 def kmip_server_address(request) -> str:
     return request.config.getoption("--kmip-server-address")
 
@@ -377,6 +437,29 @@ def kmip_client_key(request) -> str:
 @pytest.fixture(scope="session")
 def kmip_server_ca(request) -> str:
     return request.config.getoption("--kmip-server-ca")
+
+
+@pytest.fixture(scope="session")
+def kmip_config(request):
+    """
+    Parsed KMIP server settings when ``--kmip-server-address`` is set.
+
+    Skips tests when cert paths are missing or the server is unreachable.
+    See ``docs/kmip.md``.
+    """
+    cfg = kmip_config_from_options(
+        host=request.config.getoption("--kmip-server-address"),
+        port=request.config.getoption("--kmip-server-port"),
+        client_cert=request.config.getoption("--kmip-client-ca"),
+        client_key=request.config.getoption("--kmip-client-key"),
+        server_ca=request.config.getoption("--kmip-server-ca"),
+    )
+    if cfg is None:
+        pytest.skip("--kmip-server-address not provided")
+    ready, reason = kmip_runtime_ready(cfg)
+    if not ready:
+        pytest.skip(reason)
+    return cfg
 
 
 @pytest.fixture(scope="session")
@@ -428,13 +511,42 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_collection_modifyitems(config, items):
-    vault_addr = config.getoption("--vault-addr")
-    kmip_addr = config.getoption("--kmip-server-address")
+    vault_cfg = vault_config_from_options(
+        addr=config.getoption("--vault-addr"),
+        token=config.getoption("--vault-token"),
+        token_path=config.getoption("--vault-token-file"),
+        secret_mount=config.getoption("--vault-secret-mount"),
+        ca_path=config.getoption("--vault-ca-path"),
+        namespace=config.getoption("--vault-namespace"),
+    )
+    kmip_cfg = kmip_config_from_options(
+        host=config.getoption("--kmip-server-address"),
+        port=config.getoption("--kmip-server-port"),
+        client_cert=config.getoption("--kmip-client-ca"),
+        client_key=config.getoption("--kmip-client-key"),
+        server_ca=config.getoption("--kmip-server-ca"),
+    )
     old_dir = config.getoption("--old-install-dir")
     upgrade_data_dir = config.getoption("--upgrade-data-dir")
 
-    skip_vault = pytest.mark.skip(reason="--vault-addr not provided")
-    skip_kmip = pytest.mark.skip(reason="--kmip-server-address not provided")
+    vault_ready, vault_skip_reason = (
+        vault_runtime_ready(vault_cfg) if vault_cfg else (False, "")
+    )
+    skip_vault = pytest.mark.skip(
+        reason=vault_skip_reason or "--vault-addr not provided"
+    )
+    skip_openbao = pytest.mark.skip(
+        reason=(
+            "--vault-namespace not set (OpenBao tests need e.g. pg_tde_ns1/); "
+            "see docs/vault.md"
+        )
+    )
+    kmip_ready, kmip_skip_reason = (
+        kmip_runtime_ready(kmip_cfg) if kmip_cfg else (False, "")
+    )
+    skip_kmip = pytest.mark.skip(
+        reason=kmip_skip_reason or "--kmip-server-address not provided"
+    )
     skip_upgrade = pytest.mark.skip(reason="--old-install-dir not provided")
     skip_minor_upgrade = pytest.mark.skip(
         reason="--upgrade-data-dir not provided (or set PG_TDE_UPGRADE_DATA_DIR)"
@@ -470,9 +582,14 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if io_matrix and "minor_upgrade" in item.keywords:
             item.add_marker(skip_io_matrix_staged)
-        if "vault" in item.keywords and not vault_addr:
+        if "vault" in item.keywords and not vault_ready:
             item.add_marker(skip_vault)
-        if "kmip" in item.keywords and not kmip_addr:
+        if "openbao" in item.keywords:
+            if not vault_ready:
+                item.add_marker(skip_vault)
+            elif not (vault_cfg and vault_cfg.namespace.strip()):
+                item.add_marker(skip_openbao)
+        if "kmip" in item.keywords and not kmip_ready:
             item.add_marker(skip_kmip)
         if "upgrade" in item.keywords and not old_dir:
             item.add_marker(skip_upgrade)

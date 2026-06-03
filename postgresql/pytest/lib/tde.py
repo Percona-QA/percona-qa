@@ -99,6 +99,47 @@ class TdeManager:
             sql = f"SELECT {fn}('{provider_name}'::text, '{keyfile}'::text)"
         self.cluster.execute(sql)
 
+    def _sql_add_vault_v2_provider(
+        self,
+        fn: str,
+        provider_name: str,
+        vault_url: str,
+        secret_mount_point: str,
+        token_arg: str,
+        ca_path: str,
+        namespace: str,
+        dbname: str = "postgres",
+    ) -> None:
+        """``vault_v2`` SQL: url, mount, token_path, ca, optional namespace."""
+        def esc(s: str) -> str:
+            return s.replace("'", "''")
+
+        provider_name = esc(provider_name)
+        vault_url = esc(vault_url)
+        secret_mount_point = esc(secret_mount_point)
+        token_arg = esc(token_arg)
+        ca_sql = "NULL" if not ca_path else f"'{esc(ca_path)}'::text"
+        namespace = esc(namespace) if namespace else ""
+        nargs = self._nargs(fn)
+
+        if nargs >= 6:
+            ns_sql = f"'{namespace}'::text" if namespace else "NULL"
+            sql = (
+                f"SELECT {fn}('{provider_name}'::text, '{vault_url}'::text, "
+                f"'{secret_mount_point}'::text, '{token_arg}'::text, "
+                f"{ca_sql}, {ns_sql})"
+            )
+        elif nargs >= 5:
+            sql = (
+                f"SELECT {fn}('{provider_name}'::text, '{vault_url}'::text, "
+                f"'{secret_mount_point}'::text, '{token_arg}'::text, {ca_sql})"
+            )
+        else:
+            raise RuntimeError(
+                f"{fn} has unexpected pronargs={nargs} (expected 5 or 6)"
+            )
+        self.cluster.execute(sql, dbname)
+
     def add_global_key_provider_vault(
         self,
         provider_name: str = "vault_provider",
@@ -106,7 +147,17 @@ class TdeManager:
         secret_mount_point: str = "secret",
         vault_token: str = "",
         ca_path: str = "",
+        *,
+        token_path: str = "",
+        namespace: str = "",
+        dbname: str = "postgres",
     ) -> None:
+        """
+        Register a global Vault/OpenBao provider (``vault_v2`` API).
+
+        Pass either ``vault_token`` (inline) or ``token_path`` (file). Bash
+        automation uses a token file path as the 4th argument.
+        """
         fn = self._first_func([
             "pg_tde_add_global_key_provider_vault_v2",
             "pg_tde_add_global_key_provider_vault",
@@ -115,9 +166,211 @@ class TdeManager:
         ])
         if fn is None:
             raise RuntimeError("No pg_tde add_key_provider_vault function found in pg_proc")
-        sql = (f"SELECT {fn}('{provider_name}'::text, '{vault_url}'::text, "
-               f"'{secret_mount_point}'::text, '{vault_token}'::text, '{ca_path}'::text)")
-        self.cluster.execute(sql)
+        token_arg = token_path or vault_token
+        if "vault_v2" in fn or fn.endswith("_vault_v2"):
+            self._sql_add_vault_v2_provider(
+                fn,
+                provider_name,
+                vault_url,
+                secret_mount_point,
+                token_arg,
+                ca_path,
+                namespace,
+                dbname=dbname,
+            )
+            return
+        def esc(s: str) -> str:
+            return s.replace("'", "''")
+
+        sql = (
+            f"SELECT {fn}('{esc(provider_name)}'::text, "
+            f"'{esc(vault_url)}'::text, "
+            f"'{esc(secret_mount_point)}'::text, "
+            f"'{esc(token_arg)}'::text, "
+            f"'{esc(ca_path)}'::text)"
+        )
+        self.cluster.execute(sql, dbname)
+
+    def add_database_key_provider_vault(
+        self,
+        provider_name: str,
+        *,
+        vault_url: str,
+        secret_mount_point: str = "secret",
+        vault_token: str = "",
+        token_path: str = "",
+        ca_path: str = "",
+        namespace: str = "",
+        dbname: str = "postgres",
+    ) -> None:
+        fn = self._first_func([
+            "pg_tde_add_database_key_provider_vault_v2",
+            "pg_tde_add_database_key_provider_vault",
+        ])
+        if fn is None:
+            raise RuntimeError(
+                "No pg_tde_add_database_key_provider_vault_v2 found in pg_proc"
+            )
+        token_arg = token_path or vault_token
+        if "vault_v2" in fn:
+            self._sql_add_vault_v2_provider(
+                fn,
+                provider_name,
+                vault_url,
+                secret_mount_point,
+                token_arg,
+                ca_path,
+                namespace,
+                dbname=dbname,
+            )
+        else:
+            def esc(s: str) -> str:
+                return s.replace("'", "''")
+
+            sql = (
+                f"SELECT {fn}('{esc(provider_name)}'::text, "
+                f"'{esc(vault_url)}'::text, "
+                f"'{esc(secret_mount_point)}'::text, "
+                f"'{esc(token_arg)}'::text, "
+                f"'{esc(ca_path)}'::text)"
+            )
+            self.cluster.execute(sql, dbname)
+
+    def _sql_add_kmip_provider(
+        self,
+        fn: str,
+        provider_name: str,
+        host: str,
+        port: int,
+        cert_path: str,
+        key_path: str,
+        ca_path: str,
+        dbname: str = "postgres",
+    ) -> None:
+        cert_path = cert_path.replace("'", "''")
+        key_path = key_path.replace("'", "''")
+        ca_path = (ca_path or "").replace("'", "''")
+        host = host.replace("'", "''")
+        nargs = self._nargs(fn)
+        if nargs >= 6 and ca_path:
+            sql = (
+                f"SELECT {fn}('{provider_name}'::text, '{host}'::text, "
+                f"{port}::integer, '{cert_path}'::text, '{key_path}'::text, "
+                f"'{ca_path}'::text)"
+            )
+        elif nargs >= 5:
+            sql = (
+                f"SELECT {fn}('{provider_name}'::text, '{host}'::text, "
+                f"{port}::integer, '{cert_path}'::text, '{key_path}'::text)"
+            )
+        else:
+            raise RuntimeError(
+                f"{fn} has unexpected pronargs={nargs} (expected 5 or 6)"
+            )
+        self.cluster.execute(sql, dbname)
+
+    def add_global_key_provider_kmip(
+        self,
+        provider_name: str = "kmip_provider",
+        *,
+        host: str,
+        port: int,
+        cert_path: str,
+        key_path: str,
+        ca_path: str = "",
+    ) -> None:
+        """Register a global KMIP key provider (TLS + KMIP protocol)."""
+        fn = self._first_func([
+            "pg_tde_add_global_key_provider_kmip",
+            "pg_tde_add_key_provider_kmip",
+        ])
+        if fn is None:
+            raise RuntimeError(
+                "No pg_tde add_global_key_provider_kmip function found in pg_proc"
+            )
+        self._sql_add_kmip_provider(
+            fn, provider_name, host, port, cert_path, key_path, ca_path
+        )
+
+    def add_database_key_provider_kmip(
+        self,
+        provider_name: str,
+        *,
+        host: str,
+        port: int,
+        cert_path: str,
+        key_path: str,
+        ca_path: str = "",
+        dbname: str = "postgres",
+    ) -> None:
+        fn = self._first_func([
+            "pg_tde_add_database_key_provider_kmip",
+        ])
+        if fn is None:
+            raise RuntimeError(
+                "No pg_tde_add_database_key_provider_kmip function found in pg_proc"
+            )
+        self._sql_add_kmip_provider(
+            fn,
+            provider_name,
+            host,
+            port,
+            cert_path,
+            key_path,
+            ca_path,
+            dbname=dbname,
+        )
+
+    def set_global_default_principal_key(
+        self,
+        key_name: str,
+        provider_name: str,
+        dbname: str = "postgres",
+    ) -> None:
+        """Create + activate global default principal key (KMIP default-key scenarios)."""
+        create_fn = self._first_func(["pg_tde_create_key_using_global_key_provider"])
+        set_fn = self._first_func([
+            "pg_tde_set_default_key_using_global_key_provider",
+        ])
+        if not create_fn or not set_fn:
+            raise RuntimeError(
+                "pg_tde global default key functions not found "
+                f"(installed: {self.available_functions()})"
+            )
+        self._execute_create_global_key_allow_duplicate(
+            f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)",
+            dbname,
+        )
+        self.cluster.execute(
+            f"SELECT {set_fn}('{key_name}'::text, '{provider_name}'::text)",
+            dbname,
+        )
+
+    def set_database_principal_key(
+        self,
+        key_name: str,
+        provider_name: str,
+        dbname: str = "postgres",
+    ) -> None:
+        create_fn = self._first_func([
+            "pg_tde_create_key_using_database_key_provider",
+        ])
+        set_fn = self._first_func([
+            "pg_tde_set_key_using_database_key_provider",
+        ])
+        if not create_fn or not set_fn:
+            raise RuntimeError(
+                "pg_tde database key functions not found "
+                f"(installed: {self.available_functions()})"
+            )
+        self._execute_create_global_key_allow_duplicate(
+            f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)",
+            dbname,
+        )
+        self.cluster.execute(
+            f"SELECT {set_fn}('{key_name}'::text, '{provider_name}'::text)",
+            dbname,
+        )
 
     def set_global_principal_key(
         self,

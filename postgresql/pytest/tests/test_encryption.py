@@ -370,12 +370,20 @@ class TestKeyManagement:
         assert tde.list_key_providers() == 2
 
     @pytest.mark.vault
-    def test_vault_key_provider(self, tde_primary: PgCluster, vault_addr: str, vault_token: str):
+    def test_vault_key_provider(
+        self, tde_primary: PgCluster, vault_config,
+    ):
+        """Thin smoke; full suite in ``tests/test_vault_providers.py``."""
         tde = TdeManager(tde_primary)
+        from pathlib import Path
+
         tde.add_global_key_provider_vault(
             provider_name="vault_kp",
-            vault_url=vault_addr,
-            vault_token=vault_token,
+            vault_url=vault_config.addr,
+            secret_mount_point=vault_config.secret_mount,
+            token_path=vault_config.token_sql_arg(Path("/tmp")),
+            ca_path=vault_config.ca_path,
+            namespace=vault_config.namespace,
         )
         tde.rotate_principal_key("vault_key", "vault_kp")
         assert tde.principal_key_name() == "vault_key"

@@ -5,6 +5,8 @@ Covers:
   - PG-1805: Invalid page in unlogged table with IDENTITY column after recovery
   - PG-1806: Invalid page after tablespace move + index create with pg_tde and
              wal_level=minimal, wal_skip_threshold=0
+
+External key-provider regressions (KMIP, Vault/OpenBao): ``tests/test_external_key_provider_regressions.py``.
 """
 import os
 import time

@@ -12,9 +12,7 @@ Syntax (from `documentation/docs/command-line-tools/pg-tde-change-key-provider.m
                                <new_provider_type> <provider_parameters...>
 
 These tests cover the file-provider path (no external services needed)
-and a couple of input-validation negatives. Vault/KMIP variants are
-preserved in the bash automation and can be added later as
-`@pytest.mark.vault` / `@pytest.mark.kmip` cases.
+and a couple of input-validation negatives. KMIP: ``tests/test_kmip.py``. Vault/OpenBao: ``tests/test_vault_providers.py``.
 
 Ported from automation/tests/pg_tde_change_key_provider_utility.sh.
 """
@@ -112,8 +110,8 @@ class TestPgTdeChangeKeyProviderCLI:
     Offline reconfiguration of an existing key provider via the
     ``pg_tde_change_key_provider`` CLI tool.
 
-    File-provider scenarios only — the vault/kmip variants need running
-    external services and live in the bash automation suite for now.
+    File-provider scenarios only — KMIP/Vault offline change tests are in
+    ``test_kmip.py`` and ``test_vault_providers.py``.
     """
 
     def test_binary_exists(self, install_dir: Path):
