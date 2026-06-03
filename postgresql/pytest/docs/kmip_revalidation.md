@@ -76,6 +76,16 @@ source .env.sh
 ./scripts/run_kmip_revalidation.sh
 ```
 
+**No Docker** (export `KMIP_*` to a running server first — see [kmip.md](kmip.md)):
+
+```bash
+export KMIP_SERVER_ADDRESS=...
+export KMIP_CLIENT_CA=...
+export KMIP_CLIENT_KEY=...
+export KMIP_SERVER_CA=...
+./scripts/run_kmip_revalidation.sh
+```
+
 **Single vendor lab:**
 
 ```bash

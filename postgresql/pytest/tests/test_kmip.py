@@ -296,29 +296,33 @@ class TestKmipDeleteKeyProvider:
 
 
 class TestKmipChangeKeyProviderCLI:
-    """Offline ``pg_tde_change_key_provider`` with ``kmip`` type (bash utility)."""
+    """
+    Offline ``pg_tde_change_key_provider`` with ``kmip`` type.
 
-    def test_change_key_provider_to_kmip_offline(
+    Per pg_tde docs, change_* updates provider **connection** only; it does not
+    migrate key material between provider types (file → kmip). Keys must already
+    exist on the KMIP server under the same name.
+    """
+
+    def test_change_kmip_provider_connection_offline(
         self,
         pg_factory,
         tmp_path: Path,
         install_dir: Path,
         kmip_config: KmipConfig,
     ):
-        keyfile = str(tmp_path / "ckp_kmip_file.per")
         cluster = _tde_cluster(pg_factory, tmp_path, "ckp_kmip")
-        cluster.execute(
-            f"SELECT pg_tde_add_database_key_provider_file("
-            f"'ckp_file', '{keyfile}')"
+        tde = TdeManager(cluster)
+        tde.add_database_key_provider_kmip(
+            "ckp_kmip",
+            host=kmip_config.connect_host(),
+            port=kmip_config.port,
+            cert_path=kmip_config.client_cert,
+            key_path=kmip_config.client_key,
+            ca_path=kmip_config.server_ca,
+            dbname="postgres",
         )
-        cluster.execute(
-            "SELECT pg_tde_create_key_using_database_key_provider("
-            "'ckp_key', 'ckp_file')"
-        )
-        cluster.execute(
-            "SELECT pg_tde_set_key_using_database_key_provider("
-            "'ckp_key', 'ckp_file')"
-        )
+        tde.set_database_principal_key("ckp_key", "ckp_kmip", dbname="postgres")
         cluster.execute(
             "CREATE TABLE ckp_kmip_t(id INT) USING tde_heap; "
             "INSERT INTO ckp_kmip_t VALUES (7);"
@@ -331,7 +335,7 @@ class TestKmipChangeKeyProviderCLI:
         args = [
             "-D", str(cluster.data_dir),
             str(db_oid),
-            "ckp_file",
+            "ckp_kmip",
             "kmip",
             kmip_config.connect_host(),
             str(kmip_config.port),

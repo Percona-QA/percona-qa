@@ -245,27 +245,18 @@ class TestHashicorpVaultKeyProvider:
                 "SELECT pg_tde_delete_global_key_provider('vault_in_use')"
             )
 
-    def test_change_key_provider_to_vault_v2_offline(
+    def test_change_vault_provider_connection_offline(
         self,
         pg_factory,
         tmp_path: Path,
         install_dir: Path,
         vault_config: VaultConfig,
     ):
-        keyfile = str(tmp_path / "ckp_vault_file.per")
+        """Offline CLI updates Vault connection; keys must already be in Vault."""
         cluster = _tde_cluster(pg_factory, tmp_path, "ckp_vault")
-        cluster.execute(
-            f"SELECT pg_tde_add_database_key_provider_file("
-            f"'ckp_file', '{keyfile}')"
-        )
-        cluster.execute(
-            "SELECT pg_tde_create_key_using_database_key_provider("
-            "'ckp_key', 'ckp_file')"
-        )
-        cluster.execute(
-            "SELECT pg_tde_set_key_using_database_key_provider("
-            "'ckp_key', 'ckp_file')"
-        )
+        tde = TdeManager(cluster)
+        _add_db_vault(tde, vault_config, "ckp_vault", tmp_path, "postgres")
+        tde.set_database_principal_key("ckp_key", "ckp_vault", dbname="postgres")
         cluster.execute(
             "CREATE TABLE ckp_vault_t(id INT) USING tde_heap; "
             "INSERT INTO ckp_vault_t VALUES (7);"
@@ -279,7 +270,7 @@ class TestHashicorpVaultKeyProvider:
         args = [
             "-D", str(cluster.data_dir),
             str(db_oid),
-            "ckp_file",
+            "ckp_vault",
             "vault-v2",
             vault_config.addr,
             vault_config.secret_mount,

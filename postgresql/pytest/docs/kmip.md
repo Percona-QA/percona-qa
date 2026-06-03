@@ -27,12 +27,31 @@ cd postgresql/pytest
 ```bash
 cd postgresql/pytest
 source .env.sh                    # INSTALL_DIR, venv
-source scripts/setup_kmip_for_pytest.sh
+source scripts/setup_kmip_for_pytest.sh   # needs Docker, unless KMIP_* is already set
 
 pytest tests/test_kmip.py -v
 pytest tests/ -m kmip -v
 pytest --list-test-sections       # section name: kmip
 ```
+
+### Without Docker
+
+Use this when Docker is not installed (common on bare-metal build VMs) but a KMIP
+server is already running (lab PyKMIP, Fortanix, etc.):
+
+```bash
+export KMIP_SERVER_ADDRESS=127.0.0.1
+export KMIP_SERVER_PORT=5696
+export KMIP_CLIENT_CA=/path/to/client_certificate.pem
+export KMIP_CLIENT_KEY=/path/to/client_key.pem
+export KMIP_SERVER_CA=/path/to/root_ca.pem
+
+./scripts/run_kmip_revalidation.sh
+# or: pytest tests/test_kmip.py -v
+```
+
+`setup_kmip_for_pytest.sh` and `run_kmip_revalidation.sh` skip Docker when
+`KMIP_*` is set, cert files exist, and the host:port accepts TCP.
 
 ## Environment / CLI
 
@@ -58,7 +77,7 @@ pytest tests/ --skip-sections=kmip -v   # omit entire KMIP section
 | `TestKmipKeyProviderBasics` | functions_test smoke | validate, register, locate+get, restart |
 | `TestKmipBashParityScenarios` | functions_test §2–4, t/066 | multi-DB, default key, DB scope |
 | `TestKmipDeleteKeyProvider` | t/064 | catalog delete rules |
-| `TestKmipChangeKeyProviderCLI` | change_key_provider utility | offline `kmip` CLI |
+| `TestKmipChangeKeyProviderCLI` | change_key_provider utility | offline KMIP connection update (keys on server) |
 | `TestKmipLibkmipClientPr595` | — | bad host errors; `ldd` C++ link check |
 | `TestKmipServerRevalidation` | — | **per-server matrix** after libkmip rewrite |
 

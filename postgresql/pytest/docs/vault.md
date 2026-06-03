@@ -74,7 +74,7 @@ pytest tests/ --skip-sections=vault -v
 | `test_vault_and_file_multi_database` | `pg_tde_functions_test.sh` scenario 2 (vault part) |
 | `test_vault_database_scoped_provider` | functions_test sbtest2 |
 | `test_delete_*_vault_*` | `t/064_delete_key_providers.pl` |
-| `test_change_key_provider_to_vault_v2_offline` | `pg_tde_change_key_provider_utility.sh` |
+| `test_change_vault_provider_connection_offline` | offline Vault connection update (keys in Vault) |
 | `test_openbao_*` | `pg_tde_open_bao_tests.sh` |
 
 ## Jira regressions

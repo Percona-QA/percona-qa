@@ -111,9 +111,10 @@ class TestKmipCppClientRegression:
         tde = TdeManager(cluster)
         _add_global_kmip(tde, kmip_config, "pg2125_dup_ring")
         tde.set_global_principal_key("pg2125_dup_key", "pg2125_dup_ring")
-        cluster.execute(
-            "SELECT pg_tde_create_key_using_global_key_provider("
-            "'pg2125_dup_key', 'pg2125_dup_ring')"
+        create_fn = tde._first_func(["pg_tde_create_key_using_global_key_provider"])
+        assert create_fn is not None
+        tde._execute_create_global_key_allow_duplicate(
+            f"SELECT {create_fn}('pg2125_dup_key'::text, 'pg2125_dup_ring'::text)"
         )
         _assert_postgres_alive(cluster)
         cluster.execute(
