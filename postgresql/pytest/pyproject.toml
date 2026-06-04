@@ -51,6 +51,7 @@ markers = [
     "openbao: OpenBao namespace + pg_tde mount tests (also needs vault addr/token)",
     "kmip: tests that require a running KMIP server",
     "kmip_revalidation: parametrized KMIP server matrix (per-profile env)",
+    "vault_kmip: HashiCorp Vault KMIP engine (not Vault KV v2)",
     "waldump: pg_waldump / pg_tde_waldump diagnostic-tool tests",
     "docker: tests that require Docker",
     "pg16: tests that require PostgreSQL 16",

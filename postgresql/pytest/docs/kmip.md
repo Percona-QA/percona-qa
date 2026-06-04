@@ -114,6 +114,8 @@ pytest tests/test_kmip_server_revalidation.py -v
 
 Vault / OpenBao: `tests/test_vault_providers.py` and [vault.md](vault.md).
 
+Vault **KMIP engine** (customer ``register symmetric key: -2``): [vault_kmip.md](vault_kmip.md).
+
 ## Jenkins / ppg-testing
 
 Run KMIP as an **opt-in** job stage after `setup_kmip_for_pytest.sh` (or the

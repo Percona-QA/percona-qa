@@ -99,6 +99,32 @@ class TdeManager:
             sql = f"SELECT {fn}('{provider_name}'::text, '{keyfile}'::text)"
         self.cluster.execute(sql)
 
+    def add_database_key_provider_file(
+        self,
+        provider_name: str,
+        keyfile: str,
+        *,
+        in_place: bool = True,
+        dbname: str = "postgres",
+    ) -> None:
+        fn = self._first_func([
+            "pg_tde_add_database_key_provider_file",
+            "pg_tde_add_key_provider_file",
+        ])
+        if fn is None:
+            raise RuntimeError(
+                "No pg_tde_add_database_key_provider_file function found in pg_proc"
+            )
+        nargs = self._nargs(fn)
+        if nargs == 3:
+            sql = (
+                f"SELECT {fn}('{provider_name}'::text, '{keyfile}'::text, "
+                f"{'true' if in_place else 'false'})"
+            )
+        else:
+            sql = f"SELECT {fn}('{provider_name}'::text, '{keyfile}'::text)"
+        self.cluster.execute(sql, dbname)
+
     def _sql_add_vault_v2_provider(
         self,
         fn: str,
@@ -235,6 +261,50 @@ class TdeManager:
                 f"'{esc(ca_path)}'::text)"
             )
             self.cluster.execute(sql, dbname)
+
+    def change_database_key_provider_vault(
+        self,
+        provider_name: str,
+        *,
+        vault_url: str,
+        secret_mount_point: str,
+        token_path: str,
+        ca_path: str = "",
+        namespace: str = "",
+        dbname: str = "postgres",
+    ) -> None:
+        fn = self._first_func(["pg_tde_change_database_key_provider_vault_v2"])
+        if fn is None:
+            raise RuntimeError(
+                "pg_tde_change_database_key_provider_vault_v2 not found in pg_proc"
+            )
+        self._sql_add_vault_v2_provider(
+            fn,
+            provider_name,
+            vault_url,
+            secret_mount_point,
+            token_path,
+            ca_path,
+            namespace,
+            dbname=dbname,
+        )
+
+    def change_global_key_provider_file(
+        self,
+        provider_name: str,
+        keyfile: str,
+        dbname: str = "postgres",
+    ) -> None:
+        fn = self._first_func(["pg_tde_change_global_key_provider_file"])
+        if fn is None:
+            raise RuntimeError(
+                "pg_tde_change_global_key_provider_file not found in pg_proc"
+            )
+        path = keyfile.replace("'", "''")
+        self.cluster.execute(
+            f"SELECT {fn}('{provider_name}'::text, '{path}'::text)",
+            dbname,
+        )
 
     def _sql_add_kmip_provider(
         self,

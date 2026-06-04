@@ -16,6 +16,7 @@ from lib.test_sections import (
 )
 from lib.kmip import kmip_config_from_options, kmip_runtime_ready
 from lib.vault import vault_config_from_options, vault_runtime_ready
+from lib.vault_kmip import vault_kmip_config_from_env, vault_kmip_runtime_ready
 from lib.cluster import (
     IO_METHOD_LEGACY_PLACEHOLDER,
     IO_METHOD_VALUES,
@@ -471,6 +472,22 @@ def kmip_config(request):
 
 
 @pytest.fixture(scope="session")
+def vault_kmip_config():
+    """
+    HashiCorp Vault **KMIP engine** (not KV v2). See ``docs/vault_kmip.md``.
+    """
+    cfg = vault_kmip_config_from_env()
+    if cfg is None:
+        pytest.skip(
+            "KMIP_VAULT_HOST not set; source scripts/setup_vault_kmip_for_pytest.sh"
+        )
+    ready, reason = vault_kmip_runtime_ready()
+    if not ready:
+        pytest.skip(reason)
+    return cfg
+
+
+@pytest.fixture(scope="session")
 def old_install_dir(request) -> Path:
     v = request.config.getoption("--old-install-dir")
     return Path(v) if v else None
@@ -552,8 +569,12 @@ def pytest_collection_modifyitems(config, items):
     kmip_ready, kmip_skip_reason = (
         kmip_runtime_ready(kmip_cfg) if kmip_cfg else (False, "")
     )
+    vault_kmip_ready, vault_kmip_skip_reason = vault_kmip_runtime_ready()
     skip_kmip = pytest.mark.skip(
         reason=kmip_skip_reason or "--kmip-server-address not provided"
+    )
+    skip_vault_kmip = pytest.mark.skip(
+        reason=vault_kmip_skip_reason or "KMIP_VAULT_HOST not set"
     )
     skip_upgrade = pytest.mark.skip(reason="--old-install-dir not provided")
     skip_minor_upgrade = pytest.mark.skip(
@@ -597,9 +618,12 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_vault)
             elif not (vault_cfg and vault_cfg.namespace.strip()):
                 item.add_marker(skip_openbao)
+        if "vault_kmip" in item.keywords and not vault_kmip_ready:
+            item.add_marker(skip_vault_kmip)
         if (
             "kmip" in item.keywords
             and "kmip_revalidation" not in item.keywords
+            and "vault_kmip" not in item.keywords
             and not kmip_ready
         ):
             item.add_marker(skip_kmip)

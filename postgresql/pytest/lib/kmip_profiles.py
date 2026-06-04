@@ -9,9 +9,10 @@ https://docs.percona.com/pg-tde/global-key-provider-configuration/overview.html)
   * Thales CipherTrust Manager
   * Cosmian KMS
   * Akeyless (KMIP endpoint)
+  * HashiCorp Vault **KMIP secrets engine** (lab regression; see ``test_vault_kmip.py``)
 
-HashiCorp Vault's KMIP engine is explicitly **not** a validated pg_tde target;
-use Vault KV v2 tests instead (``test_vault_providers.py``).
+For HashiCorp production deployments, use **Vault KV v2** (``test_vault_providers.py``),
+not the KMIP engine.
 """
 from __future__ import annotations
 
@@ -94,6 +95,16 @@ SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
         vendor="Akeyless",
         docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html",
         env_prefix="KMIP_AKEYLESS_",
+    ),
+    "vault_kmip": KmipServerProfile(
+        name="vault_kmip",
+        vendor="HashiCorp Vault KMIP engine",
+        docs_url="https://developer.hashicorp.com/vault/docs/secrets/kmip",
+        env_prefix="KMIP_VAULT_",
+        notes=(
+            "Enterprise KMIP listener; customer register -2 repro in "
+            "tests/test_vault_kmip.py — prefer Vault KV v2 in production"
+        ),
     ),
 }
 

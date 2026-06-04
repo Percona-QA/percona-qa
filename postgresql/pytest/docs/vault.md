@@ -7,6 +7,9 @@ products share the same HTTP API; OpenBao tests additionally set a
 
 KMIP is separate — see [kmip.md](kmip.md).
 
+**Vault KMIP engine** (not KV v2): customer ``register symmetric key: -2`` regression
+in [vault_kmip.md](vault_kmip.md) / `tests/test_vault_kmip.py`.
+
 ## Test modules
 
 | Module | Marker(s) | Server |
@@ -69,13 +72,27 @@ pytest tests/ --skip-sections=vault -v
 
 ## Bash parity
 
-| Pytest | Bash / TAP |
-|--------|------------|
-| `test_vault_and_file_multi_database` | `pg_tde_functions_test.sh` scenario 2 (vault part) |
-| `test_vault_database_scoped_provider` | functions_test sbtest2 |
-| `test_delete_*_vault_*` | `t/064_delete_key_providers.pl` |
-| `test_change_vault_provider_connection_offline` | offline Vault connection update (keys in Vault) |
-| `test_openbao_*` | `pg_tde_open_bao_tests.sh` |
+| Bash script | Pytest |
+|-------------|--------|
+| `pg_tde_hashicorp_vault_mount_permission_warning_test.sh` | `tests/test_vault_hashicorp_parity.py::TestHashicorpVaultMountPermissionWarning` |
+| `pg_tde_change_database_key_provider_vault_v2.sh` | `tests/test_vault_hashicorp_parity.py::TestHashicorpVaultChangeDatabaseKeyProviderV2` |
+| `pg_tde_openbao_vault_mount_permission_warning_test.sh` | `tests/test_external_key_provider_regressions.py::test_vault_kv_only_token_without_mount_metadata` |
+| `pg_tde_open_bao_tests.sh` scenarios 1–3 | `tests/test_vault_providers.py::TestOpenBaoKeyProvider` |
+| `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 | `tests/test_openbao_bash_parity.py` |
+| `pg_tde_open_bao_tests.sh` scenario 11 | `tests/test_external_key_provider_regressions.py::test_vault_delete_provider_after_server_key_on_file` |
+| `pg_tde_functions_test.sh` (vault parts) | `tests/test_vault_providers.py::TestHashicorpVaultKeyProvider` |
+| `t/064_delete_key_providers.pl` | `test_delete_*_vault_*` |
+
+### Run parity suites
+
+```bash
+source scripts/setup_vault_for_pytest.sh
+pytest tests/test_vault_hashicorp_parity.py -v
+
+source scripts/setup_openbao_for_pytest.sh
+source scripts/setup_kmip_for_pytest.sh
+pytest tests/test_openbao_bash_parity.py -v
+```
 
 ## Jira regressions
 

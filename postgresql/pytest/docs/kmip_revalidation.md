@@ -17,9 +17,11 @@ supported KMIP provider — not only the Docker PyKMIP dev image.
 | `thales` | Thales CipherTrust Manager | [Thales](https://docs.percona.com/pg-tde/global-key-provider-configuration/thales.html) | Lab |
 | `cosmian` | Cosmian KMS | [Cosmian integration](https://docs.cosmian.com/key_management_system/integrations/databases/percona/) | Lab |
 | `akeyless` | Akeyless | [Akeyless](https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html) | Lab |
+| `vault_kmip` | HashiCorp Vault KMIP engine | [Vault KMIP](https://developer.hashicorp.com/vault/docs/secrets/kmip) | Lab (Enterprise) |
 
-**Out of scope for this matrix:** HashiCorp Vault **KMIP engine** (not a validated
-pg_tde production target). Use Vault KV tests in [vault.md](vault.md).
+**HashiCorp Vault KMIP engine:** not a production target (use Vault KV v2 in
+[vault.md](vault.md)). Lab regression: [vault_kmip.md](vault_kmip.md) and profile
+`vault_kmip` (`KMIP_VAULT_*`).
 
 ## Checklist (per server)
 
@@ -124,6 +126,7 @@ Skip entire section: `pytest --skip-sections=kmip`.
 | thales | | | | | | |
 | cosmian | | | | | | |
 | akeyless | | | | | | |
+| vault_kmip | | | | | `test_vault_kmip.py` | |
 
 ## Related
 
