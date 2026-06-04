@@ -4,7 +4,7 @@
 > `postgresql/pytest/tests/` actually does, why it exists, and what
 > regression it guards against.
 >
-> **Scope**: 446 tests across 19 test modules. Tests are listed in the
+> **Scope**: **501** tests across **26** test modules. Tests are listed in the
 > order they appear in the source files. Each test is documented with:
 >
 > * **Purpose** — one-line statement of what's under test.
@@ -12,8 +12,9 @@
 > * **Asserts / catches** — what proves pass/fail and what regression
 >   it would catch.
 >
-> Last refreshed: 2026-05-14 (§11 + §17 updated 2026-05-19 — see
-> [`coverage_2026-05-19.md`](coverage_2026-05-19.md)).
+> Last refreshed: 2026-05-19 (§11, §17, §18–24 — see
+> [`coverage_2026-05-19.md`](coverage_2026-05-19.md) and
+> [`coverage_2026-05-19-external-key-providers.md`](coverage_2026-05-19-external-key-providers.md)).
 
 ---
 
@@ -39,6 +40,13 @@
 | 15 | `test_upgrade.py` | 47 | **`pg_upgrade`** major bump (heap + TDE via new PGDATA) — not 18.3→18.4 in-place |
 | 16 | `test_waldump.py` | 33 | `pg_tde_waldump` |
 | 17 | `test_pdg_migration.py` | **10** | Percona Distribution migration doc (same/different server) |
+| 18 | `test_kmip.py` | **10** | KMIP provider smoke, bash parity, offline CLI, PR #595 negatives |
+| 19 | `test_kmip_server_revalidation.py` | **1×N** | Post–libkmip revalidation per `KMIP_REVALIDATE_PROFILES` |
+| 20 | `test_vault_providers.py` | **10** | Vault KV v2 + OpenBao scenarios 1–3 |
+| 21 | `test_vault_hashicorp_parity.py` | **2** | HashiCorp mount-metadata + `change_database_key_provider_vault_v2` |
+| 22 | `test_openbao_bash_parity.py` | **8** | `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 |
+| 23 | `test_external_key_provider_regressions.py` | **7** | PG-2125 KMIP lifecycle; PG-1959 namespace; OpenBao s11 |
+| 24 | `test_vault_kmip.py` | **2** | Vault KMIP engine customer regression (`register symmetric key: -2`) |
 
 **Conventions used in this document**
 
@@ -1342,6 +1350,89 @@ custom rmgr ID 140 at postmaster startup; server log contains both
 
 ---
 
+## 18. `test_kmip.py` (10 tests)
+
+PyKMIP Docker (or `KMIP_HOST` / `KMIP_PORT` from `scripts/setup_kmip_for_pytest.sh`).
+
+| Class / test | Purpose |
+|---|---|
+| `TestKmipKeyProvider` | Add global KMIP provider, `create_key`, DML, restart, rotate |
+| `test_kmip_bash_parity_*` | Mirrors slices of `pg_tde_functions_test.sh` KMIP paths |
+| `test_change_kmip_provider_connection_offline` | Offline CLI updates KMIP connection only (keys already on KMS) |
+| `test_kmip_repeated_create_key_is_idempotent` | Duplicate `create_key` after principal set |
+| PR #595 negatives | Invalid host/port, missing provider |
+
+Runbook: `docs/kmip.md`.
+
+---
+
+## 19. `test_kmip_server_revalidation.py` (1 test × profiles)
+
+`test_kmip_revalidation_checklist[parametrize]` runs `lib/kmip_revalidation.py` checklist per profile in `KMIP_REVALIDATE_PROFILES` (default `pykmip_docker`). Marker: `kmip_revalidation`.
+
+Runbook: `docs/kmip_revalidation.md`, `./scripts/run_kmip_revalidation.sh`.
+
+---
+
+## 20. `test_vault_providers.py` (10 tests)
+
+HashiCorp Vault KV v2 and OpenBao scenarios 1–3 from `pg_tde_open_bao_tests.sh`. Requires `scripts/setup_vault_for_pytest.sh` and/or `setup_openbao_for_pytest.sh`.
+
+| Class | Theme |
+|---|---|
+| `TestHashicorpVaultKeyProvider` | Global vault provider, server key, encrypted tables |
+| `TestOpenBaoKeyProvider` | Namespaced mounts, DB-scoped vs global providers (s1–3) |
+
+---
+
+## 21. `test_vault_hashicorp_parity.py` (2 tests)
+
+Ports `pg_tde_hashicorp_vault_mount_permission_warning_test.sh` and `pg_tde_change_database_key_provider_vault_v2.sh`.
+
+| Test | Bash source |
+|---|---|
+| `test_hashicorp_kv_only_token_without_mount_metadata` | KV-only token; no `sys/mounts` read |
+| `test_change_database_key_provider_vault_v2_after_kv_reseed` | `vault kv` export/delete/import + online `pg_tde_change_database_key_provider_vault_v2` |
+
+---
+
+## 22. `test_openbao_bash_parity.py` (8 tests)
+
+OpenBao scenarios 4–10 and 12 from `pg_tde_open_bao_tests.sh`. Often needs KMIP + file providers in addition to OpenBao.
+
+| Test | Scenario |
+|---|---|
+| `test_openbao_scenario4_multi_provider_single_database` | 4 |
+| `test_openbao_scenario5_global_file_provider_change` | 5 |
+| `test_openbao_scenario6_local_and_global_vault_providers` | 6 |
+| `test_openbao_scenario7_default_key_rotation` | 7 |
+| `test_openbao_scenario8_dump_restore_provider_migration` | 8 (`slow`) |
+| `test_openbao_scenario9_default_and_local_keys` | 9 |
+| `test_openbao_scenario10_delete_global_with_active_db_key` | 10 |
+| `test_openbao_scenario12_delete_unused_global_provider` | 12 |
+
+Scenario 11: `test_vault_delete_provider_after_server_key_on_file` in §23.
+
+---
+
+## 23. `test_external_key_provider_regressions.py` (7 tests)
+
+| Class | Jira / theme |
+|---|---|
+| `TestKmipCppClientRegression` | PG-2125 / PR #595 — lifecycle, offline change, idempotent create |
+| `TestVaultOpenBaoNamespaceRegression` | PG-1959 — namespace + kv-only token (OpenBao mount warning bash) |
+| `test_vault_delete_provider_after_server_key_on_file` | OpenBao scenario 11 |
+
+---
+
+## 24. `test_vault_kmip.py` (2 tests)
+
+HashiCorp Vault **KMIP engine** (not KV v2). Customer repro: `register symmetric key: -2`. Marker `vault_kmip`. May be `xfail` unless `VAULT_KMIP_REQUIRE_REGISTER_SUCCESS=1`.
+
+Runbook: `docs/vault_kmip.md`, `scripts/setup_vault_kmip_for_pytest.sh`.
+
+---
+
 ## Appendix: skip-conditions
 
 These tests automatically skip when the corresponding external
@@ -1351,7 +1442,9 @@ without requiring everything to be installed:
 | Skip condition | Affects |
 |---|---|
 | `--old-install-dir` not provided | All of `test_upgrade.py`, `test_tde_pg_upgrade.py` |
-| Vault / OpenBao not reachable | `TestKeyManagement.test_vault_key_provider`, `test_rewind_with_vault_key_provider`, KMIP tests in bash automation |
+| `KMIP_*` / `VAULT_*` / `OPENBAO_*` unset | `@pytest.mark.kmip`, `vault`, `openbao`, `vault_kmip`, `kmip_revalidation` modules; use `scripts/setup_*_for_pytest.sh` |
+| `--skip-sections=kmip,vault` | Skips entire external-key-provider sections via `lib/test_sections.py` |
+| Vault / OpenBao not reachable | Same as above; legacy bash scripts now have pytest ports in §18–24 |
 | `pg_tde_*` binary missing in install | Individual CLI tests in `test_tde_cli_tools.py`, `test_change_key_provider.py`, `test_waldump.py`, `test_pg_basebackup.py::TestPgTdeBaseBackupWalEncryption` |
 | `pg_tde_function_exists(...)` returns false | `TestTdeVerifyDeleteKeyApis` (verify/delete APIs may be missing on older builds) |
 | `cluster.major_version < 15` | `STRATEGY = wal_log` / `file_copy` tests in `test_template_databases.py` |
