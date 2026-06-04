@@ -209,9 +209,6 @@ archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
 
-wal_keep_size='4GB'
-max_wal_size='8GB'
-min_wal_size='2GB'
 archive_timeout='10s'
 EOF
 
@@ -265,9 +262,6 @@ archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
 
-wal_keep_size='4GB'
-max_wal_size='8GB'
-min_wal_size='2GB'
 archive_timeout='10s'
 EOF
 
