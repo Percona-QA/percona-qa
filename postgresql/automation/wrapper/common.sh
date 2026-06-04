@@ -134,7 +134,8 @@ listen_addresses = '*'
 logging_collector = on
 log_directory = '$PGDATA'
 log_filename = 'server.log'
-log_statement = 'all'
+log_statement = 'ddl'
+log_min_error_statement = 'error'
 max_wal_senders = 5
 EOF
 
