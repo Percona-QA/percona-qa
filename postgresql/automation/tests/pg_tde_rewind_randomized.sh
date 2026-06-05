@@ -375,7 +375,7 @@ random_stop "$PRIMARY_DATA" "$PRIMARY_PORT"
 # ENSURE REPLICA WAL SAFE BEFORE STOP
 #############################################
 force_wal_archive "$REPLICA_PORT"
-stop_pg "$REPLICA_DATA"
+stop_pg "$REPLICA_DATA" "$REPLICA_PORT"
 
 ####################################################################
 # BACKUP CONFIGS (pg_tde_rewind is going to overwrite config files)
