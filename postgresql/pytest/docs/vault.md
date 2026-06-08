@@ -150,7 +150,7 @@ Do not mix Vault SSL URLs with the Docker dev server without matching `VAULT_CA_
 | OpenBao tests skipped (`HTTP 400` on health) | Pull latest pytest — health check must not send `X-Vault-Namespace` |
 | OpenBao tests skipped (other) | `source scripts/setup_openbao_for_pytest.sh` — needs `VAULT_NAMESPACE` |
 | Stale `VAULT_*` from old server | `OPENBAO_FORCE_RESTART=1 source scripts/setup_openbao_for_pytest.sh` |
-| `Invalid HTTP response ... 404` on create_key | KV mount missing — `OPENBAO_FORCE_RESTART=1 source scripts/setup_openbao_for_pytest.sh` |
+| `Invalid HTTP response ... 404` on create_key | Setup OK but pg_tde used 5-arg `vault_v2` (no namespace) — upgrade pg_tde to 2.1+ and pull latest pytest (`lib/tde.py` picks 6-arg overload); or KV mount missing — re-run setup |
 | `namespace not found` on namespace create | Stale `VAULT_NAMESPACE` in shell — `unset VAULT_NAMESPACE` then re-run setup |
 | SSH closes on setup error | Update repo — setup script is SSH-safe (no `set -e` when sourced) |
 | KMIP scenarios skip in OpenBao suite | `source scripts/setup_cosmian_for_pytest.sh` |

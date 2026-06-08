@@ -27,11 +27,18 @@ class TdeManager:
     # ── internal helpers ──────────────────────────────────────────────────
 
     def _nargs(self, func_name: str) -> int:
-        """Return pronargs for func_name (after CREATE EXTENSION)."""
+        """Return pronargs for func_name (after CREATE EXTENSION).
+
+        pg_tde 2.1+ adds a 6-arg ``*_vault_v2`` overload (namespace) alongside
+        the original 5-arg form.  Always pick the highest arity so OpenBao tests
+        pass ``pg_tde_ns1/`` — using the 5-arg overload omits
+        ``X-Vault-Namespace`` and yields HTTP 404 on create_key.
+        """
         if func_name not in self._func_args:
             result = self.cluster.fetchone(
                 f"SELECT pronargs FROM pg_proc "
-                f"WHERE proname = '{func_name}' LIMIT 1"
+                f"WHERE proname = '{func_name}' "
+                f"ORDER BY pronargs DESC LIMIT 1"
             )
             self._func_args[func_name] = int(result) if result else -1
         return self._func_args[func_name]
@@ -147,6 +154,13 @@ class TdeManager:
         ca_sql = "NULL" if not ca_path else f"'{esc(ca_path)}'::text"
         namespace = esc(namespace) if namespace else ""
         nargs = self._nargs(fn)
+
+        if namespace and nargs < 6:
+            raise RuntimeError(
+                f"{fn} has pronargs={nargs} but namespace "
+                f"'{namespace}' was requested — upgrade pg_tde to 2.1+ "
+                f"(6-arg vault_v2 with namespace support)"
+            )
 
         if nargs >= 6:
             ns_sql = f"'{namespace}'::text" if namespace else "NULL"

@@ -24,6 +24,17 @@ if [[ -f .env.sh ]]; then
     source .env.sh
 fi
 
+# .env.sh may export HashiCorp Vault defaults (e.g. VAULT_SECRET_MOUNT=secret).
+# When the local OpenBao pytest token exists, restore mount/namespace for pg_tde.
+OPENBAO_RUN_DIR="${OPENBAO_PYTEST_RUN_DIR:-/tmp/pg_tde_pytest_openbao}"
+if [[ -f "${OPENBAO_RUN_DIR}/bao_root_token" ]]; then
+    export VAULT_ADDR="${VAULT_ADDR:-${OPENBAO_DEFAULT_ADDR}}"
+    export VAULT_TOKEN_FILE="${OPENBAO_RUN_DIR}/bao_root_token"
+    export VAULT_SECRET_MOUNT="${OPENBAO_DEFAULT_MOUNT}"
+    export VAULT_NAMESPACE="${OPENBAO_DEFAULT_NAMESPACE}/"
+    unset VAULT_TOKEN
+fi
+
 if ! openbao_pytest_env_ready; then
     export OPENBAO_FORCE_RESTART=1
     unset VAULT_NAMESPACE VAULT_KV_ONLY_TOKEN_FILE

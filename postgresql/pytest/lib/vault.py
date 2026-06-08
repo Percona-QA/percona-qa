@@ -133,9 +133,11 @@ def vault_config_from_options(
 ) -> Optional[VaultConfig]:
     if not addr:
         return None
+    # OpenBao namespace tests use mount ``pg_tde``; HashiCorp dev server uses ``secret``.
+    default_mount = "pg_tde" if namespace.strip() else "secret"
     return VaultConfig(
         addr=addr.rstrip("/"),
-        secret_mount=secret_mount or "secret",
+        secret_mount=secret_mount or default_mount,
         token=token,
         token_path=token_path,
         ca_path=ca_path,
