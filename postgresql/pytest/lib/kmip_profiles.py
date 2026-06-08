@@ -4,7 +4,8 @@ Supported KMIP server profiles for post–PR-595 revalidation.
 Percona documents KMIP-compatible providers (see
 https://docs.percona.com/pg-tde/global-key-provider-configuration/overview.html):
 
-  * Generic KMIP / PyKMIP (dev & CI)
+  * Cosmian KMS (Percona CI — primary automated KMIP backend)
+  * Generic KMIP / PyKMIP Docker (legacy local dev only; upstream abandoned)
   * Fortanix DSM
   * Thales CipherTrust Manager
   * Cosmian KMS
@@ -67,8 +68,11 @@ SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
         vendor="PyKMIP (Docker)",
         docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/kmip-server.html",
         env_prefix="KMIP_",
-        notes="mohitpercona/kmip image; ``scripts/setup_kmip_for_pytest.sh``",
-        ci_automated=True,
+        notes=(
+            "Legacy local dev only (PyKMIP abandoned). "
+            "Use ``scripts/setup_kmip_for_pytest.sh`` — not Percona CI."
+        ),
+        ci_automated=False,
     ),
     "fortanix": KmipServerProfile(
         name="fortanix",
@@ -89,6 +93,8 @@ SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
         vendor="Cosmian KMS",
         docs_url="https://docs.cosmian.com/key_management_system/integrations/databases/percona/",
         env_prefix="KMIP_COSMIAN_",
+        notes="Percona CI automated KMIP; ``scripts/setup_cosmian_for_pytest.sh``",
+        ci_automated=True,
     ),
     "akeyless": KmipServerProfile(
         name="akeyless",
@@ -116,9 +122,16 @@ ALL_KMIP_PROFILE_NAMES: Tuple[str, ...] = tuple(
 )
 
 
+def default_revalidate_profiles() -> str:
+    """CI uses Cosmian when ``KMIP_COSMIAN_*`` is set; else PyKMIP Docker for local dev."""
+    if os.environ.get("KMIP_COSMIAN_HOST", "").strip():
+        return "cosmian"
+    return "pykmip_docker"
+
+
 def parse_revalidate_profile_list(raw: str) -> List[str]:
     """Parse ``KMIP_REVALIDATE_PROFILES`` (comma-separated or ``all``)."""
-    raw = (raw or "pykmip_docker").strip()
+    raw = (raw or default_revalidate_profiles()).strip()
     if raw.lower() == "all":
         return list(ALL_KMIP_PROFILE_NAMES)
     return [p.strip().lower() for p in raw.replace(" ", ",").split(",") if p.strip()]

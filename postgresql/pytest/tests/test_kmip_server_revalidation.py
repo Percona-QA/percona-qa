@@ -15,7 +15,11 @@ from pathlib import Path
 import pytest
 
 from lib.kmip import KmipConfig
-from lib.kmip_profiles import KmipServerProfile, resolve_kmip_profiles
+from lib.kmip_profiles import (
+    KmipServerProfile,
+    default_revalidate_profiles,
+    resolve_kmip_profiles,
+)
 from lib.kmip_revalidation import run_kmip_revalidation_checklist
 
 pytestmark = [pytest.mark.kmip, pytest.mark.kmip_revalidation]
@@ -25,7 +29,7 @@ def _profile_list_from_config(config) -> str:
     opt = config.getoption("--kmip-revalidate-profiles", default=None)
     if opt:
         return opt
-    return os.environ.get("KMIP_REVALIDATE_PROFILES", "pykmip_docker")
+    return os.environ.get("KMIP_REVALIDATE_PROFILES") or default_revalidate_profiles()
 
 
 def pytest_generate_tests(metafunc):

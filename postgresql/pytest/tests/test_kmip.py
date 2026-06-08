@@ -7,6 +7,7 @@ Ports the KMIP portions of:
   - ``postgresql/t/066_multiple_db_diff_key_prov.pl`` (KMIP database)
   - ``postgresql/t/064_delete_key_providers.pl`` (global KMIP delete)
   - TAP 067–072 (database/global KMIP provider + data integrity)
+  - Advanced KMIP corner cases → ``test_kmip_advanced.py``
 
 Builds that include `percona/pg_tde PR #595
 <https://github.com/percona/pg_tde/pull/595>`_ use the C++ **libkmip**

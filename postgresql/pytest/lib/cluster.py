@@ -466,6 +466,20 @@ class PgCluster:
 
     def execute(self, sql: str, dbname: str = "postgres") -> str:
         """Run SQL and return stdout as a stripped string."""
+        result = self.execute_allow_error(sql, dbname=dbname)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"psql failed (port={self.port}, db={dbname})\n"
+                f"SQL : {sql}\n"
+                f"OUT : {result.stdout.strip()}\n"
+                f"ERR : {result.stderr.strip()}"
+            )
+        return result.stdout.strip()
+
+    def execute_allow_error(
+        self, sql: str, dbname: str = "postgres"
+    ) -> subprocess.CompletedProcess:
+        """Run SQL; return CompletedProcess (check=False) for negative tests."""
         cmd = [
             str(self.bin / "psql"),
             "-h", str(self.socket_dir),
@@ -475,16 +489,7 @@ class PgCluster:
             "-c", sql,
             "--no-align", "--tuples-only", "-q",
         ]
-        try:
-            result = self._run(cmd, capture=True)
-            return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                f"psql failed (port={self.port}, db={dbname})\n"
-                f"SQL : {sql}\n"
-                f"OUT : {e.stdout.strip()}\n"
-                f"ERR : {e.stderr.strip()}"
-            ) from e
+        return self._run(cmd, capture=True, check=False)
 
     def execute_file(self, sql_file: str, dbname: str = "postgres") -> str:
         cmd = [

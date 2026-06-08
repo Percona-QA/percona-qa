@@ -10,14 +10,16 @@ supported KMIP provider — not only the Docker PyKMIP dev image.
 
 ## Supported profiles
 
-| Profile ID | Vendor | Percona docs | CI (automated) |
-|------------|--------|--------------|----------------|
-| `pykmip_docker` | PyKMIP (Docker `mohitpercona/kmip`) | [KMIP server](https://docs.percona.com/pg-tde/global-key-provider-configuration/kmip-server.html) | Yes |
-| `fortanix` | Fortanix DSM | [Fortanix](https://docs.percona.com/pg-tde/global-key-provider-configuration/fortanix.html) | Lab |
-| `thales` | Thales CipherTrust Manager | [Thales](https://docs.percona.com/pg-tde/global-key-provider-configuration/thales.html) | Lab |
-| `cosmian` | Cosmian KMS | [Cosmian integration](https://docs.cosmian.com/key_management_system/integrations/databases/percona/) | Lab |
-| `akeyless` | Akeyless | [Akeyless](https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html) | Lab |
-| `vault_kmip` | HashiCorp Vault KMIP engine | [Vault KMIP](https://developer.hashicorp.com/vault/docs/secrets/kmip) | Lab (Enterprise) |
+| Profile ID | Vendor | Percona docs | Automation |
+|------------|--------|--------------|------------|
+| `cosmian` | Cosmian KMS | [Cosmian integration](https://docs.cosmian.com/key_management_system/integrations/databases/percona/) | **CI (every build)** — `setup_cosmian_for_pytest.sh` |
+| `fortanix` | Fortanix DSM | [Fortanix](https://docs.percona.com/pg-tde/global-key-provider-configuration/fortanix.html) | Scheduled / manual sign-off |
+| `thales` | Thales CipherTrust Manager | [Thales](https://docs.percona.com/pg-tde/global-key-provider-configuration/thales.html) | Scheduled / manual sign-off |
+| `akeyless` | Akeyless | [Akeyless](https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html) | Scheduled / manual sign-off |
+| `vault_kmip` | HashiCorp Vault KMIP engine | [Vault KMIP](https://developer.hashicorp.com/vault/docs/secrets/kmip) | On demand (not production path) |
+| `pykmip_docker` | PyKMIP (Docker) | [KMIP server](https://docs.percona.com/pg-tde/global-key-provider-configuration/kmip-server.html) | **Legacy local dev only** (abandoned upstream) |
+
+See **[kmip_testing_strategy.md](kmip_testing_strategy.md)** for CI vs vendor-matrix workflow.
 
 **HashiCorp Vault KMIP engine:** not a production target (use Vault KV v2 in
 [vault.md](vault.md)). Lab regression: [vault_kmip.md](vault_kmip.md) and profile
@@ -51,30 +53,40 @@ Copy `config/kmip_profiles.example.env` and export variables for each lab server
 
 | Profile | Env prefix | Example |
 |---------|------------|---------|
-| `pykmip_docker` | `KMIP_*` | `scripts/setup_kmip_for_pytest.sh` |
+| `cosmian` | `KMIP_COSMIAN_*` | `scripts/setup_cosmian_for_pytest.sh` (CI default) |
 | `fortanix` | `KMIP_FORTANIX_*` | `HOST`, `PORT`, `CLIENT_CERT`, `CLIENT_KEY`, `SERVER_CA` |
 | `thales` | `KMIP_THALES_*` | same |
-| `cosmian` | `KMIP_COSMIAN_*` | same |
 | `akeyless` | `KMIP_AKEYLESS_*` | same |
+| `pykmip_docker` | `KMIP_*` | `scripts/setup_kmip_for_pytest.sh` (local dev fallback) |
 
 Select profiles:
 
 ```bash
-export KMIP_REVALIDATE_PROFILES=pykmip_docker          # default
-export KMIP_REVALIDATE_PROFILES=fortanix,thales      # two labs
-export KMIP_REVALIDATE_PROFILES=all                  # every profile (skips unconfigured)
+export KMIP_REVALIDATE_PROFILES=cosmian              # CI default when KMIP_COSMIAN_HOST is set
+export KMIP_REVALIDATE_PROFILES=fortanix,thales      # vendor sign-off
+export KMIP_REVALIDATE_PROFILES=all                  # full matrix (skips unconfigured)
+export KMIP_REVALIDATE_PROFILES=pykmip_docker        # legacy Docker only
 ```
 
 Or CLI: `pytest --kmip-revalidate-profiles=fortanix tests/test_kmip_server_revalidation.py`
 
 ## Commands
 
-**CI / local Docker (automated profile):**
+**CI (Cosmian — automated):**
 
 ```bash
 cd postgresql/pytest
 source .env.sh
-./build_from_source.sh --tde-ref libkmip-rework   # or main after merge
+# Jenkins injects KMIP_COSMIAN_* credentials
+source scripts/setup_cosmian_for_pytest.sh
+./scripts/run_kmip_revalidation.sh
+```
+
+**Local dev (legacy PyKMIP Docker):**
+
+```bash
+source scripts/setup_kmip_for_pytest.sh
+export KMIP_REVALIDATE_PROFILES=pykmip_docker
 ./scripts/run_kmip_revalidation.sh
 ```
 

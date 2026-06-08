@@ -11,8 +11,9 @@ for register / locate / get / validate instead of the legacy C libkmip BIO API.
 ## Prerequisites
 
 1. **pg_tde with KMIP** — extension loads; SQL functions exist.
-2. **KMIP test server** — Docker image `mohitpercona/kmip:latest` (port **5696**).
-3. **Client certificates** — copied to `/tmp/certs/` by the setup script.
+2. **KMIP test server** — **Cosmian KMS** on Percona CI (`scripts/setup_cosmian_for_pytest.sh`).
+   Legacy local dev: Docker `mohitpercona/kmip` (PyKMIP abandoned upstream).
+3. **Client certificates** — from Cosmian admin or `/tmp/certs/` (Docker fallback).
 
 Build pg_tde from a tree that includes PR #595 (or `main` after merge) when
 validating the new client:
@@ -24,15 +25,25 @@ cd postgresql/pytest
 
 ## Quick start
 
+**CI / Cosmian (recommended):**
+
 ```bash
 cd postgresql/pytest
-source .env.sh                    # INSTALL_DIR, venv
-source scripts/setup_kmip_for_pytest.sh   # needs Docker, unless KMIP_* is already set
-
-pytest tests/test_kmip.py -v
-pytest tests/ -m kmip -v
-pytest --list-test-sections       # section name: kmip
+source .env.sh
+source scripts/setup_cosmian_for_pytest.sh   # KMIP_COSMIAN_* from Jenkins
+./scripts/run_kmip_revalidation.sh
 ```
+
+**Local dev (legacy PyKMIP Docker):**
+
+```bash
+source scripts/setup_kmip_for_pytest.sh
+export KMIP_REVALIDATE_PROFILES=pykmip_docker
+pytest tests/test_kmip.py -v
+```
+
+Testing strategy: **[kmip_testing_strategy.md](kmip_testing_strategy.md)**.  
+Advanced scenarios: **[kmip_advanced.md](kmip_advanced.md)** (`tests/test_kmip_advanced.py`).
 
 ### Docker permission or name conflict
 
@@ -103,7 +114,7 @@ pytest tests/ --skip-sections=kmip -v   # omit entire KMIP section
 ### Revalidate all supported KMIP servers
 
 After PR #595, re-run the checklist on **every** documented KMIP backend
-(PyKMIP Docker, Fortanix, Thales, Cosmian, Akeyless). See
+(Cosmian, Fortanix, Thales, Akeyless; Vault KMIP lab). See
 **[kmip_revalidation.md](kmip_revalidation.md)** and:
 
 ```bash
@@ -118,10 +129,11 @@ Vault **KMIP engine** (customer ``register symmetric key: -2``): [vault_kmip.md]
 
 ## Jenkins / ppg-testing
 
-Run KMIP as an **opt-in** job stage after `setup_kmip_for_pytest.sh` (or the
-equivalent Ansible/docker step in [ppg-testing](https://github.com/Percona-QA/ppg-testing)),
-then pass the env vars above to pytest. Molecule/pg_tde installcheck does not
-replace these integration tests.
+**Every build:** Cosmian via `setup_cosmian_for_pytest.sh` + `run_kmip_revalidation.sh`
+(`KMIP_COSMIAN_*` Jenkins credentials).
+
+**Scheduled / release:** one job per vendor (`KMIP_REVALIDATE_PROFILES=fortanix`, etc.).
+See [kmip_testing_strategy.md](kmip_testing_strategy.md).
 
 ## Jira regressions
 
