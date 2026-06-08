@@ -15,7 +15,8 @@ in [vault_kmip.md](vault_kmip.md) / `tests/test_vault_kmip.py`.
 | Module | Marker(s) | Server |
 |--------|-----------|--------|
 | `tests/test_vault_providers.py::TestHashicorpVaultKeyProvider` | `vault` | Vault dev / `setup_vault.sh` / Docker |
-| `tests/test_vault_providers.py::TestOpenBaoKeyProvider` | `vault`, `openbao` | `setup_openbao.sh` (+ KMIP for some tests) |
+| `tests/test_vault_providers.py::TestOpenBaoKeyProvider` | `vault`, `openbao` | `install_openbao.sh` + `setup_openbao_for_pytest.sh` |
+| `tests/test_openbao_bash_parity.py` | `vault`, `openbao` | same (+ KMIP for scenarios 4–8) |
 
 Legacy smoke: `tests/test_encryption.py::TestKeyManagement::test_vault_key_provider`.
 
@@ -41,17 +42,47 @@ source scripts/setup_vault_for_pytest.sh
 pytest tests/test_vault_providers.py::TestHashicorpVaultKeyProvider -v
 ```
 
+## Install OpenBao (Ubuntu / Debian)
+
+Same package as **pg_tde** `ci_scripts/ubuntu-deps.sh` (v2.5.4). No Go build required.
+
+```bash
+cd postgresql/pytest
+./scripts/install_openbao.sh
+```
+
+Or manually:
+
+```bash
+OPENBAO_VERSION=2.5.4
+ARCH=$(dpkg --print-architecture)
+wget "https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/openbao_${OPENBAO_VERSION}_linux_${ARCH}.deb"
+sudo dpkg -i "openbao_${OPENBAO_VERSION}_linux_${ARCH}.deb"
+bao version
+```
+
 ## OpenBao (namespace tests)
 
 ```bash
 cd postgresql/pytest
 source .env.sh
 source scripts/setup_openbao_for_pytest.sh
-# Scenarios 2–3 also need KMIP:
-source scripts/setup_cosmian_for_pytest.sh
-
-pytest tests/test_vault_providers.py::TestOpenBaoKeyProvider -v
+./scripts/run_openbao_revalidation.sh
 ```
+
+`setup_openbao_for_pytest.sh` starts `bao server -dev`, creates namespace `pg_tde_ns1`,
+enables KV v2 mount `pg_tde`, and exports `VAULT_KV_ONLY_TOKEN_FILE` for PG-1959.
+
+KMIP-backed scenarios (open_bao_tests 2–8): `run_openbao_revalidation.sh` auto-sources
+`setup_cosmian_for_pytest.sh` when KMIP is not already configured.
+
+```bash
+pytest tests/test_vault_providers.py::TestOpenBaoKeyProvider -v
+pytest tests/test_openbao_bash_parity.py -v
+pytest -m openbao -v
+```
+
+**Legacy** source build (Go >= 1.25.4): `OPENBAO_BUILD_FROM_SOURCE=1 source scripts/setup_openbao_for_pytest.sh`
 
 ## Environment / CLI
 
@@ -107,6 +138,16 @@ pytest tests/test_openbao_bash_parity.py -v
 Add optional stages:
 
 1. **vault** — `docker compose up vault` or `setup_vault_for_pytest.sh`, then `pytest -m vault`.
-2. **openbao** — `setup_openbao_for_pytest.sh` (+ KMIP if running full OpenBao suite), then `pytest -m openbao`.
+2. **openbao** — `install_openbao.sh`, `setup_openbao_for_pytest.sh`, `run_openbao_revalidation.sh`.
 
 Do not mix Vault SSL URLs with the Docker dev server without matching `VAULT_CA_PATH`.
+
+## Troubleshooting
+
+| Symptom | Action |
+|---------|--------|
+| `bao not found` | Run `./scripts/install_openbao.sh` |
+| OpenBao tests skipped | `source scripts/setup_openbao_for_pytest.sh` — needs `VAULT_NAMESPACE` |
+| SSH closes on setup error | Update repo — setup script is SSH-safe (no `set -e` when sourced) |
+| KMIP scenarios skip in OpenBao suite | `source scripts/setup_cosmian_for_pytest.sh` |
+| Old Go build path | Use deb install; or `OPENBAO_BUILD_FROM_SOURCE=1` for automation helper |

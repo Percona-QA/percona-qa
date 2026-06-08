@@ -172,9 +172,12 @@ def vault_runtime_ready(cfg: VaultConfig) -> Tuple[bool, str]:
             return True, ""
         return False, f"vault health check failed: {e}"
     except OSError as e:
-        return False, (
-            f"cannot reach {cfg.addr} ({e}); "
-            "run scripts/setup_vault_for_pytest.sh or docker compose up vault"
+        hint = (
+            "run scripts/setup_openbao_for_pytest.sh (OpenBao) or "
+            "scripts/setup_vault_for_pytest.sh / docker compose up vault"
         )
+        if cfg.namespace.strip():
+            hint = "run scripts/setup_openbao_for_pytest.sh (OpenBao namespace tests)"
+        return False, f"cannot reach {cfg.addr} ({e}); {hint}"
 
     return True, ""

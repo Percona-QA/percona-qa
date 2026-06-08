@@ -11,7 +11,7 @@ Ports vault/OpenBao portions of:
 KMIP coverage is in ``tests/test_kmip.py``.
 
 Prerequisites: ``docs/vault.md``, ``scripts/setup_vault_for_pytest.sh`` or
-``scripts/setup_openbao_for_pytest.sh``.
+``scripts/install_openbao.sh`` and ``scripts/setup_openbao_for_pytest.sh``.
 """
 from __future__ import annotations
 

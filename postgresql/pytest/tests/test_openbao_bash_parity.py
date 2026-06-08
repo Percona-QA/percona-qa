@@ -3,6 +3,9 @@ OpenBao automation script parity — ``pg_tde_open_bao_tests.sh`` scenarios 4–
 
 Scenarios 1–3 and the mount-metadata warning test are in ``test_vault_providers.py``
 and ``test_external_key_provider_regressions.py``. Scenario 11 is in regressions.
+
+Prerequisites: ``scripts/install_openbao.sh``, ``scripts/setup_openbao_for_pytest.sh``,
+``docs/vault.md``. Full suite: ``./scripts/run_openbao_revalidation.sh``.
 """
 from __future__ import annotations
 
@@ -22,7 +25,10 @@ pytestmark = [pytest.mark.vault, pytest.mark.openbao, pytest.mark.encryption]
 
 def _require_openbao(vault_config: VaultConfig) -> None:
     if not vault_config.namespace.strip():
-        pytest.skip("OpenBao bash parity requires --vault-namespace")
+        pytest.skip(
+            "OpenBao bash parity requires VAULT_NAMESPACE — "
+            "source scripts/setup_openbao_for_pytest.sh"
+        )
 
 
 def _tde_cluster(pg_factory, tmp_path: Path, name: str) -> PgCluster:

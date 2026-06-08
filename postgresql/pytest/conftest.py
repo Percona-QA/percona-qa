@@ -562,8 +562,8 @@ def pytest_collection_modifyitems(config, items):
     )
     skip_openbao = pytest.mark.skip(
         reason=(
-            "--vault-namespace not set (OpenBao tests need e.g. pg_tde_ns1/); "
-            "see docs/vault.md"
+            "OpenBao not configured — source scripts/setup_openbao_for_pytest.sh "
+            "(see docs/vault.md § Install OpenBao)"
         )
     )
     kmip_ready, kmip_skip_reason = (

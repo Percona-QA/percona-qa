@@ -91,8 +91,9 @@ ok "System packages installed"
 
 if ! command -v bao &>/dev/null; then
     ARCH=$(dpkg --print-architecture)
-    BAO_DEB="bao_2.4.3_linux_${ARCH}.deb"
-    wget -q "https://github.com/openbao/openbao/releases/download/v2.4.3/${BAO_DEB}"
+    BAO_VERSION="${OPENBAO_VERSION:-2.5.4}"
+    BAO_DEB="openbao_${BAO_VERSION}_linux_${ARCH}.deb"
+    wget -q "https://github.com/openbao/openbao/releases/download/v${BAO_VERSION}/${BAO_DEB}"
     sudo dpkg -i "$BAO_DEB" && rm -f "$BAO_DEB"
     ok "OpenBao installed"
 else
