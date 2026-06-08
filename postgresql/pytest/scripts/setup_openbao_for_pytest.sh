@@ -103,19 +103,25 @@ else
     export VAULT_SECRET_MOUNT="${OPENBAO_DEFAULT_MOUNT}"
     export VAULT_NAMESPACE="${OPENBAO_DEFAULT_NAMESPACE}/"
 
-    BAO_ENV=(VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT_TOKEN}")
-
-    env "${BAO_ENV[@]}" "${BAO_BIN}" namespace create "${OPENBAO_DEFAULT_NAMESPACE}" \
-        2>/dev/null || true
-
-    sleep 0.5
-    env "${BAO_ENV[@]}" VAULT_NAMESPACE="${OPENBAO_DEFAULT_NAMESPACE}" \
-        "${BAO_BIN}" secrets enable -version=2 -path="${OPENBAO_DEFAULT_MOUNT}" kv \
-        2>/dev/null || true
+    if ! openbao_bootstrap_namespace_mount \
+        "${BAO_BIN}" "${ROOT_TOKEN}" "${OPENBAO_DEFAULT_NAMESPACE}" \
+        "${OPENBAO_DEFAULT_MOUNT}" "${RUN_DIR}/bootstrap.err"; then
+        _openbao_setup_fail
+    fi
 
     echo "Local OpenBao dev server:"
     echo "  bao=${BAO_BIN} pid=${OPENBAO_PID}"
     echo "  log=${BAO_LOG}"
+    echo "  namespace=${VAULT_NAMESPACE} mount=${VAULT_SECRET_MOUNT} (KV v2 verified)"
+fi
+
+if [[ "${OPENBAO_BUILD_FROM_SOURCE:-0}" == "1" ]]; then
+    ROOT="$(tr -d '[:space:]' < "${VAULT_TOKEN_FILE}")"
+    if ! openbao_bootstrap_namespace_mount \
+        "${OPENBAO_BIN}" "${ROOT}" "${OPENBAO_DEFAULT_NAMESPACE}" \
+        "${OPENBAO_DEFAULT_MOUNT}" "${RUN_DIR}/bootstrap.err"; then
+        _openbao_setup_fail
+    fi
 fi
 
 # PG-1959: restricted token (KV read/write, no sys/mounts)
@@ -137,8 +143,8 @@ path "sys/mounts/*" {
 EOF
     ROOT="$(tr -d '[:space:]' < "${VAULT_TOKEN_FILE}")"
     NS_TRIM="${VAULT_NAMESPACE%/}"
-    # ACL policies live in the root namespace; token is scoped to the child NS.
-    if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" \
+    # Policy + token live in the child namespace (matches automation setup).
+    if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" VAULT_NAMESPACE="${NS_TRIM}" \
         "${OPENBAO_BIN}" policy write kv_only "${POLICY}" 2>"${RUN_DIR}/policy_kv_only.err"; then
         export VAULT_KV_ONLY_TOKEN_FILE="${RUN_DIR}/token_kv_only"
         if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" \

@@ -88,10 +88,11 @@ path "sys/mounts/*" {{
 ''',
         encoding="utf-8",
     )
+    ns = namespace.rstrip("/")
     env = os.environ.copy()
     env["VAULT_ADDR"] = vault_addr
     env["VAULT_TOKEN"] = root_token
-    env.pop("VAULT_NAMESPACE", None)
+    env["VAULT_NAMESPACE"] = ns
     subprocess.run(
         [str(bao_bin), "policy", "write", "kv_only", str(policy_path)],
         check=True,
@@ -99,7 +100,7 @@ path "sys/mounts/*" {{
         capture_output=True,
         text=True,
     )
-    token_env = {**env, "VAULT_NAMESPACE": namespace.rstrip("/")}
+    token_env = dict(env)
     proc = subprocess.run(
         [
             str(bao_bin),

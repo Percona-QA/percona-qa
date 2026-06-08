@@ -150,6 +150,7 @@ Do not mix Vault SSL URLs with the Docker dev server without matching `VAULT_CA_
 | OpenBao tests skipped (`HTTP 400` on health) | Pull latest pytest — health check must not send `X-Vault-Namespace` |
 | OpenBao tests skipped (other) | `source scripts/setup_openbao_for_pytest.sh` — needs `VAULT_NAMESPACE` |
 | Stale `VAULT_*` from old server | `OPENBAO_FORCE_RESTART=1 source scripts/setup_openbao_for_pytest.sh` |
+| `Invalid HTTP response ... 404` on create_key | KV mount missing in namespace — re-run setup; check `${RUN_DIR}/bootstrap.err` |
 | SSH closes on setup error | Update repo — setup script is SSH-safe (no `set -e` when sourced) |
 | KMIP scenarios skip in OpenBao suite | `source scripts/setup_cosmian_for_pytest.sh` |
 | Old Go build path | Use deb install; or `OPENBAO_BUILD_FROM_SOURCE=1` for automation helper |

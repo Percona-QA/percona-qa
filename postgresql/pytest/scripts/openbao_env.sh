@@ -46,14 +46,81 @@ vault_server_reachable() {
     local url="${addr%/}/v1/sys/health"
 
     if command -v curl >/dev/null 2>&1; then
-        # Cluster health — not scoped to a child namespace.
         curl -fsS -m 5 -H "X-Vault-Token: ${token}" "${url}" >/dev/null 2>&1
         return $?
     fi
     return 1
 }
 
-# True when VAULT_* is set, token is available, and /v1/sys/health responds.
+# pg_tde POSTs to /v1/{mount}/data/{key} with X-Vault-Namespace (e.g. pg_tde_ns1/).
+openbao_kv_mount_ready() {
+    local addr="${VAULT_ADDR:-}"
+    local mount="${VAULT_SECRET_MOUNT:-${OPENBAO_DEFAULT_MOUNT}}"
+    local ns="${VAULT_NAMESPACE:-}"
+    local token
+    token="$(_vault_token_value)" || return 1
+    [[ -n "${addr}" && -n "${ns}" ]] || return 1
+    command -v curl >/dev/null 2>&1 || return 1
+
+    local code
+    code="$(curl -s -o /dev/null -w '%{http_code}' -m 5 \
+        -H "X-Vault-Token: ${token}" \
+        -H "X-Vault-Namespace: ${ns}" \
+        -H "Content-Type: application/json" \
+        -X POST "${addr%/}/v1/${mount}/data/pytest_mount_probe" \
+        -d '{"data":{"key":"dGVzdA=="}}')"
+    [[ "${code}" == "200" || "${code}" == "204" ]]
+}
+
+# Create namespace + KV v2 mount (mirrors automation setup_openbao.sh).
+openbao_bootstrap_namespace_mount() {
+    local bao="$1"
+    local root_token="$2"
+    local ns="${3:-${OPENBAO_DEFAULT_NAMESPACE}}"
+    local mount="${4:-${OPENBAO_DEFAULT_MOUNT}}"
+    local addr="${VAULT_ADDR:-${OPENBAO_DEFAULT_ADDR}}"
+    local err_log="${5:-/tmp/pg_tde_pytest_openbao/bootstrap.err}"
+
+    local env_root=(VAULT_ADDR="${addr}" VAULT_TOKEN="${root_token}")
+    local env_ns=(VAULT_ADDR="${addr}" VAULT_TOKEN="${root_token}" VAULT_NAMESPACE="${ns}")
+
+    mkdir -p "$(dirname "${err_log}")"
+    : > "${err_log}"
+
+    if ! env "${env_root[@]}" "${bao}" namespace read "${ns}" >/dev/null 2>&1; then
+        if ! env "${env_root[@]}" "${bao}" namespace create "${ns}" >>"${err_log}" 2>&1; then
+            if ! env "${env_root[@]}" "${bao}" namespace list -format=json 2>>"${err_log}" \
+                | grep -q "\"${ns}/\""; then
+                echo "ERROR: failed to create OpenBao namespace '${ns}'" >&2
+                cat "${err_log}" >&2
+                return 1
+            fi
+        fi
+    fi
+
+    if ! env "${env_ns[@]}" "${bao}" secrets list -format=json 2>>"${err_log}" \
+        | grep -q "\"${mount}/\""; then
+        if ! env "${env_ns[@]}" "${bao}" secrets enable -version=2 -path="${mount}" kv \
+            >>"${err_log}" 2>&1; then
+            echo "ERROR: failed to enable KV v2 mount '${mount}' in namespace '${ns}'" >&2
+            cat "${err_log}" >&2
+            return 1
+        fi
+    fi
+
+    export VAULT_ADDR="${addr}"
+    export VAULT_SECRET_MOUNT="${mount}"
+    export VAULT_NAMESPACE="${ns}/"
+
+    if ! openbao_kv_mount_ready; then
+        echo "ERROR: KV mount '${mount}' not writable in namespace '${ns}/'" >&2
+        echo "  Probe: POST ${addr}/v1/${mount}/data/pytest_mount_probe" >&2
+        cat "${err_log}" >&2
+        return 1
+    fi
+    return 0
+}
+
 vault_pytest_env_ready() {
     [[ -n "${VAULT_ADDR:-}" ]] \
         && _vault_token_value >/dev/null \
@@ -62,7 +129,8 @@ vault_pytest_env_ready() {
 
 openbao_pytest_env_ready() {
     vault_pytest_env_ready \
-        && [[ -n "${VAULT_NAMESPACE:-}" ]]
+        && [[ -n "${VAULT_NAMESPACE:-}" ]] \
+        && openbao_kv_mount_ready
 }
 
 vault_print_pytest_env() {
@@ -85,20 +153,14 @@ ERROR: OpenBao pytest environment not configured.
 Option A — install and start local OpenBao (recommended):
   cd postgresql/pytest
   ./scripts/install_openbao.sh
-  source scripts/setup_openbao_for_pytest.sh
+  OPENBAO_FORCE_RESTART=1 source scripts/setup_openbao_for_pytest.sh
 
 Option B — manual install (pg_tde ci_scripts/ubuntu-deps.sh):
   OPENBAO_VERSION=2.5.4
   ARCH=$(dpkg --print-architecture)
   wget https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/openbao_${OPENBAO_VERSION}_linux_${ARCH}.deb
   sudo dpkg -i openbao_${OPENBAO_VERSION}_linux_${ARCH}.deb
-  source scripts/setup_openbao_for_pytest.sh
-
-Option C — reuse an existing OpenBao server:
-  export VAULT_ADDR=http://127.0.0.1:8200
-  export VAULT_TOKEN_FILE=/path/to/token
-  export VAULT_SECRET_MOUNT=pg_tde
-  export VAULT_NAMESPACE=pg_tde_ns1/
+  OPENBAO_FORCE_RESTART=1 source scripts/setup_openbao_for_pytest.sh
 
 See docs/vault.md § Install OpenBao
 EOF

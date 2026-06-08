@@ -25,6 +25,7 @@ if [[ -f .env.sh ]]; then
 fi
 
 if ! openbao_pytest_env_ready; then
+    export OPENBAO_FORCE_RESTART=1
     # shellcheck source=/dev/null
     source "${SCRIPT_DIR}/setup_openbao_for_pytest.sh"
 fi
