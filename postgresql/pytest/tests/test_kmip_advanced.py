@@ -149,7 +149,8 @@ class TestKmipMultiDatabaseIsolation:
         for db, val in (("app_a", 10), ("app_b", 20), ("app_c", 30)):
             cluster.execute(f"CREATE DATABASE {db}")
             cluster.execute("CREATE EXTENSION pg_tde", db)
-            tde.set_database_principal_key(f"key_{db}", ring, dbname=db)
+            # Global KMIP ring — per-DB principal keys via global provider APIs.
+            tde.set_global_principal_key(f"key_{db}", ring, dbname=db)
             cluster.execute(
                 f"CREATE TABLE t(v INT) USING tde_heap; INSERT INTO t VALUES ({val});",
                 db,
@@ -276,8 +277,10 @@ class TestKmipStorageCornerCases:
         cluster.restart()
         cluster.wait_ready(timeout=90)
         assert cluster.fetchone("SELECT COUNT(*) FROM parts") == "120"
-        assert cluster.fetchone("SELECT COUNT(*) FROM parts_p1") == "49"
-        assert cluster.fetchone("SELECT COUNT(*) FROM parts_p2") == "71"
+        # p = i % 100: batch1 (1..80) → p1: 1..49 (49), p2: 50..80 (31);
+        # batch2 (81..120) → p1: 100→0, 101..120→1..20 (+21), p2: 81..99 (+19).
+        assert cluster.fetchone("SELECT COUNT(*) FROM parts_p1") == "70"
+        assert cluster.fetchone("SELECT COUNT(*) FROM parts_p2") == "50"
 
     def test_toast_wide_row_survives_triple_kmip_rotation(
         self, pg_factory, tmp_path: Path, kmip_config: KmipConfig
