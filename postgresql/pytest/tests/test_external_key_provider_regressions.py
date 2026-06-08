@@ -249,11 +249,12 @@ class TestVaultOpenBaoNamespaceRegression:
         )
         _add_global_vault(tde, restricted, "vault_keyring2", tmp_path)
 
-        cluster.execute(
+        # Shared OpenBao dev server — keys may exist from earlier tests in the suite.
+        tde._execute_create_global_key_allow_duplicate(
             "SELECT pg_tde_create_key_using_database_key_provider("
             "'vault_key1', 'vault_keyring1')"
         )
-        cluster.execute(
+        tde._execute_create_global_key_allow_duplicate(
             "SELECT pg_tde_create_key_using_global_key_provider("
             "'server_key1', 'vault_keyring2')"
         )

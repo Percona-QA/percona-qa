@@ -386,6 +386,13 @@ class TestOpenBaoBashParity:
         cluster.execute("SELECT pg_tde_delete_database_key_provider('keyring_file9')", "test9")
         cluster.execute("SELECT pg_tde_delete_key()", "test9")
         assert cluster.fetchone("SELECT COUNT(*) FROM t1", "test9") == "1"
+        assert cluster.fetchone("SELECT COUNT(*) FROM t2", "test9") == "1"
+        assert cluster.fetchone("SELECT COUNT(*) FROM t3", "test9") == "1"
+
+        cluster.restart()
+        cluster.wait_ready(timeout=90)
+        for table in ("t1", "t2", "t3"):
+            cluster.execute(f"DROP TABLE {table}", "test9")
         cluster.execute("SELECT pg_tde_delete_default_key()", "test9")
 
     def test_openbao_scenario10_delete_global_with_active_db_key(
