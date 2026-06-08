@@ -624,6 +624,7 @@ def pytest_collection_modifyitems(config, items):
             "kmip" in item.keywords
             and "kmip_revalidation" not in item.keywords
             and "vault_kmip" not in item.keywords
+            and "kmip_build" not in item.keywords
             and not kmip_ready
         ):
             item.add_marker(skip_kmip)

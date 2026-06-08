@@ -173,9 +173,12 @@ class TestKmipBashParityScenarios:
             "'file_key2', 'file_keyring2')",
             "db1",
         )
-        cluster.execute(
-            "SELECT pg_tde_create_key_using_global_key_provider("
-            "'kmip_key2', 'kmip_keyring2')",
+        # Shared Docker KMIP keeps key material across runs (bash functions_test
+        # also registers kmip_key2). Idempotent create matches PR #595 regression.
+        create_fn = tde._first_func(["pg_tde_create_key_using_global_key_provider"])
+        assert create_fn is not None
+        tde._execute_create_global_key_allow_duplicate(
+            f"SELECT {create_fn}('kmip_key2'::text, 'kmip_keyring2'::text)",
             "db2",
         )
         cluster.execute(
@@ -382,6 +385,7 @@ class TestKmipLibkmipClientPr595:
         msg = str(exc.value).lower()
         assert "kmip" in msg or "connect" in msg or "ssl" in msg
 
+    @pytest.mark.kmip_build
     def test_kmip_build_links_cpp_kmipclient(
         self, install_dir: Path,
     ):
