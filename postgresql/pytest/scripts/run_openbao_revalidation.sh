@@ -26,6 +26,7 @@ fi
 
 if ! openbao_pytest_env_ready; then
     export OPENBAO_FORCE_RESTART=1
+    unset VAULT_NAMESPACE VAULT_KV_ONLY_TOKEN_FILE
     # shellcheck source=/dev/null
     source "${SCRIPT_DIR}/setup_openbao_for_pytest.sh"
 fi

@@ -72,6 +72,23 @@ openbao_kv_mount_ready() {
     [[ "${code}" == "200" || "${code}" == "204" ]]
 }
 
+# Run ``bao`` at the root namespace (never inherit VAULT_NAMESPACE from the shell).
+_bao_at_root() {
+    local bao="$1" token="$2" addr="$3"
+    shift 3
+    env -u VAULT_NAMESPACE VAULT_ADDR="${addr}" VAULT_TOKEN="${token}" \
+        "${bao}" "$@"
+}
+
+# Run ``bao`` inside child namespace ``ns`` (no trailing slash).
+_bao_at_ns() {
+    local bao="$1" token="$2" addr="$3" ns="$4"
+    shift 4
+    env -u VAULT_NAMESPACE \
+        VAULT_ADDR="${addr}" VAULT_TOKEN="${token}" VAULT_NAMESPACE="${ns}" \
+        "${bao}" "$@"
+}
+
 # Create namespace + KV v2 mount (mirrors automation setup_openbao.sh).
 openbao_bootstrap_namespace_mount() {
     local bao="$1"
@@ -81,27 +98,27 @@ openbao_bootstrap_namespace_mount() {
     local addr="${VAULT_ADDR:-${OPENBAO_DEFAULT_ADDR}}"
     local err_log="${5:-/tmp/pg_tde_pytest_openbao/bootstrap.err}"
 
-    local env_root=(VAULT_ADDR="${addr}" VAULT_TOKEN="${root_token}")
-    local env_ns=(VAULT_ADDR="${addr}" VAULT_TOKEN="${root_token}" VAULT_NAMESPACE="${ns}")
-
     mkdir -p "$(dirname "${err_log}")"
     : > "${err_log}"
 
-    if ! env "${env_root[@]}" "${bao}" namespace read "${ns}" >/dev/null 2>&1; then
-        if ! env "${env_root[@]}" "${bao}" namespace create "${ns}" >>"${err_log}" 2>&1; then
-            if ! env "${env_root[@]}" "${bao}" namespace list -format=json 2>>"${err_log}" \
-                | grep -q "\"${ns}/\""; then
+    if ! _bao_at_root "${bao}" "${root_token}" "${addr}" namespace read "${ns}" \
+        >/dev/null 2>&1; then
+        if ! _bao_at_root "${bao}" "${root_token}" "${addr}" namespace create "${ns}" \
+            >>"${err_log}" 2>&1; then
+            if ! _bao_at_root "${bao}" "${root_token}" "${addr}" namespace list -format=json \
+                2>>"${err_log}" | grep -q "\"${ns}/\""; then
                 echo "ERROR: failed to create OpenBao namespace '${ns}'" >&2
+                echo "  Hint: unset VAULT_NAMESPACE before setup (stale export breaks namespace create)" >&2
                 cat "${err_log}" >&2
                 return 1
             fi
         fi
     fi
 
-    if ! env "${env_ns[@]}" "${bao}" secrets list -format=json 2>>"${err_log}" \
-        | grep -q "\"${mount}/\""; then
-        if ! env "${env_ns[@]}" "${bao}" secrets enable -version=2 -path="${mount}" kv \
-            >>"${err_log}" 2>&1; then
+    if ! _bao_at_ns "${bao}" "${root_token}" "${addr}" "${ns}" secrets list -format=json \
+        2>>"${err_log}" | grep -q "\"${mount}/\""; then
+        if ! _bao_at_ns "${bao}" "${root_token}" "${addr}" "${ns}" \
+            secrets enable -version=2 -path="${mount}" kv >>"${err_log}" 2>&1; then
             echo "ERROR: failed to enable KV v2 mount '${mount}' in namespace '${ns}'" >&2
             cat "${err_log}" >&2
             return 1

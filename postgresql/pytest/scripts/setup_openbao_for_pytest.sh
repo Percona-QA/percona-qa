@@ -29,12 +29,23 @@ _openbao_setup_fail() {
     exit 1
 }
 
+_openbao_setup_abort() {
+    _openbao_setup_fail || true
+    return 1 2>/dev/null || exit 1
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=openbao_env.sh
 source "${SCRIPT_DIR}/openbao_env.sh"
 
 RUN_DIR="${OPENBAO_PYTEST_RUN_DIR:-/tmp/pg_tde_pytest_openbao}"
 mkdir -p "${RUN_DIR}"
+
+# Stale VAULT_NAMESPACE in the shell makes ``bao namespace create`` target a
+# non-existent parent and return HTTP 404.
+if [[ "${OPENBAO_FORCE_RESTART:-0}" == "1" ]]; then
+    unset VAULT_NAMESPACE VAULT_KV_ONLY_TOKEN_FILE
+fi
 
 if [[ "${OPENBAO_FORCE_RESTART:-0}" != "1" ]] && openbao_pytest_env_ready; then
     export OPENBAO_BIN="${OPENBAO_BIN:-$(openbao_find_binary 2>/dev/null || true)}"
@@ -59,7 +70,7 @@ else
     BAO_BIN="$(openbao_find_binary)" || {
         echo "ERROR: bao not found." >&2
         echo "  Run: ./scripts/install_openbao.sh" >&2
-        _openbao_setup_fail
+        _openbao_setup_abort
     }
     export OPENBAO_BIN="${BAO_BIN}"
 
@@ -83,7 +94,7 @@ else
         if ! kill -0 "${OPENBAO_PID}" 2>/dev/null; then
             echo "ERROR: bao server exited early. Log:" >&2
             cat "${BAO_LOG}" >&2
-            _openbao_setup_fail
+            _openbao_setup_abort
         fi
         sleep 0.3
     done
@@ -91,7 +102,7 @@ else
     if [[ -z "${ROOT_TOKEN}" ]]; then
         echo "ERROR: could not read Root Token from ${BAO_LOG}" >&2
         cat "${BAO_LOG}" >&2
-        _openbao_setup_fail
+        _openbao_setup_abort
     fi
 
     TOKEN_FILE="${RUN_DIR}/bao_root_token"
@@ -106,7 +117,7 @@ else
     if ! openbao_bootstrap_namespace_mount \
         "${BAO_BIN}" "${ROOT_TOKEN}" "${OPENBAO_DEFAULT_NAMESPACE}" \
         "${OPENBAO_DEFAULT_MOUNT}" "${RUN_DIR}/bootstrap.err"; then
-        _openbao_setup_fail
+        _openbao_setup_abort
     fi
 
     echo "Local OpenBao dev server:"
@@ -120,7 +131,7 @@ if [[ "${OPENBAO_BUILD_FROM_SOURCE:-0}" == "1" ]]; then
     if ! openbao_bootstrap_namespace_mount \
         "${OPENBAO_BIN}" "${ROOT}" "${OPENBAO_DEFAULT_NAMESPACE}" \
         "${OPENBAO_DEFAULT_MOUNT}" "${RUN_DIR}/bootstrap.err"; then
-        _openbao_setup_fail
+        _openbao_setup_abort
     fi
 fi
 
@@ -144,12 +155,11 @@ EOF
     ROOT="$(tr -d '[:space:]' < "${VAULT_TOKEN_FILE}")"
     NS_TRIM="${VAULT_NAMESPACE%/}"
     # Policy + token live in the child namespace (matches automation setup).
-    if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" VAULT_NAMESPACE="${NS_TRIM}" \
-        "${OPENBAO_BIN}" policy write kv_only "${POLICY}" 2>"${RUN_DIR}/policy_kv_only.err"; then
+    if _bao_at_ns "${OPENBAO_BIN}" "${ROOT}" "${VAULT_ADDR}" "${NS_TRIM}" \
+        policy write kv_only "${POLICY}" 2>"${RUN_DIR}/policy_kv_only.err"; then
         export VAULT_KV_ONLY_TOKEN_FILE="${RUN_DIR}/token_kv_only"
-        if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" \
-            VAULT_NAMESPACE="${NS_TRIM}" \
-            "${OPENBAO_BIN}" token create -policy=kv_only -no-default-policy -format=json \
+        if _bao_at_ns "${OPENBAO_BIN}" "${ROOT}" "${VAULT_ADDR}" "${NS_TRIM}" \
+            token create -policy=kv_only -no-default-policy -format=json \
             2>"${RUN_DIR}/token_kv_only.err" \
             | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['client_token'])" \
             > "${VAULT_KV_ONLY_TOKEN_FILE}"; then
@@ -165,8 +175,8 @@ EOF
 fi
 
 if ! openbao_pytest_env_ready; then
-    echo "ERROR: OpenBao not reachable after setup" >&2
-    _openbao_setup_fail
+    echo "ERROR: OpenBao KV mount not ready after setup" >&2
+    _openbao_setup_abort
 fi
 
 vault_print_pytest_env "OpenBao pytest environment"
