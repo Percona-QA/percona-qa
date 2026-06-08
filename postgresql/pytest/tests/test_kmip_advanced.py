@@ -4,7 +4,7 @@ Advanced KMIP integration and corner-case tests (pytest-only).
 Goes beyond smoke/bash parity and TAP coverage: multi-key churn, mixed
 provider topologies, WAL + storage edge cases, failure modes, and dump/restore.
 
-Requires a reachable KMIP server (Cosmian on CI or legacy PyKMIP Docker).
+Requires a reachable KMIP server (Cosmian on CI via ``setup_cosmian_for_pytest.sh``).
 Some failure scenarios need local ``cosmian_kms`` (``@pytest.mark.cosmian``).
 """
 from __future__ import annotations

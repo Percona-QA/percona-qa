@@ -87,9 +87,6 @@ sudo apt-get update -qq
 sudo apt-get install -y "${DEPS[@]}"
 ok "System packages installed"
 
-pip3 install --quiet pykmip 2>/dev/null \
-    || warn "pykmip install failed (optional — needed for KMIP tests)"
-
 if ! command -v bao &>/dev/null; then
     ARCH=$(dpkg --print-architecture)
     BAO_DEB="bao_2.4.3_linux_${ARCH}.deb"

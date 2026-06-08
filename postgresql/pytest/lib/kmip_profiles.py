@@ -5,7 +5,6 @@ Percona documents KMIP-compatible providers (see
 https://docs.percona.com/pg-tde/global-key-provider-configuration/overview.html):
 
   * Cosmian KMS (Percona CI — primary automated KMIP backend)
-  * Generic KMIP / PyKMIP Docker (legacy local dev only; upstream abandoned)
   * Fortanix DSM
   * Thales CipherTrust Manager
   * Cosmian KMS
@@ -63,17 +62,6 @@ class KmipServerProfile:
 
 # Keys are CLI/env profile ids (``KMIP_REVALIDATE_PROFILES``).
 SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
-    "pykmip_docker": KmipServerProfile(
-        name="pykmip_docker",
-        vendor="PyKMIP (Docker)",
-        docs_url="https://docs.percona.com/pg-tde/global-key-provider-configuration/kmip-server.html",
-        env_prefix="KMIP_",
-        notes=(
-            "Legacy local dev only (PyKMIP abandoned). "
-            "Use ``scripts/setup_kmip_for_pytest.sh`` — not Percona CI."
-        ),
-        ci_automated=False,
-    ),
     "fortanix": KmipServerProfile(
         name="fortanix",
         vendor="Fortanix DSM",
@@ -114,19 +102,12 @@ SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
     ),
 }
 
-# Alias used in docs/scripts.
-SUPPORTED_KMIP_SERVER_PROFILES["pykmip"] = SUPPORTED_KMIP_SERVER_PROFILES["pykmip_docker"]
-
-ALL_KMIP_PROFILE_NAMES: Tuple[str, ...] = tuple(
-    k for k in SUPPORTED_KMIP_SERVER_PROFILES if k != "pykmip"
-)
+ALL_KMIP_PROFILE_NAMES: Tuple[str, ...] = tuple(SUPPORTED_KMIP_SERVER_PROFILES)
 
 
 def default_revalidate_profiles() -> str:
-    """CI uses Cosmian when ``KMIP_COSMIAN_*`` is set; else PyKMIP Docker for local dev."""
-    if os.environ.get("KMIP_COSMIAN_HOST", "").strip():
-        return "cosmian"
-    return "pykmip_docker"
+    """Percona CI default KMIP backend."""
+    return "cosmian"
 
 
 def parse_revalidate_profile_list(raw: str) -> List[str]:

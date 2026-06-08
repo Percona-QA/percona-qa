@@ -21,7 +21,7 @@ API. These tests exercise that stack at runtime via:
 
 Vault / OpenBao: ``tests/test_vault_providers.py`` (``@pytest.mark.vault``).
 
-Prerequisites: see ``docs/kmip.md`` and ``scripts/setup_kmip_for_pytest.sh``.
+Prerequisites: see ``docs/kmip.md`` and ``scripts/setup_cosmian_for_pytest.sh``.
 """
 from __future__ import annotations
 

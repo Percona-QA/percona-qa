@@ -6,7 +6,7 @@ BIO calls were replaced by **subprojects/libkmip** and the C++ **kmipclient**
 (`op_register_key`, `op_locate_by_name`, `op_get_key`, `kmip_run` errors, 10s timeout).
 
 QA must **re-run the full KMIP surface** on every server Percona documents as a
-supported KMIP provider — not only the Docker PyKMIP dev image.
+supported KMIP provider.
 
 ## Supported profiles
 
@@ -17,7 +17,6 @@ supported KMIP provider — not only the Docker PyKMIP dev image.
 | `thales` | Thales CipherTrust Manager | [Thales](https://docs.percona.com/pg-tde/global-key-provider-configuration/thales.html) | Scheduled / manual sign-off |
 | `akeyless` | Akeyless | [Akeyless](https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html) | Scheduled / manual sign-off |
 | `vault_kmip` | HashiCorp Vault KMIP engine | [Vault KMIP](https://developer.hashicorp.com/vault/docs/secrets/kmip) | On demand (not production path) |
-| `pykmip_docker` | PyKMIP (Docker) | [KMIP server](https://docs.percona.com/pg-tde/global-key-provider-configuration/kmip-server.html) | **Legacy local dev only** (abandoned upstream) |
 
 See **[kmip_testing_strategy.md](kmip_testing_strategy.md)** for CI vs vendor-matrix workflow.
 
@@ -57,15 +56,13 @@ Copy `config/kmip_profiles.example.env` and export variables for each lab server
 | `fortanix` | `KMIP_FORTANIX_*` | `HOST`, `PORT`, `CLIENT_CERT`, `CLIENT_KEY`, `SERVER_CA` |
 | `thales` | `KMIP_THALES_*` | same |
 | `akeyless` | `KMIP_AKEYLESS_*` | same |
-| `pykmip_docker` | `KMIP_*` | `scripts/setup_kmip_for_pytest.sh` (local dev fallback) |
 
 Select profiles:
 
 ```bash
-export KMIP_REVALIDATE_PROFILES=cosmian              # CI default when KMIP_COSMIAN_HOST is set
+export KMIP_REVALIDATE_PROFILES=cosmian              # CI default
 export KMIP_REVALIDATE_PROFILES=fortanix,thales      # vendor sign-off
 export KMIP_REVALIDATE_PROFILES=all                  # full matrix (skips unconfigured)
-export KMIP_REVALIDATE_PROFILES=pykmip_docker        # legacy Docker only
 ```
 
 Or CLI: `pytest --kmip-revalidate-profiles=fortanix tests/test_kmip_server_revalidation.py`
@@ -82,15 +79,14 @@ source scripts/setup_cosmian_for_pytest.sh
 ./scripts/run_kmip_revalidation.sh
 ```
 
-**Local dev (legacy PyKMIP Docker):**
+**Local dev (Cosmian, pg_tde CI parity):**
 
 ```bash
-source scripts/setup_kmip_for_pytest.sh
-export KMIP_REVALIDATE_PROFILES=pykmip_docker
+source scripts/setup_cosmian_local_for_pytest.sh
 ./scripts/run_kmip_revalidation.sh
 ```
 
-**No Docker** (export `KMIP_*` to a running server first — see [kmip.md](kmip.md)):
+**Vendor lab** (export `KMIP_*` to a running server first — see [kmip.md](kmip.md)):
 
 ```bash
 export KMIP_SERVER_ADDRESS=...
@@ -133,7 +129,6 @@ Skip entire section: `pytest --skip-sections=kmip`.
 
 | Profile | Build / branch | Date | Checklist | test_kmip.py | PG-2125 regression | Sign-off |
 |---------|----------------|------|-----------|--------------|-------------------|----------|
-| pykmip_docker | | | | | | |
 | fortanix | | | | | | |
 | thales | | | | | | |
 | cosmian | | | | | | |
@@ -142,6 +137,6 @@ Skip entire section: `pytest --skip-sections=kmip`.
 
 ## Related
 
-- [kmip.md](kmip.md) — Docker setup, env vars, test map
+- [kmip.md](kmip.md) — Cosmian setup, env vars, test map
 - `lib/kmip_profiles.py` — profile definitions
 - `lib/kmip_revalidation.py` — shared checklist implementation

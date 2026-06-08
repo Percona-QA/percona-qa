@@ -2,6 +2,22 @@
 
 This document aligns **percona-qa pytest** with how **pg_tde** runs KMIP tests.
 
+## Why Cosmian, not PyKMIP
+
+**pg_tde engineering moved KMIP testing from PyKMIP to Cosmian KMS** because
+[PyKMIP](https://github.com/PyKMIP/PyKMIP) is **completely abandoned** upstream.
+Percona CI and percona-qa pytest use **Cosmian only** for automated KMIP regression:
+
+- No Docker `mohitpercona/kmip` image
+- No `pykmip` Python package as a test server
+- No `pykmip_docker` revalidation profile
+
+Local and CI entry point: `scripts/setup_cosmian_for_pytest.sh` (spawns
+`cosmian_kms` like `t/CosmianKms.pm`, or uses `KMIP_COSMIAN_*` from Jenkins).
+
+Vendor labs (Fortanix, Thales, Akeyless) remain for **scheduled sign-off**, not
+as a PyKMIP substitute.
+
 **Source of truth (pg_tde repo):**
 
 | Artifact | Path | Role |
@@ -12,8 +28,8 @@ This document aligns **percona-qa pytest** with how **pg_tde** runs KMIP tests.
 | CI gate | `.github/workflows/build-and-test.yml` | `PG_TEST_REQUIRE_COSMIAN_KMS=1` on Ubuntu |
 | Test runner | `ci_scripts/test.sh` | `meson test` (includes `t/kmip.pl`) |
 
-pg_tde CI does **not** use PyKMIP Docker or a remote Cosmian host — it starts **local**
-`cosmian_kms` on `127.0.0.1` with ephemeral SQLite + generated certs (same as TAP).
+pg_tde CI starts **local** `cosmian_kms` on `127.0.0.1` with ephemeral SQLite +
+generated certs (same as TAP).
 
 ## Two layers
 
@@ -21,8 +37,6 @@ pg_tde CI does **not** use PyKMIP Docker or a remote Cosmian host — it starts 
 |-------|---------|------|---------|
 | **1 — CI regression** | Catch regressions on every build | Every CI run | **Cosmian KMS** (automated) |
 | **2 — Vendor matrix** | Prove PR #595 / libkmip works on **every** supported vendor | Major KMIP changes + **regular** cadence | Fortanix, Thales, Akeyless, Vault KMIP, Cosmian |
-
-**PyKMIP Docker** (`mohitpercona/kmip`) is **legacy local dev only** — upstream PyKMIP is abandoned. Percona CI moved to Cosmian.
 
 ## Layer 1 — CI (Cosmian, automated)
 
@@ -50,7 +64,7 @@ source scripts/setup_cosmian_for_pytest.sh   # auto: local cosmian_kms if instal
 1. Reuse existing `KMIP_*` if already set  
 2. If `cosmian_kms` on PATH → `setup_cosmian_local_for_pytest.sh` (mirrors `t/CosmianKms.pm`)  
 3. Else if `KMIP_COSMIAN_HOST` set → remote lab Cosmian  
-4. Else error (or legacy PyKMIP Docker via `setup_kmip_for_pytest.sh`)
+4. Else error with install/lab instructions
 
 **Install Cosmian (same as pg_tde CI):** `pg_tde/ci_scripts/ubuntu-deps.sh` (Cosmian KMS **5.21.0** deb).
 
@@ -98,7 +112,6 @@ pytest tests/test_external_key_provider_regressions.py::TestKmipCppClientRegress
 | `thales` | Thales CipherTrust | `KMIP_THALES_*` | checklist + full |
 | `akeyless` | Akeyless | `KMIP_AKEYLESS_*` | checklist + full |
 | `vault_kmip` | Vault KMIP engine | `KMIP_VAULT_*` | `test_vault_kmip.py` (not production path) |
-| `pykmip_docker` | PyKMIP Docker | `KMIP_*` via `setup_kmip_for_pytest.sh` | local dev only |
 
 ### Full matrix (all configured vendors)
 
@@ -145,5 +158,4 @@ Vendor matrix (Fortanix, Thales, Akeyless) has no TAP in pg_tde — manual/sched
 - [kmip_revalidation.md](kmip_revalidation.md) — checklist steps
 - `scripts/setup_cosmian_local_for_pytest.sh` — local `cosmian_kms` (pg_tde parity)
 - `scripts/setup_cosmian_for_pytest.sh` — CI entry (local or remote)
-- `scripts/setup_kmip_for_pytest.sh` — legacy PyKMIP Docker (local)
 - pg_tde: `t/kmip.pl`, `t/CosmianKms.pm`, `ci_scripts/ubuntu-deps.sh`

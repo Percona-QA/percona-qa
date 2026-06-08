@@ -87,7 +87,7 @@ def kmip_runtime_ready(config: KmipConfig) -> Tuple[bool, str]:
     except OSError as e:
         return False, (
             f"cannot reach KMIP at {config.connect_host()}:{config.port} ({e}); "
-            "run postgresql/pytest/scripts/setup_kmip_for_pytest.sh"
+            "run postgresql/pytest/scripts/setup_cosmian_for_pytest.sh"
         )
 
     return True, ""

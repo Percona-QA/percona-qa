@@ -2,7 +2,7 @@
 # Build/start OpenBao dev server and export pytest env vars (namespace + mount).
 #
 # Requires Go >= 1.25.4 (see automation helper). Also start KMIP if running
-# open_bao_tests scenario 2/3: source scripts/setup_kmip_for_pytest.sh
+# open_bao_tests scenario 2/3: source scripts/setup_cosmian_for_pytest.sh
 #
 set -euo pipefail
 

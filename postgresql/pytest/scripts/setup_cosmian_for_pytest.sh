@@ -51,7 +51,6 @@ if ! kmip_export_vendor_to_standard "KMIP_COSMIAN_"; then
     echo "ERROR: no Cosmian KMIP available." >&2
     echo "  Option A (pg_tde CI parity): install cosmian_kms — see pg_tde/ci_scripts/ubuntu-deps.sh" >&2
     echo "  Option B (remote lab): set KMIP_COSMIAN_HOST + cert paths (config/kmip_profiles.example.env)" >&2
-    echo "  Option C (legacy local): source scripts/setup_kmip_for_pytest.sh (PyKMIP Docker)" >&2
     return 1 2>/dev/null || exit 1
 fi
 

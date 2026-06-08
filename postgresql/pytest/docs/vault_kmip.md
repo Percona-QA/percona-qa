@@ -74,5 +74,5 @@ Manual / HCP Vault: export `KMIP_VAULT_*` from your environment (see
 ## Related
 
 - [vault.md](vault.md) — Vault KV v2 / OpenBao
-- [kmip.md](kmip.md) — PyKMIP and enterprise KMS revalidation matrix
+- [kmip.md](kmip.md) — Cosmian and enterprise KMS revalidation matrix
 - `lib/vault_kmip.py` — env helpers and error matching

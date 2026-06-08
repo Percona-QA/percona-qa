@@ -1352,7 +1352,7 @@ custom rmgr ID 140 at postmaster startup; server log contains both
 
 ## 18. `test_kmip.py` (10 tests)
 
-PyKMIP Docker (or `KMIP_HOST` / `KMIP_PORT` from `scripts/setup_kmip_for_pytest.sh`).
+Cosmian KMS via `scripts/setup_cosmian_for_pytest.sh` (or `KMIP_*` from a vendor lab).
 
 | Class / test | Purpose |
 |---|---|
@@ -1368,7 +1368,7 @@ Runbook: `docs/kmip.md`.
 
 ## 19. `test_kmip_server_revalidation.py` (1 test × profiles)
 
-`test_kmip_revalidation_checklist[parametrize]` runs `lib/kmip_revalidation.py` checklist per profile in `KMIP_REVALIDATE_PROFILES` (default `pykmip_docker`). Marker: `kmip_revalidation`.
+`test_kmip_revalidation_checklist[parametrize]` runs `lib/kmip_revalidation.py` checklist per profile in `KMIP_REVALIDATE_PROFILES` (default `cosmian`). Marker: `kmip_revalidation`.
 
 Runbook: `docs/kmip_revalidation.md`, `./scripts/run_kmip_revalidation.sh`.
 

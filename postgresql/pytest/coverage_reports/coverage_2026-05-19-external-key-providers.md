@@ -13,7 +13,7 @@
 | Pytest test modules | 18 | **26** | **+8** |
 | Collected tests | 446 | **501** | **+55** |
 | Bash scripts blocked on Vault/OpenBao/KMIP | 4 | **0** (pytest ports; still need live services) | closed in QA |
-| KMIP pytest coverage | ❌ | **✅** PyKMIP + revalidation matrix + Vault KMIP regression | |
+| KMIP pytest coverage | ❌ | **✅** Cosmian + revalidation matrix + Vault KMIP regression | |
 | OpenBao `pg_tde_open_bao_tests.sh` | partial (s1–3) | **✅ s1–12** (s11 in regressions) | |
 | HashiCorp mount-metadata bash | ❌ | **✅** | |
 | `change_database_key_provider_vault_v2.sh` | ❌ | **✅** (KV reseed + online SQL) | |
@@ -30,7 +30,7 @@ Tests remain **opt-in** via `@pytest.mark.kmip` / `vault` / `openbao` and skip w
 
 | Module | Tests | Markers | Purpose |
 |---|---|---|---|
-| `tests/test_kmip.py` | 10 | `kmip`, `encryption` | PyKMIP smoke, bash parity slices, delete, offline CLI, PR #595 negatives |
+| `tests/test_kmip.py` | 10 | `kmip`, `encryption` | Cosmian smoke, bash parity slices, delete, offline CLI, PR #595 negatives |
 | `tests/test_kmip_server_revalidation.py` | 1×N profiles | `kmip`, `kmip_revalidation` | Post–libkmip checklist per KMS profile |
 | `tests/test_vault_providers.py` | 10 | `vault`, `openbao` | Vault KV v2 + OpenBao s1–3 (unchanged count; baseline) |
 | `tests/test_vault_hashicorp_parity.py` | 2 | `vault` | HashiCorp mount-metadata + `change_database_key_provider_vault_v2` |
@@ -46,7 +46,7 @@ Tests remain **opt-in** via `@pytest.mark.kmip` / `vault` / `openbao` and skip w
 | `lib/vault_kmip.py` | Vault KMIP engine env + error matching |
 | `lib/vault_cli.py` | KV-only tokens, `vault kv` export/import/delete |
 | `lib/tde.py` | `change_database_key_provider_vault`, `change_global_key_provider_file`, `add_database_key_provider_file` |
-| `scripts/setup_kmip_for_pytest.sh`, `scripts/run_kmip_revalidation.sh` | Docker PyKMIP / matrix runner |
+| `scripts/setup_cosmian_for_pytest.sh`, `scripts/run_kmip_revalidation.sh` | Cosmian KMIP / matrix runner |
 | `scripts/setup_vault_for_pytest.sh`, `scripts/setup_openbao_for_pytest.sh` | Vault + OpenBao + optional `VAULT_KV_ONLY_TOKEN_FILE` |
 | `scripts/setup_vault_kmip_for_pytest.sh` | Vault Enterprise KMIP engine (lab) |
 | `docs/kmip.md`, `docs/kmip_revalidation.md`, `docs/vault_kmip.md`, `docs/vault.md` | Runbooks |
@@ -89,8 +89,8 @@ Tests remain **opt-in** via `@pytest.mark.kmip` / `vault` / `openbao` and skip w
 
 | Profile | Automation | Pytest |
 |---|---|---|
-| `pykmip_docker` | `setup_kmip.sh` / Docker | Default `KMIP_REVALIDATE_PROFILES`; `test_kmip_server_revalidation` |
-| `fortanix`, `thales`, `cosmian`, `akeyless` | Lab env | Same parametrized checklist; skip if `KMIP_<VENDOR>_HOST` unset |
+| `cosmian` | `setup_cosmian_for_pytest.sh` | Default `KMIP_REVALIDATE_PROFILES`; `test_kmip_server_revalidation` |
+| `fortanix`, `thales`, `akeyless` | Lab env | Same parametrized checklist; skip if `KMIP_<VENDOR>_HOST` unset |
 | `vault_kmip` | Vault Enterprise KMIP | `test_vault_kmip.py` (customer register -2; xfail unless fixed) |
 
 **Runner:** `./scripts/run_kmip_revalidation.sh` — checklist + `test_kmip.py` + `TestKmipCppClientRegression`.
@@ -125,8 +125,8 @@ Tests remain **opt-in** via `@pytest.mark.kmip` / `vault` / `openbao` and skip w
 cd postgresql/pytest
 source .env.sh
 
-# KMIP (PyKMIP Docker)
-source scripts/setup_kmip_for_pytest.sh
+# KMIP (Cosmian)
+source scripts/setup_cosmian_for_pytest.sh
 ./scripts/run_kmip_revalidation.sh
 
 # HashiCorp Vault KV v2
@@ -135,7 +135,7 @@ pytest tests/test_vault_hashicorp_parity.py tests/test_vault_providers.py::TestH
 
 # OpenBao (+ KMIP for scenarios 2–8)
 source scripts/setup_openbao_for_pytest.sh
-source scripts/setup_kmip_for_pytest.sh
+source scripts/setup_cosmian_for_pytest.sh
 pytest tests/test_openbao_bash_parity.py tests/test_external_key_provider_regressions.py -v
 
 # Skip sections when services unavailable

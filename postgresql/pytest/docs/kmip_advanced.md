@@ -8,7 +8,7 @@ parity. Targets PR #595 / libkmip client behaviour under realistic churn.
 ```bash
 cd postgresql/pytest
 source .env.sh
-source scripts/setup_cosmian_for_pytest.sh   # or setup_kmip_for_pytest.sh (legacy Docker)
+source scripts/setup_cosmian_for_pytest.sh
 pytest tests/test_kmip_advanced.py -v
 ```
 

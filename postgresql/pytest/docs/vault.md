@@ -48,7 +48,7 @@ cd postgresql/pytest
 source .env.sh
 source scripts/setup_openbao_for_pytest.sh
 # Scenarios 2–3 also need KMIP:
-source scripts/setup_kmip_for_pytest.sh
+source scripts/setup_cosmian_for_pytest.sh
 
 pytest tests/test_vault_providers.py::TestOpenBaoKeyProvider -v
 ```
@@ -90,7 +90,7 @@ source scripts/setup_vault_for_pytest.sh
 pytest tests/test_vault_hashicorp_parity.py -v
 
 source scripts/setup_openbao_for_pytest.sh
-source scripts/setup_kmip_for_pytest.sh
+source scripts/setup_cosmian_for_pytest.sh
 pytest tests/test_openbao_bash_parity.py -v
 ```
 
