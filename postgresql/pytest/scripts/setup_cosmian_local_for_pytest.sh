@@ -9,7 +9,21 @@
 #   ./scripts/run_kmip_revalidation.sh
 #
 # Override binary: export COSMIAN_KMS_BIN=/usr/sbin/cosmian_kms
-set -euo pipefail
+#
+# Sourced by setup_cosmian_for_pytest.sh — no ``set -e`` (SSH-safe on failure).
+set -uo pipefail
+
+_SCRIPT_SOURCED=0
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    _SCRIPT_SOURCED=1
+fi
+
+_local_setup_fail() {
+    if [[ "${_SCRIPT_SOURCED}" -eq 1 ]]; then
+        return 1
+    fi
+    exit 1
+}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=kmip_env.sh
@@ -45,12 +59,12 @@ _cosmian_cleanup() {
     fi
 }
 
-COSMIAN_BIN="$(_find_cosmian_kms)" || {
-    echo "ERROR: cosmian_kms not found. Install like pg_tde CI:" >&2
-    echo "  see pg_tde/ci_scripts/ubuntu-deps.sh (Cosmian KMS section)" >&2
-    echo "  or: export COSMIAN_KMS_BIN=/path/to/cosmian_kms" >&2
-    return 1 2>/dev/null || exit 1
-}
+if ! COSMIAN_BIN="$(_find_cosmian_kms)"; then
+    echo "ERROR: cosmian_kms not found." >&2
+    echo "  Run: ./scripts/install_cosmian_kms.sh" >&2
+    echo "  Or: export COSMIAN_KMS_BIN=/path/to/cosmian_kms" >&2
+    _local_setup_fail
+fi
 
 RUN_DIR="${COSMIAN_PYTEST_RUN_DIR:-/tmp/pg_tde_pytest_cosmian_local}"
 mkdir -p "${RUN_DIR}"
@@ -130,7 +144,7 @@ while (( SECONDS < deadline )); do
     if ! kill -0 "${COSMIAN_KMS_PID}" 2>/dev/null; then
         echo "ERROR: cosmian_kms exited early. stderr:" >&2
         cat "${RUN_DIR}/kms.stderr" >&2
-        return 1 2>/dev/null || exit 1
+        _local_setup_fail
     fi
     sleep 0.2
 done
@@ -138,7 +152,7 @@ done
 if ! curl -fsSk -m 1 "https://127.0.0.1:${HTTP_PORT}/version" >/dev/null 2>&1; then
     echo "ERROR: cosmian_kms readiness timed out (kmip=${KMIP_PORT} http=${HTTP_PORT})" >&2
     cat "${RUN_DIR}/kms.stderr" >&2
-    return 1 2>/dev/null || exit 1
+    _local_setup_fail
 fi
 
 export KMIP_SERVER_ADDRESS=127.0.0.1

@@ -66,7 +66,7 @@ source scripts/setup_cosmian_for_pytest.sh   # auto: local cosmian_kms if instal
 3. Else if `KMIP_COSMIAN_HOST` set → remote lab Cosmian  
 4. Else error with install/lab instructions
 
-**Install Cosmian (same as pg_tde CI):** `pg_tde/ci_scripts/ubuntu-deps.sh` (Cosmian KMS **5.21.0** deb).
+**Install Cosmian (same as pg_tde CI):** `./scripts/install_cosmian_kms.sh` or `pg_tde/ci_scripts/ubuntu-deps.sh` (Cosmian KMS **5.21.0** deb).
 
 | Env (local spawn) | Set by |
 |-------------------|--------|
