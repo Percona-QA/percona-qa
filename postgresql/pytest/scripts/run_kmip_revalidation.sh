@@ -49,7 +49,6 @@ echo ""
 exec pytest \
     tests/test_kmip_server_revalidation.py \
     tests/test_kmip.py \
-    tests/test_kmip_advanced.py \
     "tests/test_external_key_provider_regressions.py::TestKmipCppClientRegression" \
     -v \
     "$@"

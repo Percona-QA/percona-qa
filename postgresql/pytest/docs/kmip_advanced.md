@@ -1,7 +1,7 @@
 # KMIP advanced pytest scenarios
 
-`tests/test_kmip_advanced.py` — pytest-only integration tests beyond smoke/bash
-parity. Targets PR #595 / libkmip client behaviour under realistic churn.
+Advanced and corner-case KMIP tests live in **`tests/test_kmip.py`** (classes
+below). Smoke/bash parity tests are in the same file.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ parity. Targets PR #595 / libkmip client behaviour under realistic churn.
 cd postgresql/pytest
 source .env.sh
 source scripts/setup_cosmian_for_pytest.sh
-pytest tests/test_kmip_advanced.py -v
+pytest tests/test_kmip.py -v
 ```
 
 One test (`test_read_fails_after_kmip_server_loses_all_keys`) requires local
@@ -34,14 +34,20 @@ One test (`test_read_fails_after_kmip_server_loses_all_keys`) requires local
 | | `test_non_tls_tcp_endpoint_rejected_on_add_provider` | TLS handshake failure |
 | **DumpRestore** (`slow`) | `test_pg_dump_table_into_second_db_with_new_kmip_key` | `pg_dump` / restore across DBs + different KMIP keys |
 
+Run advanced classes only:
+
+```bash
+pytest tests/test_kmip.py::TestKmipKeyRotationChurn -v
+pytest tests/test_kmip.py::TestKmipStorageCornerCases -v
+```
+
 ## Full KMIP CI run
 
 ```bash
 ./scripts/run_kmip_revalidation.sh
 ```
 
-Includes: revalidation checklist, `test_kmip.py`, `test_kmip_advanced.py`,
-`TestKmipCppClientRegression`.
+Includes: revalidation checklist, `test_kmip.py`, `TestKmipCppClientRegression`.
 
 ## Vendor labs
 

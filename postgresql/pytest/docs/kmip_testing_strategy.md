@@ -141,7 +141,7 @@ See [kmip_revalidation.md](kmip_revalidation.md) § QA sign-off table. Record pg
 | Layer | Module | Focus |
 |-------|--------|-------|
 | Smoke + bash parity | `test_kmip.py` | functions_test slices, delete, offline CLI |
-| **Advanced corner cases** | **`test_kmip_advanced.py`** | Rotation churn, multi-DB, mixed providers, TOAST/partitions, WAL, dump/restore, failures |
+| **Advanced corner cases** | `test_kmip.py` (advanced classes) | Rotation churn, multi-DB, mixed providers, TOAST/partitions, WAL, dump/restore, failures |
 | PG-2125 lifecycle | `TestKmipCppClientRegression` | Restarts, idempotent create, WAL |
 | Vendor checklist | `test_kmip_server_revalidation.py` | Per-KMS sign-off |
 

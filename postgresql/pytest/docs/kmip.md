@@ -79,7 +79,7 @@ pytest tests/test_kmip.py -v
 ```
 
 Testing strategy: **[kmip_testing_strategy.md](kmip_testing_strategy.md)**.  
-Advanced scenarios: **[kmip_advanced.md](kmip_advanced.md)** (`tests/test_kmip_advanced.py`).
+Advanced scenarios: **[kmip_advanced.md](kmip_advanced.md)** (classes in `tests/test_kmip.py`).
 
 ### Vendor lab (no local Cosmian)
 
