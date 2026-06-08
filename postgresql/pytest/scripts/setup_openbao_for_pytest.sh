@@ -36,9 +36,10 @@ source "${SCRIPT_DIR}/openbao_env.sh"
 RUN_DIR="${OPENBAO_PYTEST_RUN_DIR:-/tmp/pg_tde_pytest_openbao}"
 mkdir -p "${RUN_DIR}"
 
-if openbao_pytest_env_ready; then
+if [[ "${OPENBAO_FORCE_RESTART:-0}" != "1" ]] && openbao_pytest_env_ready; then
     export OPENBAO_BIN="${OPENBAO_BIN:-$(openbao_find_binary 2>/dev/null || true)}"
     vault_print_pytest_env "OpenBao pytest environment (VAULT_* already set)"
+    echo "  (set OPENBAO_FORCE_RESTART=1 to spawn a fresh dev server)"
     return 0 2>/dev/null || exit 0
 fi
 
@@ -107,6 +108,7 @@ else
     env "${BAO_ENV[@]}" "${BAO_BIN}" namespace create "${OPENBAO_DEFAULT_NAMESPACE}" \
         2>/dev/null || true
 
+    sleep 0.5
     env "${BAO_ENV[@]}" VAULT_NAMESPACE="${OPENBAO_DEFAULT_NAMESPACE}" \
         "${BAO_BIN}" secrets enable -version=2 -path="${OPENBAO_DEFAULT_MOUNT}" kv \
         2>/dev/null || true
@@ -135,15 +137,23 @@ path "sys/mounts/*" {
 EOF
     ROOT="$(tr -d '[:space:]' < "${VAULT_TOKEN_FILE}")"
     NS_TRIM="${VAULT_NAMESPACE%/}"
-    VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" VAULT_NAMESPACE="${NS_TRIM}" \
-        "${OPENBAO_BIN}" policy write kv_only "${POLICY}" 2>/dev/null || true
-    export VAULT_KV_ONLY_TOKEN_FILE="${RUN_DIR}/token_kv_only"
-    if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" VAULT_NAMESPACE="${NS_TRIM}" \
-        "${OPENBAO_BIN}" token create -policy=kv_only -no-default-policy -format=json \
-        2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['client_token'])" \
-        > "${VAULT_KV_ONLY_TOKEN_FILE}" 2>/dev/null; then
-        :
+    # ACL policies live in the root namespace; token is scoped to the child NS.
+    if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" \
+        "${OPENBAO_BIN}" policy write kv_only "${POLICY}" 2>"${RUN_DIR}/policy_kv_only.err"; then
+        export VAULT_KV_ONLY_TOKEN_FILE="${RUN_DIR}/token_kv_only"
+        if VAULT_ADDR="${VAULT_ADDR}" VAULT_TOKEN="${ROOT}" \
+            VAULT_NAMESPACE="${NS_TRIM}" \
+            "${OPENBAO_BIN}" token create -policy=kv_only -no-default-policy -format=json \
+            2>"${RUN_DIR}/token_kv_only.err" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['client_token'])" \
+            > "${VAULT_KV_ONLY_TOKEN_FILE}"; then
+            :
+        else
+            echo "WARN: could not create kv_only token (PG-1959 test may skip)" >&2
+            unset VAULT_KV_ONLY_TOKEN_FILE
+        fi
     else
+        echo "WARN: could not write kv_only policy — see ${RUN_DIR}/policy_kv_only.err" >&2
         unset VAULT_KV_ONLY_TOKEN_FILE
     fi
 fi

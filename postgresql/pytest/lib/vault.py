@@ -91,7 +91,7 @@ path "sys/mounts/*" {{
     env = os.environ.copy()
     env["VAULT_ADDR"] = vault_addr
     env["VAULT_TOKEN"] = root_token
-    env["VAULT_NAMESPACE"] = namespace.rstrip("/")
+    env.pop("VAULT_NAMESPACE", None)
     subprocess.run(
         [str(bao_bin), "policy", "write", "kv_only", str(policy_path)],
         check=True,
@@ -99,6 +99,7 @@ path "sys/mounts/*" {{
         capture_output=True,
         text=True,
     )
+    token_env = {**env, "VAULT_NAMESPACE": namespace.rstrip("/")}
     proc = subprocess.run(
         [
             str(bao_bin),
@@ -109,7 +110,7 @@ path "sys/mounts/*" {{
             "-format=json",
         ],
         check=True,
-        env=env,
+        env=token_env,
         capture_output=True,
         text=True,
     )
@@ -160,8 +161,8 @@ def vault_runtime_ready(cfg: VaultConfig) -> Tuple[bool, str]:
     elif cfg.token_path:
         tok = Path(cfg.token_path).read_text(encoding="utf-8").strip()
         req.add_header("X-Vault-Token", tok)
-    if cfg.namespace:
-        req.add_header("X-Vault-Namespace", cfg.namespace.rstrip("/"))
+    # Cluster health is not namespace-scoped; OpenBao returns HTTP 400 if
+    # X-Vault-Namespace is set on /v1/sys/health (pytest openbao skip).
 
     try:
         with urllib.request.urlopen(req, timeout=5.0) as resp:
