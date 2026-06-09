@@ -129,7 +129,7 @@ main() {
                 created_at DATE NOT NULL,
                 PRIMARY KEY (id, created_at)
             )
-            PARTITION BY RANGE (created_at);
+            PARTITION BY RANGE (created_at) USING tde_heap;
         "
 
         $PSQL -c "
