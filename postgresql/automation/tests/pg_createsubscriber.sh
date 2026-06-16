@@ -1,5 +1,11 @@
 #!/bin/bash
 
+PG_MAJOR=$(get_pg_major_version)
+if [[ "$PG_MAJOR" -lt 17 ]]; then
+    echo "SKIP: pg_createsubscriber is not available on PG ${PG_MAJOR} (requires PG 17+)"
+    exit 0
+fi
+
 TABLES=100
 
 wait_for_pg() {
