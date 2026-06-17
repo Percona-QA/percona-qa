@@ -25,9 +25,9 @@ export VAULT_ADDR=$vault_url
 export VAULT_TOKEN=$token
 
 # Read list from vault
-$HELPER_DIR/vault/vault kv list -format=json -tls-skip-verify $secret_mount_point/ | jq -r '.[]' | while read -r key; do
+bao kv list -format=json -tls-skip-verify $secret_mount_point/ | jq -r '.[]' | while read -r key; do
 echo "Exporting secret/$key"
-$HELPER_DIR/vault/vault kv get -format=json -tls-skip-verify "$secret_mount_point/$key" > "$EXPORT_DIR/$key.json"
+bao kv get -format=json -tls-skip-verify "$secret_mount_point/$key" > "$EXPORT_DIR/$key.json"
 done
 
 # Start a fresh Vault server, old keys are lost
@@ -59,7 +59,7 @@ for file in "$EXPORT_DIR"/*.json; do
     secret_data=$(jq -r '.data.data | to_entries[] | "\(.key)=\(.value)"' "$file")
 
     # Import cleanly with key=value pairs
-    $HELPER_DIR/vault/vault kv put -tls-skip-verify "$secret_mount_point/$key_name" $secret_data
+    bao kv put -tls-skip-verify "$secret_mount_point/$key_name" $secret_data
 done
 
 echo "✅ Import complete."

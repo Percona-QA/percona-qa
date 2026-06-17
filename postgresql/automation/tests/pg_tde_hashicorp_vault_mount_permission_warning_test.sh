@@ -18,11 +18,11 @@ echo "# Scenario 1: Token can use KV but cannot read mount metadata             
 echo "############################################################################"
 
 cat > $RUN_DIR/policy_kv_only.hcl <<EOF
-path "secret_v2/data/*" {
+path "$secret_mount_point/data/*" {
   capabilities = ["create", "read"]
 }
 
-path "secret_v2/metadata/*" {
+path "$secret_mount_point/metadata/*" {
   capabilities = ["read", "list"]
 }
 

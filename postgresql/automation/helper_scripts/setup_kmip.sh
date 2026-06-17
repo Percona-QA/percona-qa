@@ -39,11 +39,17 @@ _gen_cosmian_certs() {
 }
 
 start_kmip_server() {
-  # On old-glibc platforms (RHEL/Rocky/OL 8, Debian 11) cosmian_kms is pre-started
-  # inside a Docker container by Ansible before the test run.  The container writes
-  # certs to /tmp/cosmian_certs/ via a volume mount.  Detect this and skip native startup.
-  if [ -d "$COSMIAN_CERTS_DIR" ] && [ -f "$COSMIAN_CERTS_DIR/ca.pem" ]; then
-    echo "[INFO] Docker cosmian-server detected — using pre-started container (ports 5556/9998)"
+  # On old-glibc platforms (RHEL/Rocky/OL 8, Debian 11) the cosmian_kms binary is
+  # not available; Ansible pre-starts it inside a Docker container and writes certs
+  # to /tmp/cosmian_certs/ via a volume mount.  Use binary availability as the
+  # authoritative check — never rely on the certs directory, which may be left over
+  # from a previous native run and would cause a false Docker detection.
+  if ! command -v cosmian_kms >/dev/null 2>&1; then
+    echo "[INFO] cosmian_kms binary not found — assuming Docker container (old-glibc platform)"
+    if [ ! -f "$COSMIAN_CERTS_DIR/ca.pem" ]; then
+      echo "[ERROR] Expected Docker certs at $COSMIAN_CERTS_DIR but ca.pem not found"
+      exit 1
+    fi
     kmip_server_address="127.0.0.1"
     kmip_server_port=5556
     kmip_client_ca="${COSMIAN_CERTS_DIR}/client.pem"
@@ -52,11 +58,9 @@ start_kmip_server() {
     return
   fi
 
-  # Kill any existing cosmian_kms process
-  if pgrep -f cosmian_kms >/dev/null 2>&1; then
-    pkill -9 -f cosmian_kms || true
-    sleep 1
-  fi
+  # Native binary available — always do a full restart so each test gets a clean DB.
+  pkill -9 -f cosmian_kms 2>/dev/null || true
+  sleep 1
 
   echo "[INFO] Generating Cosmian KMS certificates..."
   rm -rf "$COSMIAN_CERTS_DIR"
