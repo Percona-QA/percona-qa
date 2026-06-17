@@ -1,5 +1,11 @@
 #!/bin/bash
 
+PG_MAJOR=$(get_pg_major_version)
+if [[ "$PG_MAJOR" -lt 17 ]]; then
+    echo "SKIP: specifying USING tde_heap on partitioned tables is not supported on PG ${PG_MAJOR} (requires PG 17+)"
+    exit 0
+fi
+
 # Set variable
 DB_NAME="sbtest"
 PARTITION_PARENT="partitioned_table"
