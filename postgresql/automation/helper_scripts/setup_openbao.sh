@@ -1,89 +1,60 @@
 #!/bin/bash
 
-set -e 
+set -e
+
+OPENBAO_VERSION="2.5.4"
+BAO_LOG="$RUN_DIR/bao-server.log"
 
 start_openbao_server() {
 # -------------------------------
 # CONFIGURATION
 # -------------------------------
-OPENBAO_URL="https://github.com/openbao/openbao/archive/refs/tags/v2.5.0-beta20251125.tar.gz"
-TARBALL="$RUN_DIR/openbao-2.5.0-beta20251125.tar.gz"
-
 vault_url="http://127.0.0.1:8200"
 secret_mount_point="pg_tde"
 token_filepath="$RUN_DIR/bao_token_file"
 
 echo "[INFO] Cleaning up any existing OpenBao processes..."
-
-# Kill any running bao server
 pkill -f "bao server" 2>/dev/null || true
 
 # -------------------------------
-# CHECK GO VERSION
+# INSTALL BAO BINARY IF MISSING
 # -------------------------------
-echo "[INFO] Checking Go version..."
-
-if ! command -v go >/dev/null 2>&1; then
-    echo "[ERROR] Go is not installed. Install Go >= 1.25.4"
-    exit 1
+if ! command -v bao >/dev/null 2>&1; then
+    echo "[INFO] bao not found — installing OpenBao ${OPENBAO_VERSION}..."
+    # tar.gz arch uses Linux uname convention (x86_64 / arm64)
+    ARCH=$(uname -m | sed 's/aarch64/arm64/')
+    wget -q "https://github.com/openbao/openbao/releases/download/v${OPENBAO_VERSION}/bao_${OPENBAO_VERSION}_Linux_${ARCH}.tar.gz" \
+        -O /tmp/openbao.tar.gz
+    # Install to /usr/local/bin (Debian default PATH) or /usr/bin (RHEL).
+    # Prefer /usr/local/bin; callers on RHEL should ensure /usr/local/bin is in PATH.
+    tar -xzf /tmp/openbao.tar.gz -C /usr/local/bin bao
+    chmod 0755 /usr/local/bin/bao
+    rm -f /tmp/openbao.tar.gz
+    echo "[INFO] OpenBao ${OPENBAO_VERSION} installed to /usr/local/bin/bao"
 fi
-
-GO_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
-REQUIRED="1.25.4"
-
-if printf '%s\n%s\n' "$REQUIRED" "$GO_VERSION" | sort -V | head -n1 | grep -qv "$REQUIRED"; then
-    echo "[ERROR] Go version $GO_VERSION is too old. Need >= $REQUIRED"
-    exit 1
-fi
-
-echo "[INFO] Go version OK: $GO_VERSION"
-
-# -------------------------------
-# DOWNLOAD OPENBAO
-# -------------------------------
-echo "[INFO] Downloading OpenBao..."
-curl -L "$OPENBAO_URL" -o "$TARBALL"
-
-echo "[INFO] Extracting..."
-tar -xzf $TARBALL -C $RUN_DIR
-NAME=$(basename "$TARBALL" | sed 's/\.tar\.gz$//')
-
-cd "$RUN_DIR/$NAME"
-
-# -------------------------------
-# BUILD OPENBAO
-# -------------------------------
-echo "[INFO] Building OpenBao..."
-git init -q
-git add . -A >/dev/null 2>&1
-git -c user.name="CI Builder" -c user.email="ci-builder@example.com" commit --allow-empty -q -m "imported source"
-make
 
 # -------------------------------
 # START OPENBAO SERVER
 # -------------------------------
 echo "[INFO] Starting OpenBao server in dev mode..."
+bao server -dev > "$BAO_LOG" 2>&1 &
 
-# run in background and capture output
-./bin/bao server -dev > bao_server.log 2>&1 &
-
-sleep 3
-
-# -------------------------------
-# EXTRACT ROOT TOKEN
-# -------------------------------
-ROOT_TOKEN=$(grep -m1 "Root Token:" bao_server.log | awk '{print $3}')
+# Wait for the root token to appear in the log (up to 15 s)
+local deadline=$(( $(date +%s) + 15 ))
+while [ "$(date +%s)" -lt "$deadline" ]; do
+    ROOT_TOKEN=$(grep -m1 "Root Token:" "$BAO_LOG" 2>/dev/null | awk '{print $3}')
+    [ -n "$ROOT_TOKEN" ] && break
+    sleep 1
+done
 
 if [[ -z "$ROOT_TOKEN" ]]; then
-    echo "[ERROR] Could not extract root token!"
+    echo "[ERROR] Could not extract OpenBao root token!"
+    cat "$BAO_LOG"
     exit 1
 fi
 
-if [ -f $token_filepath ]; then
-  rm -f $token_filepath
-fi
-
-echo "$ROOT_TOKEN" > $token_filepath
+rm -f "$token_filepath"
+echo "$ROOT_TOKEN" > "$token_filepath"
 
 # -------------------------------
 # EXPORT ENV VARIABLES
@@ -91,25 +62,20 @@ echo "$ROOT_TOKEN" > $token_filepath
 export VAULT_ADDR="$vault_url"
 export VAULT_TOKEN="$ROOT_TOKEN"
 
-
 # -------------------------------
 # ENABLE SECRET ENGINE
 # -------------------------------
 echo "[INFO] Enabling KV v2 engine at mount '$secret_mount_point'..."
 
-./bin/bao namespace create pg_tde_ns1
+bao namespace create pg_tde_ns1
 
 export VAULT_NAMESPACE=pg_tde_ns1
-./bin/bao secrets enable -version=2 -path="$secret_mount_point" kv
+bao secrets enable -version=2 -path="$secret_mount_point" kv
 
 echo ""
 echo "========================================"
 echo " OpenBao Setup Completed Successfully!  "
 echo "========================================"
-#echo "Vault URL:             $vault_url"
-#echo "Secret Mount Point:    $secret_mount_point"
-#echo "Root Token:            $ROOT_TOKEN"
-#echo "Root Token:            $ROOT_TOKEN"
 echo ""
 }
 
@@ -118,8 +84,8 @@ create_bao_token() {
   local POLICY_FILE=$2
   local TOKEN_FILE=$3
 
-  ./bin/bao policy write "$POLICY_NAME" "$POLICY_FILE"
+  bao policy write "$POLICY_NAME" "$POLICY_FILE"
 
-  TOKEN=$(./bin/bao token create -policy="$POLICY_NAME" -no-default-policy -format=json | jq -r .auth.client_token)
+  TOKEN=$(bao token create -policy="$POLICY_NAME" -no-default-policy -format=json | jq -r .auth.client_token)
   echo "$TOKEN" > "$TOKEN_FILE"
 }

@@ -2,37 +2,116 @@
 
 set -e
 
+COSMIAN_CERTS_DIR="/tmp/cosmian_certs"
+COSMIAN_DATA_DIR="/tmp/cosmian_data"
+COSMIAN_CONFIG="/tmp/cosmian_kms.toml"
+COSMIAN_LOG="/tmp/cosmian_kms.log"
+
+_gen_cosmian_certs() {
+  local DIR="$COSMIAN_CERTS_DIR"
+  mkdir -p "$DIR"
+
+  # CA
+  openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+    -keyout "$DIR/ca.key" -out "$DIR/ca.pem" \
+    -subj '/CN=pg_tde-test-ca'
+
+  # Server CSR + cert (SAN required by cosmian_kms TLS)
+  openssl req -newkey rsa:2048 -nodes \
+    -keyout "$DIR/server.key" -out "$DIR/server.csr" \
+    -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+  openssl x509 -req -in "$DIR/server.csr" \
+    -CA "$DIR/ca.pem" -CAkey "$DIR/ca.key" -CAcreateserial \
+    -days 1 -out "$DIR/server.pem" -copy_extensions copy
+
+  # Server PKCS#12 bundle (password: test)
+  openssl pkcs12 -export \
+    -out "$DIR/server.p12" -inkey "$DIR/server.key" -in "$DIR/server.pem" \
+    -password pass:test
+
+  # Client CSR + cert
+  openssl req -newkey rsa:2048 -nodes \
+    -keyout "$DIR/client.key" -out "$DIR/client.csr" \
+    -subj '/CN=pg_tde-client'
+  openssl x509 -req -in "$DIR/client.csr" \
+    -CA "$DIR/ca.pem" -CAkey "$DIR/ca.key" -CAcreateserial \
+    -days 1 -out "$DIR/client.pem"
+}
+
 start_kmip_server() {
-  # Kill and existing kmip server
-  if pgrep -f kmip >/dev/null; then
-    sudo pkill -9 kmip || true
+  # On old-glibc platforms (RHEL/Rocky/OL 8, Debian 11) cosmian_kms is pre-started
+  # inside a Docker container by Ansible before the test run.  The container writes
+  # certs to /tmp/cosmian_certs/ via a volume mount.  Detect this and skip native startup.
+  if [ -d "$COSMIAN_CERTS_DIR" ] && [ -f "$COSMIAN_CERTS_DIR/ca.pem" ]; then
+    echo "[INFO] Docker cosmian-server detected — using pre-started container (ports 5556/9998)"
+    kmip_server_address="127.0.0.1"
+    kmip_server_port=5556
+    kmip_client_ca="${COSMIAN_CERTS_DIR}/client.pem"
+    kmip_client_key="${COSMIAN_CERTS_DIR}/client.key"
+    kmip_server_ca="${COSMIAN_CERTS_DIR}/ca.pem"
+    return
   fi
 
-  while docker ps -aq -f name=^kmip$ | grep -q .; do
-    sudo docker rm -f kmip > /dev/null 2>&1 || true
+  # Kill any existing cosmian_kms process
+  if pgrep -f cosmian_kms >/dev/null 2>&1; then
+    pkill -9 -f cosmian_kms || true
+    sleep 1
+  fi
+
+  echo "[INFO] Generating Cosmian KMS certificates..."
+  rm -rf "$COSMIAN_CERTS_DIR"
+  _gen_cosmian_certs
+
+  mkdir -p "$COSMIAN_DATA_DIR"
+
+  cat > "$COSMIAN_CONFIG" <<EOF
+default_username = "admin"
+
+[db]
+database_type = "sqlite"
+sqlite_path = "${COSMIAN_DATA_DIR}/db"
+clear_database = true
+
+[tls]
+tls_p12_file         = "${COSMIAN_CERTS_DIR}/server.p12"
+tls_p12_password     = "test"
+clients_ca_cert_file = "${COSMIAN_CERTS_DIR}/ca.pem"
+
+[socket_server]
+socket_server_start    = true
+socket_server_port     = 5556
+socket_server_hostname = "127.0.0.1"
+
+[http]
+port     = 9998
+hostname = "127.0.0.1"
+
+[logging]
+rust_log = "info,cosmian_kms=info"
+EOF
+
+  echo "[INFO] Starting Cosmian KMS server..."
+  cosmian_kms -c "$COSMIAN_CONFIG" > "$COSMIAN_LOG" 2>&1 &
+
+  # Wait until the KMIP port is ready (up to 30 s)
+  local deadline=$(( $(date +%s) + 30 ))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    if nc -z 127.0.0.1 5556 2>/dev/null; then
+      echo "[INFO] Cosmian KMS is ready on port 5556"
+      break
+    fi
     sleep 1
   done
 
-  # Start KMIP server
-  sudo docker run -d --security-opt seccomp=unconfined --cap-add=NET_ADMIN --rm -p 5696:5696 --name kmip mohitpercona/kmip:latest
-  if [ -d /tmp/certs ]; then
-      echo "Certs Directory Exists.."
-      rm -rf /tmp/certs
-      mkdir /tmp/certs
-  else
-      echo "Creating Certs Directory"
-      mkdir /tmp/certs
+  if ! nc -z 127.0.0.1 5556 2>/dev/null; then
+    echo "[ERROR] Cosmian KMS did not start within 30 seconds"
+    cat "$COSMIAN_LOG"
+    exit 1
   fi
-  sudo docker cp kmip:/opt/certs/root_certificate.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_key_jane_doe.pem /tmp/certs/
-  sudo docker cp kmip:/opt/certs/client_certificate_jane_doe.pem /tmp/certs/
 
-  kmip_server_address="0.0.0.0"
-  kmip_server_port=5696
-  kmip_client_ca="/tmp/certs/client_certificate_jane_doe.pem"
-  kmip_client_key="/tmp/certs/client_key_jane_doe.pem"
-  kmip_server_ca="/tmp/certs/root_certificate.pem"
-
-  # Sleep for 30 sec to fully initialize the KMIP server
-  sleep 30
+  kmip_server_address="127.0.0.1"
+  kmip_server_port=5556
+  kmip_client_ca="${COSMIAN_CERTS_DIR}/client.pem"
+  kmip_client_key="${COSMIAN_CERTS_DIR}/client.key"
+  kmip_server_ca="${COSMIAN_CERTS_DIR}/ca.pem"
 }

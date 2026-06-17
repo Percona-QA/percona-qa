@@ -13,7 +13,7 @@ start_pg $PGDATA $PORT
 echo "3=> Start OpenBao Server"
 start_openbao_server
 
-echo "4=> Start KMIP Server(pykmip)"
+echo "4=> Start KMIP Server(cosmian_kms)"
 start_kmip_server
 
 echo "############################################################################"
