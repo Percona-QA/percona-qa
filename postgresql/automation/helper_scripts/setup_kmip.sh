@@ -93,17 +93,19 @@ EOF
   echo "[INFO] Starting Cosmian KMS server..."
   cosmian_kms -c "$COSMIAN_CONFIG" > "$COSMIAN_LOG" 2>&1 &
 
-  # Wait until the KMIP port is ready (up to 30 s)
+  # Wait until the KMIP port is ready (up to 30 s).
+  # Use bash /dev/tcp instead of nc — nc/netcat is not reliably present across distros.
+  _kmip_port_open() { (echo > /dev/tcp/127.0.0.1/5556) 2>/dev/null; }
   local deadline=$(( $(date +%s) + 30 ))
   while [ "$(date +%s)" -lt "$deadline" ]; do
-    if nc -z 127.0.0.1 5556 2>/dev/null; then
+    if _kmip_port_open; then
       echo "[INFO] Cosmian KMS is ready on port 5556"
       break
     fi
     sleep 1
   done
 
-  if ! nc -z 127.0.0.1 5556 2>/dev/null; then
+  if ! _kmip_port_open; then
     echo "[ERROR] Cosmian KMS did not start within 30 seconds"
     cat "$COSMIAN_LOG"
     exit 1

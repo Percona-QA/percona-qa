@@ -36,12 +36,11 @@ path "sys/mounts/*" {
 
 EOF
 
-export VAULT_NAMESPACE=pg_tde_ns1
 create_bao_token "kv_only" "$RUN_DIR/policy_kv_only.hcl" "$RUN_DIR/token_kv_only"
 
 $INSTALL_DIR/bin/psql -d postgres -c"CREATE EXTENSION pg_tde;"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_database_key_provider_vault_v2('vault_keyring1','$vault_url','$secret_mount_point', '$RUN_DIR/token_kv_only',NULL,'$VAULT_NAMESPACE/');"
-$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_vault_v2('vault_keyring2','$vault_url','$secret_mount_point', '$RUN_DIR/token_kv_only',NULL,'$VAULT_NAMESPACE/');"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_database_key_provider_vault_v2('vault_keyring1','$vault_url','$secret_mount_point', '$RUN_DIR/token_kv_only',NULL,NULL);"
+$INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_add_global_key_provider_vault_v2('vault_keyring2','$vault_url','$secret_mount_point', '$RUN_DIR/token_kv_only',NULL,NULL);"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring1');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_create_key_using_global_key_provider('server_key1','vault_keyring2');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_key_using_database_key_provider('vault_key1','vault_keyring1');"

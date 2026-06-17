@@ -70,10 +70,6 @@ export VAULT_TOKEN="$ROOT_TOKEN"
 # ENABLE SECRET ENGINE
 # -------------------------------
 echo "[INFO] Enabling KV v2 engine at mount '$secret_mount_point'..."
-
-bao namespace create pg_tde_ns1
-
-export VAULT_NAMESPACE=pg_tde_ns1
 bao secrets enable -version=2 -path="$secret_mount_point" kv
 
 echo ""
