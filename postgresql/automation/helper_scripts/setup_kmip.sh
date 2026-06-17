@@ -39,15 +39,28 @@ _gen_cosmian_certs() {
 }
 
 start_kmip_server() {
-  # On old-glibc platforms (RHEL/Rocky/OL 8, Debian 11) the cosmian_kms binary is
-  # not available; Ansible pre-starts it inside a Docker container and writes certs
-  # to /tmp/cosmian_certs/ via a volume mount.  Use binary availability as the
-  # authoritative check — never rely on the certs directory, which may be left over
-  # from a previous native run and would cause a false Docker detection.
-  if ! command -v cosmian_kms >/dev/null 2>&1; then
-    echo "[INFO] cosmian_kms binary not found — assuming Docker container (old-glibc platform)"
+  # On old-glibc platforms (RHEL/Rocky/OL 8, Debian 11) the cosmian_kms binary may
+  # be installed but cannot execute (glibc too old).  Use a live execution check
+  # rather than command -v, so that an installed-but-broken binary falls through to
+  # the Docker path.  The Docker container has clear_database=true, so restarting it
+  # gives each test a fresh key store.
+  if ! cosmian_kms --version >/dev/null 2>&1; then
+    echo "[INFO] cosmian_kms not executable — using Docker container (old-glibc platform)"
     if [ ! -f "$COSMIAN_CERTS_DIR/ca.pem" ]; then
       echo "[ERROR] Expected Docker certs at $COSMIAN_CERTS_DIR but ca.pem not found"
+      exit 1
+    fi
+    echo "[INFO] Restarting cosmian-server Docker container for a clean key store..."
+    sudo docker restart cosmian-server >/dev/null 2>&1 || \
+      docker restart cosmian-server >/dev/null 2>&1 || true
+    _kmip_port_open() { (echo > /dev/tcp/127.0.0.1/5556) 2>/dev/null; }
+    local deadline=$(( $(date +%s) + 30 ))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+      _kmip_port_open && break
+      sleep 1
+    done
+    if ! _kmip_port_open; then
+      echo "[ERROR] cosmian-server Docker container did not come up within 30 seconds"
       exit 1
     fi
     kmip_server_address="127.0.0.1"
@@ -58,7 +71,7 @@ start_kmip_server() {
     return
   fi
 
-  # Native binary available — always do a full restart so each test gets a clean DB.
+  # Native binary works — always do a full restart so each test gets a clean DB.
   pkill -9 -f cosmian_kms 2>/dev/null || true
   sleep 1
 
