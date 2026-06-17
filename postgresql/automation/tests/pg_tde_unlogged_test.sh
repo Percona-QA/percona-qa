@@ -18,7 +18,12 @@ mkdir -p "$TABLESPACE_DIR"
 chmod 700 "$TABLESPACE_DIR" || true
 
 echo "1. Initializing cluster with pg_tde..."
-$INSTALL_DIR/bin/initdb -D "$PGDATA" --set shared_preload_libraries=pg_tde --set io_method=$IO_METHOD --set unix_socket_directories="$RUN_DIR" > /dev/null 2>&1
+INITDB_OPTS=(--set shared_preload_libraries=pg_tde --set unix_socket_directories="$RUN_DIR")
+# io_method is only available in PG 18+ builds
+if [[ "$(get_pg_major_version)" -ge 18 ]]; then
+    INITDB_OPTS+=(--set io_method=$IO_METHOD)
+fi
+$INSTALL_DIR/bin/initdb -D "$PGDATA" "${INITDB_OPTS[@]}" > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "Error: initdb failed."
     exit 1

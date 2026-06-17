@@ -13,7 +13,12 @@ rm -rf "$TEST_DIR"  || true
 mkdir -p "$TEST_DIR"
 
 echo "1. Initializing cluster with checksums enabled..."
-$INSTALL_DIR/bin/initdb -k -D "$PGDATA" --set shared_preload_libraries=pg_tde --set io_method=$IO_METHOD > /dev/null 2>&1
+INITDB_OPTS=(--set shared_preload_libraries=pg_tde)
+# io_method exists only in PG 18+
+if [[ "$(get_pg_major_version)" -ge 18 ]]; then
+    INITDB_OPTS+=(--set io_method=$IO_METHOD)
+fi
+$INSTALL_DIR/bin/initdb -k -D "$PGDATA" "${INITDB_OPTS[@]}" > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "Error: initdb failed."
     exit 1

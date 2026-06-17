@@ -56,12 +56,15 @@ logging_collector = on
 log_directory = '$REPLICA_DATA'
 log_filename = 'server.log'
 log_statement = 'all'
-io_method = '$IO_METHOD'
 shared_preload_libraries = 'pg_tde'
 default_table_access_method = 'tde_heap'
 max_wal_senders=10
 restore_command='cp $ARCHIVE_DIR/%f %p'
 EOF
+# io_method exists only in PG 18+
+if [[ "$(get_pg_major_version)" -ge 18 ]]; then
+    echo "io_method = '$IO_METHOD'" >> $REPLICA_DATA/postgresql.conf
+fi
 
 start_pg $REPLICA_DATA $REPLICA_PORT
 

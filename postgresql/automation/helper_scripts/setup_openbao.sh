@@ -15,6 +15,7 @@ token_filepath="$RUN_DIR/bao_token_file"
 
 echo "[INFO] Cleaning up any existing OpenBao processes..."
 pkill -f "bao server" 2>/dev/null || true
+sleep 1   # allow OS to release cluster port 8201 before new server binds it
 
 # -------------------------------
 # INSTALL BAO BINARY IF MISSING
@@ -39,10 +40,13 @@ fi
 echo "[INFO] Starting OpenBao server in dev mode..."
 bao server -dev > "$BAO_LOG" 2>&1 &
 
-# Wait for the root token to appear in the log (up to 30 s)
+# Wait for the root token to appear in the log (up to 30 s).
+# Use grep -a so binary frames in the log don't suppress text matches.
+# Use || true so a non-zero grep exit (file absent, no match yet) doesn't
+# trip set -euo pipefail in the test subshell.
 local deadline=$(( $(date +%s) + 30 ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
-    ROOT_TOKEN=$(grep -m1 "Root Token:" "$BAO_LOG" 2>/dev/null | awk '{print $3}')
+    ROOT_TOKEN=$(grep -a -m1 "Root Token:" "$BAO_LOG" 2>/dev/null | awk '{print $3}') || true
     [ -n "$ROOT_TOKEN" ] && break
     sleep 1
 done
