@@ -1,51 +1,33 @@
 #!/bin/bash
 
+# setup_vault.sh — compatibility shim over OpenBao.
+#
+# Tests call start_vault_server() and consume $vault_url, $secret_mount_point,
+# $token_file, and $vault_ca.  HashiCorp Vault is no longer installed; OpenBao
+# (already set up by setup_openbao.sh) provides the same KV v2 API at the same
+# address.  This file wires the old variable names to the OpenBao equivalents.
+
 set -e
 
 start_vault_server() {
-    vault_dir="${HELPER_DIR}/vault"
-    config_file="$vault_dir/keyring_vault_ps.cnf"
-    token_file="$RUN_DIR/token_file"
+    # Delegate to OpenBao (sourced via test_runner.sh before this file).
+    start_openbao_server
 
-    echo "=> Killing any running Vault processes..."
-    killall vault > /dev/null 2>&1 || true
+    # Export the variable names that vault-using tests expect.
+    export vault_url="http://127.0.0.1:8200"
+    export secret_mount_point="pg_tde"
+    export token_file="$token_filepath"   # token_filepath is set by start_openbao_server
+    export token="$ROOT_TOKEN"
+    export vault_ca=""                    # OpenBao dev mode has no TLS
 
-    echo "=> Starting Vault server..."
-
-    mkdir -p "$vault_dir"
-    rm -rf "$vault_dir"/*
-
-    "${HELPER_DIR}/vault_test_setup.sh" \
-        --workdir="$vault_dir" \
-        --use-ssl > ${LOG_DIR}/vault.log 2>&1
-
-    if [[ ! -f "$config_file" ]]; then
-        echo "Error: Vault config file not found at $config_file"
-        exit 1
-    fi
-
-    export vault_url=$(grep 'vault_url' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    export secret_mount_point=$(grep 'secret_mount_point' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    export token=$(grep 'token' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-    export vault_ca=$(grep 'vault_ca' "$config_file" | awk -F '=' '{print $2}' | tr -d '[:space:]')
-
-    echo "$token" > "$token_file"
-    export token_file
-
-    echo ".. Vault server started"
+    echo ".. Vault server started (via OpenBao)"
 }
 
 create_token() {
-  local POLICY_NAME=$1
-  local POLICY_FILE=$2
-  local TOKEN_FILE=$3
+    local POLICY_NAME=$1
+    local POLICY_FILE=$2
+    local TOKEN_FILE=$3
 
-  export VAULT_ADDR="$vault_url"
-  export VAULT_TOKEN="$token"
-  export VAULT_SKIP_VERIFY=true
-
-  $HELPER_DIR/vault/vault policy write "$POLICY_NAME" "$POLICY_FILE"
-
-  TOKEN=$($HELPER_DIR/vault/vault token create -policy="$POLICY_NAME" -no-default-policy -format=json | jq -r .auth.client_token)
-  echo "$TOKEN" > "$TOKEN_FILE"
+    # Delegate to the OpenBao token creation helper.
+    create_bao_token "$POLICY_NAME" "$POLICY_FILE" "$TOKEN_FILE"
 }

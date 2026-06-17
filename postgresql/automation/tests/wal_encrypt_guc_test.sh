@@ -41,8 +41,12 @@ declare -A TEST_PARAMS=(
   [wal_receiver_create_temp_slot]="on"
   [wal_keep_size]="64"
   [track_wal_io_timing]="on"
-  [summarize_wal]="on"
 )
+
+# summarize_wal is PG 17+ only
+if [[ "$(get_pg_major_version)" -ge 17 ]]; then
+  TEST_PARAMS[summarize_wal]="on"
+fi
 
 # which ones require restart
 RESTART_REQUIRED=(

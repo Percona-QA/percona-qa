@@ -109,7 +109,6 @@ log_directory = '$REPLICA_DATA'
 log_filename = 'server.log'
 log_statement = 'all'
 max_wal_senders = 5
-io_method = '$IO_METHOD'
 shared_preload_libraries = 'pg_tde'
 default_table_access_method = 'tde_heap'
 wal_level=replica
@@ -117,6 +116,11 @@ hot_standby=on
 primary_conninfo='host=localhost port=$PRIMARY_PORT user=$REPL_USER password=$REPL_PASS'
 
 EOF
+
+# io_method exists only in PG 18+
+if [[ "$(get_pg_major_version)" -ge 18 ]]; then
+    echo "io_method = '$IO_METHOD'" >> $REPLICA_DATA/postgresql.conf
+fi
 
 #############################################
 echo "Start STANDBY"

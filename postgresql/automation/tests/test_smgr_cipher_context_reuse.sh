@@ -114,17 +114,27 @@ VACUUM ctx_heap_a, ctx_heap_b;
 EOSQL
 
 	log "Running extended scenarios (partitions, TOAST, CTAS/savepoints, TRUNCATE, REINDEX/CLUSTER, index scans)..."
-	"$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres <<'EOSQL2'
+
+	# USING on a partitioned table parent requires PG 17+; on PG 16 the AM is
+	# inherited from the partition children which each carry their own USING clause.
+	local part_parent_using=""
+	if [[ "$(get_pg_major_version)" -ge 17 ]]; then
+		part_parent_using="USING tde_heap"
+	fi
+	"$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres <<EOSQL_PART
 -- Partitioned table: multiple encrypted heap forks / relation keys in one query tree
 CREATE TABLE ctx_part (
 	k int NOT NULL,
 	v text NOT NULL,
 	PRIMARY KEY (k)
-) PARTITION BY RANGE (k) USING tde_heap;
+) PARTITION BY RANGE (k) ${part_parent_using};
 
 CREATE TABLE ctx_part_p1 PARTITION OF ctx_part FOR VALUES FROM (MINVALUE) TO (5000) USING tde_heap;
 CREATE TABLE ctx_part_p2 PARTITION OF ctx_part FOR VALUES FROM (5000) TO (10000) USING tde_heap;
 CREATE TABLE ctx_part_p3 PARTITION OF ctx_part FOR VALUES FROM (10000) TO (MAXVALUE) USING tde_heap;
+EOSQL_PART
+
+	"$INSTALL_DIR/bin/psql" -X -v ON_ERROR_STOP=1 -d postgres <<'EOSQL2'
 
 INSERT INTO ctx_part
 SELECT i, repeat(md5(i::text), 6)
@@ -364,11 +374,20 @@ FROM pg_class c WHERE relname IN ('ctx_heap_a', 'ctx_heap_b') ORDER BY 1;
 
 	verify_extended_scenarios() {
 		local got
+		# On PG 16 the partitioned table parent does not carry the tde_heap AM
+		# (USING on a partitioned parent requires PG 17+), so exclude ctx_part
+		# itself from the encryption check on older versions.
+		local part_parent_check
+		if [[ "$(get_pg_major_version)" -ge 17 ]]; then
+			part_parent_check="('ctx_part'),"
+		else
+			part_parent_check=""
+		fi
 		got="$("$INSTALL_DIR/bin/psql" -X -Atq -d postgres -v ON_ERROR_STOP=1 -c "
 SELECT COALESCE(
 	(SELECT bool_and(pg_tde_is_encrypted(relname::regclass))
 	 FROM (VALUES
-		('ctx_part'), ('ctx_part_p1'), ('ctx_part_p2'), ('ctx_part_p3'),
+		${part_parent_check} ('ctx_part_p1'), ('ctx_part_p2'), ('ctx_part_p3'),
 		('ctx_toast'), ('ctx_ctas'), ('ctx_trunc'),
 		('ctx_bulk_wide'), ('ctx_bulk_seq'), ('ctx_copy_load'),
 		('ctx_part_pkey'), ('ctx_toast_pkey'), ('ctx_ctas_pkey'), ('ctx_trunc_pkey'),

@@ -39,8 +39,8 @@ fi
 echo "[INFO] Starting OpenBao server in dev mode..."
 bao server -dev > "$BAO_LOG" 2>&1 &
 
-# Wait for the root token to appear in the log (up to 15 s)
-local deadline=$(( $(date +%s) + 15 ))
+# Wait for the root token to appear in the log (up to 30 s)
+local deadline=$(( $(date +%s) + 30 ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
     ROOT_TOKEN=$(grep -m1 "Root Token:" "$BAO_LOG" 2>/dev/null | awk '{print $3}')
     [ -n "$ROOT_TOKEN" ] && break
