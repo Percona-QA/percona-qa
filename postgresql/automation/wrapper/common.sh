@@ -190,6 +190,12 @@ old_server_cleanup() {
 }
 
 install_pgbackrest() {
+
+    if command -v pgbackrest >/dev/null 2>&1; then
+        echo "pgBackRest is already installed: $(pgbackrest version)"
+        return 0
+    fi
+
     if [ -f /etc/debian_version ]; then
         sudo apt-get update
         wget -q https://repo.percona.com/apt/percona-release_latest.generic_all.deb
