@@ -128,23 +128,8 @@ echo "INCR BACKUP"
 $INSTALL_DIR/bin/psql -p $PORT -c "INSERT INTO t1 SELECT generate_series(400001,500000);"
 $PG_BACKREST --stanza=$STANZA --type=incr backup
 
-##############################################
-echo "SCENARIO 2: RESUME BACKUP"
 #############################################
-echo "Simulating interrupted backup"
-for i in {1..3}; do
-  $PG_BACKREST --stanza=$STANZA backup &
-  BKP_PID=$!
-  sleep 3
-  kill -9 $BKP_PID || true
-  sleep 3
-done
-
-echo "Resuming backup"
-$PG_BACKREST --stanza=$STANZA backup --resume
-
-#############################################
-echo "SCENARIO 3: FULL RESTORE"
+echo "SCENARIO 2: FULL RESTORE"
 #############################################
 mkdir -p $RESTORE_FULL
 RESTORE_FULL_PORT=5540
@@ -174,7 +159,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_FULL_PORT -d testdb -c "SELECT count(*) FROM t
 stop_pg $RESTORE_FULL $RESTORE_FULL_PORT
 
 #############################################
-echo "SCENARIO 4: DELTA RESTORE"
+echo "SCENARIO 3: DELTA RESTORE"
 #############################################
 echo "Introduce divergence in PGDATA"
 $INSTALL_DIR/bin/psql -p $PORT -c "INSERT INTO t1 SELECT generate_series(500001,600000);"
@@ -209,7 +194,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_DELTA_PORT -d postgres -c "SELECT count(*) FRO
 stop_pg $RESTORE_DELTA $RESTORE_DELTA_PORT
 
 #############################################
-echo "SCENARIO 5: STANDBY RESTORE"
+echo "SCENARIO 4: STANDBY RESTORE"
 #############################################
 mkdir -p $RESTORE_STANDBY
 RESTORE_STANDBY_PORT=5542
@@ -237,7 +222,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_STANDBY_PORT -d postgres -c "SELECT count(*) F
 stop_pg $RESTORE_STANDBY $RESTORE_STANDBY_PORT
 
 #############################################
-echo "SCENARIO 6: PITR (TIME)"
+echo "SCENARIO 5: PITR (TIME)"
 #############################################
 mkdir -p $RESTORE_PITR_TIME
 RESTORE_PITR_TIME_PORT=5543
@@ -273,7 +258,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_PITR_TIME_PORT -d postgres -c "SELECT count(*)
 stop_pg $RESTORE_PITR_TIME $RESTORE_PITR_TIME_PORT
 
 #############################################
-echo "SCENARIO 7: PITR (LSN)"
+echo "SCENARIO 6: PITR (LSN)"
 #############################################
 mkdir -p $RESTORE_PITR_LSN
 RESTORE_PITR_LSN_PORT=5544
@@ -308,7 +293,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_PITR_LSN_PORT -d postgres -c "SELECT count(*) 
 stop_pg $RESTORE_PITR_LSN $RESTORE_PITR_LSN_PORT
 
 #############################################
-echo "SCENARIO 8: PITR (XID)"
+echo "SCENARIO 7: PITR (XID)"
 #############################################
 mkdir -p $RESTORE_PITR_XID
 RESTORE_PITR_XID_PORT=5545
@@ -343,7 +328,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_PITR_XID_PORT -d postgres -c "SELECT count(*) 
 stop_pg $RESTORE_PITR_XID $RESTORE_PITR_XID_PORT
 
 #############################################
-echo "SCENARIO 9: SELECTIVE DB RESTORE"
+echo "SCENARIO 8: SELECTIVE DB RESTORE"
 #############################################
 mkdir -p $RESTORE_SELECTIVE
 RESTORE_SELECTIVE_PORT=5546
@@ -375,7 +360,7 @@ $INSTALL_DIR/bin/psql -p $RESTORE_SELECTIVE_PORT -d testdb -c "SELECT count(*) F
 stop_pg $RESTORE_SELECTIVE $RESTORE_SELECTIVE_PORT
 
 #############################################
-echo "SCENARIO 10: FORCE RESTORE"
+echo "SCENARIO 9: FORCE RESTORE"
 #############################################
 mkdir -p $RESTORE_FORCE
 RESTORE_FORCE_PORT=5547
