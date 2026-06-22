@@ -154,11 +154,19 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="KMIP server CA certificate path",
     )
     parser.addoption(
+        "--kmip-profile",
+        default=os.environ.get("KMIP_PROFILE", ""),
+        help=(
+            "Single KMIP server profile (default: cosmian — no license). "
+            "Overrides KMIP_REVALIDATE_PROFILES for one backend, e.g. vault_kmip, fortanix"
+        ),
+    )
+    parser.addoption(
         "--kmip-revalidate-profiles",
         default=os.environ.get("KMIP_REVALIDATE_PROFILES", ""),
         help=(
             "KMIP server revalidation profiles (comma-separated or 'all'); "
-            "see docs/kmip_revalidation.md"
+            "default cosmian when unset — see docs/kmip_revalidation.md"
         ),
     )
     parser.addoption(
@@ -463,8 +471,8 @@ def kmip_config(request):
     """
     Parsed KMIP server settings for ``test_kmip.py``.
 
-    Uses ``KMIP_SERVER_*`` or, when ``KMIP_REVALIDATE_PROFILES`` names a single
-    ready profile (e.g. ``vault_kmip``), that profile's env prefix.
+    Default profile is **cosmian** (``KMIP_SERVER_*`` from ``setup_cosmian_for_pytest.sh``).
+    Choose another server with ``KMIP_PROFILE=vault_kmip`` or ``--kmip-profile=vault_kmip``.
     See ``docs/kmip.md`` and ``docs/key_provider_matrix.md``.
     """
     cfg, reason = resolve_session_kmip_config(request.config)

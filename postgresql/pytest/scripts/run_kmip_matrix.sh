@@ -38,8 +38,10 @@ fi
 
 hc_vault_apply_defaults
 
-export KMIP_REVALIDATE_PROFILES="${KMIP_REVALIDATE_PROFILES:-cosmian}"
+export KMIP_REVALIDATE_PROFILES="${KMIP_REVALIDATE_PROFILES:-${KMIP_PROFILE:-cosmian}}"
 PROFILES="${KMIP_REVALIDATE_PROFILES}"
+
+echo "KMIP default profile: cosmian (no license). Override: KMIP_PROFILE=vault_kmip $0"
 
 need_cosmian=false
 case ",${PROFILES}," in

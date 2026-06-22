@@ -14,27 +14,36 @@ separate modules.
 
 ## KMIP profiles
 
-Configure via ``KMIP_REVALIDATE_PROFILES`` (env) or ``--kmip-revalidate-profiles``:
+**Default server: `cosmian`** (Percona CI — no vendor license). Override when you
+want a different KMIP backend:
+
+| Variable / CLI | Example |
+|----------------|---------|
+| *(none)* | Cosmian — `./scripts/run_kmip_matrix.sh` |
+| `KMIP_PROFILE` | `export KMIP_PROFILE=vault_kmip` |
+| `KMIP_REVALIDATE_PROFILES` | `export KMIP_REVALIDATE_PROFILES=fortanix` |
+| `--kmip-profile` | `pytest --kmip-profile=vault_kmip tests/test_kmip.py` |
+| `--kmip-revalidate-profiles` | `pytest --kmip-revalidate-profiles=all …` |
 
 | Profile | Env prefix | Server |
 |---------|------------|--------|
-| `cosmian` | `KMIP_COSMIAN_*` or `KMIP_*` after setup | Cosmian KMS (CI) |
+| `cosmian` *(default)* | `KMIP_COSMIAN_*` or `KMIP_*` after setup | Cosmian KMS (CI) |
 | `vault_kmip` | `KMIP_VAULT_*` | HashiCorp Vault **KMIP engine** |
 | `fortanix` | `KMIP_FORTANIX_*` | Fortanix DSM |
 | `thales` | `KMIP_THALES_*` | Thales CipherTrust |
 | `akeyless` | `KMIP_AKEYLESS_*` | Akeyless |
 
 ```bash
-# Cosmian
+# Cosmian (default — no KMIP_PROFILE needed)
 source scripts/setup_cosmian_for_pytest.sh
 ./scripts/run_kmip_matrix.sh
 
-# Your Vault Enterprise KMIP lab
+# HashiCorp Vault Enterprise KMIP lab
 source /tmp/vault_kmip_pytest.env
-KMIP_REVALIDATE_PROFILES=vault_kmip ./scripts/run_kmip_matrix.sh
+KMIP_PROFILE=vault_kmip ./scripts/run_kmip_matrix.sh
 
 # One profile at a time in CI/Jenkins
-export KMIP_REVALIDATE_PROFILES=fortanix
+export KMIP_PROFILE=fortanix
 pytest tests/test_kmip_common_matrix.py tests/test_kmip_server_revalidation.py -v
 ```
 
@@ -66,7 +75,7 @@ export VAULT_KV_PROFILES=hashicorp_enterprise
 ./scripts/run_vault_kv_matrix.sh
 ```
 
-Vault **KMIP engine** is not Vault KV — use `KMIP_REVALIDATE_PROFILES=vault_kmip`.
+Vault **KMIP engine** is not Vault KV — use `KMIP_PROFILE=vault_kmip`.
 
 ## File keyring
 
@@ -97,7 +106,7 @@ KEY_PROVIDER_MATRIX=kmip ./scripts/run_key_provider_matrix.sh
 
 ### Extended suite (`test_kmip.py`)
 
-Uses ``KMIP_SERVER_*`` **or** a single profile from ``KMIP_REVALIDATE_PROFILES``:
+Default profile is **cosmian**. Override with ``KMIP_PROFILE`` or ``--kmip-profile``:
 
 ```bash
 # Cosmian extended (default)
@@ -106,7 +115,7 @@ pytest tests/test_kmip.py -v
 
 # Vault KMIP extended (same tests, vault_kmip env)
 source /tmp/vault_kmip_pytest.env
-KMIP_REVALIDATE_PROFILES=vault_kmip pytest tests/test_kmip.py -v
+KMIP_PROFILE=vault_kmip pytest tests/test_kmip.py -v
 ```
 
 ``@pytest.mark.cosmian`` tests still require local ``cosmian_kms``.

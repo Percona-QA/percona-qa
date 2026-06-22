@@ -36,15 +36,14 @@ class KmipServerProfile:
 
     def load_config(self) -> Optional[KmipConfig]:
         """Build ``KmipConfig`` from profile-specific or default env vars."""
-        if self.env_prefix == "KMIP_":
-            return kmip_config_from_options(
-                host=os.environ.get("KMIP_SERVER_ADDRESS", ""),
-                port=os.environ.get("KMIP_SERVER_PORT", ""),
-                client_cert=os.environ.get("KMIP_CLIENT_CA", ""),
-                client_key=os.environ.get("KMIP_CLIENT_KEY", ""),
-                server_ca=os.environ.get("KMIP_SERVER_CA", ""),
-            )
+        if self.name == DEFAULT_KMIP_PROFILE:
+            # setup_cosmian_for_pytest.sh exports KMIP_SERVER_*; labs may use KMIP_COSMIAN_*.
+            cfg = standard_kmip_env_config()
+            if cfg is not None:
+                return cfg
         prefix = self.env_prefix
+        if prefix == "KMIP_":
+            return standard_kmip_env_config()
         return kmip_config_from_options(
             host=os.environ.get(f"{prefix}HOST", ""),
             port=os.environ.get(f"{prefix}PORT", "5696"),
@@ -104,10 +103,24 @@ SUPPORTED_KMIP_SERVER_PROFILES: Dict[str, KmipServerProfile] = {
 
 ALL_KMIP_PROFILE_NAMES: Tuple[str, ...] = tuple(SUPPORTED_KMIP_SERVER_PROFILES)
 
+# Default KMIP backend for CI and local dev (no vendor license required).
+DEFAULT_KMIP_PROFILE = "cosmian"
+
+
+def standard_kmip_env_config() -> Optional[KmipConfig]:
+    """``KMIP_SERVER_*`` exported by ``setup_cosmian_for_pytest.sh``."""
+    return kmip_config_from_options(
+        host=os.environ.get("KMIP_SERVER_ADDRESS", ""),
+        port=os.environ.get("KMIP_SERVER_PORT", ""),
+        client_cert=os.environ.get("KMIP_CLIENT_CA", ""),
+        client_key=os.environ.get("KMIP_CLIENT_KEY", ""),
+        server_ca=os.environ.get("KMIP_SERVER_CA", ""),
+    )
+
 
 def default_revalidate_profiles() -> str:
-    """Percona CI default KMIP backend."""
-    return "cosmian"
+    """Percona CI default KMIP backend (Cosmian — no license)."""
+    return DEFAULT_KMIP_PROFILE
 
 
 def parse_revalidate_profile_list(raw: str) -> List[str]:
@@ -142,10 +155,29 @@ def profiles_help_text() -> str:
 def kmip_revalidate_profiles_from_config(config) -> str:
     """CLI/env string for ``KMIP_REVALIDATE_PROFILES`` (pytest ``config`` or None)."""
     if config is not None:
-        opt = config.getoption("--kmip-revalidate-profiles", default=None)
-        if opt:
-            return opt
+        for opt_name in ("--kmip-profile", "--kmip-revalidate-profiles"):
+            opt = config.getoption(opt_name, default=None)
+            if opt:
+                return opt
+    env_profile = os.environ.get("KMIP_PROFILE", "").strip()
+    if env_profile:
+        return env_profile
     return os.environ.get("KMIP_REVALIDATE_PROFILES") or default_revalidate_profiles()
+
+
+def kmip_profile_explicitly_chosen(config) -> bool:
+    """True when user chose a non-default KMIP server (not implicit cosmian)."""
+    if config is not None:
+        if config.getoption("--kmip-profile", default=""):
+            return True
+        cli_profiles = config.getoption("--kmip-revalidate-profiles", default="")
+        if cli_profiles and cli_profiles.strip().lower() != DEFAULT_KMIP_PROFILE:
+            return True
+    if os.environ.get("KMIP_PROFILE", "").strip():
+        prof = os.environ.get("KMIP_PROFILE", "").strip().lower()
+        return prof != DEFAULT_KMIP_PROFILE
+    raw = os.environ.get("KMIP_REVALIDATE_PROFILES", "").strip()
+    return bool(raw) and raw.lower() != DEFAULT_KMIP_PROFILE
 
 
 def resolve_kmip_profiles_for_pytest(config) -> List[KmipServerProfile]:
@@ -185,45 +217,61 @@ def resolve_session_kmip_config(config) -> Tuple[Optional[KmipConfig], str]:
     """
     KMIP config for ``test_kmip.py`` (``kmip_config`` fixture) and collection skips.
 
-    Resolution order:
-    1. ``KMIP_SERVER_*`` / ``--kmip-server-address`` (Cosmian CI default)
-    2. Exactly one ready profile from ``KMIP_REVALIDATE_PROFILES`` (e.g. ``vault_kmip``)
-    """
-    from lib.kmip import KmipConfig, kmip_config_from_options, kmip_runtime_ready
+    Default profile is **Cosmian** (``KMIP_SERVER_*`` from ``setup_cosmian_for_pytest.sh``).
 
-    if config is not None:
-        cfg = kmip_config_from_options(
-            host=config.getoption("--kmip-server-address"),
-            port=config.getoption("--kmip-server-port"),
-            client_cert=config.getoption("--kmip-client-ca"),
-            client_key=config.getoption("--kmip-client-key"),
-            server_ca=config.getoption("--kmip-server-ca"),
-        )
-        if cfg is not None:
-            ready, reason = kmip_runtime_ready(cfg)
-            if ready:
-                return cfg, ""
-            if config.getoption("--kmip-server-address"):
-                return None, reason
+    Choose another backend explicitly::
+
+        export KMIP_PROFILE=vault_kmip   # or KMIP_REVALIDATE_PROFILES=vault_kmip
+        pytest tests/test_kmip.py -v
+
+    Resolution:
+    1. Single profile from ``KMIP_PROFILE`` / ``KMIP_REVALIDATE_PROFILES`` (default cosmian)
+    2. Legacy ``--kmip-server-address`` only when profile was **not** explicitly overridden
+    """
+    explicit = kmip_profile_explicitly_chosen(config)
 
     try:
         profiles = resolve_kmip_profiles_for_pytest(config)
     except Exception:
-        return None, "--kmip-server-address not provided"
+        return None, (
+            f"KMIP not configured — default is {DEFAULT_KMIP_PROFILE}; "
+            "run: source scripts/setup_cosmian_for_pytest.sh"
+        )
 
     if len(profiles) != 1:
         return None, (
-            "--kmip-server-address not provided "
-            "(set KMIP_REVALIDATE_PROFILES to a single ready profile, e.g. vault_kmip)"
+            f"test_kmip.py requires one KMIP profile (default {DEFAULT_KMIP_PROFILE}); "
+            f"use KMIP_PROFILE=vault_kmip or matrix tests for multiple profiles"
         )
 
     prof = profiles[0]
     cfg = prof.load_config()
     if cfg is None:
         return None, (
-            f"{prof.name}: not configured (set {prof.env_prefix}HOST and cert paths)"
+            f"{prof.name}: not configured (set {prof.env_prefix}* or "
+            f"source scripts/setup_cosmian_for_pytest.sh for {DEFAULT_KMIP_PROFILE})"
         )
     ready, reason = prof.readiness()
-    if not ready:
-        return None, reason
-    return cfg, ""
+    if ready:
+        return cfg, ""
+
+    # Legacy KMIP_SERVER_* override only for default Cosmian when not switching servers.
+    if not explicit and prof.name == DEFAULT_KMIP_PROFILE and config is not None:
+        legacy = kmip_config_from_options(
+            host=config.getoption("--kmip-server-address"),
+            port=config.getoption("--kmip-server-port"),
+            client_cert=config.getoption("--kmip-client-ca"),
+            client_key=config.getoption("--kmip-client-key"),
+            server_ca=config.getoption("--kmip-server-ca"),
+        )
+        if legacy is not None:
+            ready, reason = kmip_runtime_ready(legacy)
+            if ready:
+                return legacy, ""
+
+    if prof.name == DEFAULT_KMIP_PROFILE:
+        return None, (
+            f"{reason} — start Cosmian: source scripts/setup_cosmian_for_pytest.sh "
+            f"(default; no license). Or: export KMIP_PROFILE=vault_kmip"
+        )
+    return None, reason
