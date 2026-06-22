@@ -142,6 +142,49 @@ Add optional stages:
 
 Do not mix Vault SSL URLs with the Docker dev server without matching `VAULT_CA_PATH`.
 
+## HashiCorp Vault Enterprise (external lab server)
+
+When Vault is already running (namespaces, `pg_tde` KV mount, KMIP engine), use the
+bash revalidation suite instead of `setup_vault_for_pytest.sh`:
+
+```bash
+cd postgresql/pytest
+cp scripts/config/hashicorp_vault.example.env /tmp/my_vault.env
+# Edit: INSTALL_DIR, VAULT_TOKEN_FILE=/tmp/token_ent, VAULT_NAMESPACE=ns1/, KMIP cert paths
+
+source /tmp/my_vault.env
+./scripts/run_hashicorp_vault_revalidation.sh
+```
+
+| Bash suite | Scenarios |
+|------------|-----------|
+| `scenarios/hashicorp_vault_kv_v2.sh` | Global/db providers, rotation, multi-DB, delete, **ns1/** namespace (PG-1959), kv-only token |
+| `scenarios/hashicorp_vault_kmip.sh` | Add KMIP providers, create_key (Register -2 xfail), verify_key |
+
+Options:
+
+```bash
+HC_VAULT_USE_EXISTING_PG=1 PORT=5432 ./scripts/run_hashicorp_vault_revalidation.sh
+HC_VAULT_SUITES=kv ./scripts/run_hashicorp_vault_revalidation.sh
+HC_VAULT_SUITES=kmip ./scripts/run_hashicorp_vault_revalidation.sh
+./scripts/run_hashicorp_vault_revalidation.sh --pytest   # bash + pytest
+```
+
+Example pg_tde SQL (matches your setup):
+
+```sql
+SELECT pg_tde_add_database_key_provider_vault_v2(
+  'vault_keyring', 'http://127.0.0.1:8200', 'pg_tde',
+  '/tmp/token_ent', NULL, 'ns1/');
+
+SELECT pg_tde_add_database_key_provider_kmip(
+  'kmip_provider2', '127.0.0.1', 5696,
+  '/tmp/client_cert.pem', '/tmp/client_key.pem', '/tmp/server_cert.pem');
+```
+
+For scenario 10 (kv-only token), also set `VAULT_ROOT_TOKEN` so the script can
+create a restricted policy inside `ns1`.
+
 ## Troubleshooting
 
 | Symptom | Action |

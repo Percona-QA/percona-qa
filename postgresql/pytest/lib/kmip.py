@@ -1,6 +1,7 @@
 """KMIP test-server configuration helpers (pytest + bash parity)."""
 from __future__ import annotations
 
+import os
 import socket
 from dataclasses import dataclass
 from pathlib import Path
@@ -85,9 +86,12 @@ def kmip_runtime_ready(config: KmipConfig) -> Tuple[bool, str]:
         ):
             pass
     except OSError as e:
+        if os.environ.get("KMIP_VAULT_HOST"):
+            hint = "source scripts/setup_vault_kmip_for_pytest.sh (Vault KMIP engine)"
+        else:
+            hint = "source scripts/setup_cosmian_for_pytest.sh"
         return False, (
-            f"cannot reach KMIP at {config.connect_host()}:{config.port} ({e}); "
-            "run postgresql/pytest/scripts/setup_cosmian_for_pytest.sh"
+            f"cannot reach KMIP at {config.connect_host()}:{config.port} ({e}); {hint}"
         )
 
     return True, ""

@@ -44,7 +44,12 @@ Requires **Vault Enterprise** with the KMIP secrets engine.
 ```bash
 cd postgresql/pytest
 source .env.sh
+./scripts/run_vault_kmip_revalidation.sh
+```
 
+Or step by step:
+
+```bash
 # Vault API (KV tests use the same server)
 source scripts/setup_vault_for_pytest.sh
 
@@ -53,6 +58,16 @@ source scripts/setup_vault_kmip_for_pytest.sh
 
 pytest tests/test_vault_kmip.py -v
 ```
+
+## Not Cosmian / not OpenBao KMIP
+
+| Integration | KMIP server | Vault role | Tests |
+|-------------|-------------|------------|-------|
+| **Vault KMIP engine** | HashiCorp Vault Enterprise KMIP listener (`5696`) | KMIP secrets engine | `test_vault_kmip.py` |
+| **Cosmian** | `cosmian_kms` local | *(none — separate KMS)* | `test_kmip.py` |
+| **OpenBao + Cosmian** | Cosmian alongside OpenBao KV | OpenBao for keys, Cosmian for KMIP provider | `run_openbao_revalidation.sh` |
+
+Production HashiCorp path for pg_tde keys is **Vault KV v2** (`test_vault_providers.py`), not the KMIP engine.
 
 Manual / HCP Vault: export `KMIP_VAULT_*` from your environment (see
 `config/kmip_profiles.example.env`) and run pytest in the same shell.
