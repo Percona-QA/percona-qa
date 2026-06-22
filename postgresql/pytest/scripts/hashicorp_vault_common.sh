@@ -5,11 +5,16 @@
 set -euo pipefail
 
 HC_VAULT_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -z "${HC_VAULT_ENV_LOADED:-}" ]]; then
+    # shellcheck source=hashicorp_vault_env.sh
+    source "${HC_VAULT_SCRIPT_DIR}/hashicorp_vault_env.sh"
+    HC_VAULT_ENV_LOADED=1
+fi
 HC_VAULT_PYTEST_ROOT="$(cd "${HC_VAULT_SCRIPT_DIR}/.." && pwd)"
 
-HC_VAULT_PASS_COUNT=0
-HC_VAULT_FAIL_COUNT=0
-HC_VAULT_XFAIL_COUNT=0
+HC_VAULT_PASS_COUNT="${HC_VAULT_PASS_COUNT:-0}"
+HC_VAULT_FAIL_COUNT="${HC_VAULT_FAIL_COUNT:-0}"
+HC_VAULT_XFAIL_COUNT="${HC_VAULT_XFAIL_COUNT:-0}"
 
 hc_vault_hr() {
     printf '\n══════════════════════════════════════════════════════════════\n'
@@ -127,12 +132,15 @@ hc_vault_add_db_kmip() {
 }
 
 hc_vault_check_vault_api() {
-    hc_vault_say "Vault API health (${VAULT_ADDR})"
+    hc_vault_apply_defaults
+    local addr="${VAULT_ADDR%/}"
+    hc_vault_say "Vault API health (${addr})"
     hc_vault_require_cmd curl
-    if curl -sf "${VAULT_ADDR}/v1/sys/health" >/dev/null; then
+    if curl -sf "${addr}/v1/sys/health" >/dev/null; then
         hc_vault_pass "Vault health endpoint reachable"
     else
-        hc_vault_fail "Vault health check failed at ${VAULT_ADDR}"
+        hc_vault_fail "Vault health check failed at ${addr}"
+        echo "  hint: export VAULT_ADDR=http://127.0.0.1:8200 (or add to .env.sh)" >&2
         return 1
     fi
     if [[ -n "${VAULT_BIN:-}" ]] && command -v "${VAULT_BIN}" >/dev/null 2>&1; then

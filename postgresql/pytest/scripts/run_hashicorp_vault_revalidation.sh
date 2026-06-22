@@ -38,8 +38,17 @@ if [[ -f "${HC_VAULT_ENV_FILE:-}" ]]; then
     source "${HC_VAULT_ENV_FILE}"
 fi
 
+# shellcheck source=hashicorp_vault_env.sh
+source "${SCRIPT_DIR}/hashicorp_vault_env.sh"
+hc_vault_apply_defaults
+
 # shellcheck source=hashicorp_vault_common.sh
 source "${SCRIPT_DIR}/hashicorp_vault_common.sh"
+
+if ! hc_vault_env_ready; then
+    hc_vault_env_not_ready_message >&2
+    exit 2
+fi
 
 RUN_PYTEST=0
 PYTEST_ARGS=()
