@@ -46,8 +46,17 @@ def vault_kmip_config_from_env() -> Optional[KmipConfig]:
 def vault_kmip_runtime_ready() -> Tuple[bool, str]:
     cfg = vault_kmip_config_from_env()
     if cfg is None:
-        return False, "KMIP_VAULT_HOST not set (source scripts/setup_vault_kmip_for_pytest.sh)"
-    return kmip_runtime_ready(cfg)
+        return False, (
+            "KMIP_VAULT_HOST not set — export KMIP_VAULT_* or run "
+            "scripts/export_vault_kmip_certs_for_pytest.sh"
+        )
+    ready, reason = kmip_runtime_ready(cfg)
+    if not ready and "missing" in reason.lower():
+        return False, (
+            f"{reason} — export KMIP_VAULT_CLIENT_CERT/KEY/SERVER_CA or run "
+            "scripts/export_vault_kmip_certs_for_pytest.sh"
+        )
+    return ready, reason
 
 
 def is_vault_kmip_register_minus_two_error(exc: BaseException) -> bool:
