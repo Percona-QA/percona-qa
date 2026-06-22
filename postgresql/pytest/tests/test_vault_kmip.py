@@ -60,6 +60,20 @@ def _add_global_vault_kmip(tde: TdeManager, kmip: KmipConfig, provider: str) -> 
     )
 
 
+def _activate_global_kmip_key(
+    cluster: PgCluster, key_name: str, provider: str
+) -> None:
+    """create_key alone does not configure the principal key; set server + DB keys."""
+    cluster.execute(
+        "SELECT pg_tde_set_server_key_using_global_key_provider("
+        f"'{key_name}', '{provider}')"
+    )
+    cluster.execute(
+        "SELECT pg_tde_set_key_using_global_key_provider("
+        f"'{key_name}', '{provider}')"
+    )
+
+
 class TestHashicorpVaultKmipRegisterSymmetricKey:
     """
     Reproduce Vault KMIP ``Register`` failures seen in the field (error code -2).
@@ -95,10 +109,13 @@ class TestHashicorpVaultKmipRegisterSymmetricKey:
         vault_kmip_config: KmipConfig,
     ):
         """
-        Customer SQL::
+        Customer SQL (repro target — register may return -2)::
 
             SELECT pg_tde_create_key_using_global_key_provider(
                 'kmip-key-12012025', 'kmip-provider-1');
+
+        After create_key succeeds, server + DB principal keys must be set
+        before ``tde_heap`` tables can be created.
         """
         provider = vault_kmip_provider_name()
         key_name = vault_kmip_key_name()
@@ -112,6 +129,7 @@ class TestHashicorpVaultKmipRegisterSymmetricKey:
         )
         if vault_kmip_require_register_success():
             cluster.execute(sql)
+            _activate_global_kmip_key(cluster, key_name, provider)
             cluster.execute(
                 "CREATE TABLE vault_kmip_t(id INT) USING tde_heap; "
                 "INSERT INTO vault_kmip_t VALUES (1);"
@@ -130,6 +148,7 @@ class TestHashicorpVaultKmipRegisterSymmetricKey:
                 )
             raise
 
+        _activate_global_kmip_key(cluster, key_name, provider)
         cluster.execute(
             "CREATE TABLE vault_kmip_t(id INT) USING tde_heap; "
             "INSERT INTO vault_kmip_t VALUES (1);"

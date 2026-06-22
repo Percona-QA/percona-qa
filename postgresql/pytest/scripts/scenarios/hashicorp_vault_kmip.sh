@@ -50,6 +50,8 @@ hc_kmip_scenario_2_create_key_global() {
     if [[ "${rc}" -eq 0 ]]; then
         hc_vault_pass "global create_key succeeded"
         hc_vault_psql -d postgres -c \
+            "SELECT pg_tde_set_server_key_using_global_key_provider('${KMIP_GLOBAL_KEY}','${KMIP_GLOBAL_PROVIDER}');"
+        hc_vault_psql -d postgres -c \
             "SELECT pg_tde_set_key_using_global_key_provider('${KMIP_GLOBAL_KEY}','${KMIP_GLOBAL_PROVIDER}');"
         hc_vault_psql -d postgres -c \
             "CREATE TABLE vault_kmip_g(id INT) USING tde_heap; INSERT INTO vault_kmip_g VALUES (1);"
