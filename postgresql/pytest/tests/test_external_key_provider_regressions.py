@@ -225,7 +225,7 @@ class TestVaultOpenBaoNamespaceRegression:
                 )
             token_file = str(
                 create_openbao_kv_only_token(
-                    run_dir=tmp_path / "pg1959_kvonly",
+                    run_dir=tmp_path / "pg1959_kvonly_policy",
                     bao_bin=Path(bao),
                     root_token=root_tok,
                     namespace=vault_config.namespace,
@@ -285,32 +285,35 @@ class TestVaultOpenBaoNamespaceRegression:
         keyfile = str(tmp_path / "pg1959_file11.per")
         cluster = _tde_cluster(pg_factory, tmp_path, "pg1959_del")
         tde = TdeManager(cluster)
+        vault_ring = "vault_keyring11_pg1959_del"
+        file_ring = "keyring_file11_pg1959_del"
+        server_key = "server_key_pg1959_del"
 
-        _add_global_vault(tde, vault_config, "vault_keyring11", tmp_path)
-        cluster.execute(
+        _add_global_vault(tde, vault_config, vault_ring, tmp_path)
+        tde._execute_create_global_key_allow_duplicate(
             "SELECT pg_tde_create_key_using_global_key_provider("
-            "'server_key', 'vault_keyring11')"
+            f"'{server_key}'::text, '{vault_ring}'::text)"
         )
         cluster.execute(
             "SELECT pg_tde_set_server_key_using_global_key_provider("
-            "'server_key', 'vault_keyring11')"
+            f"'{server_key}'::text, '{vault_ring}'::text)"
         )
         tde.enable_wal_encryption()
         cluster.restart()
         cluster.wait_ready(timeout=60)
 
-        tde.add_global_key_provider_file("keyring_file11", keyfile=keyfile)
-        cluster.execute(
+        tde.add_global_key_provider_file(file_ring, keyfile=keyfile)
+        tde._execute_create_global_key_allow_duplicate(
             "SELECT pg_tde_create_key_using_global_key_provider("
-            "'server_key', 'keyring_file11')"
+            f"'{server_key}'::text, '{file_ring}'::text)"
         )
         cluster.execute(
             "SELECT pg_tde_set_server_key_using_global_key_provider("
-            "'server_key', 'keyring_file11')"
+            f"'{server_key}'::text, '{file_ring}'::text)"
         )
 
         cluster.execute(
-            "SELECT pg_tde_delete_global_key_provider('vault_keyring11')"
+            f"SELECT pg_tde_delete_global_key_provider('{vault_ring}')"
         )
         names = [
             ln.strip()
@@ -319,5 +322,5 @@ class TestVaultOpenBaoNamespaceRegression:
             ).splitlines()
             if ln.strip()
         ]
-        assert "vault_keyring11" not in names
-        assert "keyring_file11" in names
+        assert vault_ring not in names
+        assert file_ring in names
