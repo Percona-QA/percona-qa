@@ -632,6 +632,7 @@ def pytest_collection_modifyitems(config, items):
         if (
             "kmip" in item.keywords
             and "kmip_revalidation" not in item.keywords
+            and "kmip_matrix" not in item.keywords
             and "vault_kmip" not in item.keywords
             and "kmip_build" not in item.keywords
             and not kmip_ready
