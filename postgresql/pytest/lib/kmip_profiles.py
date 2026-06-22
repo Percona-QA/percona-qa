@@ -179,3 +179,51 @@ def configure_kmip_profile_parametrize(metafunc, *, fixture_name: str = "kmip_se
         profiles,
         ids=lambda p: p.name,
     )
+
+
+def resolve_session_kmip_config(config) -> Tuple[Optional[KmipConfig], str]:
+    """
+    KMIP config for ``test_kmip.py`` (``kmip_config`` fixture) and collection skips.
+
+    Resolution order:
+    1. ``KMIP_SERVER_*`` / ``--kmip-server-address`` (Cosmian CI default)
+    2. Exactly one ready profile from ``KMIP_REVALIDATE_PROFILES`` (e.g. ``vault_kmip``)
+    """
+    from lib.kmip import KmipConfig, kmip_config_from_options, kmip_runtime_ready
+
+    if config is not None:
+        cfg = kmip_config_from_options(
+            host=config.getoption("--kmip-server-address"),
+            port=config.getoption("--kmip-server-port"),
+            client_cert=config.getoption("--kmip-client-ca"),
+            client_key=config.getoption("--kmip-client-key"),
+            server_ca=config.getoption("--kmip-server-ca"),
+        )
+        if cfg is not None:
+            ready, reason = kmip_runtime_ready(cfg)
+            if ready:
+                return cfg, ""
+            if config.getoption("--kmip-server-address"):
+                return None, reason
+
+    try:
+        profiles = resolve_kmip_profiles_for_pytest(config)
+    except Exception:
+        return None, "--kmip-server-address not provided"
+
+    if len(profiles) != 1:
+        return None, (
+            "--kmip-server-address not provided "
+            "(set KMIP_REVALIDATE_PROFILES to a single ready profile, e.g. vault_kmip)"
+        )
+
+    prof = profiles[0]
+    cfg = prof.load_config()
+    if cfg is None:
+        return None, (
+            f"{prof.name}: not configured (set {prof.env_prefix}HOST and cert paths)"
+        )
+    ready, reason = prof.readiness()
+    if not ready:
+        return None, reason
+    return cfg, ""

@@ -15,6 +15,7 @@ from lib.test_sections import (
     item_matches_skipped_section,
 )
 from lib.kmip import kmip_config_from_options, kmip_runtime_ready
+from lib.kmip_profiles import resolve_session_kmip_config
 from lib.vault import vault_config_from_options, vault_runtime_ready
 from lib.vault_kmip import vault_kmip_config_from_env, vault_kmip_runtime_ready
 from lib.cluster import (
@@ -460,23 +461,15 @@ def kmip_server_ca(request) -> str:
 @pytest.fixture(scope="session")
 def kmip_config(request):
     """
-    Parsed KMIP server settings when ``--kmip-server-address`` is set.
+    Parsed KMIP server settings for ``test_kmip.py``.
 
-    Skips tests when cert paths are missing or the server is unreachable.
-    See ``docs/kmip.md``.
+    Uses ``KMIP_SERVER_*`` or, when ``KMIP_REVALIDATE_PROFILES`` names a single
+    ready profile (e.g. ``vault_kmip``), that profile's env prefix.
+    See ``docs/kmip.md`` and ``docs/key_provider_matrix.md``.
     """
-    cfg = kmip_config_from_options(
-        host=request.config.getoption("--kmip-server-address"),
-        port=request.config.getoption("--kmip-server-port"),
-        client_cert=request.config.getoption("--kmip-client-ca"),
-        client_key=request.config.getoption("--kmip-client-key"),
-        server_ca=request.config.getoption("--kmip-server-ca"),
-    )
+    cfg, reason = resolve_session_kmip_config(request.config)
     if cfg is None:
-        pytest.skip("--kmip-server-address not provided")
-    ready, reason = kmip_runtime_ready(cfg)
-    if not ready:
-        pytest.skip(reason)
+        pytest.skip(reason or "--kmip-server-address not provided")
     return cfg
 
 
@@ -553,13 +546,8 @@ def pytest_collection_modifyitems(config, items):
         ca_path=config.getoption("--vault-ca-path"),
         namespace=config.getoption("--vault-namespace"),
     )
-    kmip_cfg = kmip_config_from_options(
-        host=config.getoption("--kmip-server-address"),
-        port=config.getoption("--kmip-server-port"),
-        client_cert=config.getoption("--kmip-client-ca"),
-        client_key=config.getoption("--kmip-client-key"),
-        server_ca=config.getoption("--kmip-server-ca"),
-    )
+    kmip_cfg, kmip_skip_reason = resolve_session_kmip_config(config)
+    kmip_ready = kmip_cfg is not None
     old_dir = config.getoption("--old-install-dir")
     upgrade_data_dir = config.getoption("--upgrade-data-dir")
 
@@ -574,9 +562,6 @@ def pytest_collection_modifyitems(config, items):
             "OpenBao not configured — source scripts/setup_openbao_for_pytest.sh "
             "(see docs/vault.md § Install OpenBao)"
         )
-    )
-    kmip_ready, kmip_skip_reason = (
-        kmip_runtime_ready(kmip_cfg) if kmip_cfg else (False, "")
     )
     vault_kmip_ready, vault_kmip_skip_reason = vault_kmip_runtime_ready()
     skip_kmip = pytest.mark.skip(

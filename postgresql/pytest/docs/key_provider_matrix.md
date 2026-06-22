@@ -95,7 +95,21 @@ KEY_PROVIDER_MATRIX=kmip ./scripts/run_key_provider_matrix.sh
 | `kmip` | Any KMIP-tagged test (includes matrix + extended) |
 | `vault` | Any Vault-tagged test |
 
-## Jenkins pattern
+### Extended suite (`test_kmip.py`)
+
+Uses ``KMIP_SERVER_*`` **or** a single profile from ``KMIP_REVALIDATE_PROFILES``:
+
+```bash
+# Cosmian extended (default)
+source scripts/setup_cosmian_for_pytest.sh
+pytest tests/test_kmip.py -v
+
+# Vault KMIP extended (same tests, vault_kmip env)
+source /tmp/vault_kmip_pytest.env
+KMIP_REVALIDATE_PROFILES=vault_kmip pytest tests/test_kmip.py -v
+```
+
+``@pytest.mark.cosmian`` tests still require local ``cosmian_kms``.
 
 One job per backend, same pytest modules, different secrets:
 
