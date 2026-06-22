@@ -9,7 +9,6 @@ See ``docs/kmip_revalidation.md`` and ``config/kmip_profiles.example.env``.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -17,34 +16,15 @@ import pytest
 from lib.kmip import KmipConfig
 from lib.kmip_profiles import (
     KmipServerProfile,
-    default_revalidate_profiles,
-    resolve_kmip_profiles,
+    configure_kmip_profile_parametrize,
 )
 from lib.kmip_revalidation import run_kmip_revalidation_checklist
 
 pytestmark = [pytest.mark.kmip, pytest.mark.kmip_revalidation]
 
 
-def _profile_list_from_config(config) -> str:
-    opt = config.getoption("--kmip-revalidate-profiles", default=None)
-    if opt:
-        return opt
-    return os.environ.get("KMIP_REVALIDATE_PROFILES") or default_revalidate_profiles()
-
-
 def pytest_generate_tests(metafunc):
-    if "kmip_server_profile" not in metafunc.fixturenames:
-        return
-    raw = _profile_list_from_config(metafunc.config)
-    try:
-        profiles = resolve_kmip_profiles(raw)
-    except ValueError as exc:
-        raise pytest.UsageError(str(exc)) from exc
-    metafunc.parametrize(
-        "kmip_server_profile",
-        profiles,
-        ids=lambda p: p.name,
-    )
+    configure_kmip_profile_parametrize(metafunc)
 
 
 @pytest.fixture

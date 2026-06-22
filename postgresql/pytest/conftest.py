@@ -161,6 +161,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         ),
     )
     parser.addoption(
+        "--vault-kv-profile",
+        default=os.environ.get("VAULT_KV_PROFILES", "")
+        or os.environ.get("VAULT_KV_PROFILE", ""),
+        help=(
+            "Vault KV profile(s): hashicorp, hashicorp_enterprise, openbao, "
+            "auto, all — see docs/key_provider_matrix.md"
+        ),
+    )
+    parser.addoption(
         "--old-install-dir",
         default=os.environ.get("OLD_INSTALL_DIR", ""),
         help="Older PG installation used as the upgrade source",

@@ -21,7 +21,7 @@ TEST_SECTIONS: Dict[str, FrozenSet[str]] = {
     "pgbackrest": frozenset({"pgbackrest"}),
     "vault": frozenset({"vault", "openbao"}),
     "openbao": frozenset({"openbao"}),
-    "kmip": frozenset({"kmip", "kmip_revalidation", "vault_kmip"}),
+    "kmip": frozenset({"kmip", "kmip_revalidation", "kmip_matrix", "vault_kmip"}),
     "waldump": frozenset({"waldump"}),
     "docker": frozenset({"docker"}),
     "bug": frozenset({"bug"}),

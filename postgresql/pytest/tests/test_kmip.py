@@ -20,7 +20,10 @@ API. These tests exercise that stack at runtime via:
 
 Vault / OpenBao: ``tests/test_vault_providers.py`` (``@pytest.mark.vault``).
 
-Prerequisites: see ``docs/kmip.md`` and ``scripts/setup_cosmian_for_pytest.sh``.
+Prerequisites: see ``docs/kmip.md``, ``docs/key_provider_matrix.md``, and
+``scripts/setup_cosmian_for_pytest.sh``.
+
+Shared cross-server scenarios: ``tests/test_kmip_common_matrix.py`` (all profiles).
 Advanced scenario matrix: ``docs/kmip_advanced.md``.
 """
 from __future__ import annotations

@@ -137,3 +137,45 @@ def resolve_kmip_profiles(raw: str) -> List[KmipServerProfile]:
 
 def profiles_help_text() -> str:
     return "Profiles: " + ", ".join(ALL_KMIP_PROFILE_NAMES) + " (or 'all')"
+
+
+def kmip_revalidate_profiles_from_config(config) -> str:
+    """CLI/env string for ``KMIP_REVALIDATE_PROFILES`` (pytest ``config`` or None)."""
+    if config is not None:
+        opt = config.getoption("--kmip-revalidate-profiles", default=None)
+        if opt:
+            return opt
+    return os.environ.get("KMIP_REVALIDATE_PROFILES") or default_revalidate_profiles()
+
+
+def resolve_kmip_profiles_for_pytest(config) -> List[KmipServerProfile]:
+    """Parse profiles; raise ``pytest.UsageError`` on unknown names."""
+    import pytest
+
+    raw = kmip_revalidate_profiles_from_config(config)
+    try:
+        return resolve_kmip_profiles(raw)
+    except ValueError as exc:
+        raise pytest.UsageError(str(exc)) from exc
+
+
+def ready_kmip_profiles(profiles: List[KmipServerProfile]) -> List[KmipServerProfile]:
+    """Profiles with host + certs + TCP reachable."""
+    out: List[KmipServerProfile] = []
+    for prof in profiles:
+        ok, _ = prof.readiness()
+        if ok:
+            out.append(prof)
+    return out
+
+
+def configure_kmip_profile_parametrize(metafunc, *, fixture_name: str = "kmip_server_profile") -> None:
+    """Register ``KMIP_REVALIDATE_PROFILES`` parametrization on ``metafunc``."""
+    if fixture_name not in metafunc.fixturenames:
+        return
+    profiles = resolve_kmip_profiles_for_pytest(metafunc.config)
+    metafunc.parametrize(
+        fixture_name,
+        profiles,
+        ids=lambda p: p.name,
+    )
