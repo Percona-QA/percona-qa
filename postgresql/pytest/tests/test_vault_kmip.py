@@ -74,6 +74,38 @@ def _activate_global_kmip_key(
     )
 
 
+def _create_global_kmip_key_customer_repro(
+    tde: TdeManager,
+    *,
+    key_name: str,
+    provider: str,
+    strict_register: bool,
+) -> None:
+    """
+    Customer ``create_key`` SQL against a shared Vault KMIP server.
+
+    Keys persist in Vault between pytest runs, so ``already exists`` is OK.
+    Register ``-2`` still xfails when not in strict mode.
+    """
+    sql = (
+        "SELECT pg_tde_create_key_using_global_key_provider("
+        f"'{key_name}', '{provider}')"
+    )
+    if strict_register:
+        tde._execute_create_global_key_allow_duplicate(sql)
+        return
+    try:
+        tde._execute_create_global_key_allow_duplicate(sql)
+    except RuntimeError as exc:
+        if is_vault_kmip_register_minus_two_error(exc):
+            pytest.xfail(
+                "Known Vault KMIP issue: register symmetric key returned -2 "
+                f"({exc!s}). Use Vault KV v2 for HashiCorp, or fix KMIP Register "
+                "compatibility in pg_tde/libkmip."
+            )
+        raise
+
+
 class TestHashicorpVaultKmipRegisterSymmetricKey:
     """
     Reproduce Vault KMIP ``Register`` failures seen in the field (error code -2).
@@ -114,8 +146,8 @@ class TestHashicorpVaultKmipRegisterSymmetricKey:
             SELECT pg_tde_create_key_using_global_key_provider(
                 'kmip-key-12012025', 'kmip-provider-1');
 
-        After create_key succeeds, server + DB principal keys must be set
-        before ``tde_heap`` tables can be created.
+        After create_key succeeds (or key already exists in Vault KMIP), server + DB
+        principal keys must be set before ``tde_heap`` tables can be created.
         """
         provider = vault_kmip_provider_name()
         key_name = vault_kmip_key_name()
@@ -123,31 +155,12 @@ class TestHashicorpVaultKmipRegisterSymmetricKey:
         tde = TdeManager(cluster)
         _add_global_vault_kmip(tde, vault_kmip_config, provider)
 
-        sql = (
-            "SELECT pg_tde_create_key_using_global_key_provider("
-            f"'{key_name}', '{provider}')"
+        _create_global_kmip_key_customer_repro(
+            tde,
+            key_name=key_name,
+            provider=provider,
+            strict_register=vault_kmip_require_register_success(),
         )
-        if vault_kmip_require_register_success():
-            cluster.execute(sql)
-            _activate_global_kmip_key(cluster, key_name, provider)
-            cluster.execute(
-                "CREATE TABLE vault_kmip_t(id INT) USING tde_heap; "
-                "INSERT INTO vault_kmip_t VALUES (1);"
-            )
-            assert cluster.fetchone("SELECT * FROM vault_kmip_t").strip() == "1"
-            return
-
-        try:
-            cluster.execute(sql)
-        except RuntimeError as exc:
-            if is_vault_kmip_register_minus_two_error(exc):
-                pytest.xfail(
-                    "Known Vault KMIP issue: register symmetric key returned -2 "
-                    f"({exc!s}). Use Vault KV v2 for HashiCorp, or fix KMIP Register "
-                    "compatibility in pg_tde/libkmip."
-                )
-            raise
-
         _activate_global_kmip_key(cluster, key_name, provider)
         cluster.execute(
             "CREATE TABLE vault_kmip_t(id INT) USING tde_heap; "

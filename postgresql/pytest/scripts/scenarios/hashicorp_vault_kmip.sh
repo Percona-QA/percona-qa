@@ -49,26 +49,27 @@ hc_kmip_scenario_2_create_key_global() {
     err="$(hc_vault_psql -d postgres -c "${sql}" 2>&1)" || rc=$?
     if [[ "${rc}" -eq 0 ]]; then
         hc_vault_pass "global create_key succeeded"
-        hc_vault_psql -d postgres -c \
-            "SELECT pg_tde_set_server_key_using_global_key_provider('${KMIP_GLOBAL_KEY}','${KMIP_GLOBAL_PROVIDER}');"
-        hc_vault_psql -d postgres -c \
-            "SELECT pg_tde_set_key_using_global_key_provider('${KMIP_GLOBAL_KEY}','${KMIP_GLOBAL_PROVIDER}');"
-        hc_vault_psql -d postgres -c \
-            "CREATE TABLE vault_kmip_g(id INT) USING tde_heap; INSERT INTO vault_kmip_g VALUES (1);"
-        hc_vault_restart_pg
-        hc_vault_assert_row postgres "SELECT id FROM vault_kmip_g" "1"
-        return 0
-    fi
-    if hc_kmip_is_register_minus_two "${err}"; then
+    elif grep -qi 'already exists' <<<"${err}"; then
+        hc_vault_pass "global create_key skipped (already exists in Vault KMIP)"
+    elif hc_kmip_is_register_minus_two "${err}"; then
         if [[ "${VAULT_KMIP_REQUIRE_REGISTER_SUCCESS:-0}" == "1" ]]; then
             hc_vault_fail "Register -2 still present but VAULT_KMIP_REQUIRE_REGISTER_SUCCESS=1"
             return 1
         fi
         hc_vault_xfail "Register symmetric key -2 (known Vault KMIP issue): ${err}"
         return 0
+    else
+        hc_vault_fail "unexpected create_key error: ${err}"
+        return 1
     fi
-    hc_vault_fail "unexpected create_key error: ${err}"
-    return 1
+    hc_vault_psql -d postgres -c \
+        "SELECT pg_tde_set_server_key_using_global_key_provider('${KMIP_GLOBAL_KEY}','${KMIP_GLOBAL_PROVIDER}');"
+    hc_vault_psql -d postgres -c \
+        "SELECT pg_tde_set_key_using_global_key_provider('${KMIP_GLOBAL_KEY}','${KMIP_GLOBAL_PROVIDER}');"
+    hc_vault_psql -d postgres -c \
+        "CREATE TABLE vault_kmip_g(id INT) USING tde_heap; INSERT INTO vault_kmip_g VALUES (1);"
+    hc_vault_restart_pg
+    hc_vault_assert_row postgres "SELECT id FROM vault_kmip_g" "1"
 }
 
 hc_kmip_scenario_3_create_key_database() {
@@ -79,24 +80,25 @@ hc_kmip_scenario_3_create_key_database() {
     err="$(hc_vault_psql -d postgres -c "${sql}" 2>&1)" || rc=$?
     if [[ "${rc}" -eq 0 ]]; then
         hc_vault_pass "database create_key succeeded"
-        hc_vault_psql -d postgres -c \
-            "SELECT pg_tde_set_key_using_database_key_provider('${KMIP_DB_KEY}','${KMIP_DB_PROVIDER}');"
-        hc_vault_psql -d postgres -c \
-            "CREATE TABLE vault_kmip_d(id INT) USING tde_heap; INSERT INTO vault_kmip_d VALUES (2);"
-        hc_vault_restart_pg
-        hc_vault_assert_row postgres "SELECT id FROM vault_kmip_d" "2"
-        return 0
-    fi
-    if hc_kmip_is_register_minus_two "${err}"; then
+    elif grep -qi 'already exists' <<<"${err}"; then
+        hc_vault_pass "database create_key skipped (already exists in Vault KMIP)"
+    elif hc_kmip_is_register_minus_two "${err}"; then
         if [[ "${VAULT_KMIP_REQUIRE_REGISTER_SUCCESS:-0}" == "1" ]]; then
             hc_vault_fail "Register -2 on database provider"
             return 1
         fi
         hc_vault_xfail "database Register -2 (known): ${err}"
         return 0
+    else
+        hc_vault_fail "unexpected database create_key error: ${err}"
+        return 1
     fi
-    hc_vault_fail "unexpected database create_key error: ${err}"
-    return 1
+    hc_vault_psql -d postgres -c \
+        "SELECT pg_tde_set_key_using_database_key_provider('${KMIP_DB_KEY}','${KMIP_DB_PROVIDER}');"
+    hc_vault_psql -d postgres -c \
+        "CREATE TABLE vault_kmip_d(id INT) USING tde_heap; INSERT INTO vault_kmip_d VALUES (2);"
+    hc_vault_restart_pg
+    hc_vault_assert_row postgres "SELECT id FROM vault_kmip_d" "2"
 }
 
 hc_kmip_scenario_4_verify_key() {
