@@ -147,16 +147,15 @@ hc_vault_check_vault_api() {
 }
 
 hc_vault_check_kmip_files() {
-    local label path
-    for label path in \
-        "client cert" "${KMIP_VAULT_CLIENT_CERT}" \
-        "client key" "${KMIP_VAULT_CLIENT_KEY}" \
-        "server CA" "${KMIP_VAULT_SERVER_CA}"; do
-        [[ -f "${path}" ]] || {
-            hc_vault_fail "KMIP ${label} missing: ${path}"
+    _hc_kmip_file_ok() {
+        [[ -f "$2" ]] || {
+            hc_vault_fail "KMIP $1 missing: $2"
             return 1
         }
-    done
+    }
+    _hc_kmip_file_ok "client cert" "${KMIP_VAULT_CLIENT_CERT}" || return 1
+    _hc_kmip_file_ok "client key" "${KMIP_VAULT_CLIENT_KEY}" || return 1
+    _hc_kmip_file_ok "server CA" "${KMIP_VAULT_SERVER_CA}" || return 1
     hc_vault_pass "KMIP cert files present"
 }
 
