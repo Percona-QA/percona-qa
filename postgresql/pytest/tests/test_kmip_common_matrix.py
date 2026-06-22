@@ -19,6 +19,12 @@ import pytest
 
 from lib.kmip import KmipConfig
 from lib.kmip_common_matrix import (
+    run_kmip_change_database_provider_updates_options,
+    run_kmip_change_database_provider_while_in_use,
+    run_kmip_change_global_provider_updates_options,
+    run_kmip_change_global_provider_while_in_use,
+    run_kmip_change_nonexistent_database_provider_fails,
+    run_kmip_change_nonexistent_global_provider_fails,
     run_kmip_file_and_kmip_multi_db,
     run_kmip_global_smoke,
     run_kmip_key_rotation,
@@ -79,5 +85,79 @@ class TestKmipCommonMatrix:
         kmip_profile_config: KmipConfig,
     ):
         run_kmip_file_and_kmip_multi_db(
+            kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
+        )
+
+
+class TestKmipChangeKeyProviderSql:
+    """
+    Online ``pg_tde_change_*_key_provider_kmip`` (Percona docs).
+
+    Same scenarios for every ``KMIP_REVALIDATE_PROFILES`` backend (default cosmian).
+    """
+
+    def test_change_database_kmip_provider_updates_options(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_server_profile: KmipServerProfile,
+        kmip_profile_config: KmipConfig,
+    ):
+        run_kmip_change_database_provider_updates_options(
+            kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
+        )
+
+    def test_change_global_kmip_provider_updates_options(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_server_profile: KmipServerProfile,
+        kmip_profile_config: KmipConfig,
+    ):
+        run_kmip_change_global_provider_updates_options(
+            kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
+        )
+
+    def test_change_database_kmip_provider_while_in_use_keeps_data_readable(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_server_profile: KmipServerProfile,
+        kmip_profile_config: KmipConfig,
+    ):
+        run_kmip_change_database_provider_while_in_use(
+            kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
+        )
+
+    def test_change_global_kmip_provider_while_in_use_keeps_data_readable(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_server_profile: KmipServerProfile,
+        kmip_profile_config: KmipConfig,
+    ):
+        run_kmip_change_global_provider_while_in_use(
+            kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
+        )
+
+    def test_change_nonexistent_database_kmip_provider_fails(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_server_profile: KmipServerProfile,
+        kmip_profile_config: KmipConfig,
+    ):
+        run_kmip_change_nonexistent_database_provider_fails(
+            kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
+        )
+
+    def test_change_nonexistent_global_kmip_provider_fails(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_server_profile: KmipServerProfile,
+        kmip_profile_config: KmipConfig,
+    ):
+        run_kmip_change_nonexistent_global_provider_fails(
             kmip_server_profile, kmip_profile_config, pg_factory, tmp_path
         )

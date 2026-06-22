@@ -1936,8 +1936,9 @@ class TestPgTdeChangeKeyProviderSql:
     update a *running* cluster's catalog and reload the provider
     config on the fly.
 
-    File-provider scope only — vault / kmip variants need external
-    services and stay in the TAP suite for now.
+    File providers only — vault / kmip online change variants are in
+    ``tests/test_kmip_common_matrix.py::TestKmipChangeKeyProviderSql`` and
+    ``tests/test_vault_hashicorp_parity.py``.
     """
 
     def test_change_database_file_provider_updates_options(

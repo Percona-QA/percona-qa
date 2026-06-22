@@ -52,7 +52,8 @@ Shared scenarios (per profile):
 1. Global provider smoke + restart  
 2. Key rotation  
 3. Multi-DB file + KMIP  
-4. Full checklist (revalidation module): DB-scoped provider, rotation, restart  
+4. Online ``change_*_key_provider_kmip`` (database + global scope)  
+5. Full checklist (revalidation module): DB-scoped provider, rotation, restart  
 
 ## Vault KV profiles
 

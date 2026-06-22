@@ -405,6 +405,60 @@ class TdeManager:
             dbname=dbname,
         )
 
+    def change_database_key_provider_kmip(
+        self,
+        provider_name: str,
+        *,
+        host: str,
+        port: int,
+        cert_path: str,
+        key_path: str,
+        ca_path: str = "",
+        dbname: str = "postgres",
+    ) -> None:
+        """Reconfigure an existing database-scope KMIP provider (online SQL)."""
+        fn = self._first_func(["pg_tde_change_database_key_provider_kmip"])
+        if fn is None:
+            raise RuntimeError(
+                "pg_tde_change_database_key_provider_kmip not found in pg_proc"
+            )
+        self._sql_add_kmip_provider(
+            fn,
+            provider_name,
+            host,
+            port,
+            cert_path,
+            key_path,
+            ca_path,
+            dbname=dbname,
+        )
+
+    def change_global_key_provider_kmip(
+        self,
+        provider_name: str,
+        *,
+        host: str,
+        port: int,
+        cert_path: str,
+        key_path: str,
+        ca_path: str = "",
+    ) -> None:
+        """Reconfigure an existing global-scope KMIP provider (online SQL)."""
+        fn = self._first_func(["pg_tde_change_global_key_provider_kmip"])
+        if fn is None:
+            raise RuntimeError(
+                "pg_tde_change_global_key_provider_kmip not found in pg_proc"
+            )
+        self._sql_add_kmip_provider(
+            fn,
+            provider_name,
+            host,
+            port,
+            cert_path,
+            key_path,
+            ca_path,
+        )
+
     def set_global_default_principal_key(
         self,
         key_name: str,

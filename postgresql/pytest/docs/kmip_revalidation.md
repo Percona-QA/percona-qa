@@ -40,6 +40,8 @@ Each profile runs `tests/test_kmip_server_revalidation.py`:
 
 Then run the **deeper** suites on at least one lab server per vendor:
 
+- `tests/test_kmip_common_matrix.py` — shared scenarios including online
+  ``pg_tde_change_*_key_provider_kmip`` (database + global scope)
 - `tests/test_kmip.py` — bash parity, delete, offline `change_key_provider`, negatives
 - `tests/test_external_key_provider_regressions.py::TestKmipCppClientRegression` — PG-2125 lifecycle
 

@@ -97,3 +97,248 @@ def run_kmip_file_and_kmip_multi_db(
     cluster.wait_ready(timeout=90)
     assert cluster.fetchone("SELECT a FROM t1", "db1").strip() == "10"
     assert cluster.fetchone("SELECT a FROM t2", "db2").strip() == "20"
+
+
+def _provider_row(
+    cluster: PgCluster,
+    name: str,
+    *,
+    scope: str,
+    dbname: str = "postgres",
+) -> tuple[str, str]:
+    listing_fn = (
+        "pg_tde_list_all_global_key_providers"
+        if scope == "global"
+        else "pg_tde_list_all_database_key_providers"
+    )
+    row = cluster.execute(
+        f"SELECT type || '|' || options::text "
+        f"FROM {listing_fn}() WHERE name = '{name}'",
+        dbname,
+    ).strip()
+    assert row, f"provider {name!r} not found in {scope} listing"
+    typ, opts = row.split("|", 1)
+    return typ.strip(), opts.strip()
+
+
+def _assert_kmip_options(opts: str, kmip: KmipConfig) -> None:
+    assert kmip.connect_host() in opts, (
+        f"KMIP options {opts!r} missing host {kmip.connect_host()!r}"
+    )
+    assert str(kmip.port) in opts, (
+        f"KMIP options {opts!r} missing port {kmip.port!r}"
+    )
+    assert kmip.client_cert in opts, (
+        f"KMIP options {opts!r} missing client cert {kmip.client_cert!r}"
+    )
+
+
+def run_kmip_change_database_provider_updates_options(
+    profile: KmipServerProfile,
+    kmip: KmipConfig,
+    pg_factory,
+    tmp_path: Path,
+) -> None:
+    """``pg_tde_change_database_key_provider_kmip`` overwrites catalog options."""
+    tag = _tag(profile)
+    cluster = new_tde_cluster(pg_factory, tmp_path, f"chgdb_{tag}")
+    tde = TdeManager(cluster)
+    ring = f"chgdb_{tag}_ring"
+    tde.add_database_key_provider_kmip(
+        ring,
+        host=kmip.connect_host(),
+        port=kmip.port,
+        cert_path=kmip.client_cert,
+        key_path=kmip.client_key,
+        ca_path=kmip.server_ca,
+    )
+    typ, before = _provider_row(cluster, ring, scope="database")
+    assert typ == "kmip"
+    _assert_kmip_options(before, kmip)
+
+    tde.change_database_key_provider_kmip(
+        ring,
+        host=kmip.connect_host(),
+        port=kmip.port,
+        cert_path=kmip.client_cert,
+        key_path=kmip.client_key,
+        ca_path=kmip.server_ca,
+    )
+    typ, after = _provider_row(cluster, ring, scope="database")
+    assert typ == "kmip"
+    _assert_kmip_options(after, kmip)
+
+
+def run_kmip_change_global_provider_updates_options(
+    profile: KmipServerProfile,
+    kmip: KmipConfig,
+    pg_factory,
+    tmp_path: Path,
+) -> None:
+    """``pg_tde_change_global_key_provider_kmip`` overwrites catalog options."""
+    tag = _tag(profile)
+    cluster = new_tde_cluster(pg_factory, tmp_path, f"chgg_{tag}")
+    tde = TdeManager(cluster)
+    ring = f"chgg_{tag}_ring"
+    add_global_kmip(tde, kmip, ring)
+    typ, before = _provider_row(cluster, ring, scope="global")
+    assert typ == "kmip"
+    _assert_kmip_options(before, kmip)
+
+    tde.change_global_key_provider_kmip(
+        ring,
+        host=kmip.connect_host(),
+        port=kmip.port,
+        cert_path=kmip.client_cert,
+        key_path=kmip.client_key,
+        ca_path=kmip.server_ca,
+    )
+    typ, after = _provider_row(cluster, ring, scope="global")
+    assert typ == "kmip"
+    _assert_kmip_options(after, kmip)
+
+
+def run_kmip_change_database_provider_while_in_use(
+    profile: KmipServerProfile,
+    kmip: KmipConfig,
+    pg_factory,
+    tmp_path: Path,
+) -> None:
+    """
+    Online KMIP reconfiguration while encrypted data exists (port of
+    ``t/069_change_database_key_provider_and_verify_data_integrity.pl`` KMIP step).
+    """
+    tag = _tag(profile)
+    cluster = new_tde_cluster(pg_factory, tmp_path, f"chgdb_use_{tag}")
+    tde = TdeManager(cluster)
+    ring = f"chgdb_use_{tag}_ring"
+    key = f"chgdb_use_{tag}_key"
+    tde.add_database_key_provider_kmip(
+        ring,
+        host=kmip.connect_host(),
+        port=kmip.port,
+        cert_path=kmip.client_cert,
+        key_path=kmip.client_key,
+        ca_path=kmip.server_ca,
+    )
+    tde.set_database_principal_key(key, ring)
+    cluster.execute(
+        "CREATE TABLE kmip_chg_db_t(id INT, payload TEXT) USING tde_heap; "
+        "INSERT INTO kmip_chg_db_t SELECT i, md5(i::text) FROM generate_series(1, 50) i"
+    )
+    cluster.execute("CHECKPOINT")
+
+    tde.change_database_key_provider_kmip(
+        ring,
+        host=kmip.connect_host(),
+        port=kmip.port,
+        cert_path=kmip.client_cert,
+        key_path=kmip.client_key,
+        ca_path=kmip.server_ca,
+    )
+    assert cluster.fetchone("SELECT COUNT(*) FROM kmip_chg_db_t") == "50"
+    cluster.execute("SELECT pg_tde_verify_key()")
+
+    cluster.restart()
+    cluster.wait_ready(timeout=90)
+    assert cluster.fetchone("SELECT COUNT(*) FROM kmip_chg_db_t") == "50"
+    cluster.execute("SELECT pg_tde_verify_key()")
+
+
+def run_kmip_change_global_provider_while_in_use(
+    profile: KmipServerProfile,
+    kmip: KmipConfig,
+    pg_factory,
+    tmp_path: Path,
+) -> None:
+    """Global KMIP provider reconfiguration with active principal key + encrypted table."""
+    tag = _tag(profile)
+    cluster = new_tde_cluster(pg_factory, tmp_path, f"chgg_use_{tag}")
+    tde = TdeManager(cluster)
+    ring = f"chgg_use_{tag}_ring"
+    key = f"chgg_use_{tag}_key"
+    add_global_kmip(tde, kmip, ring)
+    tde.set_global_principal_key(key, ring)
+    cluster.execute(
+        "CREATE TABLE kmip_chg_g_t(id INT) USING tde_heap; "
+        "INSERT INTO kmip_chg_g_t SELECT generate_series(1, 80)"
+    )
+    cluster.execute("CHECKPOINT")
+
+    tde.change_global_key_provider_kmip(
+        ring,
+        host=kmip.connect_host(),
+        port=kmip.port,
+        cert_path=kmip.client_cert,
+        key_path=kmip.client_key,
+        ca_path=kmip.server_ca,
+    )
+    assert cluster.fetchone("SELECT COUNT(*) FROM kmip_chg_g_t") == "80"
+    cluster.execute("SELECT pg_tde_verify_key()")
+
+    cluster.restart()
+    cluster.wait_ready(timeout=90)
+    assert cluster.fetchone("SELECT COUNT(*) FROM kmip_chg_g_t") == "80"
+    cluster.execute("SELECT pg_tde_verify_server_key()")
+
+
+def run_kmip_change_nonexistent_database_provider_fails(
+    profile: KmipServerProfile,
+    kmip: KmipConfig,
+    pg_factory,
+    tmp_path: Path,
+) -> None:
+    tag = _tag(profile)
+    cluster = new_tde_cluster(pg_factory, tmp_path, f"chgdb_ghost_{tag}")
+    tde = TdeManager(cluster)
+    try:
+        tde.change_database_key_provider_kmip(
+            "ghost_kmip_ring",
+            host=kmip.connect_host(),
+            port=kmip.port,
+            cert_path=kmip.client_cert,
+            key_path=kmip.client_key,
+            ca_path=kmip.server_ca,
+        )
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        assert (
+            "ghost_kmip_ring" in msg
+            or "does not exist" in msg
+            or "not found" in msg
+        ), f"expected missing-provider error; got: {exc!r}"
+        return
+    raise AssertionError(
+        "pg_tde_change_database_key_provider_kmip should fail for unknown provider"
+    )
+
+
+def run_kmip_change_nonexistent_global_provider_fails(
+    profile: KmipServerProfile,
+    kmip: KmipConfig,
+    pg_factory,
+    tmp_path: Path,
+) -> None:
+    tag = _tag(profile)
+    cluster = new_tde_cluster(pg_factory, tmp_path, f"chgg_ghost_{tag}")
+    tde = TdeManager(cluster)
+    try:
+        tde.change_global_key_provider_kmip(
+            "ghost_global_kmip",
+            host=kmip.connect_host(),
+            port=kmip.port,
+            cert_path=kmip.client_cert,
+            key_path=kmip.client_key,
+            ca_path=kmip.server_ca,
+        )
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        assert (
+            "ghost_global_kmip" in msg
+            or "does not exist" in msg
+            or "not found" in msg
+        ), f"expected missing-provider error; got: {exc!r}"
+        return
+    raise AssertionError(
+        "pg_tde_change_global_key_provider_kmip should fail for unknown provider"
+    )
