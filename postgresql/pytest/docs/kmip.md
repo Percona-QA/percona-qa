@@ -11,6 +11,10 @@ Recent pg_tde builds ([PR #595](https://github.com/percona/pg_tde/pull/595))
 use the C++ **libkmip** submodule (`subprojects/libkmip`, `kmipclient::Kmip`)
 for register / locate / get / validate instead of the legacy C libkmip BIO API.
 
+**Full test catalog:** [kmip_test_coverage.md](kmip_test_coverage.md).
+
+**Fortanix DSM lab setup:** [fortanix_kmip_setup.md](fortanix_kmip_setup.md).
+
 ## Prerequisites
 
 1. **pg_tde with KMIP** — extension loads; SQL functions exist.

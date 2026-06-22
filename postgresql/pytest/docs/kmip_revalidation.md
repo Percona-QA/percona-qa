@@ -13,7 +13,7 @@ supported KMIP provider.
 | Profile ID | Vendor | Percona docs | Automation |
 |------------|--------|--------------|------------|
 | `cosmian` | Cosmian KMS | [Cosmian integration](https://docs.cosmian.com/key_management_system/integrations/databases/percona/) | **CI (every build)** — `setup_cosmian_for_pytest.sh` |
-| `fortanix` | Fortanix DSM | [Fortanix](https://docs.percona.com/pg-tde/global-key-provider-configuration/fortanix.html) | Scheduled / manual sign-off |
+| `fortanix` | Fortanix DSM | [Fortanix](https://docs.percona.com/pg-tde/global-key-provider-configuration/fortanix.html) · [Lab setup](fortanix_kmip_setup.md) | Scheduled / manual sign-off |
 | `thales` | Thales CipherTrust Manager | [Thales](https://docs.percona.com/pg-tde/global-key-provider-configuration/thales.html) | Scheduled / manual sign-off |
 | `akeyless` | Akeyless | [Akeyless](https://docs.percona.com/pg-tde/global-key-provider-configuration/akeyless.html) | Scheduled / manual sign-off |
 | `vault_kmip` | HashiCorp Vault KMIP engine | [Vault KMIP](https://developer.hashicorp.com/vault/docs/secrets/kmip) | On demand (not production path) |
