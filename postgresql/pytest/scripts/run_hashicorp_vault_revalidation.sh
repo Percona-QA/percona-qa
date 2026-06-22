@@ -16,6 +16,9 @@
 #   export HC_VAULT_USE_EXISTING_PG=1
 #   export PORT=5432
 #
+# Reuse PGDATA from a prior run (not recommended):
+#   export HC_VAULT_FRESH_CLUSTER=0
+#
 # Pytest equivalent (after sourcing the same env):
 #   ./scripts/run_hashicorp_vault_revalidation.sh --pytest
 #
@@ -68,6 +71,8 @@ printf '  VAULT_NAMESPACE=%s\n' "${VAULT_NAMESPACE:-<unset>}"
 printf '  VAULT_TOKEN_FILE=%s\n' "${VAULT_TOKEN_FILE:-<unset>}"
 printf '  KMIP=%s:%s\n' "${KMIP_VAULT_HOST:-<unset>}" "${KMIP_VAULT_PORT:-5696}"
 printf '  INSTALL_DIR=%s\n' "${INSTALL_DIR:-<unset>}"
+printf '  PGDATA=%s  PORT=%s  fresh_cluster=%s\n' \
+    "${PGDATA:-<unset>}" "${PORT:-<unset>}" "${HC_VAULT_FRESH_CLUSTER:-1}"
 printf '  suites=%s\n\n' "${HC_VAULT_SUITES}"
 
 hc_vault_check_vault_api

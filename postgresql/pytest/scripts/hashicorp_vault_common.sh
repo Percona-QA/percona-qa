@@ -185,6 +185,14 @@ hc_vault_stop_pg() {
     "${PG_CTL}" -D "${PGDATA}" -m fast stop >/dev/null 2>&1 || true
 }
 
+hc_vault_reset_pg_cluster() {
+    [[ "${HC_VAULT_USE_EXISTING_PG:-0}" == "1" ]] && return 0
+    hc_vault_init_pg_tools
+    hc_vault_stop_pg
+    rm -rf "${PGDATA}"
+    hc_vault_say "fresh PGDATA at ${PGDATA}"
+}
+
 hc_vault_start_pg() {
     [[ "${HC_VAULT_USE_EXISTING_PG:-0}" == "1" ]] && return 0
     mkdir -p "${PGDATA}"
@@ -222,7 +230,11 @@ hc_vault_setup_pg() {
         return 0
     fi
     mkdir -p "${RUN_DIR}"
-    hc_vault_stop_pg
+    if [[ "${HC_VAULT_FRESH_CLUSTER:-1}" == "1" ]]; then
+        hc_vault_reset_pg_cluster
+    else
+        hc_vault_stop_pg
+    fi
     hc_vault_start_pg
     hc_vault_pass "PostgreSQL started (${PGDATA}, port ${PORT})"
 }

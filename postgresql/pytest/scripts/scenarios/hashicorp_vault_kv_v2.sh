@@ -11,7 +11,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../hashicorp_vault_common.sh
 source "${SCRIPT_DIR}/../hashicorp_vault_common.sh"
 
-KEYFILE="${RUN_DIR}/keyring.file"
+KEYFILE_MULTI="${RUN_DIR}/keyring_multi.file"
+KEYFILE_DEL="${RUN_DIR}/keyring_del.file"
+KEYFILE_DEFAULT="${RUN_DIR}/keyring_default.file"
 
 hc_vault_scenario_1_global_smoke() {
     hc_vault_hr
@@ -48,10 +50,10 @@ hc_vault_scenario_2_key_rotation() {
 hc_vault_scenario_3_multi_db_vault_and_file() {
     hc_vault_hr
     hc_vault_say "Scenario 3: multi-database — db1 Vault, db3 file"
-    rm -f "${KEYFILE}"
+    rm -f "${KEYFILE_MULTI}"
     hc_vault_add_global_vault_v2 "vault_keyring2"
     hc_vault_psql -d postgres -c \
-        "SELECT pg_tde_add_global_key_provider_file('file_keyring2','${KEYFILE}');"
+        "SELECT pg_tde_add_global_key_provider_file('file_keyring2','${KEYFILE_MULTI}');"
     for db in db1 db3; do
         hc_vault_psql -d postgres -c "DROP DATABASE IF EXISTS ${db};"
         hc_vault_psql -d postgres -c "CREATE DATABASE ${db};"
@@ -92,9 +94,9 @@ hc_vault_scenario_4_database_scoped_provider() {
 hc_vault_scenario_5_delete_unused_global() {
     hc_vault_hr
     hc_vault_say "Scenario 5: delete unused global Vault provider"
-    rm -f "${KEYFILE}"
+    rm -f "${KEYFILE_DEL}"
     hc_vault_psql -d postgres -c \
-        "SELECT pg_tde_add_global_key_provider_file('file_ring','${KEYFILE}');"
+        "SELECT pg_tde_add_global_key_provider_file('file_ring','${KEYFILE_DEL}');"
     hc_vault_add_global_vault_v2 "vault_keyring3"
     hc_vault_psql -d postgres -c \
         "SELECT pg_tde_create_key_using_global_key_provider('file_key','file_ring');"
@@ -157,9 +159,9 @@ hc_vault_scenario_8_namespace_default_key() {
         hc_vault_xfail "VAULT_NAMESPACE not set — skip"
         return 0
     fi
-    rm -f "${KEYFILE}"
+    rm -f "${KEYFILE_DEFAULT}"
     hc_vault_psql -d postgres -c \
-        "SELECT pg_tde_add_global_key_provider_file('file_keyring3','${KEYFILE}');"
+        "SELECT pg_tde_add_global_key_provider_file('file_keyring3','${KEYFILE_DEFAULT}');"
     hc_vault_psql -d postgres -c \
         "SELECT pg_tde_create_key_using_global_key_provider('file_key3','file_keyring3');"
     hc_vault_psql -d postgres -c \

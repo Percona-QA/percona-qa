@@ -25,7 +25,11 @@ hc_vault_apply_defaults() {
     export PORT="${PORT:-5433}"
     export PGUSER="${PGUSER:-$(id -un)}"
     export PGDATA="${PGDATA:-${RUN_DIR}/data}"
-    export HC_VAULT_SUITES="${HC_VAULT_SUITES:-all}"
+    if [[ "${HC_VAULT_USE_EXISTING_PG:-0}" == "1" ]]; then
+        export HC_VAULT_FRESH_CLUSTER=0
+    else
+        export HC_VAULT_FRESH_CLUSTER="${HC_VAULT_FRESH_CLUSTER:-1}"
+    fi
 
     # pg_tde SQL expects namespace with trailing slash (e.g. ns1/).
     if [[ -n "${VAULT_NAMESPACE}" && "${VAULT_NAMESPACE}" != */ ]]; then

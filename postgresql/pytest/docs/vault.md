@@ -168,6 +168,36 @@ HC_VAULT_USE_EXISTING_PG=1 PORT=5432 ./scripts/run_hashicorp_vault_revalidation.
 HC_VAULT_SUITES=kv ./scripts/run_hashicorp_vault_revalidation.sh
 HC_VAULT_SUITES=kmip ./scripts/run_hashicorp_vault_revalidation.sh
 ./scripts/run_hashicorp_vault_revalidation.sh --pytest   # bash + pytest
+
+### Pytest only (manual / external Vault server)
+
+```bash
+cd postgresql/pytest
+source .env.sh
+./scripts/run_hashicorp_vault_pytest.sh
+```
+
+| Command | Tests |
+|---------|-------|
+| `./scripts/run_hashicorp_vault_pytest.sh` | Vault KV + Vault KMIP |
+| `HC_VAULT_PYTEST_SUITES=vault ./scripts/run_hashicorp_vault_pytest.sh` | KV only (`-m vault` subset) |
+| `HC_VAULT_PYTEST_SUITES=vault_kmip ./scripts/run_hashicorp_vault_pytest.sh` | KMIP only |
+| `./scripts/run_vault_kmip_revalidation.sh` | KMIP only (alias) |
+
+Required in `.env.sh` or shell:
+
+```bash
+export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_SECRET_MOUNT=pg_tde
+export VAULT_NAMESPACE=ns1/
+export VAULT_TOKEN_FILE=/tmp/token_ent
+export KMIP_VAULT_HOST=127.0.0.1
+export KMIP_VAULT_PORT=5696
+export KMIP_VAULT_CLIENT_CERT=/tmp/client_cert.pem
+export KMIP_VAULT_CLIENT_KEY=/tmp/client_key.pem
+export KMIP_VAULT_SERVER_CA=/tmp/server_cert.pem
+export INSTALL_DIR=/home/ubuntu/pgwork/pginst/18
+```
 ```
 
 Example pg_tde SQL (matches your setup):
