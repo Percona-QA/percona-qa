@@ -13,8 +13,8 @@ start_pg $PGDATA $PORT
 echo "3=> Start OpenBao Server"
 start_openbao_server
 
-echo "4=> Start KMIP Server(pykmip)"
-start_kmip_server
+echo "4=> Start Cosmian KMIP Server(cosmian_kms)"
+start_cosmian_kmip_server
 
 echo "############################################################################"
 echo "# Scenario 1: Access Local Key Provider from Outside the scope of DB       #"

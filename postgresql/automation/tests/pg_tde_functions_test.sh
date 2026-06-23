@@ -15,7 +15,7 @@ rm -rf $KEYFILE || true
 initialize_server $PGDATA $PORT
 enable_pg_tde $PGDATA
 start_pg $PGDATA $PORT
-start_kmip_server
+start_cosmian_kmip_server
 start_vault_server
 
 # Actual testing starts here
