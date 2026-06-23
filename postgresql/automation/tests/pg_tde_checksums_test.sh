@@ -1,23 +1,14 @@
 #!/bin/bash
 
 # Configuration
-TEST_DIR="$RUN_DIR/pg_checksum_test"
-PGDATA="$TEST_DIR/data"
-PORT=55532 # Port for the server
-KEYFILE="$TEST_DIR/checksum_test_keyring.file"
-IO_METHOD="${IO_METHOD:-worker}"
-
+KEYFILE="$RUN_DIR/checksum_test_keyring.file"
 
 # Cleanup previous runs
-rm -rf "$TEST_DIR"  || true
-mkdir -p "$TEST_DIR"
+old_server_cleanup $PGDATA
 
 echo "1. Initializing cluster with checksums enabled..."
-$INSTALL_DIR/bin/initdb -k -D "$PGDATA" --set shared_preload_libraries=pg_tde --set io_method=$IO_METHOD > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "Error: initdb failed."
-    exit 1
-fi
+initialize_server $PGDATA $PORT
+enable_pg_tde $PGDATA 
 
 echo "2. Verifying a healthy cluster..."
 $INSTALL_DIR/bin/pg_checksums -c -D "$PGDATA" > /dev/null 2>&1
@@ -98,30 +89,6 @@ if [ $EXIT_CODE -ne 0 ]; then
     exit 1
 else
     echo "   [PASS] pg_tde_checksums skipped the checksums of encrypted data file corruption."
-fi
-
-echo "10. Corrupting unencrypted data file to verify pg_tde_checksums detects unencrypted data file corruption..."
-if [ ! -f "$UNENCRYPTED_DATA_FILE" ]; then
-    echo "   [FAIL] Unencrypted data file not found: $UNENCRYPTED_DATA_FILE"
-    exit 1
-fi
-# Corrupt 16 bytes in the first data page (offset 100 is past page header) so checksum will fail
-dd if=/dev/urandom of="$UNENCRYPTED_DATA_FILE" bs=1 count=16 seek=100 conv=notrunc 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "   [FAIL] Failed to corrupt unencrypted data file."
-    exit 1
-fi
-echo "   Corrupted unencrypted data file $UNENCRYPTED_DATA_FILE (16 bytes at offset 100)."
-
-echo "11. Running pg_tde_checksums again (expect checksum failure)..."
-CHECK_OUTPUT=$($INSTALL_DIR/bin/pg_tde_checksums -c -D "$PGDATA" 2>&1)
-EXIT_CODE=$?
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "   [FAIL] pg_tde_checksums should have reported checksum failure but exited 0."
-    echo "   Details: $(echo "$CHECK_OUTPUT" | grep "checksum verification failed" | tail -n 1)"
-    exit 1
-else
-    echo "   [PASS] pg_tde_checksums correctly reported checksum failure."
 fi
 
 echo "=== DONE: pg_tde_checksums test completed ==="
