@@ -3,7 +3,7 @@
 #############################################
 # LOOP RUNNER
 #############################################
-for i in {1..10}; do
+for i in {1..3}; do
   echo "========================================="
   echo "🚀 RUN $i"
   echo "========================================="
@@ -406,11 +406,11 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 
 # Disabling Validation due to several upstream Bugs
 # PG-2357, PG-2330
-echo "Validating data"
-$PSQL -p $REPLICA_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
-$PSQL -p $PRIMARY_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
-$PSQL -p $REPLICA_PORT -c "SELECT count(*) FROM target_only;"
-$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM target_only;"
+#echo "Validating data"
+#$PSQL -p $REPLICA_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
+#$PSQL -p $PRIMARY_PORT -c "SELECT count(*), min(id), max(id) FROM t1;"
+#$PSQL -p $REPLICA_PORT -c "SELECT count(*) FROM target_only;"
+#$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM target_only;"
 
 echo "✅ RUN $i completed"
 

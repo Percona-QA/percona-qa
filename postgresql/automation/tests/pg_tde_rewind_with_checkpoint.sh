@@ -23,10 +23,12 @@ echo "Initializing primary"
 initialize_server $PRIMARY_DATA $PRIMARY_PORT
 enable_pg_tde $PRIMARY_DATA
 
-echo "wal_level=replica" >> $PRIMARY_DATA/postgresql.conf
-echo "archive_mode=on" >> $PRIMARY_DATA/postgresql.conf
-echo "archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'" >> $PRIMARY_DATA/postgresql.conf
-echo "restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'" >> $PRIMARY_DATA/postgresql.conf
+cat >> $PRIMARY_DATA/postgresql.conf <<EOF
+wal_level=replica
+archive_mode=on
+archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
+restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
+EOF
 
 echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
 
@@ -36,6 +38,7 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "CREATE EXTENSION pg_tde;"
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
+$PSQL -p $PRIMARY_PORT -d postgres -c "ALTER SYSTEM SET pg_tde.wal_encrypt='ON';"
 # Restart primary
 restart_pg $PRIMARY_DATA $PRIMARY_PORT
 
@@ -50,18 +53,20 @@ $PG_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY
 
 cat > $REPLICA_DATA/postgresql.conf <<EOF
 port=$REPLICA_PORT
+io_method = '$IO_METHOD'
+shared_preload_libraries='pg_tde'
+default_table_access_method = 'tde_heap'
 unix_socket_directories = '$RUN_DIR'
 listen_addresses = '*'
+
 logging_collector = on
 log_directory = '$REPLICA_DATA'
-log_filename = 'server.log'
+log_filename = 'replica.log'
 log_statement = 'all'
-io_method = '$IO_METHOD'
-shared_preload_libraries = 'pg_tde'
-default_table_access_method = 'tde_heap'
+
 max_wal_senders=10
-archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
-restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
+#archive_mode=on
+#archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT
@@ -112,7 +117,7 @@ $PG_REWIND \
   --target-pgdata=$PRIMARY_DATA \
   --source-pgdata=$REPLICA_DATA -c
 
-cp $RUN_DIR/postgresql.conf $PRIMARY_DATA/postgresql.conf
+mv $RUN_DIR/postgresql.conf $PRIMARY_DATA/postgresql.conf
 
 #######################################
 # Step 8: Start rewound primary

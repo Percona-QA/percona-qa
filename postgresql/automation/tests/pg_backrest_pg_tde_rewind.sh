@@ -25,6 +25,7 @@ BACKREST_LOGS="$RUN_DIR/pgbackrest_logs"
 echo "Cleaning environment"
 
 old_server_cleanup "$PRIMARY_DATA"
+old_server_cleanup "$REPLICA_DATA"
 rm -rf "$ARCHIVE_DIR" || true
 rm -rf "$KEYRING" || true
 mkdir -p "$ARCHIVE_DIR"
