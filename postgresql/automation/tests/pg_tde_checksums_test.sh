@@ -11,11 +11,17 @@ initialize_server $PGDATA $PORT
 enable_pg_tde $PGDATA 
 
 echo "2. Verifying a healthy cluster..."
-$INSTALL_DIR/bin/pg_checksums -c -D "$PGDATA" > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "   [PASS] Healthy cluster verified with pg_checksums without encryption."
+if [ "$PG_MAJOR" -ge "18" ] ; then
+  $INSTALL_DIR/bin/pg_tde_checksums -c -D "$PGDATA" 2>&1
 else
-    echo "   [FAIL] Healthy cluster reported errors with pg_checksums without encryption."
+  # For PG versions lower than 18, enable data checksums
+  $INSTALL_DIR/bin/pg_tde_checksums -c -D "$PGDATA" --enable 2>&1
+fi
+
+if [ $? -eq 0 ]; then
+    echo "   [PASS] Healthy cluster verified with pg_tde_checksums without encryption."
+else
+    echo "   [FAIL] Healthy cluster reported errors with pg_tde_checksums without encryption."
     exit 1
 fi
 

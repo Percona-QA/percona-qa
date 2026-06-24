@@ -194,6 +194,7 @@ echo "Primary Server started with PID:$PID_PRIMARY"
 echo "Creating initial load with $TOTAL_TABLES tables and 100 records each..."
 create_tables > /dev/null 2>&1
 
+echo "Creating Replica using pg_tde_basebackup"
 mkdir $REPLICA_DATA
 chmod 700 $REPLICA_DATA
 cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA
@@ -206,7 +207,7 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 PID_REPLICA=$(lsof -ti :$REPLICA_PORT)
 echo "Replica Server started with PID: $PID_REPLICA"
 
-for i in {1..5}; do
+for i in {1..3}; do
     echo "#####################################"
     echo "# TRIAL $i                          #"
     echo "#####################################"

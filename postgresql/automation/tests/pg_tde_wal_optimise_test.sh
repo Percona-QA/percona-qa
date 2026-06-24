@@ -53,25 +53,14 @@ run_wal_optimize() {
     chmod 700 "$TABLESPACE_DIR" || true
 
     echo "1. Init cluster with wal_level=$wal_level and pg_tde..."
-    $INSTALL_DIR/bin/initdb -D "$WAL_OPT_DATA" \
-        --set shared_preload_libraries=pg_tde \
-        --set io_method=$IO_METHOD \
-        --set unix_socket_directories="$RUN_DIR" \
-        > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "Error: initdb failed."
-        exit 1
-    fi
+    initialize_server "$WAL_OPT_DATA" "$WAL_OPT_PORT"
+    enable_pg_tde "$WAL_OPT_DATA"
     cat >> "$WAL_OPT_DATA/postgresql.conf" <<EOF
 wal_level = $wal_level
 max_prepared_transactions = 1
 wal_log_hints = on
 wal_skip_threshold = 0
 default_table_access_method = tde_heap
-logging_collector = on
-log_directory = '$WAL_OPT_DATA'
-log_filename = 'server.log'
-log_statement = 'all'
 EOF
     # wal_level=minimal requires max_wal_senders=0 (no WAL streaming)
     if [ "$wal_level" = "minimal" ]; then

@@ -7,7 +7,7 @@ PG_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
 PSQL="$INSTALL_DIR/bin/psql"
 
 # Directories
-KEYFILE="/tmp/keyring.file"
+KEYFILE="$RUN_DIR/keyring.file"
 SYSBENCH=$(command -v sysbench)
 
 echo "Cleaning old directories"
@@ -18,8 +18,6 @@ rm -rf $KEYFILE || true
 #######################################
 # Step 1: Initialize primary
 #######################################
-echo "Initializing primary"
-
 initialize_server $PRIMARY_DATA $PRIMARY_PORT
 enable_pg_tde $PRIMARY_DATA
 
@@ -53,7 +51,6 @@ $PG_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY
 
 cat > $REPLICA_DATA/postgresql.conf <<EOF
 port=$REPLICA_PORT
-io_method = '$IO_METHOD'
 shared_preload_libraries='pg_tde'
 default_table_access_method = 'tde_heap'
 unix_socket_directories = '$RUN_DIR'
@@ -65,8 +62,6 @@ log_filename = 'replica.log'
 log_statement = 'all'
 
 max_wal_senders=10
-#archive_mode=on
-#archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT

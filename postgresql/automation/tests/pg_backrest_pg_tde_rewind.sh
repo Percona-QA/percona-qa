@@ -69,6 +69,7 @@ restore_command = '$PGBACKREST --stanza=demo --config=$RUN_DIR/pgbackrest.conf a
 archive_timeout = 10s
 max_wal_senders = 5
 wal_level = replica
+wal_log_hints = on
 EOF
 
 #############################################
@@ -110,6 +111,7 @@ log_statement='all'
 
 max_wal_senders=5
 wal_level=replica
+wal_log_hints = on
 
 archive_mode=on
 archive_command = '$PGBACKREST --stanza=demo --config=$RUN_DIR/pgbackrest.conf archive-push %p'

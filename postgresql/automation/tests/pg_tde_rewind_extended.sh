@@ -43,6 +43,7 @@ enable_pg_tde $PRIMARY_DATA
 
 cat >> $PRIMARY_DATA/postgresql.conf <<EOF
 wal_level=replica
+wal_log_hints=on
 archive_mode=on
 archive_command='cp %p $ARCHIVE_DIR/%f'
 restore_command='cp $ARCHIVE_DIR/%f %p'
@@ -60,8 +61,6 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_server_key_using_global_key_provider('key1','global_file_provider');"
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_database_key_provider('key2','local_file_provider');"
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_key_using_database_key_provider('key2','local_file_provider');"
-
-#restart_pg $PRIMARY_DATA $PRIMARY_PORT
 
 if [ "$TABLESPACE_TEST" -eq 1 ]; then
   mkdir -p $TABLESPACE_FILE
@@ -91,6 +90,7 @@ logging_collector=on
 log_directory='$REPLICA_DATA'
 log_filename='server.log'
 log_statement='all'
+wal_log_hints = on
 default_table_access_method='tde_heap'
 shared_preload_libraries='pg_tde'
 restore_command='cp $ARCHIVE_DIR/%f %p'

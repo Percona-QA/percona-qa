@@ -36,3 +36,5 @@ export LOG_DIR="$RUN_DIR/test_logs"
 export ARCHIVE_DIR="$RUN_DIR/wal_archive"
 export BACKUP_DIR="$RUN_DIR/base_backup"
 export FAILED_DIR="$RUN_DIR/failed_tests"
+
+export PG_MAJOR=$($INSTALL_DIR/bin/postgres --version | awk '{print $3}' | cut -d. -f1)

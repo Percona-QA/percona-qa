@@ -29,6 +29,7 @@ enable_pg_tde $PRIMARY_DATA
 
 cat >> $PRIMARY_DATA/postgresql.conf <<EOF
 wal_level=replica
+wal_log_hints = on
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
@@ -71,6 +72,7 @@ log_statement='all'
 
 max_wal_senders=5
 wal_level=replica
+wal_log_hints = on
 
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'

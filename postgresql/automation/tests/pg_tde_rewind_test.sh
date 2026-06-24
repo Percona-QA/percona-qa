@@ -41,7 +41,9 @@ start_pg $PRIMARY_DATA $PRIMARY_PORT
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "CREATE EXTENSION pg_tde;"
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "SELECT pg_tde_add_global_key_provider_file('file_provider','$KEYFILE');"
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key1','file_provider');"
-$PSQL -p $PRIMARY_PORT -d $DB_NAME -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
+$PSQL -p $PRIMARY_PORT -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key2','file_provider');"
+$PSQL -p $PRIMARY_PORT -d $DB_NAME -c "SELECT pg_tde_set_key_using_global_key_provider('key1','file_provider');"
+$PSQL -p $PRIMARY_PORT -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('key2','file_provider');"
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 # Restart primary
 restart_pg $PRIMARY_DATA $PRIMARY_PORT
@@ -50,7 +52,7 @@ restart_pg $PRIMARY_DATA $PRIMARY_PORT
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "CREATE ROLE $REPL_USER WITH LOGIN REPLICATION SUPERUSER PASSWORD '$REPL_PASS';"
 
 # Create tables
-$PSQL -p $PRIMARY_PORT -d $DB_NAME -c "CREATE TABLE t1(a int, b TEXT);"
+$PSQL -p $PRIMARY_PORT -d $DB_NAME -c "CREATE TABLE t1(a int, b TEXT) USING tde_heap;"
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "INSERT INTO t1 VALUES(101,'First Record before BaseBackup');"
 
 echo "=> Step 2: Take base backup for replica"
@@ -69,8 +71,9 @@ default_table_access_method = 'tde_heap'
 hot_standby = on
 logging_collector = on
 log_directory = '$REPLICA_DATA'
-log_filename = 'server.log'
+log_filename = 'replica.log'
 wal_level = replica
+wal_log_hints = on
 wal_compression = on
 wal_keep_size= 512MB
 max_wal_senders = 2
@@ -79,6 +82,7 @@ EOF
 echo "=>Step 3: Start replica"
 echo "########################"
 start_pg $REPLICA_DATA $REPLICA_PORT
+
 $PSQL -p $REPLICA_PORT -d $DB_NAME -c "ALTER SYSTEM SET pg_tde.wal_encrypt=ON;"
 # Restart replica
 restart_pg $REPLICA_DATA $REPLICA_PORT
@@ -86,10 +90,12 @@ restart_pg $REPLICA_DATA $REPLICA_PORT
 echo "=>Step 4: Generate some WAL on primary"
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "INSERT INTO t1 VALUES(102,'Second Record after Streaming Replication');"
 
+
 echo "=> Step 5: Promote replica"
 echo "##########################"
 rm -f $REPLICA_DATA/postgresql.auto.conf
 $INSTALL_DIR/bin/pg_ctl -D "$REPLICA_DATA" promote
+
 $PSQL -p $PRIMARY_PORT -d $DB_NAME -c "INSERT INTO t1 VALUES(103,'Third Record after Replica Promotion causing Split Brain');"
 
 echo "=>Step 6: Stop primary (simulate crash)"
@@ -99,10 +105,10 @@ $INSTALL_DIR/bin/pg_ctl -D "$PRIMARY_DATA" -m immediate stop
 sleep 2
 
 echo "=> Step 7: Rotate Server and Table Key"
-$PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key2','file_provider');"
 $PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key3','file_provider');"
-$PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('key2','file_provider');"
-$PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_set_key_using_global_key_provider('key3','file_provider');"
+$PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_create_key_using_global_key_provider('key4','file_provider');"
+$PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_set_server_key_using_global_key_provider('key3','file_provider');"
+$PSQL -p $REPLICA_PORT -d $DB_NAME -c "SELECT pg_tde_set_key_using_global_key_provider('key4','file_provider');"
 
 echo "=>Step 8: Generate WAL on promoted replica"
 echo "##########################################################"
@@ -187,7 +193,7 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_create_key_using_global_key
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_default_key_using_global_key_provider('key1','file_provider');"
 
 # Restarting due to Open Bug PG-2258
-restart_pg $PRIMARY_DATA $PRIMARY_PORT
+#restart_pg $PRIMARY_DATA $PRIMARY_PORT
 
 #######################################
 # Step 2: Create replica via basebackup
@@ -198,7 +204,18 @@ chmod 700 $REPLICA_DATA
 cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
 $PG_TDE_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
 
-echo "port=$REPLICA_PORT" >> $REPLICA_DATA/postgresql.conf
+cat > "$REPLICA_DATA/postgresql.conf" <<EOF
+port = $REPLICA_PORT
+unix_socket_directories = '$RUN_DIR'
+shared_preload_libraries = 'pg_tde'
+default_table_access_method = 'tde_heap'
+hot_standby = on
+logging_collector = on
+log_directory = '$REPLICA_DATA'
+log_filename = 'replica.log'
+wal_level = replica
+wal_log_hints = on
+EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT
 

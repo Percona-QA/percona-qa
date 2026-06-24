@@ -125,7 +125,6 @@ pid5=$!
 
 for i in $(seq 1 3); do
     sleep 30
-    ps -eaf | grep postgres
     crash_pg $REPLICA_DATA $REPLICA_PORT
     sleep 30
     echo "Restarting Replica Server"

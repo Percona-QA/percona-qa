@@ -1,7 +1,11 @@
 #!/bin/bash
 
-TABLES=100
+if [[ "$PG_MAJOR" -lt 17 ]]; then
+    echo "SKIP: pg_createsubscriber is not available on PG ${PG_MAJOR} (requires PG 17+)"
+    exit 0
+fi
 
+# Helper Functions
 wait_for_pg() {
     local port=$1
     local retries=60
@@ -169,6 +173,9 @@ run_pg_createsubscriber() {
 }
 
 # ------------------- Test starts here -------------------
+
+# Variables
+TABLES=100
 
 echo "1=>Cleaning any previous running server"
 old_server_cleanup $PRIMARY_DATA

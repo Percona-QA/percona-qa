@@ -137,6 +137,7 @@ log_filename = 'server.log'
 log_statement = 'ddl'
 log_min_error_statement = 'error'
 max_wal_senders = 5
+wal_log_hints = on
 EOF
 
     # io_method exists only in PG 18+
@@ -148,7 +149,6 @@ EOF
         cat >> "$PGDATA/postgresql.conf" <<EOF
 wal_level = replica
 wal_compression = on
-wal_log_hints = on
 wal_keep_size = 512MB
 max_replication_slots = 2
 max_wal_senders = 5

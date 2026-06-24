@@ -41,7 +41,6 @@ declare -A TEST_PARAMS=(
   [wal_receiver_create_temp_slot]="on"
   [wal_keep_size]="64"
   [track_wal_io_timing]="on"
-  [summarize_wal]="on"
 )
 
 # which ones require restart

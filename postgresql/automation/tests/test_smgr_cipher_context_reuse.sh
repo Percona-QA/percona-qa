@@ -16,6 +16,11 @@
 # Run via postgresql/automation/wrapper/test_runner.sh, for example:
 #   ./wrapper/test_runner.sh --server_build_path /path/to/pg/install --testname test_smgr_cipher_context_reuse.sh
 
+if [[ "$PG_MAJOR" -lt 17 ]]; then
+    echo "SKIP: specifying USING tde_heap on partitioned tables is not supported on PG ${PG_MAJOR} (requires PG 17+)"
+    exit 0
+fi
+
 KEYFILE="${RUN_DIR}/smgr_cipher_ctx.keyring.per"
 
 log() {

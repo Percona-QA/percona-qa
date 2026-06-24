@@ -109,7 +109,6 @@ log_directory = '$REPLICA_DATA'
 log_filename = 'server.log'
 log_statement = 'all'
 max_wal_senders = 5
-io_method = '$IO_METHOD'
 shared_preload_libraries = 'pg_tde'
 default_table_access_method = 'tde_heap'
 wal_level=replica
