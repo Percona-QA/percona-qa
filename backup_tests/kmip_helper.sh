@@ -283,7 +283,7 @@ setup_hashicorp() {
     # Download first, then execute the hashicorp setup
     script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
         --connect-timeout 5 --max-time 30 \
-        https://raw.githubusercontent.com/Percona-QA/percona-qa/6044f342a147b95f92c2f2ac2dc308d43a66b4d8/"$setup_script")
+        https://raw.githubusercontent.com/Percona-QA/percona-qa/master/"$setup_script")
         
     curl_exit_code=$?
 
