@@ -66,7 +66,6 @@ EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT
 
-
 #######################################
 # Step 3: Create table on primary
 #######################################

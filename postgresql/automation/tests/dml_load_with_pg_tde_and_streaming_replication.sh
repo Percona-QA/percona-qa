@@ -102,7 +102,7 @@ cat >> "$REPLICA_DATA/postgresql.conf" <<SQL
 port=$REPLICA_PORT
 logging_collector = on
 log_directory = '$REPLICA_DATA'
-log_filename = 'server.log'
+log_filename = 'replica.log'
 log_statement = 'all'
 SQL
 
