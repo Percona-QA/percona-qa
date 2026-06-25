@@ -171,7 +171,7 @@ run_test() {
   # Partitioned table
   $PSQL -p $REPLICA_PORT -c "
     CREATE TABLE part_test(id INT, created DATE)
-    PARTITION BY RANGE(created) USING tde_heap;
+    PARTITION BY RANGE(created);
   "
   $PSQL -p $REPLICA_PORT -c "
     CREATE TABLE part_test_1 PARTITION OF part_test
