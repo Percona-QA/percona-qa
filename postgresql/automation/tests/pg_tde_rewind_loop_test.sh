@@ -104,7 +104,7 @@ failover_iteration() {
   echo "Promoting standby on port $standby_port..."
   rm -f "$standby_dir/postgresql.auto.conf"
   $PG_CTL -D "$standby_dir" promote
-  sleep 5
+  wait_for_recovery_end $standby_port
   $PSQL -p $standby_port -d $DB_NAME -c "INSERT INTO verify_table(ts, source) VALUES (clock_timestamp(), 'post_promotion');"
   run_sysbench $standby_port &
   sleep 30

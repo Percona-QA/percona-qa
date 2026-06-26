@@ -124,20 +124,17 @@ alter_encrypt_unencrypt_tables 300   > /dev/null 2>&1 &
 pid5=$!
 
 for i in $(seq 1 3); do
-    sleep 30
-    crash_pg $REPLICA_DATA $REPLICA_PORT
-    sleep 30
+    sleep 30                                 # soak under concurrent load before crashing
+    crash_pg $REPLICA_DATA $REPLICA_PORT     # already waits for all procs to exit
     echo "Restarting Replica Server"
-    restart_pg $REPLICA_DATA $REPLICA_PORT
-    sleep 15
-    crash_pg $PRIMARY_DATA $PRIMARY_PORT
-    sleep 30
+    restart_pg $REPLICA_DATA $REPLICA_PORT   # already waits for pg_isready
+    crash_pg $PRIMARY_DATA $PRIMARY_PORT      # already waits for all procs to exit
     echo "Restarting Primary Server"
-    restart_pg $PRIMARY_DATA $PRIMARY_PORT
+    restart_pg $PRIMARY_DATA $PRIMARY_PORT   # already waits for pg_isready
 done
 
 echo "Verify table and data between primary and replica node..."
-sleep 30
+wait_for_replica_catchup $PRIMARY_PORT $REPLICA_PORT
 error_flag=0
 for i in $(seq 1 $SYSBENCH_TABLES); do
     PRIMARY_COUNT=$($INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -t -A -c"SELECT COUNT(*) FROM sbtest$i;")

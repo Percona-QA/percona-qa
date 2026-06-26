@@ -285,7 +285,7 @@ force_wal_archive "$PRIMARY_PORT"
 #############################################
 echo "Promoting replica"
 $PG_CTL -D $REPLICA_DATA promote
-sleep 2
+wait_for_recovery_end $REPLICA_PORT
 force_wal_archive "$REPLICA_PORT"
 
 #############################################

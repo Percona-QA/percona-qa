@@ -183,7 +183,7 @@ sleep 5
 echo "PROMOTE STANDBY"
 #############################################
 $INSTALL_DIR/bin/pg_ctl -D $REPLICA_DATA promote
-sleep 5
+wait_for_recovery_end $REPLICA_PORT
 
 $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-host=localhost \
@@ -226,7 +226,9 @@ echo "Start rebuilt PRIMARY as STANDBY"
 #############################################
 start_pg $PRIMARY_DATA $PRIMARY_PORT
 
-sleep 30
+# Rebuilt old primary now runs as a standby streaming from the promoted node
+# (REPLICA_PORT); wait until it has replayed up to the new primary before validating.
+wait_for_replica_catchup $REPLICA_PORT $PRIMARY_PORT
 
 #############################################
 echo "Validation"

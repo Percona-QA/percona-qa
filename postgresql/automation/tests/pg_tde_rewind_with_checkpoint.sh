@@ -83,7 +83,7 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"
 echo "Promoting replica"
 
 $PG_CTL -D $REPLICA_DATA promote
-sleep 3
+wait_for_recovery_end $REPLICA_PORT
 
 #######################################
 # Step 5: Diverging writes on replica

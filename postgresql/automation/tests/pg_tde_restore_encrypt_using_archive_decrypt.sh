@@ -80,7 +80,7 @@ start_pg $PGDATA $PORT
 
 echo "=== Promote the server ==="
 "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" promote
-sleep 3
+wait_for_recovery_end $PORT
 
 echo "=== Verify post-promotion data ==="
 "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "SELECT * FROM mohit;"
