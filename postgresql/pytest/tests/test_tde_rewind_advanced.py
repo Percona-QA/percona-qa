@@ -2988,6 +2988,7 @@ def _encrypted_chaos_ha_pair(
     io_method: str,
     *,
     tag: str,
+    wal_keep_size: str = "512MB",
 ) -> Tuple[Path, PgCluster, PgCluster, Path, Path]:
     """Primary + standby with WAL encryption, archive wrappers, and ``t1`` seeded."""
     root = tmp_path / tag
@@ -3001,6 +3002,7 @@ def _encrypted_chaos_ha_pair(
         wal_encrypt=True,
         archive_dir=archive_dir,
         keyfile=str(keyfile),
+        extra_primary_params={"wal_keep_size": f"'{wal_keep_size}'"},
     )
     primary.execute(
         "CREATE TABLE t1(id INT) USING tde_heap; "
@@ -3252,6 +3254,7 @@ class TestTdeRewindAdvancedEncryptedHa:
 
         root = tmp_path / "adv_cascade_enc"
         archive_dir = root / "wal_archive"
+        archive_dir.mkdir(parents=True, exist_ok=True)
         keyfile = str(root / "keyring.per")
 
         node_a = PgCluster(
@@ -3305,6 +3308,7 @@ class TestTdeRewindAdvancedEncryptedHa:
                 "INSERT INTO cascade_enc SELECT generate_series(1, 500); "
                 "CHECKPOINT;"
             )
+            _force_wal_archive_stable(node_a, archive_dir)
 
             repl_ab = ReplicationManager(node_a, node_b)
             repl_ab.create_standby_from_backup(
@@ -3349,6 +3353,7 @@ class TestTdeRewindAdvancedEncryptedHa:
                 "INSERT INTO cascade_enc SELECT generate_series(501, 800); "
                 "CHECKPOINT;"
             )
+            _flush_leader_wal_to_archive(node_b)
             _force_wal_archive_stable(node_b, archive_dir)
             node_a.stop(check=False)
             node_c.stop(check=False)
@@ -3426,7 +3431,8 @@ class TestTdeRewindAdvancedEncryptedHa:
             pytest.skip("pg_tde archive wrappers not in this build")
 
         root, primary, standby, archive_dir, _conf = _encrypted_chaos_ha_pair(
-            install_dir, tmp_path, io_method, tag="adv_neg_archive"
+            install_dir, tmp_path, io_method, tag="adv_neg_archive",
+            wal_keep_size="0",
         )
         try:
             _encrypted_chaos_promote_and_diverge(
@@ -3439,9 +3445,9 @@ class TestTdeRewindAdvancedEncryptedHa:
                 install_dir, primary, standby, restore_wal=True
             )
             if result.returncode == 0:
-                pytest.xfail(
-                    "rewind succeeded without pre-stop archive flush — environment "
-                    "retained enough local WAL; on EC2-style runs this usually fails"
+                pytest.skip(
+                    "rewind succeeded without pre-stop archive flush even with "
+                    "wal_keep_size=0 — local pg_wal still had enough segments"
                 )
             combined = (result.stdout + result.stderr).lower()
             assert (
