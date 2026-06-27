@@ -33,7 +33,7 @@ pytestmark = pytest.mark.encryption
 # Override at test time without editing this file:
 #     PG_TDE_EXPECTED_VERSION=2.3.0 pytest tests/test_encryption.py -k Version
 EXPECTED_PG_TDE_VERSION = os.environ.get(
-    "PG_TDE_EXPECTED_VERSION", "2.2.0"
+    "PG_TDE_EXPECTED_VERSION", "2.2.1"
 )
 
 
@@ -88,7 +88,7 @@ def _extract_pg_tde_version(raw: str) -> str:
     m = _PG_TDE_VERSION_RE.search(raw)
     assert m is not None, (
         f"pg_tde_version() returned {raw!r}; expected an X.Y.Z fragment "
-        "(e.g. '2.2.0' or 'pg_tde 2.2.0')."
+        "(e.g. '2.2.1' or 'pg_tde 2.2.1')."
     )
     return f"{m.group(1)}.{m.group(2)}.{m.group(3)}"
 
@@ -118,7 +118,7 @@ class TestPgTdeVersion:
     def test_pg_tde_version_matches_expected(self, tde_primary: PgCluster):
         """
         ``SELECT pg_tde_version()`` must report exactly
-        ``EXPECTED_PG_TDE_VERSION`` (default 2.2.0). A mismatch means the
+        ``EXPECTED_PG_TDE_VERSION`` (default 2.2.1). A mismatch means the
         installed pg_tde package does not match the version the test plan
         was written against — bump the constant or fix the build.
         """

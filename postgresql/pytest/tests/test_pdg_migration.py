@@ -103,30 +103,93 @@ def _role_name_from_role_ddl(line: str) -> Optional[str]:
     return m.group(1).strip('"')
 
 
-def _filter_dumpall_for_fresh_cluster(dump_path: Path) -> Path:
+def _should_skip_dumpall_line(
+    line: str,
+    *,
+    skip_roles: Set[str],
+    skip_extensions: Set[str],
+) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return False
+    name = _role_name_from_role_ddl(line)
+    if name and name in skip_roles:
+        return True
+    for ext in skip_extensions:
+        if re.match(
+            rf"^CREATE EXTENSION\s+(?:IF NOT EXISTS\s+)?{re.escape(ext)}\b",
+            stripped,
+            re.I,
+        ):
+            return True
+        if re.match(rf"^COMMENT ON EXTENSION\s+{re.escape(ext)}\b", stripped, re.I):
+            return True
+        if re.match(rf"^ALTER EXTENSION\s+{re.escape(ext)}\b", stripped, re.I):
+            return True
+    return False
+
+
+def _filter_dumpall_for_fresh_cluster(
+    dump_path: Path,
+    *,
+    skip_extensions: Optional[Set[str]] = None,
+) -> Path:
     """
     ``pg_dumpall`` emits CREATE/ALTER ROLE for the cluster superuser; a target
     cluster from initdb already has that role (typically the OS user, e.g.
     ``ubuntu``).  Drop those lines so ``psql -v ON_ERROR_STOP=1`` can proceed.
+
+    When pg_tde is pre-bootstrapped on the target, skip ``CREATE EXTENSION
+    pg_tde`` (and related lines) so restore does not fail with "already exists".
     """
     skip_roles = _bootstrap_roles_for_restore()
+    skip_extensions = skip_extensions or set()
     filtered = dump_path.with_name(f"{dump_path.stem}.restore.sql")
     kept: List[str] = []
     for line in dump_path.read_text().splitlines():
-        name = _role_name_from_role_ddl(line)
-        if name and name in skip_roles:
+        if _should_skip_dumpall_line(
+            line, skip_roles=skip_roles, skip_extensions=skip_extensions
+        ):
             continue
         kept.append(line)
     filtered.write_text("\n".join(kept) + "\n")
     return filtered
 
 
-def _restore_pg_dumpall(cluster: PgCluster, dump_path: Path) -> None:
-    _psql_file(cluster, _filter_dumpall_for_fresh_cluster(dump_path))
+def _restore_pg_dumpall(
+    cluster: PgCluster,
+    dump_path: Path,
+    *,
+    skip_extensions: Optional[Set[str]] = None,
+) -> None:
+    _psql_file(
+        cluster,
+        _filter_dumpall_for_fresh_cluster(dump_path, skip_extensions=skip_extensions),
+    )
+
+
+def _bootstrap_tde_for_restore(
+    cluster: PgCluster,
+    keyfile: str,
+) -> None:
+    """
+    Prepare a fresh target cluster before replaying ``pg_dumpall`` that contains
+    ``tde_heap`` objects.
+
+    Logical dumps carry decrypted row data but not key-provider configuration;
+    the migration doc expects keyring files (and ``pg_tde/`` metadata for physical
+    paths) to be copied separately.  Register the same file provider + principal
+    key on the target so ``CREATE TABLE ... USING tde_heap`` and subsequent
+    ``COPY``/``INSERT`` replay succeed.
+    """
+    tde = TdeManager(cluster)
+    tde.create_extension()
+    tde.add_global_key_provider_file(keyfile=keyfile)
+    tde.set_global_principal_key()
 
 
 def _psql_file(cluster: PgCluster, sql_path: Path) -> None:
-    subprocess.run(
+    result = subprocess.run(
         [
             str(cluster.bin / "psql"),
             "-h",
@@ -142,11 +205,17 @@ def _psql_file(cluster: PgCluster, sql_path: Path) -> None:
             "-f",
             str(sql_path),
         ],
-        check=True,
+        check=False,
         env=_pg_env(cluster),
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        raise AssertionError(
+            f"psql restore failed (exit {result.returncode}) "
+            f"from {sql_path}:\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
 
 def _make_cluster(
@@ -423,7 +492,8 @@ class TestMigrateWithPgTde:
 
         target.start()
         target.wait_ready()
-        _restore_pg_dumpall(target, dump_file)
+        _bootstrap_tde_for_restore(target, keyfile)
+        _restore_pg_dumpall(target, dump_file, skip_extensions={"pg_tde"})
 
         assert target.fetchone("SELECT COUNT(*) FROM tde_remote") == "3"
         target.stop()
