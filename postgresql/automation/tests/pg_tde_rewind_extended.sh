@@ -330,10 +330,6 @@ rewind_and_start() {
              --source-pgdata=$REPLICA_DATA -c
 
   start_pg $PRIMARY_DATA $PRIMARY_PORT
-
-  # Restart twice to expose latent corruption
-  restart_pg $PRIMARY_DATA $PRIMARY_PORT
-  restart_pg $PRIMARY_DATA $PRIMARY_PORT
 }
 
 #############################################

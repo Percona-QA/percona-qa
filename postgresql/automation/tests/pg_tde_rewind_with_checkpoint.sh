@@ -26,6 +26,7 @@ wal_level=replica
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
+recovery_target_timeline='latest'
 EOF
 
 echo "host replication all 127.0.0.1/32 trust" >> $PRIMARY_DATA/pg_hba.conf
@@ -55,13 +56,11 @@ shared_preload_libraries='pg_tde'
 default_table_access_method = 'tde_heap'
 unix_socket_directories = '$RUN_DIR'
 listen_addresses = '*'
-
+max_wal_senders = 5
 logging_collector = on
 log_directory = '$REPLICA_DATA'
 log_filename = 'replica.log'
 log_statement = 'all'
-
-max_wal_senders=10
 EOF
 
 start_pg $REPLICA_DATA $REPLICA_PORT
@@ -75,21 +74,19 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "CREATE TABLE t1(id INT) USING tde_heap;"
 $PSQL -p $PRIMARY_PORT -d postgres -c "INSERT INTO t1 VALUES (1),(2),(3);"
 
 echo "Checkpoint on primary"
+$PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_switch_wal();"
 $PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"
 
 #######################################
 # Step 4: Promote replica
 #######################################
 echo "Promoting replica"
-
-$PG_CTL -D $REPLICA_DATA promote
-sleep 3
+$PG_CTL -D $REPLICA_DATA promote -w
 
 #######################################
 # Step 5: Diverging writes on replica
 #######################################
 echo "Inserting more data on promoted replica"
-
 $PSQL -p $REPLICA_PORT -d postgres -c "INSERT INTO t1 VALUES (4),(5),(6);"
 $SYSBENCH /usr/share/sysbench/oltp_read_write.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$REPLICA_PORT --threads=5 --tables=100 --time=60 --report-interval=10 run
 
@@ -97,27 +94,27 @@ $SYSBENCH /usr/share/sysbench/oltp_read_write.lua --pgsql-user=$(whoami) --pgsql
 # Step 6: Shutdown both
 #######################################
 echo "Stopping primary and replica"
-
 $PG_CTL -D $PRIMARY_DATA stop -m fast
 $PG_CTL -D $REPLICA_DATA stop -m fast
 
-cp $PRIMARY_DATA/postgresql.conf $RUN_DIR/
 #######################################
 # Step 7: Run pg_rewind
 #######################################
 echo "Running pg_rewind"
+cp $PRIMARY_DATA/postgresql.conf $RUN_DIR/
+cp $PRIMARY_DATA/postgresql.auto.conf $RUN_DIR/
 
 $PG_REWIND \
   --target-pgdata=$PRIMARY_DATA \
   --source-pgdata=$REPLICA_DATA -c
 
 mv $RUN_DIR/postgresql.conf $PRIMARY_DATA/postgresql.conf
+mv $RUN_DIR/postgresql.auto.conf $PRIMARY_DATA/
 
 #######################################
 # Step 8: Start rewound primary
 #######################################
 echo "Starting rewound primary"
-
 start_pg $PRIMARY_DATA $PRIMARY_PORT
 
 #######################################
