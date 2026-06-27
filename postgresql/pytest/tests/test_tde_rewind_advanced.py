@@ -586,36 +586,28 @@ def _missing_archived_wal_files(
     return missing
 
 
-def _push_pg_wal_files_to_archive(
+def _copy_pg_wal_dir_to_archive(
     install_dir: Path,
-    cluster: PgCluster,
+    pg_wal: Path,
     archive_dir: Path,
 ) -> None:
     """
-    Push every file in ``pg_wal`` into ``archive_dir`` using ``pg_tde_archive_decrypt``.
+    Copy every file in ``pg_wal`` into ``archive_dir`` via ``pg_tde_archive_decrypt``.
 
-    The background archiver may skip closed segments on a diverged old primary;
-    this mirrors what ``archive_command`` would do file-by-file before TAP-style
-    ``pg_wal`` removal.
+    TAP ``RewindTest.pm`` archive mode copies the stopped target's entire ``pg_wal``
+    into a fresh archive directory (plaintext segments for ``restore_command``).
     """
     if not wrappers_available(install_dir):
         raise RuntimeError("pg_tde archive wrappers required")
 
-    cluster.execute("CHECKPOINT")
-    cluster.execute("SELECT pg_switch_wal()")
-    time.sleep(0.5)
-
-    decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
-    pg_wal = cluster.data_dir / "pg_wal"
     archive_dir.mkdir(parents=True, exist_ok=True)
+    decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
     env = _rewind_env(install_dir)
 
     for entry in sorted(pg_wal.iterdir()):
         if not entry.is_file() or entry.name.endswith(".partial"):
             continue
         dest = archive_dir / entry.name
-        if dest.is_file():
-            continue
         result = subprocess.run(
             [
                 str(decrypt),
@@ -632,6 +624,59 @@ def _push_pg_wal_files_to_archive(
                 f"pg_tde_archive_decrypt failed for {entry.name!r}:\n"
                 f"stdout: {result.stdout}\nstderr: {result.stderr}"
             )
+
+
+def _prepare_rewind_empty_pg_wal_archive(
+    install_dir: Path,
+    primary: PgCluster,
+    archive_dir: Path,
+) -> Path:
+    """
+    TAP ``RewindTest.pm`` archive mode for encrypted WAL.
+
+    Stop the diverged old primary, replace ``archive_dir`` with decrypted copies
+    of **all** files still in ``pg_wal``, then empty ``pg_wal``.  Returns the
+    (now empty) ``pg_wal`` path.
+    """
+    primary.execute("CHECKPOINT")
+    primary.execute("SELECT pg_switch_wal()")
+    time.sleep(0.5)
+    primary.stop(mode="smart", check=False)
+
+    shutil.rmtree(archive_dir, ignore_errors=True)
+    archive_dir.mkdir(parents=True, mode=0o700)
+
+    pg_wal = primary.data_dir / "pg_wal"
+    _copy_pg_wal_dir_to_archive(install_dir, pg_wal, archive_dir)
+
+    missing = [
+        entry.name
+        for entry in pg_wal.iterdir()
+        if entry.is_file()
+        and not entry.name.endswith(".partial")
+        and not (archive_dir / entry.name).is_file()
+    ]
+    if missing:
+        raise RuntimeError(
+            f"archive missing pg_wal files after TAP-style copy: {missing!r}"
+        )
+
+    shutil.rmtree(pg_wal)
+    pg_wal.mkdir(mode=0o700)
+    os.chmod(archive_dir, 0o700)
+    return pg_wal
+
+
+def _push_pg_wal_files_to_archive(
+    install_dir: Path,
+    cluster: PgCluster,
+    archive_dir: Path,
+) -> None:
+    """Push running cluster's ``pg_wal`` into ``archive_dir`` (best-effort helper)."""
+    cluster.execute("CHECKPOINT")
+    cluster.execute("SELECT pg_switch_wal()")
+    time.sleep(0.5)
+    _copy_pg_wal_dir_to_archive(install_dir, cluster.data_dir / "pg_wal", archive_dir)
 
     missing = _missing_archived_wal_files(cluster, archive_dir, exclude_current=False)
     if missing:
@@ -5229,19 +5274,17 @@ class TestTdeRewindEncMedium:
             )
             _force_wal_archive_stable(standby, archive_dir)
 
-            # Old primary still holds diverged WAL (including segments rewind needs).
+            # Old primary still holds diverged WAL rewind needs from its pg_wal.
             primary.execute(
                 "INSERT INTO arch_empty_t VALUES (9999); CHECKPOINT;"
             )
             _force_wal_archive_stable(primary, archive_dir)
-            _ensure_pg_wal_archived_to_dir(install_dir, primary, archive_dir)
-
-            primary.stop(mode="smart", check=False)
-            pg_wal = primary.data_dir / "pg_wal"
-            shutil.rmtree(pg_wal)
-            pg_wal.mkdir(mode=0o700)
 
             _stash_rewind_target_configs(primary, conf_stash)
+            pg_wal = _prepare_rewind_empty_pg_wal_archive(
+                install_dir, primary, archive_dir,
+            )
+
             standby.stop(check=False)
             stash_conf = conf_stash / "postgresql.conf"
 
