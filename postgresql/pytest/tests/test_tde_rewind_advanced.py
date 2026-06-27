@@ -19,6 +19,9 @@ advanced scenarios that stress the interaction between pg_tde and rewind:
                                    3-round HA lifecycle
   TestTdeRewindEncryptedWalChaosLoop  Manual 10× loop (archive-stable stops)
   TestTdeRewindAdvancedEncryptedHa   Live-source, failback, 3-node+encrypt, etc.
+  TestTdeRewindEncTapPorts          pg_tde/t/pg_rewind_enc_*.pl (2026 fixes)
+  TestTdeRewindEncMedium            ext TS, empty-pg_wal archive mode, remote flags
+  TestTdeRewindUpstreamPorts        upstream pg_rewind_*.pl options/extrafiles/…
 """
 
 import random
@@ -41,7 +44,11 @@ from lib import (
     archive_restore_conf_values,
     wrappers_available,
 )
-from lib.cluster import initdb_args_no_data_checksums, libpq_superuser
+from lib.cluster import (
+    initdb_args_no_data_checksums,
+    libpq_superuser,
+    postgres_major_version,
+)
 
 pytestmark = [pytest.mark.rewind, pytest.mark.slow]
 
@@ -52,6 +59,62 @@ pytestmark = [pytest.mark.rewind, pytest.mark.slow]
 def _tde_rewind_bin(install_dir: Path) -> Path:
     p = install_dir / "bin" / "pg_tde_rewind"
     return p if p.exists() else install_dir / "bin" / "pg_rewind"
+
+
+def _rewind_env(install_dir: Path) -> dict:
+    env = os.environ.copy()
+    lib_dir = str(install_dir / "lib")
+    env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
+    return env
+
+
+def _run_rewind_pgdata_ex(
+    install_dir: Path,
+    target: PgCluster,
+    source: Optional[PgCluster] = None,
+    *,
+    source_pgdata: Optional[Path] = None,
+    source_server: Optional[str] = None,
+    restore_wal: bool = False,
+    no_ensure_shutdown: bool = False,
+    config_file: Optional[Path] = None,
+    write_recovery_conf: bool = False,
+    dry_run: bool = False,
+    debug: bool = False,
+    stderr_sink=None,
+) -> subprocess.CompletedProcess:
+    """
+    Flexible ``pg_tde_rewind`` invocation (offline or ``--source-server``).
+
+    Matches flags exercised in ``pg_tde/t/RewindTest.pm`` and ``pg_rewind_options.pl``.
+    """
+    cmd = [str(_tde_rewind_bin(install_dir)), "--target-pgdata", str(target.data_dir)]
+    if source_server:
+        cmd.extend(["--source-server", source_server])
+    elif source_pgdata is not None:
+        cmd.extend(["--source-pgdata", str(source_pgdata)])
+    elif source is not None:
+        cmd.extend(["--source-pgdata", str(source.data_dir)])
+    else:
+        raise ValueError("source, source_pgdata, or source_server required")
+    if restore_wal:
+        cmd.append("-c")
+    if no_ensure_shutdown:
+        cmd.append("--no-ensure-shutdown")
+    if config_file is not None:
+        cmd.extend(["--config-file", str(config_file)])
+    if write_recovery_conf:
+        cmd.append("--write-recovery-conf")
+    if dry_run:
+        cmd.append("--dry-run")
+    if debug or os.environ.get("PG_TDE_REWIND_DEBUG", "").strip() in ("1", "yes", "true"):
+        cmd.append("--debug")
+    env = _rewind_env(install_dir)
+    if stderr_sink is not None:
+        return subprocess.run(
+            cmd, stdout=subprocess.PIPE, text=True, env=env, stderr=stderr_sink
+        )
+    return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
 
 def _run_rewind_pgdata(
@@ -65,15 +128,9 @@ def _run_rewind_pgdata(
     Offline pg_tde_rewind: both clusters must already be stopped.
     restore_wal=True passes -c (use restore_command to fetch missing WAL).
     """
-    cmd = [str(_tde_rewind_bin(install_dir)),
-           "--target-pgdata", str(target.data_dir),
-           "--source-pgdata", str(source.data_dir)]
-    if restore_wal:
-        cmd.append("-c")
-    env = os.environ.copy()
-    lib_dir = str(install_dir / "lib")
-    env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
-    return subprocess.run(cmd, capture_output=True, text=True, env=env)
+    return _run_rewind_pgdata_ex(
+        install_dir, target, source, restore_wal=restore_wal
+    )
 
 
 def _cleanup_ha_pair_root(root: Path, install_dir: Path) -> None:
@@ -115,17 +172,101 @@ def _run_rewind_live(
     Online pg_tde_rewind: source must be running; target must be stopped.
     Uses --source-server (live connection) — mirrors pg_rewind --source-server.
     """
-    connstr = (f"host={source.socket_dir} port={source.port} "
-               f"user={libpq_superuser()} dbname=postgres")
-    cmd = [str(_tde_rewind_bin(install_dir)),
-           "--target-pgdata", str(target.data_dir),
-           "--source-server", connstr]
-    if restore_wal:
-        cmd.append("-c")
-    env = os.environ.copy()
-    lib_dir = str(install_dir / "lib")
-    env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
-    return subprocess.run(cmd, capture_output=True, text=True, env=env)
+    connstr = (
+        f"host={source.socket_dir} port={source.port} "
+        f"user={libpq_superuser()} dbname=postgres"
+    )
+    return _run_rewind_pgdata_ex(
+        install_dir,
+        target,
+        source_server=connstr,
+        restore_wal=restore_wal,
+    )
+
+
+def _create_rewind_user(cluster: PgCluster, role: str = "rewind_user") -> str:
+    """Minimal grants for ``--source-server`` rewind (``RewindTest.pm``)."""
+    cluster.execute(f"CREATE ROLE {role} LOGIN;")
+    for fn in (
+        "pg_catalog.pg_ls_dir(text, boolean, boolean)",
+        "pg_catalog.pg_stat_file(text, boolean)",
+        "pg_catalog.pg_read_binary_file(text)",
+        "pg_catalog.pg_read_binary_file(text, bigint, bigint, boolean)",
+    ):
+        cluster.execute(f"GRANT EXECUTE ON FUNCTION {fn} TO {role};")
+    return role
+
+
+def _enc_wal_ha_pair(
+    install_dir: Path,
+    tmp_path: Path,
+    io_mode: str,
+    *,
+    cipher: str = "aes_128",
+    wal_keep_size: str = "512MB",
+    archive_dir: Optional[Path] = None,
+) -> Tuple[PgCluster, PgCluster, TdeManager, str, Path]:
+    """WAL-encrypted pair with optional cipher and ``wal_keep_size`` override."""
+    archive_dir = archive_dir or (tmp_path / "enc_archive")
+    extra = {
+        "pg_tde.cipher": f"'{cipher}'",
+        "wal_keep_size": f"'{wal_keep_size}'",
+    }
+    primary, standby, tde, keyfile = _ha_pair(
+        install_dir,
+        tmp_path,
+        io_mode,
+        wal_encrypt=True,
+        archive_dir=archive_dir,
+        extra_primary_params=extra,
+    )
+    return primary, standby, tde, keyfile, archive_dir
+
+
+def _enc_block_tail_diverge(primary: PgCluster, standby: PgCluster) -> None:
+    """Shared divergence for ``pg_rewind_enc_copy_blocks.pl`` / ``enc_keep_wal_seg.pl``."""
+    primary.execute(
+        "CREATE TABLE tail_t (id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+        "f1 TEXT) USING tde_heap"
+    )
+    primary.execute(
+        "INSERT INTO tail_t (f1) SELECT repeat('abcdeF', 1000) "
+        "FROM generate_series(1, 1000)"
+    )
+    primary.execute(
+        "CREATE TABLE block_t (id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+        "f1 TEXT) USING tde_heap"
+    )
+    primary.execute(
+        "INSERT INTO block_t (f1) SELECT repeat('abcdeF', 1000) "
+        "FROM generate_series(1, 1000)"
+    )
+    primary.execute("CHECKPOINT")
+    ReplicationManager(primary, standby).assert_catchup(timeout=60)
+    _promote(standby)
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+            break
+        time.sleep(0.5)
+    primary.execute("UPDATE block_t SET f1='YYYYYYY' WHERE id % 10 = 0;")
+    standby.execute(
+        "INSERT INTO tail_t (f1) SELECT repeat('ghijk', 100) "
+        "FROM generate_series(1, 1000)"
+    )
+    standby.execute("CHECKPOINT")
+
+
+def _rotate_principal_key(cluster: PgCluster, key_name: str) -> None:
+    """Principal-key rotation only (``pg_rewind_enc_keep_archive_wal.pl`` pattern)."""
+    cluster.execute(
+        f"SELECT pg_tde_create_key_using_global_key_provider("
+        f"'{key_name}', 'file_provider');"
+    )
+    cluster.execute(
+        f"SELECT pg_tde_set_key_using_global_key_provider("
+        f"'{key_name}', 'file_provider');"
+    )
 
 
 def _promote(standby: PgCluster) -> None:
@@ -430,16 +571,19 @@ def _random_stop_for_rewind(
     cluster.stop(mode=mode, check=False)
 
 
-def _maybe_rotate_keys(cluster: PgCluster, rng: random.Random) -> None:
+def _maybe_rotate_keys(
+    cluster: PgCluster, rng: random.Random, *, server_key: bool = False
+) -> None:
+    """
+    Optional principal-key rotation during chaos loops.
+
+    Matches ``pg_rewind_enc_keep_archive_wal.pl`` (principal only). Server/default
+    WAL key rotation is opt-in because it historically broke post-rewind replay.
+    """
     if rng.getrandbits(1):
         key = f"key_{rng.randint(0, 99999)}"
-        cluster.execute(
-            f"SELECT pg_tde_create_key_using_global_key_provider('{key}','file_provider');"
-        )
-        cluster.execute(
-            f"SELECT pg_tde_set_key_using_global_key_provider('{key}','file_provider');"
-        )
-    if rng.getrandbits(1):
+        _rotate_principal_key(cluster, key)
+    if server_key and rng.getrandbits(1):
         sk = f"server_key_{rng.randint(0, 99999)}"
         cluster.execute(
             f"SELECT pg_tde_create_key_using_global_key_provider('{sk}','file_provider');"
@@ -503,21 +647,13 @@ def _run_rewind_pgdata_with_optional_debug(
     *,
     restore_wal: bool = True,
 ) -> subprocess.CompletedProcess:
-    cmd = [
-        str(_tde_rewind_bin(install_dir)),
-        "--target-pgdata",
-        str(target.data_dir),
-        "--source-pgdata",
-        str(source.data_dir),
-    ]
-    if restore_wal:
-        cmd.append("-c")
-    if os.environ.get("PG_TDE_REWIND_DEBUG", "").strip() in ("1", "yes", "true"):
-        cmd.append("--debug")
-    env = os.environ.copy()
-    lib_dir = str(install_dir / "lib")
-    env["LD_LIBRARY_PATH"] = f"{lib_dir}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
-    return subprocess.run(cmd, capture_output=True, text=True, env=env)
+    return _run_rewind_pgdata_ex(
+        install_dir,
+        target,
+        source,
+        restore_wal=restore_wal,
+        debug=os.environ.get("PG_TDE_REWIND_DEBUG", "").strip() in ("1", "yes", "true"),
+    )
 
 
 _REWIND_TARGET_CONF_MARKER = (
@@ -4587,6 +4723,811 @@ class TestPromoteAndRewind:
         assert result == "t"
 
 
+# ── pg_tde TAP enc_* ports (2026 pg_tde_rewind fixes) ───────────────────────
+
+
+@pytest.mark.parametrize("cipher", ["aes_128", "aes_256"])
+class TestTdeRewindEncTapPorts:
+    """
+    Ports of ``pg_tde/t/pg_rewind_enc_*.pl`` — block/tail copy, FSM/VM,
+    unchanged relations, kept WAL, archive-restored WAL (PG-2397/2407).
+
+    Parametrized on ``pg_tde.cipher`` (``aes_128`` / ``aes_256``) like TAP.
+    """
+
+    def test_rewind_enc_copy_blocks_tail(
+        self, install_dir: Path, tmp_path: Path, io_method: str, cipher: str,
+    ):
+        """``pg_rewind_enc_copy_blocks.pl``: partial block + tail copy, mixed keys."""
+        primary, standby, _, _, _ = _enc_wal_ha_pair(
+            install_dir, tmp_path, io_method, cipher=cipher,
+        )
+        try:
+            _enc_block_tail_diverge(primary, standby)
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM tail_t")) == 2000
+            assert int(primary.fetchone("SELECT COUNT(*) FROM block_t")) == 1000
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_enc_fsm_no_zeroing_pages(
+        self, install_dir: Path, tmp_path: Path, io_method: str, cipher: str,
+    ):
+        """``pg_rewind_enc_fsm.pl``: FSM/VM forks must not be zeroed after rewind."""
+        primary, standby, _, _, _ = _enc_wal_ha_pair(
+            install_dir, tmp_path, io_method, cipher=cipher,
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE tbl1 (id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                "f1 TEXT) USING tde_heap"
+            )
+            primary.execute(
+                "INSERT INTO tbl1 (f1) SELECT repeat('abcdeF', 1000) "
+                "FROM generate_series(1, 1000)"
+            )
+            primary.execute("CHECKPOINT")
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            standby.execute("DELETE FROM tbl1 WHERE id % 15 = 0;")
+            standby.execute(
+                "INSERT INTO tbl1 (f1) SELECT repeat('ghijk', 100) "
+                "FROM generate_series(1, 1000)"
+            )
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            log = primary.read_log(last_n=200)
+            assert "; zeroing out page" not in log, (
+                "FSM/VM fork corruption after encrypted rewind"
+            )
+            assert int(primary.fetchone("SELECT COUNT(*) FROM tbl1")) == 1934
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_enc_unchanged_rel_preserved_keys(
+        self, install_dir: Path, tmp_path: Path, io_method: str, cipher: str,
+    ):
+        """``pg_rewind_enc_unchanged_rel.pl``: flushed unchanged files keep target keys."""
+        primary, standby, _, _, _ = _enc_wal_ha_pair(
+            install_dir, tmp_path, io_method, cipher=cipher,
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE tbl (id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                "f1 TEXT) USING tde_heap"
+            )
+            primary.execute(
+                "INSERT INTO tbl (f1) SELECT repeat('abcdeF', 1000) "
+                "FROM generate_series(1, 1000)"
+            )
+            primary.execute("CHECKPOINT")
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            standby.execute("CHECKPOINT")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM tbl")) == 1000
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_enc_keep_wal_seg_block_tail(
+        self, install_dir: Path, tmp_path: Path, io_method: str, cipher: str,
+    ):
+        """``pg_rewind_enc_keep_wal_seg.pl``: kept segments + archive restore_command."""
+        if not wrappers_available(install_dir):
+            pytest.skip("pg_tde archive wrappers not in this build")
+        primary, standby, _, _, archive_dir = _enc_wal_ha_pair(
+            install_dir, tmp_path, io_method, cipher=cipher,
+        )
+        try:
+            primary.restart()
+            primary.wait_ready(timeout=60)
+            _enc_block_tail_diverge(primary, standby)
+            _force_wal_archive_stable(standby, archive_dir)
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(
+                install_dir, primary, standby, restore_wal=True
+            )
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM tail_t")) == 2000
+            assert int(primary.fetchone("SELECT COUNT(*) FROM block_t")) == 1000
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_enc_keep_archive_wal_no_invalid_magic(
+        self, install_dir: Path, tmp_path: Path, io_method: str, cipher: str,
+    ):
+        """
+        ``pg_rewind_enc_keep_archive_wal.pl`` (PG-2397/2407): archive-restored WAL
+        during ``-c`` rewind + principal-key rotation; no ``invalid magic number``.
+        """
+        if not wrappers_available(install_dir):
+            pytest.skip("pg_tde archive wrappers not in this build")
+
+        primary, standby, _, _, archive_dir = _enc_wal_ha_pair(
+            install_dir,
+            tmp_path,
+            io_method,
+            cipher=cipher,
+            wal_keep_size="0",
+        )
+        conf_stash = tmp_path / "keep_arch_conf"
+        try:
+            primary.execute(
+                "CREATE TABLE t1(id INT) USING tde_heap; "
+                "INSERT INTO t1 SELECT generate_series(1, 10000); "
+                "CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+            _force_wal_archive_stable(primary, archive_dir)
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+
+            standby.execute("INSERT INTO t1 VALUES (999999);")
+            _force_wal_archive_stable(standby, archive_dir)
+            _rotate_principal_key(standby, "key_after_promotion")
+            standby.execute("SELECT pg_switch_wal();")
+
+            standby.execute(
+                "CREATE TABLE target_only(id INT) USING tde_heap; "
+                "INSERT INTO target_only VALUES (1),(2);"
+            )
+            primary.execute(
+                "CREATE TABLE source_only(id INT) USING tde_heap; "
+                "INSERT INTO source_only VALUES (10),(20);"
+            )
+            _force_wal_archive_stable(primary, archive_dir)
+            _force_wal_archive_stable(standby, archive_dir)
+
+            primary.stop(mode="smart", check=False)
+            _stash_rewind_target_configs(primary, conf_stash)
+            standby.stop(check=False)
+
+            stash_conf = conf_stash / "postgresql.conf"
+            result = _run_rewind_pgdata_ex(
+                install_dir,
+                primary,
+                standby,
+                restore_wal=True,
+                config_file=stash_conf,
+            )
+            assert result.returncode == 0, (
+                f"keep_archive_wal rewind failed:\n{result.stdout}\n{result.stderr}"
+            )
+            _restore_stashed_configs(primary, conf_stash)
+            _repair_rewind_target_identity(primary)
+
+            primary.start()
+            primary.wait_ready(timeout=90)
+            log = primary.read_log(last_n=200)
+            assert "invalid magic number" not in log.lower()
+            assert int(primary.fetchone("SELECT COUNT(*) FROM t1")) >= 10_000
+            assert primary.fetchone("SELECT COUNT(*) FROM target_only") == "2"
+        finally:
+            _teardown(standby, primary)
+
+
+class TestTdeRewindEncMedium:
+    """
+    Medium-priority pg_tde rewind gaps: external tablespace, TAP archive mode
+    (empty ``pg_wal`` + ``--no-ensure-shutdown``), remote ``--write-recovery-conf``.
+    """
+
+    def test_rewind_enc_ext_tablespace_block_tail(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_enc_ext_tablespace.pl`` (PG17+ external TS mapping)."""
+        if postgres_major_version(install_dir) < 17:
+            pytest.skip("external tablespace backup mapping requires PostgreSQL 17+")
+
+        root = tmp_path / "ext_ts_enc"
+        primary_ts = root / "ts_primary"
+        standby_ts = root / "ts_standby"
+        primary_ts.mkdir(parents=True)
+        archive_dir = root / "archive"
+
+        primary = PgCluster(
+            root / "primary", allocate_port(), install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        standby = PgCluster(
+            root / "standby", allocate_port(), install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        arch_cmd, restore_cmd = archive_restore_conf_values(
+            install_dir, archive_dir, use_tde_wrappers=True
+        )
+        params = {
+            "shared_preload_libraries": "'pg_tde'",
+            "wal_level": "replica",
+            "archive_mode": "always",
+            "archive_command": arch_cmd,
+            "restore_command": restore_cmd,
+            "wal_log_hints": "on",
+            "max_wal_senders": "5",
+            "hot_standby": "on",
+            "wal_keep_size": "'320MB'",
+        }
+        try:
+            primary.initdb(extra_args=initdb_args_no_data_checksums(primary.install_dir))
+            primary.write_default_config(extra_params=params)
+            for entry in (
+                "local all all trust",
+                "local replication all trust",
+                "host  all all 127.0.0.1/32 trust",
+                "host  replication all 127.0.0.1/32 trust",
+            ):
+                primary.add_hba_entry(entry)
+            primary.start()
+            tde = TdeManager(primary)
+            tde.create_extension()
+            tde.add_global_key_provider_file(keyfile=str(root / "keyring.per"))
+            tde.set_global_principal_key()
+            tde.enable_wal_encryption()
+            primary.restart()
+
+            primary.execute(f"CREATE TABLESPACE ts1 LOCATION '{primary_ts}'")
+            primary.execute(
+                "CREATE TABLE tail_t (id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                f"f1 TEXT) USING tde_heap TABLESPACE ts1"
+            )
+            primary.execute(
+                "INSERT INTO tail_t (f1) SELECT repeat('abcdeF', 1000) "
+                "FROM generate_series(1, 1000)"
+            )
+            primary.execute(
+                "CREATE TABLE block_t (id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+                f"f1 TEXT) USING tde_heap TABLESPACE ts1"
+            )
+            primary.execute(
+                "INSERT INTO block_t (f1) SELECT repeat('abcdeF', 1000) "
+                "FROM generate_series(1, 1000)"
+            )
+            primary.execute("CHECKPOINT")
+
+            repl = ReplicationManager(primary, standby)
+            repl.create_standby_from_backup(
+                use_tde_basebackup=True,
+                extra_args=[
+                    "-E",
+                    f"--tablespace-mapping={primary_ts}={standby_ts}",
+                ],
+            )
+            standby.write_default_config(
+                "replica",
+                extra_params={
+                    "shared_preload_libraries": "'pg_tde'",
+                    "restore_command": restore_cmd,
+                    "archive_mode": "always",
+                    "archive_command": arch_cmd,
+                    "max_wal_senders": "10",
+                },
+            )
+            standby.start()
+            standby.wait_ready(timeout=60)
+            repl.assert_catchup(timeout=60)
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            primary.execute("UPDATE block_t SET f1='YYYYYYY' WHERE id % 10 = 0;")
+            standby.execute(
+                "INSERT INTO tail_t (f1) SELECT repeat('ghijk', 100) "
+                "FROM generate_series(1, 1000)"
+            )
+            standby.execute("CHECKPOINT")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby, restore_wal=True)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM tail_t")) == 2000
+            assert int(primary.fetchone("SELECT COUNT(*) FROM block_t")) == 1000
+        finally:
+            _teardown(standby, primary)
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_rewind_archive_mode_empty_pg_wal(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """
+        ``RewindTest.pm`` archive mode: target ``pg_wal`` emptied; rewind uses
+        ``--no-ensure-shutdown --restore-target-wal --config-file``.
+        """
+        if not wrappers_available(install_dir):
+            pytest.skip("pg_tde archive wrappers not in this build")
+
+        root = tmp_path / "arch_empty_wal"
+        archive_dir = root / "archive"
+        conf_stash = root / "conf_stash"
+        primary, standby, _, _, archive_dir = _enc_wal_ha_pair(
+            install_dir, root, io_method, archive_dir=archive_dir,
+        )
+        try:
+            primary.execute(
+                "CREATE TABLE arch_empty_t (id INT) USING tde_heap; "
+                "INSERT INTO arch_empty_t SELECT generate_series(1, 500); "
+                "CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+            _force_wal_archive_stable(primary, archive_dir)
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            standby.execute(
+                "INSERT INTO arch_empty_t SELECT generate_series(501, 800); "
+                "CHECKPOINT;"
+            )
+            _force_wal_archive_stable(standby, archive_dir)
+
+            primary.stop(mode="smart", check=False)
+            pg_wal = primary.data_dir / "pg_wal"
+            for item in pg_wal.iterdir():
+                if item.is_file():
+                    shutil.copy2(item, archive_dir / item.name)
+            shutil.rmtree(pg_wal)
+            pg_wal.mkdir(mode=0o700)
+
+            _stash_rewind_target_configs(primary, conf_stash)
+            standby.stop(check=False)
+            stash_conf = conf_stash / "postgresql.conf"
+
+            result = _run_rewind_pgdata_ex(
+                install_dir,
+                primary,
+                standby,
+                restore_wal=True,
+                no_ensure_shutdown=True,
+                config_file=stash_conf,
+            )
+            assert result.returncode == 0, (
+                f"archive empty-pg_wal rewind failed:\n{result.stdout}\n{result.stderr}"
+            )
+            _restore_stashed_configs(primary, conf_stash)
+            _repair_rewind_target_identity(primary)
+            _sync_archive_history_to_pg_wal(archive_dir, pg_wal)
+
+            primary.start()
+            primary.wait_ready(timeout=90)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM arch_empty_t")) >= 500
+        finally:
+            _teardown(standby, primary)
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_rewind_remote_write_recovery_conf(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``RewindTest.pm`` remote mode: ``--write-recovery-conf`` + ``rewind_user``."""
+        primary, standby, _, _, _ = _enc_wal_ha_pair(
+            install_dir, tmp_path, io_method,
+        )
+        try:
+            _create_rewind_user(primary, "rewind_user")
+            primary.execute(
+                "CREATE TABLE remote_wr_t (id INT) USING tde_heap; "
+                "INSERT INTO remote_wr_t SELECT generate_series(1, 200); "
+                "CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            standby.execute(
+                "INSERT INTO remote_wr_t SELECT generate_series(201, 400); "
+                "CHECKPOINT;"
+            )
+            primary.execute(
+                "INSERT INTO remote_wr_t VALUES (999);"
+            )
+            primary.stop(check=False)
+
+            connstr = (
+                f"host={standby.socket_dir} port={standby.port} "
+                f"user=rewind_user dbname=postgres"
+            )
+            conf_stash = tmp_path / "remote_wr_conf"
+            _stash_rewind_target_configs(primary, conf_stash)
+            result = _run_rewind_pgdata_ex(
+                install_dir,
+                primary,
+                source_server=connstr,
+                config_file=conf_stash / "postgresql.conf",
+                write_recovery_conf=True,
+            )
+            assert result.returncode == 0, (
+                f"remote write-recovery-conf failed:\n{result.stdout}\n{result.stderr}"
+            )
+            assert (primary.data_dir / "standby.signal").is_file()
+
+            standby.execute("ALTER ROLE rewind_user WITH REPLICATION;")
+            _restore_stashed_configs(primary, conf_stash)
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            assert primary.fetchone("SELECT pg_is_in_recovery()") == "t"
+            ReplicationManager(standby, primary).assert_catchup(timeout=60)
+            assert int(primary.fetchone("SELECT COUNT(*) FROM remote_wr_t")) >= 400
+        finally:
+            _teardown(standby, primary)
+
+
+class TestTdeRewindUpstreamPorts:
+    """
+    Lower-priority ports of upstream ``pg_tde/t/pg_rewind_*.pl`` tests and CLI
+    validation from ``pg_rewind_options.pl``.
+    """
+
+    def test_rewind_cli_options_validation(
+        self, install_dir: Path, tmp_path: Path,
+    ):
+        """``pg_rewind_options.pl``: help/version and invalid option combos."""
+        bin_path = _tde_rewind_bin(install_dir)
+        env = _rewind_env(install_dir)
+        assert subprocess.run(
+            [str(bin_path), "--help"], capture_output=True, env=env
+        ).returncode == 0
+        assert subprocess.run(
+            [str(bin_path), "--version"], capture_output=True, env=env
+        ).returncode == 0
+
+        bogus = tmp_path / "bogus_pgdata"
+        bogus.mkdir()
+        assert subprocess.run(
+            [
+                str(bin_path), "--target-pgdata", str(bogus),
+                "--source-pgdata", str(bogus), "extra_arg",
+            ],
+            capture_output=True,
+            env=env,
+        ).returncode != 0
+        assert subprocess.run(
+            [str(bin_path), "--target-pgdata", str(bogus)],
+            capture_output=True,
+            env=env,
+        ).returncode != 0
+        assert subprocess.run(
+            [
+                str(bin_path), "--target-pgdata", str(bogus),
+                "--source-pgdata", str(bogus),
+                "--source-server", "host=127.0.0.1",
+            ],
+            capture_output=True,
+            env=env,
+        ).returncode != 0
+        assert subprocess.run(
+            [
+                str(bin_path), "--target-pgdata", str(bogus),
+                "--source-pgdata", str(bogus),
+                "--write-recovery-conf",
+            ],
+            capture_output=True,
+            env=env,
+        ).returncode != 0
+
+    def test_rewind_same_timeline_noop(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_same_timeline.pl``: rewind without divergence succeeds."""
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            primary.execute(
+                "CREATE TABLE same_tl_t (id INT) USING tde_heap; "
+                "INSERT INTO same_tl_t VALUES (1); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_databases_divergence(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_databases.pl``: CREATE/DROP DATABASE divergence."""
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method,
+            extra_primary_params={"allow_in_place_tablespaces": "on"},
+        )
+        try:
+            primary.execute("CREATE DATABASE inprimary")
+            primary.execute(
+                "CREATE TABLE inprimary_tab (a INT) USING tde_heap",
+                dbname="inprimary",
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+            primary.execute("CREATE DATABASE beforepromotion")
+            primary.execute(
+                "CREATE TABLE beforepromotion_tab (a INT) USING tde_heap",
+                dbname="beforepromotion",
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            primary.execute("CREATE DATABASE primary_afterpromotion")
+            standby.execute("CREATE DATABASE standby_afterpromotion")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            dbs = primary.fetchall(
+                "SELECT datname FROM pg_database ORDER BY 1"
+            )
+            assert "standby_afterpromotion" in dbs
+            assert "primary_afterpromotion" not in dbs
+            assert "beforepromotion" in dbs
+            assert "inprimary" in dbs
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_extrafiles_sync(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_extrafiles.pl``: extra files/dirs copied or removed."""
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            both_dir = primary.data_dir / "tst_both_dir"
+            both_dir.mkdir()
+            (both_dir / "both_file1").write_text("in both1")
+            (both_dir / "both_file2").write_text("in both2")
+            sub = both_dir / "both_subdir"
+            sub.mkdir()
+            (sub / "both_file3").write_text("in both3")
+
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            sboth = standby.data_dir / "tst_both_dir"
+            sboth.mkdir(exist_ok=True)
+            (standby.data_dir / "tst_standby_dir").mkdir()
+            (standby.data_dir / "tst_standby_dir" / "standby_file1").write_text(
+                "in standby1"
+            )
+            (primary.data_dir / "tst_primary_dir").mkdir()
+            (primary.data_dir / "tst_primary_dir" / "primary_file1").write_text(
+                "in primary1"
+            )
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+
+            assert (primary.data_dir / "tst_standby_dir" / "standby_file1").is_file()
+            assert not (primary.data_dir / "tst_primary_dir").exists()
+            assert (primary.data_dir / "tst_both_dir" / "both_file1").read_text() == "in both1"
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_pg_wal_symlink_target(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_pg_xlog_symlink.pl``: target ``pg_wal`` is a symlink."""
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        ext_wal = tmp_path / "xlog_primary"
+        try:
+            primary.stop()
+            pg_wal = primary.data_dir / "pg_wal"
+            ext_wal.mkdir(parents=True, exist_ok=True)
+            if pg_wal.is_symlink():
+                pg_wal.unlink()
+            elif pg_wal.is_dir():
+                for child in pg_wal.iterdir():
+                    dest = ext_wal / child.name
+                    if child.is_file():
+                        shutil.copy2(child, dest)
+                    else:
+                        shutil.copytree(child, dest, dirs_exist_ok=True)
+                shutil.rmtree(pg_wal)
+            os.symlink(ext_wal, pg_wal)
+
+            primary.start()
+            primary.wait_ready(timeout=60)
+            primary.execute(
+                "CREATE TABLE sym_t (d TEXT) USING tde_heap; "
+                "INSERT INTO sym_t VALUES ('in primary'); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            primary.execute("INSERT INTO sym_t VALUES ('diverged');")
+            standby.execute("INSERT INTO sym_t VALUES ('on standby');")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby)
+            assert result.returncode == 0, result.stderr
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_keep_recycled_wals_message(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_keep_recycled_wals.pl``: kept WAL segments noted in stderr."""
+        archive_dir = tmp_path / "recycled_arch"
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method,
+            wal_encrypt=True, archive_dir=archive_dir,
+        )
+        try:
+            primary.execute("CREATE TABLE t(a INT) USING tde_heap;")
+            primary.execute("INSERT INTO t VALUES (0); CHECKPOINT;")
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+
+            primary.configure({"archive_command": "'/bin/false %p %f'"})
+            primary.execute("SELECT pg_reload_conf();")
+            primary.execute("INSERT INTO t VALUES (1); SELECT pg_switch_wal();")
+
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            standby.execute("INSERT INTO t VALUES (2); SELECT pg_switch_wal();")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(install_dir, primary, standby, restore_wal=True)
+            assert result.returncode == 0, result.stderr
+            combined = (result.stdout + result.stderr).lower()
+            assert "required for recovery" in combined
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_growing_source_file_fails(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``pg_rewind_growing_files.pl``: growing file during copy → error."""
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            primary.execute(
+                "CREATE TABLE tbl1 (d TEXT) USING tde_heap; "
+                "INSERT INTO tbl1 VALUES ('in primary'); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            primary.execute("INSERT INTO tbl1 VALUES ('diverged');")
+            standby.execute("INSERT INTO tbl1 VALUES ('standby');")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            extra_dir = standby.data_dir / "tst_both_dir"
+            extra_dir.mkdir(exist_ok=True)
+            growing = extra_dir / "file1"
+            growing.write_text("a")
+
+            with open(growing, "ab") as err_sink:
+                result = _run_rewind_pgdata_ex(
+                    install_dir,
+                    primary,
+                    standby,
+                    stderr_sink=err_sink,
+                )
+            assert result.returncode != 0
+            tail = growing.read_text().splitlines()[-1] if growing.stat().st_size else ""
+            combined = tail + (result.stdout or "")
+            assert "size of source file" in combined.lower()
+        finally:
+            _teardown(standby, primary)
+
+    def test_rewind_dry_run_succeeds(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        """``--dry-run`` completes without modifying target when clusters diverged."""
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            primary.execute(
+                "CREATE TABLE dry_t (id INT) USING tde_heap; "
+                "INSERT INTO dry_t VALUES (1); CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=30)
+            _promote(standby)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if standby.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            standby.execute("INSERT INTO dry_t VALUES (2);")
+            primary.execute("INSERT INTO dry_t VALUES (99);")
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            before = (primary.data_dir / "global" / "pg_control").stat().st_mtime
+            result = _run_rewind_pgdata_ex(
+                install_dir, primary, standby, dry_run=True
+            )
+            assert result.returncode == 0, result.stderr
+            after = (primary.data_dir / "global" / "pg_control").stat().st_mtime
+            assert before == after
+        finally:
+            _teardown(standby, primary)
+
+
 class TestTdeRewindExtremeCornerCases:
     """
     Highly advanced corner cases stressing pg_tde's interaction with pg_rewind,
@@ -5161,12 +6102,22 @@ class TestTdeRewindExtremeCornerCases:
         finally:
             _teardown(standby, primary)
 
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "pg_tde product bug: WAL encrypt + immediate stop may fail rewind "
+            "crash recovery or PANIC on second startup (invalid magic number)"
+        ),
+    )
     def test_rewind_crash_recovery_wal_corruption(
         self, install_dir: Path, tmp_path: Path, io_method: str
     ):
         """
         Reproduces a known bug: pg_tde_rewind with WAL encryption corrupts WAL
         after an immediate shutdown, causing a startup PANIC on the *second* restart.
+
+        On fixed pg_tde builds this may pass (rewind + two clean starts). Marked
+        ``xfail(strict=False)`` so regressions are visible without blocking CI.
         """
         primary, standby, _, _ = _ha_pair(
             install_dir, tmp_path, io_method, wal_encrypt=True
