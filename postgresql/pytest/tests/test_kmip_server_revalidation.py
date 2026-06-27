@@ -5,7 +5,7 @@ Run the same checklist against each Percona-supported KMIP backend. Configure
 one or more profiles via ``KMIP_REVALIDATE_PROFILES`` or
 ``--kmip-revalidate-profiles`` (comma-separated, or ``all``).
 
-See ``docs/kmip_revalidation.md`` and ``config/kmip_profiles.example.env``.
+See ``docs/kmip/vendor-signoff.md`` and ``config/kmip_profiles.example.env``.
 """
 from __future__ import annotations
 

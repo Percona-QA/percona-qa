@@ -42,7 +42,7 @@ _cosmian_setup_fail() {
     echo "  export KMIP_COSMIAN_SERVER_CA=/path/to/ca.pem" >&2
     echo "  source scripts/setup_cosmian_for_pytest.sh" >&2
     echo "" >&2
-    echo "See docs/kmip.md § Install Cosmian KMS" >&2
+    echo "See docs/kmip/quickstart.md § Install Cosmian KMS" >&2
     if [[ "${_SCRIPT_SOURCED}" -eq 1 ]]; then
         return 1
     fi

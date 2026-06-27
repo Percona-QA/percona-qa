@@ -4,7 +4,7 @@ HashiCorp Vault **KMIP secrets engine** configuration for pytest.
 Distinct from Vault KV v2 (``lib/vault.py``). pg_tde talks to Vault on the KMIP
 listener (default TCP 5696) using TLS client certificates issued by the engine.
 
-See ``docs/vault_kmip.md`` and ``scripts/setup_vault_kmip_for_pytest.sh``.
+See ``docs/kmip/vault-kmip-engine.md`` and ``scripts/setup_vault_kmip_for_pytest.sh``.
 """
 from __future__ import annotations
 

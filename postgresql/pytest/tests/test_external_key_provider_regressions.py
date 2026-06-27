@@ -9,7 +9,7 @@ Regression tests for external key providers (KMIP + Vault/OpenBao).
   **namespace** support ([PR #442](https://github.com/percona/pg_tde/pull/442))
   and namespaced mount-path parsing ([PR #492](https://github.com/percona/pg_tde/pull/492)).
 
-Prerequisites: KMIP + OpenBao setup scripts (see ``docs/kmip.md``, ``docs/vault.md``).
+Prerequisites: KMIP + OpenBao setup scripts (see ``docs/kmip/README.md``, ``docs/vault.md``).
 """
 from __future__ import annotations
 

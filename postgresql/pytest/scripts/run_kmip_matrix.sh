@@ -3,6 +3,7 @@
 #
 # Same core scenarios for Cosmian, Vault KMIP, Fortanix, Thales, Akeyless, …
 # Server-specific tests stay in separate modules (see docs/key_provider_matrix.md).
+# KMIP docs index: docs/kmip/README.md
 #
 # Usage:
 #   cd postgresql/pytest && source .env.sh

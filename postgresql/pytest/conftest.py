@@ -166,7 +166,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=os.environ.get("KMIP_REVALIDATE_PROFILES", ""),
         help=(
             "KMIP server revalidation profiles (comma-separated or 'all'); "
-            "default cosmian when unset — see docs/kmip_revalidation.md"
+            "default cosmian when unset — see docs/kmip/README.md"
         ),
     )
     parser.addoption(
@@ -473,7 +473,7 @@ def kmip_config(request):
 
     Default profile is **cosmian** (``KMIP_SERVER_*`` from ``setup_cosmian_for_pytest.sh``).
     Choose another server with ``KMIP_PROFILE=vault_kmip`` or ``--kmip-profile=vault_kmip``.
-    See ``docs/kmip.md`` and ``docs/key_provider_matrix.md``.
+    See ``docs/kmip/README.md`` and ``docs/key_provider_matrix.md``.
     """
     cfg, reason = resolve_session_kmip_config(request.config)
     if cfg is None:
@@ -484,7 +484,7 @@ def kmip_config(request):
 @pytest.fixture(scope="session")
 def vault_kmip_config():
     """
-    HashiCorp Vault **KMIP engine** (not KV v2). See ``docs/vault_kmip.md``.
+    HashiCorp Vault **KMIP engine** (not KV v2). See ``docs/kmip/vault-kmip-engine.md``.
     """
     cfg = vault_kmip_config_from_env()
     if cfg is None:

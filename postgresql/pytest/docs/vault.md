@@ -5,10 +5,10 @@ pg_tde stores encryption keys in **HashiCorp Vault** or **OpenBao** using the
 products share the same HTTP API; OpenBao tests additionally set a
 **namespace** and often use mount `pg_tde` instead of `secret`.
 
-KMIP is separate — see [kmip.md](kmip.md).
+KMIP is separate — see [kmip/README.md](kmip/README.md).
 
 **Vault KMIP engine** (not KV v2): customer ``register symmetric key: -2`` regression
-in [vault_kmip.md](vault_kmip.md) / `tests/test_vault_kmip.py`.
+in [kmip/vault-kmip-engine.md](kmip/vault-kmip-engine.md) / `tests/test_vault_kmip.py`.
 
 ## Test modules
 

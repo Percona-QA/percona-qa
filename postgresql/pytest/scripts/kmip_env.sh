@@ -69,6 +69,6 @@ Options:
        export KMIP_SERVER_CA=...
        export KMIP_REVALIDATE_PROFILES=fortanix
 
-See docs/kmip.md and docs/kmip_revalidation.md
+See docs/kmip/README.md (quickstart: docs/kmip/quickstart.md)
 EOF
 }

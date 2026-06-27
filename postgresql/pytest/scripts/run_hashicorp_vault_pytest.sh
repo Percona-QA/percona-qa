@@ -40,7 +40,7 @@ hc_vault_apply_defaults
 HC_VAULT_PYTEST_SUITES="${HC_VAULT_PYTEST_SUITES:-all}"
 
 printf 'HashiCorp Vault pytest (manual / external server)\n'
-printf '  docs: docs/vault.md, docs/vault_kmip.md\n'
+printf '  docs: docs/vault.md, docs/kmip/vault-kmip-engine.md\n'
 printf '  VAULT_ADDR=%s\n' "${VAULT_ADDR}"
 printf '  VAULT_SECRET_MOUNT=%s\n' "${VAULT_SECRET_MOUNT}"
 printf '  VAULT_NAMESPACE=%s\n' "${VAULT_NAMESPACE}"

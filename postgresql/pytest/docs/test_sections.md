@@ -37,7 +37,7 @@ pytest --list-test-sections
 | `recovery` | `recovery` | `test_recovery.py`, `test_unlogged_recovery.py` |
 | `pgbackrest` | `pgbackrest` | `test_pgbackrest.py` |
 | `vault` | `vault`, `openbao` | Vault/OpenBao (`tests/test_vault_providers.py`; see `docs/vault.md`) |
-| `kmip` | `kmip` | KMIP provider tests (`tests/test_kmip.py`; see `docs/kmip.md`) |
+| `kmip` | `kmip` | KMIP provider tests — see [kmip/README.md](kmip/README.md) |
 | `waldump` | `waldump` | `test_waldump.py` |
 | `docker` | `docker` | Docker-dependent tests |
 | `bug` | `bug` | `test_bug_reproduction.py` |

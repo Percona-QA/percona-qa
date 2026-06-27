@@ -14,6 +14,8 @@ separate modules.
 
 ## KMIP profiles
 
+**Documentation:** [kmip/README.md](kmip/README.md) — start here for all KMIP guides.
+
 **Default server: `cosmian`** (Percona CI — no vendor license). Override when you
 want a different KMIP backend:
 
@@ -137,4 +139,4 @@ VAULT_KV_PROFILES=hashicorp_enterprise ./scripts/run_vault_kv_matrix.sh
 pytest tests/test_file_keyring_common_matrix.py -v
 ```
 
-See also: [kmip_revalidation.md](kmip_revalidation.md), [vault.md](vault.md), [vault_kmip.md](vault_kmip.md).
+See also: [kmip/README.md](kmip/README.md), [vault.md](vault.md).

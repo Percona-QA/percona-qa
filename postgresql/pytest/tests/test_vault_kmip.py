@@ -8,7 +8,7 @@ Customer report: ``pg_tde_create_key_using_global_key_provider`` fails with::
 when pg_tde uses Vault as a KMIP server (not Vault KV v2).
 
 Prerequisites: Vault with the **KMIP secrets engine** (Enterprise), configured via
-``scripts/setup_vault_kmip_for_pytest.sh``. See ``docs/vault_kmip.md``.
+``scripts/setup_vault_kmip_for_pytest.sh``. See ``docs/kmip/vault-kmip-engine.md``.
 
 For production HashiCorp integration, Percona documents **Vault KV v2**
 (``tests/test_vault_providers.py``), not the KMIP engine.
