@@ -76,7 +76,7 @@ else
     echo "   [PASS] pg_tde_checksums verified the checksums."
 fi
 
-echo "8. Corrupting encrypted data file to verify pg_tde_checksums skips encrypted data file corruption..."
+echo "8. Corrupting encrypted data file to verify pg_tde_checksums detects it (PG-2399)..."
 if [ ! -f "$ENCRYPTED_DATA_FILE" ]; then
     echo "   [FAIL] Encrypted data file not found: $ENCRYPTED_DATA_FILE"
     exit 1
@@ -89,15 +89,15 @@ if [ $? -ne 0 ]; then
 fi
 echo "   Corrupted encrypted data file $ENCRYPTED_DATA_FILE (16 bytes at offset 100)."
 
-echo "9. Running pg_tde_checksums again (expect checksum pass)..."
+echo "9. Running pg_tde_checksums again (expect checksum failure on encrypted table)..."
 CHECK_OUTPUT=$($INSTALL_DIR/bin/pg_tde_checksums -c -D "$PGDATA" 2>&1)
 EXIT_CODE=$?
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "   [FAIL] pg_tde_checksums failed to skip the checksums of encrypted data file corruption."
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "   [FAIL] pg_tde_checksums should report encrypted-table corruption but exited 0."
     echo "   Details: $(echo "$CHECK_OUTPUT" | grep "checksum verification failed" | tail -n 1)"
     exit 1
 else
-    echo "   [PASS] pg_tde_checksums skipped the checksums of encrypted data file corruption."
+    echo "   [PASS] pg_tde_checksums detected encrypted-table corruption."
 fi
 
 echo "10. Corrupting unencrypted data file to verify pg_tde_checksums detects unencrypted data file corruption..."

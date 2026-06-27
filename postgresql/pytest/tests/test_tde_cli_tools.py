@@ -1,8 +1,10 @@
 """
 Direct CLI coverage for the pg_tde wrapper binaries:
 
-  * ``pg_tde_checksums``        — TDE-aware ``pg_checksums``: skips encrypted
-                                  pages, validates plain heap pages.
+  * ``pg_tde_checksums``        — TDE-aware ``pg_checksums``: decrypts
+                                  ``tde_heap`` pages and validates checksums
+                                  (PG-2399); plain ``heap`` pages use the
+                                  standard algorithm unchanged.
   * ``pg_tde_resetwal``         — TDE-aware ``pg_resetwal``: rewrites pg_control
                                   / clears pg_wal on a cluster with WAL
                                   encryption enabled; the cluster must come
@@ -172,16 +174,16 @@ def _table_path(cluster: PgCluster, table: str) -> Path:
 class TestPgTdeChecksumsCLI:
     """
     ``pg_tde_checksums`` is the TDE-aware counterpart to ``pg_checksums``:
-    it knows the layout of ``tde_heap`` relations (their on-disk format
-    differs because the page is encrypted) and **skips** their checksum
-    verification, while still validating plain heap relations the same
-    way as upstream ``pg_checksums``.
+    for ``tde_heap`` relations it decrypts each page, then validates or
+    enables the standard PostgreSQL page checksum (PG-2399, parity with
+    ``pg_tde/t/pg_tde_checksums.pl``).  Plain ``heap`` relations are handled
+    like upstream ``pg_checksums``.
 
-    Parity with ``pg_tde_checksums_test.sh``:
+    Parity with ``pg_tde_checksums_test.sh`` (updated for PG-2399):
 
     * Pre-extension ``pg_checksums`` / ``pg_tde_checksums`` on stopped PGDATA
     * Combined verify with ``tde_heap`` + ``heap`` before corruption
-    * Encrypted vs plain corruption outcomes (existing tests)
+    * Encrypted and plain corruption both reported as checksum failures
     """
 
     def test_binary_exists(self, install_dir: Path):
@@ -289,7 +291,7 @@ class TestPgTdeChecksumsCLI:
         finally:
             cluster.stop(check=False)
 
-    def test_ignores_corruption_on_encrypted_relation(
+    def test_detects_corruption_on_encrypted_relation(
         self,
         pg_factory,
         tmp_path: Path,
@@ -297,15 +299,13 @@ class TestPgTdeChecksumsCLI:
         io_method: str,
     ):
         """
-        Corrupting an encrypted ``tde_heap`` page must **not** trigger a
-        failure — ``pg_tde_checksums`` skips encrypted pages because their
-        checksum is computed over the encrypted contents and isn't directly
-        comparable to the plain-heap checksum algorithm.
+        Corrupting an encrypted ``tde_heap`` page must be reported as a
+        checksum failure.
 
-        Conversely, vanilla ``pg_checksums`` (when present) **should**
-        either error out on the encrypted relation's page format or refuse
-        the verify altogether; that's the whole reason the TDE wrapper
-        exists. We pin both ends to make the contrast explicit.
+        Since PG-2399 ``pg_tde_checksums`` decrypts encrypted blocks and
+        validates the logical page checksum (``pg_tde/t/pg_tde_checksums.pl``
+        expects exit 1 here).  Older builds skipped encrypted relations
+        entirely; that skip path was removed as unnecessary.
         """
         cluster = _build_tde_cluster_with_checksums(
             pg_factory, tmp_path, io_method=io_method
@@ -322,38 +322,21 @@ class TestPgTdeChecksumsCLI:
             cluster.stop()
             _corrupt_first_data_page(enc_path)
 
-            r_tde = _run_checksums(
+            result = _run_checksums(
                 install_dir, "-c", "-D", str(cluster.data_dir)
             )
-            assert r_tde.returncode == 0, (
-                "pg_tde_checksums must SKIP encrypted-relation pages and "
-                "still return success — instead it reported a failure.\n"
-                f"  stdout: {r_tde.stdout}\n  stderr: {r_tde.stderr}"
+            assert result.returncode != 0, (
+                "pg_tde_checksums must DETECT corruption on an encrypted "
+                "tde_heap relation but exited 0.\n"
+                f"  stdout: {result.stdout}\n  stderr: {result.stderr}"
             )
-
-            # Vanilla pg_checksums lacks the TDE-aware skip and should NOT
-            # succeed on the same corruption. Some builds report it via a
-            # non-zero exit, others stream "checksum verification failed"
-            # to stdout/stderr while still exiting 0 — both shapes prove
-            # the wrapper is doing something non-trivial. Treat the test
-            # as informational on builds where the contrast can't be
-            # observed (don't pin the exit code in that case).
-            pg_checksums = install_dir / "bin" / "pg_checksums"
-            if pg_checksums.is_file():
-                r_plain = subprocess.run(
-                    [str(pg_checksums), "-c", "-D", str(cluster.data_dir)],
-                    capture_output=True, text=True, env=_env(install_dir),
-                )
-                if r_plain.returncode == 0 and \
-                        "checksum verification failed" not in (
-                            r_plain.stdout + r_plain.stderr
-                        ).lower():
-                    pytest.xfail(
-                        "pg_checksums did not flag the encrypted-page "
-                        "corruption — wrapper-only contrast not observable "
-                        f"on this build (stdout={r_plain.stdout!r}, "
-                        f"stderr={r_plain.stderr!r})."
-                    )
+            combined = (result.stdout + result.stderr).lower()
+            assert "checksum verification failed" in combined or \
+                "bad" in combined, (
+                "pg_tde_checksums exited non-zero but the message did not "
+                "mention checksum failure clearly.\n"
+                f"  stdout: {result.stdout}\n  stderr: {result.stderr}"
+            )
         finally:
             cluster.stop(check=False)
 
