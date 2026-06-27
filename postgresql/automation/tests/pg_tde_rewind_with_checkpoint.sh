@@ -80,6 +80,13 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"
 #######################################
 # Step 4: Promote replica
 #######################################
+# Ensure the replica has replayed all primary WAL (incl. the sysbench prepare
+# that creates sbtest1..100) BEFORE promoting. Without this, on slower hosts
+# (notably ARM) the replica promotes mid-replication, the last sbtest tables
+# are missing, and the Step 5 sysbench run fails (and SIGSEGVs on ARM).
+echo "Waiting for replica to catch up before promotion"
+wait_for_replica_catchup $PRIMARY_PORT $REPLICA_PORT
+
 echo "Promoting replica"
 $PG_CTL -D $REPLICA_DATA promote -w
 

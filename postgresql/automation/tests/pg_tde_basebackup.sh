@@ -105,7 +105,14 @@ sleep 2
 echo "Step 3: Take Base Backup for Replica Server"
 mkdir $REPLICA_DATA
 chmod 700 $REPLICA_DATA
-cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+mkdir -p "$REPLICA_DATA/pg_tde"
+# Key rotation may run in the background and writes transient *_keys.r temp files
+# that get renamed/removed; a plain `cp -R` races them and dies with
+# "cannot stat .../*_keys.r". Snapshot only committed key files, skip the .r
+# temps, and tolerate a file disappearing mid-copy.
+( cd "$PRIMARY_DATA/pg_tde" \
+    && tar cf - --ignore-failed-read --warning=no-file-removed --exclude='*.r' . ) \
+  | tar xf - -C "$REPLICA_DATA/pg_tde"
 $PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PRIMARY_PORT -U $REPL_USER
 
 # Configure Replica Server
@@ -182,7 +189,14 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_tde_set_default_key_using_globa
 echo "Creating replica using pg_basebackup"
 mkdir $REPLICA_DATA
 chmod 700 $REPLICA_DATA
-cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA/
+mkdir -p "$REPLICA_DATA/pg_tde"
+# Key rotation may run in the background and writes transient *_keys.r temp files
+# that get renamed/removed; a plain `cp -R` races them and dies with
+# "cannot stat .../*_keys.r". Snapshot only committed key files, skip the .r
+# temps, and tolerate a file disappearing mid-copy.
+( cd "$PRIMARY_DATA/pg_tde" \
+    && tar cf - --ignore-failed-read --warning=no-file-removed --exclude='*.r' . ) \
+  | tar xf - -C "$REPLICA_DATA/pg_tde"
 $PG_TDE_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
 
 echo "port=$REPLICA_PORT" >> $REPLICA_DATA/postgresql.conf
