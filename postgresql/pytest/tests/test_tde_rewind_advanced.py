@@ -560,6 +560,70 @@ def _force_wal_archive_stable(cluster: PgCluster, archive_dir: Path) -> None:
     _flush_leader_wal_to_archive(cluster)
 
 
+def _missing_archived_wal_files(
+    cluster: PgCluster,
+    archive_dir: Path,
+    *,
+    exclude_current: bool = True,
+) -> list[str]:
+    """Return WAL segment / history names in ``pg_wal`` not yet present in ``archive_dir``."""
+    pg_wal = cluster.data_dir / "pg_wal"
+    if not pg_wal.is_dir():
+        return []
+    current = ""
+    if exclude_current:
+        current = (
+            cluster.fetchone("SELECT pg_walfile_name(pg_current_wal_lsn())") or ""
+        ).strip()
+    missing: list[str] = []
+    for entry in pg_wal.iterdir():
+        if not entry.is_file() or entry.name.endswith(".partial"):
+            continue
+        if exclude_current and entry.name == current:
+            continue
+        if not (archive_dir / entry.name).is_file():
+            missing.append(entry.name)
+    return missing
+
+
+def _ensure_pg_wal_archived_to_dir(
+    cluster: PgCluster, archive_dir: Path, *, timeout: int = 180
+) -> None:
+    """
+    Block until closed WAL segments / history in ``pg_wal`` exist in ``archive_dir``,
+    then switch once more so the final open segment is archived too.
+
+    Used before emptying a rewind target's ``pg_wal`` (TAP archive mode): the archive
+    must already hold plaintext copies from ``pg_tde_archive_decrypt``.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        missing = _missing_archived_wal_files(cluster, archive_dir)
+        if not missing:
+            break
+        cluster.execute("CHECKPOINT")
+        cluster.execute("SELECT pg_switch_wal()")
+        try:
+            _wait_wal_segment_archived(cluster, archive_dir, timeout=45)
+        except TimeoutError:
+            pass
+        time.sleep(0.5)
+    else:
+        still = _missing_archived_wal_files(cluster, archive_dir)
+        raise TimeoutError(
+            f"WAL files not in {archive_dir} after {timeout}s: {still!r}"
+        )
+
+    cluster.execute("CHECKPOINT")
+    cluster.execute("SELECT pg_switch_wal()")
+    _wait_wal_segment_archived(cluster, archive_dir, timeout=60)
+    last = _missing_archived_wal_files(cluster, archive_dir, exclude_current=True)
+    if last:
+        raise TimeoutError(
+            f"after final switch, archive still missing closed segments: {last!r}"
+        )
+
+
 def _random_stop_for_rewind(
     cluster: PgCluster,
     archive_dir: Path,
@@ -5122,6 +5186,13 @@ class TestTdeRewindEncMedium:
                 "CHECKPOINT;"
             )
             _force_wal_archive_stable(standby, archive_dir)
+
+            # Old primary still holds diverged WAL (including segments rewind needs).
+            primary.execute(
+                "INSERT INTO arch_empty_t VALUES (9999); CHECKPOINT;"
+            )
+            _force_wal_archive_stable(primary, archive_dir)
+            _ensure_pg_wal_archived_to_dir(primary, archive_dir)
 
             primary.stop(mode="smart", check=False)
             pg_wal = primary.data_dir / "pg_wal"
