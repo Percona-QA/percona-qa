@@ -372,37 +372,49 @@ def _flush_leader_wal_to_archive(leader: PgCluster) -> None:
     time.sleep(3)
 
 
-def _current_wal_segment_name(cluster: PgCluster) -> str:
-    return cluster.fetchone(
-        "SELECT pg_walfile_name(pg_current_wal_lsn())"
-    ).strip()
-
-
 def _wait_wal_segment_archived(
     cluster: PgCluster, archive_dir: Path, *, timeout: int = 180
 ) -> str:
     """
-    Wait until the segment for the cluster's current WAL LSN exists in ``archive_dir``.
+    Force a WAL switch and wait until ``pg_stat_archiver`` reports a new segment
+    that is present under ``archive_dir``.
 
-    Mirrors ``wait_for_archive`` in the manual encrypted-WAL rewind loop script.
+    Do **not** wait on ``pg_current_wal_lsn()`` — the open segment is not archived
+    until it is closed by ``pg_switch_wal()``.  A CHECKPOINT first guarantees the
+    switch is not a no-op on an idle cluster (see ``BackupManager.wait_for_wal_archive``).
     """
+    initial = cluster.fetchone(
+        "SELECT COALESCE(last_archived_wal, '') FROM pg_stat_archiver"
+    ) or ""
+    cluster.execute("CHECKPOINT")
+    cluster.execute("SELECT pg_switch_wal()")
+
     deadline = time.time() + timeout
     while time.time() < deadline:
-        wal = _current_wal_segment_name(cluster)
-        if (archive_dir / wal).is_file():
-            return wal
-        cluster.execute("SELECT pg_switch_wal()")
-        time.sleep(1)
-    wal = _current_wal_segment_name(cluster)
+        latest = cluster.fetchone(
+            "SELECT COALESCE(last_archived_wal, '') FROM pg_stat_archiver"
+        ) or ""
+        if latest and latest != initial and (archive_dir / latest).is_file():
+            return latest
+        time.sleep(0.3)
+
+    stats = cluster.fetchone(
+        "SELECT format('failed_count=%s last_failed_wal=%s last_failed_time=%s', "
+        "failed_count, last_failed_wal, last_failed_time) "
+        "FROM pg_stat_archiver"
+    )
+    latest = cluster.fetchone(
+        "SELECT COALESCE(last_archived_wal, '') FROM pg_stat_archiver"
+    ) or ""
     raise TimeoutError(
-        f"WAL segment {wal!r} not found under {archive_dir} after {timeout}s"
+        f"WAL archive did not advance from {initial!r} under {archive_dir} "
+        f"after {timeout}s (last_archived_wal={latest!r}). "
+        f"pg_stat_archiver: {stats}"
     )
 
 
 def _force_wal_archive_stable(cluster: PgCluster, archive_dir: Path) -> None:
     """Checkpoint, switch WAL, and block until the archiver has caught up."""
-    cluster.execute("SELECT pg_switch_wal()")
-    cluster.execute("CHECKPOINT")
     _wait_wal_segment_archived(cluster, archive_dir)
     _flush_leader_wal_to_archive(cluster)
 
@@ -3137,11 +3149,13 @@ class TestTdeRewindAdvancedEncryptedHa:
         try:
             node_a.initdb(extra_args=initdb_args_no_data_checksums(node_a.install_dir))
             node_a.write_default_config(extra_params=dict(base_params))
-            for n in (node_a, node_b, node_c):
-                n.add_hba_entry("local all all trust")
-                n.add_hba_entry("local replication all trust")
-                n.add_hba_entry("host  all all 127.0.0.1/32 trust")
-                n.add_hba_entry("host  replication all 127.0.0.1/32 trust")
+            for entry in (
+                "local all all trust",
+                "local replication all trust",
+                "host  all all 127.0.0.1/32 trust",
+                "host  replication all 127.0.0.1/32 trust",
+            ):
+                node_a.add_hba_entry(entry)
             node_a.start()
             tde = TdeManager(node_a)
             tde.create_extension()
@@ -3201,6 +3215,8 @@ class TestTdeRewindAdvancedEncryptedHa:
             )
             _force_wal_archive_stable(node_b, archive_dir)
             node_a.stop(check=False)
+            node_c.stop(check=False)
+            node_b.stop(check=False)
 
             result = _run_rewind_pgdata_with_optional_debug(
                 install_dir, node_a, node_b, restore_wal=True
