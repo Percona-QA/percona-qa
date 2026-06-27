@@ -1,14 +1,6 @@
 #!/bin/bash
 
 #############################################
-# LOOP RUNNER
-#############################################
-for i in {1..3}; do
-  echo "========================================="
-  echo "🚀 RUN $i"
-  echo "========================================="
-
-#############################################
 # CONFIG
 #############################################
 KEYFILE="$RUN_DIR/keyring.rand"
@@ -209,7 +201,7 @@ wal_log_hints = on
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
-
+recovery_target_timeline = 'latest'
 archive_timeout='10s'
 EOF
 
@@ -284,8 +276,7 @@ force_wal_archive "$PRIMARY_PORT"
 # PROMOTE REPLICA
 #############################################
 echo "Promoting replica"
-$PG_CTL -D $REPLICA_DATA promote
-wait_for_recovery_end $REPLICA_PORT
+$PG_CTL -D $REPLICA_DATA promote -w
 force_wal_archive "$REPLICA_PORT"
 
 #############################################
@@ -393,13 +384,9 @@ $PG_REWIND --target-pgdata=$PRIMARY_DATA \
 #############################################
 mv $RUN_DIR/postgresql_bk.conf $PRIMARY_DATA/postgresql.conf
 mv $RUN_DIR/postgresql.auto.conf $PRIMARY_DATA/postgresql.auto.conf
+touch "$PRIMARY_DATA/recovery.signal"
 
 start_pg $PRIMARY_DATA $PRIMARY_PORT
-
-#############################################
-# POST REWIND
-#############################################
-restart_pg $PRIMARY_DATA $PRIMARY_PORT
 start_pg $REPLICA_DATA $REPLICA_PORT
 
 #############################################
@@ -414,8 +401,4 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 #$PSQL -p $REPLICA_PORT -c "SELECT count(*) FROM target_only;"
 #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM target_only;"
 
-echo "✅ RUN $i completed"
-
-done
-
-echo "🎉 All runs completed successfully"
+echo "🎉 Test completed successfully"
