@@ -586,42 +586,84 @@ def _missing_archived_wal_files(
     return missing
 
 
-def _ensure_pg_wal_archived_to_dir(
-    cluster: PgCluster, archive_dir: Path, *, timeout: int = 180
+def _push_pg_wal_files_to_archive(
+    install_dir: Path,
+    cluster: PgCluster,
+    archive_dir: Path,
 ) -> None:
     """
-    Block until closed WAL segments / history in ``pg_wal`` exist in ``archive_dir``,
-    then switch once more so the final open segment is archived too.
+    Push every file in ``pg_wal`` into ``archive_dir`` using ``pg_tde_archive_decrypt``.
 
-    Used before emptying a rewind target's ``pg_wal`` (TAP archive mode): the archive
-    must already hold plaintext copies from ``pg_tde_archive_decrypt``.
+    The background archiver may skip closed segments on a diverged old primary;
+    this mirrors what ``archive_command`` would do file-by-file before TAP-style
+    ``pg_wal`` removal.
+    """
+    if not wrappers_available(install_dir):
+        raise RuntimeError("pg_tde archive wrappers required")
+
+    cluster.execute("CHECKPOINT")
+    cluster.execute("SELECT pg_switch_wal()")
+    time.sleep(0.5)
+
+    decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
+    pg_wal = cluster.data_dir / "pg_wal"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    env = _rewind_env(install_dir)
+
+    for entry in sorted(pg_wal.iterdir()):
+        if not entry.is_file() or entry.name.endswith(".partial"):
+            continue
+        dest = archive_dir / entry.name
+        if dest.is_file():
+            continue
+        result = subprocess.run(
+            [
+                str(decrypt),
+                entry.name,
+                str(entry),
+                f"cp %p {dest}",
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"pg_tde_archive_decrypt failed for {entry.name!r}:\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+
+    missing = _missing_archived_wal_files(cluster, archive_dir, exclude_current=False)
+    if missing:
+        raise TimeoutError(
+            f"archive still missing pg_wal files after manual push: {missing!r}"
+        )
+
+
+def _ensure_pg_wal_archived_to_dir(
+    install_dir: Path,
+    cluster: PgCluster,
+    archive_dir: Path,
+    *,
+    timeout: int = 60,
+) -> None:
+    """
+    Best-effort archiver flush, then push any remaining ``pg_wal`` files via wrapper.
     """
     deadline = time.time() + timeout
     while time.time() < deadline:
         missing = _missing_archived_wal_files(cluster, archive_dir)
         if not missing:
-            break
+            return
         cluster.execute("CHECKPOINT")
         cluster.execute("SELECT pg_switch_wal()")
         try:
-            _wait_wal_segment_archived(cluster, archive_dir, timeout=45)
+            _wait_wal_segment_archived(cluster, archive_dir, timeout=20)
         except TimeoutError:
             pass
-        time.sleep(0.5)
-    else:
-        still = _missing_archived_wal_files(cluster, archive_dir)
-        raise TimeoutError(
-            f"WAL files not in {archive_dir} after {timeout}s: {still!r}"
-        )
+        time.sleep(0.3)
 
-    cluster.execute("CHECKPOINT")
-    cluster.execute("SELECT pg_switch_wal()")
-    _wait_wal_segment_archived(cluster, archive_dir, timeout=60)
-    last = _missing_archived_wal_files(cluster, archive_dir, exclude_current=True)
-    if last:
-        raise TimeoutError(
-            f"after final switch, archive still missing closed segments: {last!r}"
-        )
+    _push_pg_wal_files_to_archive(install_dir, cluster, archive_dir)
 
 
 def _random_stop_for_rewind(
@@ -5192,16 +5234,10 @@ class TestTdeRewindEncMedium:
                 "INSERT INTO arch_empty_t VALUES (9999); CHECKPOINT;"
             )
             _force_wal_archive_stable(primary, archive_dir)
-            _ensure_pg_wal_archived_to_dir(primary, archive_dir)
+            _ensure_pg_wal_archived_to_dir(install_dir, primary, archive_dir)
 
             primary.stop(mode="smart", check=False)
             pg_wal = primary.data_dir / "pg_wal"
-            # Archive already holds plaintext segments via ``pg_tde_archive_decrypt``.
-            # Do **not** copy raw encrypted files from ``pg_wal`` into the archive.
-            for hist in pg_wal.glob("*.history"):
-                dest = archive_dir / hist.name
-                if not dest.is_file():
-                    shutil.copy2(hist, dest)
             shutil.rmtree(pg_wal)
             pg_wal.mkdir(mode=0o700)
 
