@@ -177,6 +177,22 @@ save_test_configs() {
     # OpenBao server log — only if written/modified during this test
     find "$RUN_DIR" -maxdepth 2 -name "bao_server.log" -newer "$test_start" 2>/dev/null \
         -exec cp {} "$test_dir/bao_server.log" \; || true
+
+    # KMIP server runs as a Docker container ('kmip', started with --rm by
+    # start_kmip_server). Capture its logs only if the container was (re)started
+    # during this test, so a container lingering from an earlier test is not
+    # misattributed here. Fully best-effort: a test that never uses KMIP simply
+    # produces no file, and nothing in this block can fail the test.
+    if command -v docker >/dev/null 2>&1; then
+        local kmip_started kmip_epoch start_epoch
+        kmip_started=$(docker inspect -f '{{.State.StartedAt}}' kmip 2>/dev/null || true)
+        if [[ -n "$kmip_started" ]]; then
+            kmip_epoch=$(date -d "$kmip_started" +%s 2>/dev/null || echo 0)
+            start_epoch=$(stat -c %Y "$test_start" 2>/dev/null || echo 0)
+            [[ "$kmip_epoch" -ge "$start_epoch" ]] && \
+                docker logs kmip > "$test_dir/kmip-container.log" 2>&1 || true
+        fi
+    fi
 }
 
 ############################################
