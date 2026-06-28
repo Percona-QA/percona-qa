@@ -311,7 +311,7 @@ else
       --pgsql-user=$(whoami) \
       --pgsql-db=postgres \
       --db-driver=pgsql \
-      --threads=2 \
+      --threads=1 \
       --tables=20 \
       --table-size=1000 prepare
 

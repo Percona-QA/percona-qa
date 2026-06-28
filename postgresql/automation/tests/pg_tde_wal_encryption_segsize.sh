@@ -46,7 +46,7 @@ EOF
   --pgsql-host=127.0.0.1 \
   --tables=10 \
   --table-size=100 \
-  --threads=2 \
+  --threads=1 \
   prepare
 
   # Run sysbench workload in 4 chunks of 30 seconds, restarting server in between

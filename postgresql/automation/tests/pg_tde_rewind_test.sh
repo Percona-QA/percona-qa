@@ -230,7 +230,7 @@ $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-user=$USER \
   --pgsql-db=postgres \
   --db-driver=pgsql \
-  --time=30 --threads=5 --tables=50 --table-size=500 prepare
+  --time=30 --threads=1 --tables=50 --table-size=500 prepare
 
 echo "Checkpoint on primary"
 $PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"

@@ -71,7 +71,7 @@ create_keys_and_load() {
   $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 
   echo "Create some tables on Primary Node"
-  $SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$SYSBENCH_TABLES --table-size=1000 prepare
+  $SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=1 --tables=$SYSBENCH_TABLES --table-size=1000 prepare
   $SYSBENCH /usr/share/sysbench/bulk_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$SYSBENCH_TABLES --table-size=1000
 }
 

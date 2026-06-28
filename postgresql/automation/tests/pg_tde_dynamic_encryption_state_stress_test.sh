@@ -54,7 +54,7 @@ $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_create_key_using_database_key_p
 $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
 
 echo "3=> Creating Tables"
-$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=5 --tables=5 --table-size=1000 prepare
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=1 --tables=5 --table-size=1000 prepare
 
 echo "4=> Run Concurrent Load with rotating MK and alter tables encrypt/unencrypt"
 run_load 60 > $RUN_DIR/run_load.log 2>&1 &

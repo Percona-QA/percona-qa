@@ -199,6 +199,16 @@ save_test_configs() {
 # Execute Tests
 ############################################
 
+# Bound the per-failure PGDATA snapshots saved under failed_tests/. Each one
+# copies entire data directories, so a run with many failures can fill the disk
+# and wipe out ALL artifacts (observed: ~20 failures x full PGDATA overflowed a
+# 100 GB volume, so the host died before packaging and produced no logs). The
+# per-test logs/<test>/ dir (server.log + configs) is always kept regardless.
+# Override via env if needed.
+FAIL_SNAPSHOT_MAX="${FAIL_SNAPSHOT_MAX:-3}"        # keep full data snapshots for at most N failures
+FAIL_SNAPSHOT_DISK_PCT="${FAIL_SNAPSHOT_DISK_PCT:-80}"  # ...and only while disk is below this %
+FAIL_SNAPSHOT_COUNT=0
+
 for testscript in "${TESTS[@]}"; do
     testname=$(basename "$testscript")
     echo ""
@@ -235,20 +245,29 @@ for testscript in "${TESTS[@]}"; do
         echo "❌ FAIL: $testname"
         echo "   Log: $LOG_DIR/${testname%.sh}/${testname%.sh}.log"
 
-        echo "Saving failed test artifacts..."
         FAIL_SAVE_DIR="$FAILED_DIR/${testname%.sh}_$(date +%Y%m%d_%H%M%S)"
         mkdir -p "$FAIL_SAVE_DIR"
 
-        # Copy PGDATA(s) if exist
-        [[ -d "$PGDATA" ]] && cp -r "$PGDATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$ARCHIVE_DIR" ]] && cp -r "$ARCHIVE_DIR" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-
-        # Copy test log (now lives in per-test folder)
+        # Always keep the (small) per-test log.
         cp "$LOG_DIR/${testname%.sh}/${testname%.sh}.log" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
-        echo "Artifacts saved at: $FAIL_SAVE_DIR"
+        # Full PGDATA snapshot only while under the count cap AND disk is healthy,
+        # so a cascade of failures can't fill the disk and destroy all artifacts.
+        disk_used=$(df -P "$RUN_DIR" 2>/dev/null | awk 'NR==2 {gsub("%","",$5); print $5+0}')
+        disk_used=${disk_used:-0}
+        if (( FAIL_SNAPSHOT_COUNT >= FAIL_SNAPSHOT_MAX )); then
+            echo "Skipping PGDATA snapshot (snapshot cap $FAIL_SNAPSHOT_MAX reached); see logs/${testname%.sh}/"
+        elif (( disk_used >= FAIL_SNAPSHOT_DISK_PCT )); then
+            echo "Skipping PGDATA snapshot (disk ${disk_used}% >= ${FAIL_SNAPSHOT_DISK_PCT}%); see logs/${testname%.sh}/"
+        else
+            echo "Saving failed test artifacts (snapshot $((FAIL_SNAPSHOT_COUNT + 1))/$FAIL_SNAPSHOT_MAX)..."
+            [[ -d "$PGDATA" ]]       && cp -r "$PGDATA"       "$FAIL_SAVE_DIR/" 2>/dev/null || true
+            [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
+            [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
+            [[ -d "$ARCHIVE_DIR" ]]  && cp -r "$ARCHIVE_DIR"  "$FAIL_SAVE_DIR/" 2>/dev/null || true
+            FAIL_SNAPSHOT_COUNT=$((FAIL_SNAPSHOT_COUNT + 1))
+            echo "Artifacts saved at: $FAIL_SAVE_DIR"
+        fi
     fi
 done
 

@@ -63,7 +63,7 @@ $INSTALL_DIR/bin/psql -d $REPLICA_DB -p $REPLICA_PORT -c"SELECT pg_tde_create_ke
 $INSTALL_DIR/bin/psql -d $REPLICA_DB -p $REPLICA_PORT -c"SELECT pg_tde_set_key_using_database_key_provider('principal_key_sbtest','local_keyring');"
 
 echo "Create tables on Primary"
-$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-db=$PRIMARY_DB --pgsql-user=`whoami` --pgsql-port=$PRIMARY_PORT --db-driver=pgsql --threads=5 --tables=$SYSBENCH_TABLES --table-size=100 prepare
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-db=$PRIMARY_DB --pgsql-user=`whoami` --pgsql-port=$PRIMARY_PORT --db-driver=pgsql --threads=1 --tables=$SYSBENCH_TABLES --table-size=100 prepare
 
 echo "Dump Schema on Replica"
 $INSTALL_DIR/bin/pg_dump  -s $PRIMARY_DB -p $PRIMARY_PORT | $INSTALL_DIR/bin/psql -p $REPLICA_PORT $REPLICA_DB

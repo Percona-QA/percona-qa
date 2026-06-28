@@ -121,7 +121,7 @@ prepare_sysbench_data() {
         --pgsql-user="$(whoami)" \
         --pgsql-port="$PORT" \
         --db-driver=pgsql \
-        --threads="$SYSBENCH_THREADS" \
+        --threads=1 \
         --tables="$SYSBENCH_TABLES" \
         --table-size="$SYSBENCH_TABLE_SIZE" \
         prepare
