@@ -78,26 +78,10 @@ $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_switch_wal();"
 $PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"
 
 ######################################
-# Ensure Replay has caught up
+# Ensure the replica has replayed all primary WAL before promoting.
+# Bounded poll (fails after a timeout) rather than an unbounded loop.
 # ####################################
-PRIMARY_LSN=$(
-$PSQL -p $PRIMARY_PORT -At \
--c "SELECT pg_current_wal_lsn();"
-)
-
-while true
-do
-    REPLAY_LSN=$(
-    $PSQL -p $REPLICA_PORT -At \
-    -c "SELECT pg_last_wal_replay_lsn();"
-    )
-
-    echo "$PRIMARY_LSN  $REPLAY_LSN"
-
-    [ "$PRIMARY_LSN" = "$REPLAY_LSN" ] && break
-
-    sleep 1
-done
+wait_for_replica_catchup $PRIMARY_PORT $REPLICA_PORT
 
 #######################################
 # Step 4: Promote replica
@@ -143,11 +127,15 @@ start_pg $PRIMARY_DATA $PRIMARY_PORT
 # Step 9: Verify data
 #######################################
 echo "Querying table randomly after rewind"
+# Only 20 sbtest tables exist (prepare --tables=20); pick within that range and
+# verify the rewound primary can actually read each one (count is a valid
+# non-negative integer). A non-numeric/empty result means the table is missing
+# or unreadable after the rewind.
 for i in {1..10}; do
-  RANDOM_TABLE=$((RANDOM % 100 + 1))
+  RANDOM_TABLE=$((RANDOM % 20 + 1))
   COUNT=$($PSQL -p $PRIMARY_PORT -d postgres -At -c "SELECT count(*) FROM sbtest${RANDOM_TABLE};")
-  if [ "$COUNT" -lt 0 ]; then
-    echo "FAIL: sbtest$RANDOM_TABLE count $COUNT < 0"
+  if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
+    echo "FAIL: sbtest$RANDOM_TABLE not readable after rewind (got '$COUNT')"
     exit 1
   fi
 done
