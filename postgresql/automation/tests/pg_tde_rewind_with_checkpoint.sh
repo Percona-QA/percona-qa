@@ -69,7 +69,7 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 # Step 3: Create table on primary
 #######################################
 echo "Creating table and inserting data on primary"
-$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=1 --tables=100 --table-size=1000 prepare
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=100 --table-size=1000 prepare
 $PSQL -p $PRIMARY_PORT -d postgres -c "CREATE TABLE t1(id INT) USING tde_heap;"
 $PSQL -p $PRIMARY_PORT -d postgres -c "INSERT INTO t1 VALUES (1),(2),(3);"
 

@@ -193,21 +193,20 @@ save_test_configs() {
                 docker logs kmip > "$test_dir/kmip-container.log" 2>&1 || true
         fi
     fi
+
+    # Background load / DDL logs written to RUN_DIR top level during this test
+    # (key rotation, WAL-encryption toggle, ALTER access-method, sysbench, etc.).
+    # Only files modified during this test are captured; best-effort.
+    find "$RUN_DIR" -maxdepth 1 -type f -name "*.log" -newer "$test_start" 2>/dev/null \
+        -exec cp {} "$test_dir/" \; || true
+    # basebackup test writes its load log here (outside RUN_DIR)
+    [[ -f /tmp/sysbench_run.log && /tmp/sysbench_run.log -nt "$test_start" ]] \
+        && cp /tmp/sysbench_run.log "$test_dir/" 2>/dev/null || true
 }
 
 ############################################
 # Execute Tests
 ############################################
-
-# Bound the per-failure PGDATA snapshots saved under failed_tests/. Each one
-# copies entire data directories, so a run with many failures can fill the disk
-# and wipe out ALL artifacts (observed: ~20 failures x full PGDATA overflowed a
-# 100 GB volume, so the host died before packaging and produced no logs). The
-# per-test logs/<test>/ dir (server.log + configs) is always kept regardless.
-# Override via env if needed.
-FAIL_SNAPSHOT_MAX="${FAIL_SNAPSHOT_MAX:-3}"        # keep full data snapshots for at most N failures
-FAIL_SNAPSHOT_DISK_PCT="${FAIL_SNAPSHOT_DISK_PCT:-80}"  # ...and only while disk is below this %
-FAIL_SNAPSHOT_COUNT=0
 
 for testscript in "${TESTS[@]}"; do
     testname=$(basename "$testscript")
@@ -248,26 +247,23 @@ for testscript in "${TESTS[@]}"; do
         FAIL_SAVE_DIR="$FAILED_DIR/${testname%.sh}_$(date +%Y%m%d_%H%M%S)"
         mkdir -p "$FAIL_SAVE_DIR"
 
-        # Always keep the (small) per-test log.
+        # Keep the per-test stdout log...
         cp "$LOG_DIR/${testname%.sh}/${testname%.sh}.log" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
-        # Full PGDATA snapshot only while under the count cap AND disk is healthy,
-        # so a cascade of failures can't fill the disk and destroy all artifacts.
-        disk_used=$(df -P "$RUN_DIR" 2>/dev/null | awk 'NR==2 {gsub("%","",$5); print $5+0}')
-        disk_used=${disk_used:-0}
-        if (( FAIL_SNAPSHOT_COUNT >= FAIL_SNAPSHOT_MAX )); then
-            echo "Skipping PGDATA snapshot (snapshot cap $FAIL_SNAPSHOT_MAX reached); see logs/${testname%.sh}/"
-        elif (( disk_used >= FAIL_SNAPSHOT_DISK_PCT )); then
-            echo "Skipping PGDATA snapshot (disk ${disk_used}% >= ${FAIL_SNAPSHOT_DISK_PCT}%); see logs/${testname%.sh}/"
-        else
-            echo "Saving failed test artifacts (snapshot $((FAIL_SNAPSHOT_COUNT + 1))/$FAIL_SNAPSHOT_MAX)..."
-            [[ -d "$PGDATA" ]]       && cp -r "$PGDATA"       "$FAIL_SAVE_DIR/" 2>/dev/null || true
-            [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-            [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-            [[ -d "$ARCHIVE_DIR" ]]  && cp -r "$ARCHIVE_DIR"  "$FAIL_SAVE_DIR/" 2>/dev/null || true
-            FAIL_SNAPSHOT_COUNT=$((FAIL_SNAPSHOT_COUNT + 1))
-            echo "Artifacts saved at: $FAIL_SAVE_DIR"
-        fi
+        # ...and only the conf + log files from each data dir. The full data
+        # directories (base/, pg_wal/) and wal_archive/ are huge and provide no
+        # extra value for these tests; copying them per failure overflowed the
+        # disk and wiped out all artifacts. server.log + *.conf are the useful
+        # forensic bits and are tiny, so this runs for every failure.
+        for dir in "$PGDATA" "$PRIMARY_DATA" "$REPLICA_DATA"; do
+            [[ -d "$dir" ]] || continue
+            dn=$(basename "$dir")
+            find "$dir" -maxdepth 2 -type f \( -name "*.conf" -o -name "*.log" \) 2>/dev/null \
+                | while read -r f; do
+                      cp "$f" "$FAIL_SAVE_DIR/${dn}-$(basename "$f")" 2>/dev/null || true
+                  done
+        done
+        echo "Artifacts (conf + logs) saved at: $FAIL_SAVE_DIR"
     fi
 done
 

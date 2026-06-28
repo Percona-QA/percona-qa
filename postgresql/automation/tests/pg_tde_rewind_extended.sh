@@ -112,7 +112,7 @@ run_test() {
     --pgsql-db=postgres \
     --db-driver=pgsql \
     --pgsql-port=$PRIMARY_PORT \
-    --threads=1 \
+    --threads=5 \
     --tables=10 \
     --table-size=10000 \
     prepare

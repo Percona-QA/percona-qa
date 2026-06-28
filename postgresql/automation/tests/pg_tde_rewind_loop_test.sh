@@ -72,7 +72,7 @@ $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-user=$USER \
   --pgsql-db=$DB_NAME \
   --db-driver=pgsql \
-  --time=30 --threads=1 --tables=50 --table-size=500 prepare
+  --time=30 --threads=5 --tables=50 --table-size=500 prepare
 
 # Helper to run sysbench on a port
 run_sysbench() {

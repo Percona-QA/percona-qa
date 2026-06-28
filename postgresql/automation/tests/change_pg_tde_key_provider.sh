@@ -63,7 +63,7 @@ $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_key_using_database_key_prov
 $INSTALL_DIR/bin/psql -d sbtest -c"SELECT pg_tde_set_server_key_using_global_key_provider('principal_key_sbtest2','file_global_provider');"
 
 echo "4=>Create tables and insert data"
-$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=1 --tables=10 --table-size=1000 prepare
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-db=sbtest --pgsql-user=`whoami` --db-driver=pgsql --threads=10 --tables=10 --table-size=1000 prepare
 
 for X in $(seq 1 5); do
    # Run Test

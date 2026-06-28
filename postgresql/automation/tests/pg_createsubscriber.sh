@@ -232,7 +232,7 @@ $INSTALL_DIR/bin/psql -d postgres -p $PRIMARY_PORT -c "SELECT pg_tde_set_server_
 echo "5=>Create tables on Primary Server"
 sysbench /usr/share/sysbench/oltp_insert.lua \
     --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql \
-    --pgsql-port=$PRIMARY_PORT --threads=1 \
+    --pgsql-port=$PRIMARY_PORT --threads=10 \
     --tables=$TABLES --table-size=1000 prepare
 
 echo "6=>Verifying Streaming Replication"

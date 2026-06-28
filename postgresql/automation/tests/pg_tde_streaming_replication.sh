@@ -71,7 +71,7 @@ create_keys_and_load() {
   $INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -c"SELECT pg_tde_set_server_key_using_global_key_provider('global_key','global_key_provider');"
 
   echo "Create some tables on Primary Node"
-  $SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=1 --tables=$SYSBENCH_TABLES --table-size=1000 prepare
+  $SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$SYSBENCH_TABLES --table-size=1000 prepare
   $SYSBENCH /usr/share/sysbench/bulk_insert.lua --pgsql-user=`whoami` --pgsql-db=$DB_NAME --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=$SYSBENCH_TABLES --table-size=1000
 }
 
@@ -114,13 +114,13 @@ create_keys_and_load
 echo "Running Sysbench Load"
 run_sysbench_load 300 > /dev/null 2>&1 &
 pid1=$!
-rotate_wal_key 60 >/dev/null 2>&1 &
+rotate_wal_key 60 > "$RUN_DIR/rotate_wal_key.log" 2>&1 &
 pid2=$!
-enable_disable_wal_encryption 60 2>&1 > /dev/null &
+enable_disable_wal_encryption 60 > "$RUN_DIR/wal_encrypt_toggle.log" 2>&1 &
 pid3=$!
-rotate_master_key 60 >/dev/null 2>&1  &
+rotate_master_key 60 > "$RUN_DIR/rotate_master_key.log" 2>&1 &
 pid4=$!
-alter_encrypt_unencrypt_tables 300   > /dev/null 2>&1 &
+alter_encrypt_unencrypt_tables 300 > "$RUN_DIR/alter_table_am.log" 2>&1 &
 pid5=$!
 
 for i in $(seq 1 3); do

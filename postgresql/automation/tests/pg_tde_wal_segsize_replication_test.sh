@@ -83,7 +83,7 @@ EOF
     --pgsql-host=127.0.0.1 \
     --tables=10 \
     --table-size=100 \
-    --threads=1 \
+    --threads=2 \
     prepare
 
 # Run sysbench workload and simulate crash-restart and failover
