@@ -24,7 +24,7 @@ initialize_server "$PRIMARY_DATA" "$PRIMARY_PORT"
 
 cat >> "$PRIMARY_DATA/postgresql.conf" <<EOF
 wal_log_hints = on
-wal_keep_size = 1GB
+wal_keep_size = 4GB
 EOF
 
 echo "host replication $REPL_USER 127.0.0.1/32 trust" >> "$PRIMARY_DATA/pg_hba.conf"
@@ -57,6 +57,11 @@ cp -R $PRIMARY_DATA/pg_tde $REPLICA_DATA
 $PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PRIMARY_PORT -U $REPL_USER
 
 write_postgresql_conf "$REPLICA_DATA" "$REPLICA_PORT" "replica"
+# write_postgresql_conf sets wal_keep_size=512MB for replicas, but this test
+# alternates roles and rewinds from whichever node is the current source. 512MB
+# is too small: the promoted node recycles WAL the rewind still needs ("could
+# not open .../pg_wal/...: No such file"). Match the primary's larger retention.
+echo "wal_keep_size = 4GB" >> "$REPLICA_DATA/postgresql.conf"
 enable_pg_tde $REPLICA_DATA
 
 # Start node 2 as Replica

@@ -239,6 +239,10 @@ $INSTALL_DIR/bin/psql -p $REPLICA_PORT -d postgres -c "SELECT count(*) FROM sbte
 $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest1;"
 $INSTALL_DIR/bin/psql -p $REPLICA_PORT -d postgres -c "SELECT count(*) FROM sbtest10;"
 $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest10;"
+# 'mohit' was just created on the promoted primary (REPLICA_PORT); wait for it
+# to replicate to the rebuilt standby (PRIMARY_PORT) before querying it there,
+# otherwise the read races replication and hits "relation does not exist".
+wait_for_replica_catchup $REPLICA_PORT $PRIMARY_PORT
 $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -d postgres -c "SELECT * FROM mohit;"
 
 #############################################
