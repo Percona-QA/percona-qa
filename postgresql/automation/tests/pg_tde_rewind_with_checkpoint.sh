@@ -77,16 +77,31 @@ echo "Checkpoint on primary"
 $PSQL -p $PRIMARY_PORT -d postgres -c "SELECT pg_switch_wal();"
 $PSQL -p $PRIMARY_PORT -d postgres -c "CHECKPOINT;"
 
+######################################
+# Ensure Replay has caught up
+# ####################################
+PRIMARY_LSN=$(
+$PSQL -p $PRIMARY_PORT -At \
+-c "SELECT pg_current_wal_lsn();"
+)
+
+while true
+do
+    REPLAY_LSN=$(
+    $PSQL -p $REPLICA_PORT -At \
+    -c "SELECT pg_last_wal_replay_lsn();"
+    )
+
+    echo "$PRIMARY_LSN  $REPLAY_LSN"
+
+    [ "$PRIMARY_LSN" = "$REPLAY_LSN" ] && break
+
+    sleep 1
+done
+
 #######################################
 # Step 4: Promote replica
 #######################################
-# Ensure the replica has replayed all primary WAL (incl. the sysbench prepare
-# that creates sbtest1..100) BEFORE promoting. Without this, on slower hosts
-# (notably ARM) the replica promotes mid-replication, the last sbtest tables
-# are missing, and the Step 5 sysbench run fails (and SIGSEGVs on ARM).
-echo "Waiting for replica to catch up before promotion"
-wait_for_replica_catchup $PRIMARY_PORT $REPLICA_PORT
-
 echo "Promoting replica"
 $PG_CTL -D $REPLICA_DATA promote -w
 
