@@ -53,6 +53,10 @@ crash_pg() {
     local PID=$(head -1 "$PGDATA/postmaster.pid")
     kill -9 "$PID"
 
+    while kill -0 "$PID" 2>/dev/null; do
+      sleep 1
+    done
+
     # Wait for ALL postgres processes using this datadir to exit
     while pgrep -f "$PGDATA" >/dev/null; do
         sleep 1
@@ -63,6 +67,9 @@ crash_pg() {
             return 1
         fi
     done
+
+    # Give the kernel a moment to release IPC resources (helps on slower ARM systems).
+    sleep 2
 
     rm -f "$PGDATA/postmaster.pid"
     rm -f "$RUN_DIR/.s.PGSQL.$PORT"

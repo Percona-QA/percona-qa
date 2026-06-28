@@ -446,6 +446,8 @@ for i in $(seq 1 $TRIALS); do
 
     sleep 5
 
+    sleep 2
+
     log "Restarting PostgreSQL..."
     start_pg "$PGDATA" "$PORT"
 

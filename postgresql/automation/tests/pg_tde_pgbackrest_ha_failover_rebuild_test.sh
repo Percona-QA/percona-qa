@@ -46,7 +46,6 @@ archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "$PG_BACKREST --s
 EOF
 
 echo "host replication $REPL_USER 127.0.0.1/32 md5" >> "$PRIMARY_DATA/pg_hba.conf"
-#echo "host all all 127.0.0.1/32 trust" >> "$PRIMARY_DATA/pg_hba.conf"
 
 #############################################
 echo "Configure pgBackRest"
@@ -176,14 +175,12 @@ sleep 30
 #############################################
 echo "Crash Primary Server"
 #############################################
-kill -9 $(head -1 $PRIMARY_DATA/postmaster.pid)
-sleep 5
+crash_pg $PRIMARY_DATA $PRIMARY_PORT
 
 #############################################
 echo "PROMOTE STANDBY"
 #############################################
-$INSTALL_DIR/bin/pg_ctl -D $REPLICA_DATA promote
-sleep 5
+$INSTALL_DIR/bin/pg_ctl -D $REPLICA_DATA promote -w
 
 $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-host=localhost \
@@ -196,9 +193,6 @@ $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
 #############################################
 echo "Rebuild old PRIMARY using DELTA"
 #############################################
-
-rm $PRIMARY_DATA/postmaster.pid
-
 $PG_BACKREST --stanza=$STANZA restore \
   --delta \
   --type=standby \
@@ -226,7 +220,26 @@ echo "Start rebuilt PRIMARY as STANDBY"
 #############################################
 start_pg $PRIMARY_DATA $PRIMARY_PORT
 
-sleep 30
+######################################
+# Ensure Replay has caught up
+# Primary Server -> Standby
+# Replica Server -> New Primary
+# ####################################
+PRIMARY_LSN=$($INSTALL_DIR/bin/psql -p $REPLICA_PORT -At -c "SELECT pg_current_wal_lsn();")
+
+while true
+do
+    REPLAY_LSN=$(
+    $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -At \
+    -c "SELECT pg_last_wal_replay_lsn();"
+    )
+
+    echo "$PRIMARY_LSN  $REPLAY_LSN"
+
+    [ "$PRIMARY_LSN" = "$REPLAY_LSN" ] && break
+
+    sleep 1
+done
 
 #############################################
 echo "Validation"
