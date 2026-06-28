@@ -265,6 +265,15 @@ for testscript in "${TESTS[@]}"; do
         done
         echo "Artifacts (conf + logs) saved at: $FAIL_SAVE_DIR"
     fi
+
+    # Reclaim disk between tests. wal_archive and base_backup accumulate across
+    # the suite (only a few tests purge them) and on fast hosts grew past the
+    # volume size, filling the disk and killing the host before packaging
+    # (debian13/ubuntu-26 x86). Data dirs are already wiped per test by
+    # initialize_server/old_server_cleanup; these two are not. Their contents
+    # are saved per-test where needed (logs/<test>/) and are not packaged.
+    rm -rf "${ARCHIVE_DIR:?}"/* "${BACKUP_DIR:?}"/* 2>/dev/null || true
+    echo "Disk after ${testname%.sh}: $(df -Ph "$RUN_DIR" 2>/dev/null | awk 'NR==2{print $5" used, "$4" free"}')"
 done
 
 echo ""
