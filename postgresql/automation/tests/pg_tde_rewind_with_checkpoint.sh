@@ -69,7 +69,7 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 # Step 3: Create table on primary
 #######################################
 echo "Creating table and inserting data on primary"
-$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=5 --tables=100 --table-size=1000 prepare
+$SYSBENCH /usr/share/sysbench/oltp_insert.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$PRIMARY_PORT --threads=2 --tables=20 --table-size=100 prepare
 $PSQL -p $PRIMARY_PORT -d postgres -c "CREATE TABLE t1(id INT) USING tde_heap;"
 $PSQL -p $PRIMARY_PORT -d postgres -c "INSERT INTO t1 VALUES (1),(2),(3);"
 
@@ -110,7 +110,7 @@ $PG_CTL -D $REPLICA_DATA promote -w
 #######################################
 echo "Inserting more data on promoted replica"
 $PSQL -p $REPLICA_PORT -d postgres -c "INSERT INTO t1 VALUES (4),(5),(6);"
-$SYSBENCH /usr/share/sysbench/oltp_read_write.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$REPLICA_PORT --threads=5 --tables=100 --time=60 --report-interval=10 run
+$SYSBENCH /usr/share/sysbench/oltp_read_write.lua --pgsql-user=$(whoami) --pgsql-db=postgres --db-driver=pgsql --pgsql-port=$REPLICA_PORT --threads=5 --tables=20 --time=60 --report-interval=10 run
 
 #######################################
 # Step 6: Shutdown both
