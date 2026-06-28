@@ -111,8 +111,8 @@ mkdir -p "$REPLICA_DATA/pg_tde"
 # "cannot stat .../*_keys.r". Snapshot only committed key files, skip the .r
 # temps, and tolerate a file disappearing mid-copy.
 ( cd "$PRIMARY_DATA/pg_tde" \
-    && tar cf - --ignore-failed-read --warning=no-file-removed --exclude='*.r' . ) \
-  | tar xf - -C "$REPLICA_DATA/pg_tde"
+    && tar cf - --ignore-failed-read --warning=no-file-removed --warning=no-file-changed --exclude=*.r . ) \
+  | ( cd "$REPLICA_DATA/pg_tde" && tar xf - ) || true
 $PG_TDE_BASEBACKUP -D "$REPLICA_DATA" -X stream -E -R -h localhost -p $PRIMARY_PORT -U $REPL_USER
 
 # Configure Replica Server
@@ -195,8 +195,8 @@ mkdir -p "$REPLICA_DATA/pg_tde"
 # "cannot stat .../*_keys.r". Snapshot only committed key files, skip the .r
 # temps, and tolerate a file disappearing mid-copy.
 ( cd "$PRIMARY_DATA/pg_tde" \
-    && tar cf - --ignore-failed-read --warning=no-file-removed --exclude='*.r' . ) \
-  | tar xf - -C "$REPLICA_DATA/pg_tde"
+    && tar cf - --ignore-failed-read --warning=no-file-removed --warning=no-file-changed --exclude=*.r . ) \
+  | ( cd "$REPLICA_DATA/pg_tde" && tar xf - ) || true
 $PG_TDE_BASEBACKUP -D $REPLICA_DATA -R -X stream -c fast -E -h localhost -p $PRIMARY_PORT
 
 echo "port=$REPLICA_PORT" >> $REPLICA_DATA/postgresql.conf

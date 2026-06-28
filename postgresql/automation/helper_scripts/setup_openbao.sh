@@ -42,10 +42,27 @@ echo "[INFO] Go version OK: $GO_VERSION"
 # DOWNLOAD OPENBAO
 # -------------------------------
 echo "[INFO] Downloading OpenBao..."
-curl -L "$OPENBAO_URL" -o "$TARBALL"
+# Robust download: -f makes curl fail on HTTP errors instead of saving the
+# error/rate-limit HTML page as the tarball (which then fails with "not in gzip
+# format"). GitHub throttles unauthenticated parallel downloads, so retry and
+# verify the archive is a valid gzip before accepting it.
+download_ok=false
+for attempt in 1 2 3 4 5; do
+    if curl -fSL --retry 3 --retry-delay 5 "$OPENBAO_URL" -o "$TARBALL" \
+       && tar -tzf "$TARBALL" >/dev/null 2>&1; then
+        download_ok=true
+        break
+    fi
+    echo "[WARN] OpenBao download/verify failed (attempt $attempt; got $(stat -c%s "$TARBALL" 2>/dev/null || echo 0) bytes); retrying..."
+    sleep 10
+done
+if [ "$download_ok" != true ]; then
+    echo "[ERROR] Could not download a valid OpenBao tarball from $OPENBAO_URL"
+    exit 1
+fi
 
 echo "[INFO] Extracting..."
-tar -xzf $TARBALL -C $RUN_DIR
+tar -xzf "$TARBALL" -C "$RUN_DIR"
 NAME=$(basename "$TARBALL" | sed 's/\.tar\.gz$//')
 
 cd "$RUN_DIR/$NAME"
