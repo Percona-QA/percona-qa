@@ -96,7 +96,7 @@ EOF
 #############################################
 echo "Promoting replica"
 $PG_CTL -D $REPLICA_DATA promote
-sleep 2
+wait_for_recovery_end $REPLICA_PORT
 
 $PSQL -p "$PRIMARY_PORT" <<EOF
 UPDATE t1 SET f1='YYYYYYY' WHERE id % 10 = 0;

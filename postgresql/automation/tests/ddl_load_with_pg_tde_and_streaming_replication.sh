@@ -221,7 +221,6 @@ for i in {1..3}; do
 
     sleep 10
     crash_pg $PRIMARY_DATA $PRIMARY_PORT
-    sleep 3
     start_pg $PRIMARY_DATA $PRIMARY_PORT
 
     wait

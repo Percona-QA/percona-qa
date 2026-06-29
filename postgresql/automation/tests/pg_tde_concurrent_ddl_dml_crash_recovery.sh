@@ -444,14 +444,8 @@ for i in $(seq 1 $TRIALS); do
     log "Crashing PostgreSQL..."
     crash_pg "$PGDATA" "$PORT"
 
-    sleep 5
-
-    sleep 2
-
     log "Restarting PostgreSQL..."
     start_pg "$PGDATA" "$PORT"
-
-    sleep 10
 
 done
 

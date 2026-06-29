@@ -180,7 +180,8 @@ crash_pg $PRIMARY_DATA $PRIMARY_PORT
 #############################################
 echo "PROMOTE STANDBY"
 #############################################
-$INSTALL_DIR/bin/pg_ctl -D $REPLICA_DATA promote -w
+$INSTALL_DIR/bin/pg_ctl -D $REPLICA_DATA promote
+wait_for_recovery_end $REPLICA_PORT
 
 $SYSBENCH /usr/share/sysbench/oltp_insert.lua \
   --pgsql-host=localhost \
@@ -219,27 +220,9 @@ EOF
 echo "Start rebuilt PRIMARY as STANDBY"
 #############################################
 start_pg $PRIMARY_DATA $PRIMARY_PORT
-
-######################################
-# Ensure Replay has caught up
-# Primary Server -> Standby
-# Replica Server -> New Primary
-# ####################################
-PRIMARY_LSN=$($INSTALL_DIR/bin/psql -p $REPLICA_PORT -At -c "SELECT pg_current_wal_lsn();")
-
-while true
-do
-    REPLAY_LSN=$(
-    $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -At \
-    -c "SELECT pg_last_wal_replay_lsn();"
-    )
-
-    echo "$PRIMARY_LSN  $REPLAY_LSN"
-
-    [ "$PRIMARY_LSN" = "$REPLAY_LSN" ] && break
-
-    sleep 1
-done
+# Rebuilt old primary now runs as a standby streaming from the promoted node
+# (REPLICA_PORT); wait until it has replayed up to the new primary before validating.
+wait_for_replica_catchup $REPLICA_PORT $PRIMARY_PORT
 
 #############################################
 echo "Validation"
@@ -250,6 +233,10 @@ $INSTALL_DIR/bin/psql -p $REPLICA_PORT -d postgres -c "SELECT count(*) FROM sbte
 $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest1;"
 $INSTALL_DIR/bin/psql -p $REPLICA_PORT -d postgres -c "SELECT count(*) FROM sbtest10;"
 $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -d postgres -c "SELECT count(*) FROM sbtest10;"
+# 'mohit' was just created on the promoted primary (REPLICA_PORT); wait for it
+# to replicate to the rebuilt standby (PRIMARY_PORT) before querying it there,
+# otherwise the read races replication and hits "relation does not exist".
+wait_for_replica_catchup $REPLICA_PORT $PRIMARY_PORT
 $INSTALL_DIR/bin/psql -p $PRIMARY_PORT -d postgres -c "SELECT * FROM mohit;"
 
 #############################################

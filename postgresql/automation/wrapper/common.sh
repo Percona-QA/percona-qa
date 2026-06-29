@@ -216,3 +216,56 @@ install_pgbackrest() {
 	sudo yum install -y percona-pgbackrest
     fi
 }
+
+###################################
+# Poll until a node has finished recovery (pg_is_in_recovery() = false).
+# Use after a promote instead of a fixed `sleep N`.
+#   wait_for_recovery_end [PORT] [TIMEOUT_SECONDS]
+###################################
+wait_for_recovery_end() {
+    local PORT="${1:-$PGPORT}"
+    local TIMEOUT="${2:-120}"
+    local elapsed=0 in_rec
+    while true; do
+        in_rec=$("$INSTALL_DIR/bin/psql" -p "$PORT" -d postgres -tAc "SELECT pg_is_in_recovery();" 2>/dev/null)
+        if [[ "$in_rec" == "f" ]]; then
+            echo "Recovery complete on port $PORT (${elapsed}s)"
+            return 0
+        fi
+        if (( elapsed >= TIMEOUT )); then
+            echo "❌ Timed out after ${TIMEOUT}s waiting for recovery to end on port $PORT"
+            return 1
+        fi
+        sleep 1; elapsed=$((elapsed + 1))
+    done
+}
+
+###################################
+# Poll until a streaming replica has replayed all WAL the primary had
+# written at call time (replay_lsn >= primary's current LSN snapshot).
+# Use instead of a fixed `sleep N` waiting for replication to catch up.
+#   wait_for_replica_catchup [PRIMARY_PORT] [REPLICA_PORT] [TIMEOUT_SECONDS]
+###################################
+wait_for_replica_catchup() {
+    local P_PORT="${1:-$PRIMARY_PORT}"
+    local R_PORT="${2:-$REPLICA_PORT}"
+    local TIMEOUT="${3:-120}"
+    local elapsed=0 target replayed caught
+    target=$("$INSTALL_DIR/bin/psql" -p "$P_PORT" -d postgres -tAc "SELECT pg_current_wal_lsn();" 2>/dev/null)
+    while true; do
+        replayed=$("$INSTALL_DIR/bin/psql" -p "$R_PORT" -d postgres -tAc "SELECT pg_last_wal_replay_lsn();" 2>/dev/null)
+        if [[ -n "$target" && -n "$replayed" ]]; then
+            caught=$("$INSTALL_DIR/bin/psql" -p "$P_PORT" -d postgres -tAc \
+                "SELECT pg_wal_lsn_diff('$replayed', '$target') >= 0;" 2>/dev/null)
+            if [[ "$caught" == "t" ]]; then
+                echo "Replica (port $R_PORT) caught up to $target (${elapsed}s)"
+                return 0
+            fi
+        fi
+        if (( elapsed >= TIMEOUT )); then
+            echo "❌ Timed out after ${TIMEOUT}s waiting for replica catch-up (target=$target last=$replayed)"
+            return 1
+        fi
+        sleep 1; elapsed=$((elapsed + 1))
+    done
+}

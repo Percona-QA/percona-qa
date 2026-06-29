@@ -113,32 +113,29 @@ echo "4=>Install pg_tde extension, create keys and Generate Load on Primary Serv
 create_keys_and_insert_data
 
 echo "Running Sysbench Load"
-run_sysbench_load 300 > /dev/null 2>&1 &
+run_sysbench_load 300 > "$RUN_DIR/run_sysbench_load.log" 2>&1 &
 pid1=$!
-rotate_wal_key 60 >/dev/null 2>&1 &
+rotate_wal_key 60 > "$RUN_DIR/rotate_wal_key.log" 2>&1 &
 pid2=$!
-enable_disable_wal_encryption 60 2>&1 > /dev/null &
+enable_disable_wal_encryption 60 > "$RUN_DIR/wal_encrypt_toggle.log" 2>&1 &
 pid3=$!
-rotate_master_key 60 >/dev/null 2>&1  &
+rotate_master_key 60 > "$RUN_DIR/rotate_master_key.log" 2>&1 &
 pid4=$!
-alter_encrypt_unencrypt_tables 60   > /dev/null 2>&1 &
+alter_encrypt_unencrypt_tables 60  > "$RUN_DIR/alter_table_am.log" 2>&1 &
 pid5=$!
 
 for i in $(seq 1 3); do
     sleep 30
     crash_pg $REPLICA_DATA $REPLICA_PORT
-    sleep 30
     echo "Restarting Replica Server"
     restart_pg $REPLICA_DATA $REPLICA_PORT
-    sleep 15
     crash_pg $PRIMARY_DATA $PRIMARY_PORT
-    sleep 30
     echo "Restarting Primary Server"
     restart_pg $PRIMARY_DATA $PRIMARY_PORT
 done
 
 echo "Verify table and data between primary and replica node..."
-sleep 30
+wait_for_replica_catchup $PRIMARY_PORT $REPLICA_PORT
 error_flag=0
 for i in $(seq 1 $TABLES); do
     PRIMARY_COUNT=$($INSTALL_DIR/bin/psql -d $DB_NAME -p $PRIMARY_PORT -t -A -c"SELECT COUNT(*) FROM sbtest$i;")

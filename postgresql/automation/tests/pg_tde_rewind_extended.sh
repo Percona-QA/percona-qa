@@ -126,7 +126,7 @@ run_test() {
   # Promote replica
   ###########################################
   $PG_CTL -D $REPLICA_DATA promote
-  sleep 3
+  wait_for_recovery_end $REPLICA_PORT
 
   restart_pg $PRIMARY_DATA $PRIMARY_PORT
   restart_pg $REPLICA_DATA $REPLICA_PORT
