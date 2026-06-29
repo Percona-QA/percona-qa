@@ -10,6 +10,9 @@ that module runs `pg_upgrade` into a **new** data directory.
 
 Coverage: [`coverage_reports/coverage_2026-05-19.md`](../coverage_reports/coverage_2026-05-19.md).
 
+For a **full test catalog** (every major/minor pytest class, bash script, and version
+skip matrix), see [`upgrade_matrix.md`](upgrade_matrix.md).
+
 ---
 
 ## What “minor upgrade” means here

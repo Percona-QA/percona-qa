@@ -9,6 +9,9 @@ guide:
 For **in-place pg_tde minor bumps** on the same PG major (e.g. 18.3 → 18.4), see
 [`minor_upgrade.md`](minor_upgrade.md) instead.
 
+For a **full test catalog** (every major/minor pytest class, bash script, and version
+skip matrix), see [`upgrade_matrix.md`](upgrade_matrix.md).
+
 ---
 
 ## What the Percona doc says
