@@ -93,8 +93,9 @@ bash run_major_upgrade_workflow.sh
 Defaults:
 
 - `OLD_PG_MAJOR=17`, `NEW_PG_MAJOR=18`
-- `PG_TDE_MAJOR_UPGRADE_DATA_DIR=/var/lib/pg_tde_major_upgrade`
+- `PG_TDE_MAJOR_UPGRADE_DATA_DIR=/var/lib/pg_tde_major_upgrade` (workflow state only)
 - Debian cluster name: `pg_tde_major_test` (not production `main`)
+- pg_tde keyring file: `/var/lib/postgresql/17/pg_tde_major_test/major_upgrade_keyring.per` (owned by `postgres`)
 
 ### Split phases (manual package control)
 
@@ -178,4 +179,5 @@ State is written to:
 | `failed to decrypt key` after upgrade | Used plain `pg_upgrade` instead of `pg_tde_upgrade` |
 | pytest skips all upgrade tests | Missing `--old-install-dir` |
 | `pg_createcluster not found` | Use `--method pytest` or install `percona-postgresql-common` |
-| `initdb: unrecognized option '--no-data-checksums'` | Fixed in workflow for PG 17 (flag is PG 18+ only); pull latest script |
+| `Failed to open keyring file ... Permission denied` | Keyring must be under `$PGDATA` (owned by `postgres`); fixed in workflow — use latest script |
+| `initdb: unrecognized option '--no-data-checksums'` | PG 17 only — flag is PG 18+; pull latest script |

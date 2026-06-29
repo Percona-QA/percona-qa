@@ -45,6 +45,7 @@ VERIFY_ONLY=false
 SKIP_DROP=false
 
 STATE_ENV="${UPGRADE_DATA_DIR}/major_upgrade_state.env"
+# Debian mode: resolved under OLD_DATA in debian_old_paths (postgres-owned).
 KEYFILE="${UPGRADE_DATA_DIR}/major_upgrade_keyring.per"
 
 RED='\033[0;31m'
@@ -87,6 +88,8 @@ Options:
 
 Examples:
   sudo mkdir -p ${UPGRADE_DATA_DIR} && sudo chown "\$USER" ${UPGRADE_DATA_DIR}
+  # (state/metadata only; pg_tde keyring is created under the cluster data dir)
+
   bash $(basename "$0")
   bash $(basename "$0") --method debian --setup-only
   bash $(basename "$0") --upgrade-only
@@ -117,6 +120,7 @@ done
 
 export PG_TDE_MAJOR_UPGRADE_DATA_DIR="$UPGRADE_DATA_DIR"
 STATE_ENV="${UPGRADE_DATA_DIR}/major_upgrade_state.env"
+# Debian mode: resolved under OLD_DATA in debian_old_paths (postgres-owned).
 KEYFILE="${UPGRADE_DATA_DIR}/major_upgrade_keyring.per"
 
 if [[ "$(id -u)" -eq 0 ]]; then
@@ -257,6 +261,9 @@ run_pytest_smoke() {
 debian_old_paths() {
     OLD_DATA="/var/lib/postgresql/${OLD_PG_MAJOR%%.*}/${CLUSTER_NAME}"
     OLD_BIN="/usr/lib/postgresql/${OLD_PG_MAJOR%%.*}/bin"
+    # Keyring must live under $PGDATA — debian clusters run as ``postgres``.
+    KEYFILE="${OLD_DATA}/major_upgrade_keyring.per"
+    export KEYFILE
 }
 
 debian_new_paths() {
@@ -354,8 +361,8 @@ debian_run_pg_tde_upgrade() {
     warn "Using pg_tde_upgrade (required for pg_tde clusters per Percona doc)."
     warn "Do NOT use plain pg_upgradecluster without pg_tde_upgrade on encrypted data."
 
-    local workdir="${UPGRADE_DATA_DIR}/pg_tde_upgrade_cwd"
-    mkdir -p "${workdir}"
+    local workdir="${NEW_DATA}/.pg_tde_upgrade_cwd"
+    sudo -u postgres mkdir -p "${workdir}"
 
     info "pg_tde_upgrade --check"
     sudo -u postgres env PGDATA="${NEW_DATA}" bash -c "
