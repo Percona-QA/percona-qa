@@ -264,6 +264,26 @@ debian_new_paths() {
     NEW_BIN="/usr/lib/postgresql/${NEW_PG_MAJOR%%.*}/bin"
 }
 
+# PG 18+ defaults checksums on and accepts --no-data-checksums; PG 17 rejects that flag.
+debian_initdb_checksum_args() {
+    local pg_major="${1%%.*}"
+    if [[ "$pg_major" -ge 18 ]]; then
+        printf '%s\0' --no-data-checksums
+    fi
+}
+
+debian_initdb_extra_args() {
+    local pg_major="${1%%.*}"
+    local -a args=(--set shared_preload_libraries=pg_tde)
+    local -a cs_args=()
+    while IFS= read -r -d '' arg; do cs_args+=("$arg"); done \
+        < <(debian_initdb_checksum_args "$pg_major")
+    if ((${#cs_args[@]})); then
+        args=("${cs_args[@]}" "${args[@]}")
+    fi
+    printf '%s\0' "${args[@]}"
+}
+
 debian_setup_cluster() {
     command -v pg_createcluster >/dev/null 2>&1 || \
         die "pg_createcluster not found (install percona-postgresql-common / postgresql-common)"
@@ -271,19 +291,22 @@ debian_setup_cluster() {
     debian_old_paths
     mkdir -p "${UPGRADE_DATA_DIR}"
 
-    if ! sudo pg_lsclusters -h 2>/dev/null | grep -qE "^${OLD_PG_MAJOR%%.*}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
-        info "Creating Debian cluster ${OLD_PG_MAJOR}/${CLUSTER_NAME}"
-        sudo pg_createcluster "${OLD_PG_MAJOR%%.*}" "${CLUSTER_NAME}" \
-            -- --no-data-checksums \
-            --set shared_preload_libraries=pg_tde
+    local pg_major="${OLD_PG_MAJOR%%.*}"
+    local -a initdb_args=()
+    while IFS= read -r -d '' arg; do initdb_args+=("$arg"); done \
+        < <(debian_initdb_extra_args "$pg_major")
+
+    if ! sudo pg_lsclusters -h 2>/dev/null | grep -qE "^${pg_major}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
+        info "Creating Debian cluster ${pg_major}/${CLUSTER_NAME}"
+        sudo pg_createcluster "${pg_major}" "${CLUSTER_NAME}" -- "${initdb_args[@]}"
     else
-        info "Cluster ${OLD_PG_MAJOR}/${CLUSTER_NAME} already exists"
+        info "Cluster ${pg_major}/${CLUSTER_NAME} already exists"
     fi
 
-    sudo pg_ctlcluster "${OLD_PG_MAJOR%%.*}" "${CLUSTER_NAME}" start
+    sudo pg_ctlcluster "${pg_major}" "${CLUSTER_NAME}" start
 
     local port
-    port="$(pg_lsclusters | awk -v v="${OLD_PG_MAJOR%%.*}" -v c="${CLUSTER_NAME}" \
+    port="$(pg_lsclusters | awk -v v="${pg_major}" -v c="${CLUSTER_NAME}" \
         '$1==v && $2==c {print $3}')"
     [[ -n "$port" ]] || die "Could not resolve port for ${OLD_PG_MAJOR}/${CLUSTER_NAME}"
 
@@ -321,8 +344,10 @@ debian_run_pg_tde_upgrade() {
 
     if ! sudo pg_lsclusters 2>/dev/null | grep -qE "^${NEW_PG_MAJOR%%.*}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
         info "Creating empty target cluster ${NEW_PG_MAJOR}/${CLUSTER_NAME}"
-        sudo pg_createcluster "${NEW_PG_MAJOR%%.*}" "${CLUSTER_NAME}" \
-            -- --no-data-checksums
+        local -a new_initdb_args=()
+        while IFS= read -r -d '' arg; do new_initdb_args+=("$arg"); done \
+            < <(debian_initdb_checksum_args "${NEW_PG_MAJOR%%.*}")
+        sudo pg_createcluster "${NEW_PG_MAJOR%%.*}" "${CLUSTER_NAME}" -- "${new_initdb_args[@]}"
     fi
     sudo pg_ctlcluster "${NEW_PG_MAJOR%%.*}" "${CLUSTER_NAME}" stop 2>/dev/null || true
 

@@ -178,3 +178,4 @@ State is written to:
 | `failed to decrypt key` after upgrade | Used plain `pg_upgrade` instead of `pg_tde_upgrade` |
 | pytest skips all upgrade tests | Missing `--old-install-dir` |
 | `pg_createcluster not found` | Use `--method pytest` or install `percona-postgresql-common` |
+| `initdb: unrecognized option '--no-data-checksums'` | Fixed in workflow for PG 17 (flag is PG 18+ only); pull latest script |
