@@ -28,8 +28,8 @@ pytest --list-test-sections
 | Section | Pytest marker(s) | Typical content |
 |---------|------------------|-----------------|
 | `rewind` | `rewind` | `test_tde_rewind_advanced.py` |
-| `upgrade` | `upgrade` | `test_tde_pg_upgrade.py`, `test_upgrade.py` |
-| `minor_upgrade` | `minor_upgrade` | Staged in-place pg_tde bump (`test_tde_minor_upgrade.py`) |
+| `upgrade` | `upgrade` | `test_tde_pg_upgrade.py`, `test_upgrade.py` — [`docs/major_upgrade.md`](major_upgrade.md) |
+| `minor_upgrade` | `minor_upgrade` | Staged in-place pg_tde bump — [`docs/minor_upgrade.md`](minor_upgrade.md) |
 | `migration` | `migration` | `test_pdg_migration.py` |
 | `encryption` | `encryption` | Core pg_tde SQL/API tests |
 | `replication` | `replication` | `test_replication.py` |
