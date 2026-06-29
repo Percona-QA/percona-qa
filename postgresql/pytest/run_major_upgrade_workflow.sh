@@ -7,9 +7,8 @@
 # Two execution modes:
 #   pytest   (default) — ephemeral clusters + pg_tde_upgrade via pytest (TDE-safe,
 #                        works on Debian and RHEL when both install trees exist).
-#   debian   — system clusters under /var/lib/postgresql/{17,18}/<name> using
-#              pg_tde_upgrade (NOT pg_upgradecluster alone; Percona doc requires
-#              pg_tde_upgrade when pg_tde is loaded).
+#   debian   — initdb clusters under /var/lib/postgresql/pg_tde_major_upgrade/
+#              (config in PGDATA; pg_createcluster split layout is incompatible)
 #
 # Usage:
 #   cd postgresql/pytest
@@ -66,9 +65,9 @@ Staged major upgrade (PG ${OLD_PG_MAJOR} → ${NEW_PG_MAJOR}) with pg_tde.
 Methods:
   pytest   Run tests/test_tde_pg_upgrade.py smoke tests with --old-install-dir
            (default when pg_upgradecluster is absent or METHOD=pytest).
-  debian   Populate a Debian-style cluster, run pg_tde_upgrade on
-           /var/lib/postgresql/{${OLD_PG_MAJOR},${NEW_PG_MAJOR}}/${CLUSTER_NAME},
-           then vacuumdb + inline SQL checks.
+  debian   initdb + pg_tde_upgrade under /var/lib/postgresql/pg_tde_major_upgrade/
+           (postgres-owned PGDATA with postgresql.conf inside — required by
+           pg_upgrade).  Does not use pg_createcluster / pg_upgradecluster.
   auto     debian when pg_createcluster exists, else pytest.
 
 Options:
@@ -78,7 +77,7 @@ Options:
   --setup-only             Old packages + populate source cluster / state, exit
   --upgrade-only           Install new packages + run pg_tde_upgrade, exit
   --verify-only            Post-upgrade checks only (requires prior upgrade)
-  --skip-drop              Do not pg_dropcluster the old major at the end
+  --skip-drop              Do not remove the old major PGDATA tree at the end
   --upgrade-data-dir PATH  Override PG_TDE_MAJOR_UPGRADE_DATA_DIR
   --old-pg-major VER       Default: ${OLD_PG_MAJOR}
   --new-pg-major VER       Default: ${NEW_PG_MAJOR}
@@ -185,6 +184,11 @@ export NEW_INSTALL_DIR="${NEW_INSTALL_DIR:-}"
 export PG_MAJOR_UPGRADE_CLUSTER="${CLUSTER_NAME}"
 export PG_MAJOR_UPGRADE_METHOD="${RESOLVED_METHOD}"
 export PG_MAJOR_UPGRADE_KEYFILE="${KEYFILE}"
+export PG_MAJOR_SOCKET_DIR="${SOCKET_DIR:-}"
+export PG_MAJOR_OLD_PORT="${OLD_PORT:-}"
+export PG_MAJOR_NEW_PORT="${NEW_PORT:-}"
+export PG_MAJOR_OLD_DATA="${OLD_DATA:-}"
+export PG_MAJOR_NEW_DATA="${NEW_DATA:-}"
 EOF
     ok "Wrote ${STATE_ENV}"
 }
@@ -258,17 +262,44 @@ run_pytest_smoke() {
         --old-install-dir="${old_dir}"
 }
 
-debian_old_paths() {
-    OLD_DATA="/var/lib/postgresql/${OLD_PG_MAJOR%%.*}/${CLUSTER_NAME}"
+debian_base_paths() {
+    DEBIAN_ROOT="/var/lib/postgresql/pg_tde_major_upgrade"
+    SOCKET_DIR="${DEBIAN_ROOT}/run"
+    OLD_PORT="${PG_MAJOR_OLD_PORT:-50417}"
+    NEW_PORT="${PG_MAJOR_NEW_PORT:-50418}"
+    OLD_DATA="${DEBIAN_ROOT}/${OLD_PG_MAJOR%%.*}/${CLUSTER_NAME}"
+    NEW_DATA="${DEBIAN_ROOT}/${NEW_PG_MAJOR%%.*}/${CLUSTER_NAME}"
     OLD_BIN="/usr/lib/postgresql/${OLD_PG_MAJOR%%.*}/bin"
-    # Keyring must live under $PGDATA — debian clusters run as ``postgres``.
+    NEW_BIN="/usr/lib/postgresql/${NEW_PG_MAJOR%%.*}/bin"
     KEYFILE="${OLD_DATA}/major_upgrade_keyring.per"
-    export KEYFILE
+    export DEBIAN_ROOT SOCKET_DIR OLD_PORT NEW_PORT
+    export OLD_DATA NEW_DATA OLD_BIN NEW_BIN KEYFILE
 }
 
-debian_new_paths() {
-    NEW_DATA="/var/lib/postgresql/${NEW_PG_MAJOR%%.*}/${CLUSTER_NAME}"
-    NEW_BIN="/usr/lib/postgresql/${NEW_PG_MAJOR%%.*}/bin"
+debian_remove_legacy_pg_createclusters() {
+    command -v pg_lsclusters >/dev/null 2>&1 || return 0
+    local pg_major
+    for pg_major in "${OLD_PG_MAJOR%%.*}" "${NEW_PG_MAJOR%%.*}"; do
+        if pg_lsclusters 2>/dev/null | grep -qE "^${pg_major}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
+            warn "Dropping legacy pg_createcluster ${pg_major}/${CLUSTER_NAME}"
+            warn "(config under /etc/postgresql — incompatible with pg_tde_upgrade)"
+            sudo pg_dropcluster "${pg_major}" "${CLUSTER_NAME}" --stop 2>/dev/null || \
+                sudo pg_dropcluster "${pg_major}" "${CLUSTER_NAME}" || true
+        fi
+    done
+}
+
+debian_pg_ctl() {
+    local action="$1"
+    local bin="$2"
+    local data="$3"
+    local port="$4"
+    if [[ "$action" == "start" ]]; then
+        sudo -u postgres "${bin}/pg_ctl" -D "$data" \
+            -o "-p ${port} -k ${SOCKET_DIR}" -w start
+    else
+        sudo -u postgres "${bin}/pg_ctl" -D "$data" -m fast -w stop 2>/dev/null || true
+    fi
 }
 
 # PG 18+ defaults checksums on and accepts --no-data-checksums; PG 17 rejects that flag.
@@ -279,46 +310,75 @@ debian_initdb_checksum_args() {
     fi
 }
 
-debian_initdb_extra_args() {
-    local pg_major="${1%%.*}"
-    local -a args=(--set shared_preload_libraries=pg_tde)
-    local -a cs_args=()
-    while IFS= read -r -d '' arg; do cs_args+=("$arg"); done \
-        < <(debian_initdb_checksum_args "$pg_major")
-    if ((${#cs_args[@]})); then
-        args=("${cs_args[@]}" "${args[@]}")
+debian_initdb_cluster() {
+    local data_dir="$1"
+    local bin_dir="$2"
+    local pg_major="${3%%.*}"
+    local port="$4"
+
+    if [[ -f "${data_dir}/postgresql.conf" ]]; then
+        info "Reusing PGDATA ${data_dir}"
+        return 0
     fi
-    printf '%s\0' "${args[@]}"
+
+    if [[ -d "${data_dir}" ]]; then
+        warn "Removing incomplete PGDATA ${data_dir}"
+        sudo rm -rf "${data_dir}"
+    fi
+
+    sudo mkdir -p "${data_dir}" "${SOCKET_DIR}"
+    sudo chown postgres:postgres "${data_dir}" "${SOCKET_DIR}"
+    sudo chmod 0700 "${SOCKET_DIR}"
+
+    local -a initdb_args=()
+    while IFS= read -r -d '' arg; do initdb_args+=("$arg"); done \
+        < <(debian_initdb_checksum_args "$pg_major")
+    initdb_args+=(--set "shared_preload_libraries=pg_tde")
+    initdb_args+=(--set "unix_socket_directories=${SOCKET_DIR}")
+
+    info "initdb PG ${pg_major} at ${data_dir}"
+    sudo -u postgres "${bin_dir}/initdb" -D "${data_dir}" "${initdb_args[@]}"
+
+    if ! sudo grep -qE '^[[:space:]]*local[[:space:]]' "${data_dir}/pg_hba.conf"; then
+        echo "local all all trust" | sudo tee -a "${data_dir}/pg_hba.conf" >/dev/null
+    fi
+    echo "host all all 127.0.0.1/32 trust" | sudo tee -a "${data_dir}/pg_hba.conf" >/dev/null
+
+    sudo -u postgres tee -a "${data_dir}/postgresql.conf" >/dev/null <<EOF
+port = ${port}
+wal_level = replica
+include_if_exists = 'postgresql.auto.conf'
+EOF
+}
+
+debian_run_pg_tde_upgrade_cmd() {
+    local extra_flag="${1:-}"
+    sudo -u postgres bash -c "
+        cd '${SOCKET_DIR}' && \
+        '${NEW_BIN}/pg_tde_upgrade' \
+            --old-bindir='${OLD_BIN}' \
+            --new-bindir='${NEW_BIN}' \
+            --old-datadir='${OLD_DATA}' \
+            --new-datadir='${NEW_DATA}' \
+            --socketdir='${SOCKET_DIR}' \
+            -p '${OLD_PORT}' \
+            -P '${NEW_PORT}' \
+            ${extra_flag}
+    "
 }
 
 debian_setup_cluster() {
-    command -v pg_createcluster >/dev/null 2>&1 || \
-        die "pg_createcluster not found (install percona-postgresql-common / postgresql-common)"
-
-    debian_old_paths
+    debian_base_paths
+    debian_remove_legacy_pg_createclusters
     mkdir -p "${UPGRADE_DATA_DIR}"
 
-    local pg_major="${OLD_PG_MAJOR%%.*}"
-    local -a initdb_args=()
-    while IFS= read -r -d '' arg; do initdb_args+=("$arg"); done \
-        < <(debian_initdb_extra_args "$pg_major")
+    debian_initdb_cluster "${OLD_DATA}" "${OLD_BIN}" "${OLD_PG_MAJOR%%.*}" "${OLD_PORT}"
+    [[ -f "${OLD_DATA}/postgresql.conf" ]] || die "initdb did not create ${OLD_DATA}/postgresql.conf"
 
-    if ! sudo pg_lsclusters -h 2>/dev/null | grep -qE "^${pg_major}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
-        info "Creating Debian cluster ${pg_major}/${CLUSTER_NAME}"
-        sudo pg_createcluster "${pg_major}" "${CLUSTER_NAME}" -- "${initdb_args[@]}"
-    else
-        info "Cluster ${pg_major}/${CLUSTER_NAME} already exists"
-    fi
+    debian_pg_ctl start "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
 
-    sudo pg_ctlcluster "${pg_major}" "${CLUSTER_NAME}" start
-
-    local port
-    port="$(pg_lsclusters | awk -v v="${pg_major}" -v c="${CLUSTER_NAME}" \
-        '$1==v && $2==c {print $3}')"
-    [[ -n "$port" ]] || die "Could not resolve port for ${OLD_PG_MAJOR}/${CLUSTER_NAME}"
-
-    info "Populating pg_tde data on port ${port}"
-    sudo -u postgres psql -p "${port}" -d postgres -v ON_ERROR_STOP=1 <<SQL
+    info "Populating pg_tde data (port ${OLD_PORT}, socket ${SOCKET_DIR})"
+    sudo -u postgres psql -h "${SOCKET_DIR}" -p "${OLD_PORT}" -d postgres -v ON_ERROR_STOP=1 <<SQL
 CREATE EXTENSION IF NOT EXISTS pg_tde;
 SELECT pg_tde_add_global_key_provider_file('major_upg_provider', '${KEYFILE}');
 SELECT pg_tde_create_key_using_global_key_provider('major_upg_key', 'major_upg_provider');
@@ -329,10 +389,10 @@ CREATE TABLE major_upg_t (id INT PRIMARY KEY, payload TEXT) USING tde_heap;
 INSERT INTO major_upg_t SELECT i, md5(i::text) FROM generate_series(1, 500) i;
 SQL
 
-    sudo pg_ctlcluster "${OLD_PG_MAJOR%%.*}" "${CLUSTER_NAME}" stop
+    debian_pg_ctl stop "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
 
     OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR}")" || \
-        OLD_INSTALL_DIR="/usr/lib/postgresql/${OLD_PG_MAJOR%%.*}"
+        OLD_INSTALL_DIR="${OLD_BIN%/bin}"
     export OLD_INSTALL_DIR
 
     write_state
@@ -341,52 +401,32 @@ SQL
 
 debian_run_pg_tde_upgrade() {
     load_state
-    debian_old_paths
-    debian_new_paths
+    debian_base_paths
 
     [[ -x "${NEW_BIN}/pg_tde_upgrade" ]] || \
         die "pg_tde_upgrade not found at ${NEW_BIN}/pg_tde_upgrade (install percona-pg-tde${NEW_PG_MAJOR%%.*})"
+    [[ -f "${OLD_DATA}/postgresql.conf" ]] || die \
+        "Missing ${OLD_DATA}/postgresql.conf — pg_createcluster layout is not supported; re-run --setup-only"
 
-    sudo pg_ctlcluster "${OLD_PG_MAJOR%%.*}" "${CLUSTER_NAME}" stop 2>/dev/null || true
+    debian_pg_ctl stop "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
 
-    if ! sudo pg_lsclusters 2>/dev/null | grep -qE "^${NEW_PG_MAJOR%%.*}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
-        info "Creating empty target cluster ${NEW_PG_MAJOR}/${CLUSTER_NAME}"
-        local -a new_initdb_args=()
-        while IFS= read -r -d '' arg; do new_initdb_args+=("$arg"); done \
-            < <(debian_initdb_checksum_args "${NEW_PG_MAJOR%%.*}")
-        sudo pg_createcluster "${NEW_PG_MAJOR%%.*}" "${CLUSTER_NAME}" -- "${new_initdb_args[@]}"
+    if [[ -d "${NEW_DATA}" ]]; then
+        warn "Removing prior target PGDATA ${NEW_DATA}"
+        sudo rm -rf "${NEW_DATA}"
     fi
-    sudo pg_ctlcluster "${NEW_PG_MAJOR%%.*}" "${CLUSTER_NAME}" stop 2>/dev/null || true
+    debian_initdb_cluster "${NEW_DATA}" "${NEW_BIN}" "${NEW_PG_MAJOR%%.*}" "${NEW_PORT}"
+    debian_pg_ctl stop "${NEW_BIN}" "${NEW_DATA}" "${NEW_PORT}"
 
     warn "Using pg_tde_upgrade (required for pg_tde clusters per Percona doc)."
-    warn "Do NOT use plain pg_upgradecluster without pg_tde_upgrade on encrypted data."
-
-    local workdir="${NEW_DATA}/.pg_tde_upgrade_cwd"
-    sudo -u postgres mkdir -p "${workdir}"
 
     info "pg_tde_upgrade --check"
-    sudo -u postgres env PGDATA="${NEW_DATA}" bash -c "
-        cd '${workdir}' && \
-        '${NEW_BIN}/pg_tde_upgrade' \
-            --old-bindir='${OLD_BIN}' \
-            --new-bindir='${NEW_BIN}' \
-            --old-datadir='${OLD_DATA}' \
-            --new-datadir='${NEW_DATA}' \
-            --check
-    "
+    debian_run_pg_tde_upgrade_cmd "--check"
 
     info "pg_tde_upgrade (upgrade)"
-    sudo -u postgres env PGDATA="${NEW_DATA}" bash -c "
-        cd '${workdir}' && \
-        '${NEW_BIN}/pg_tde_upgrade' \
-            --old-bindir='${OLD_BIN}' \
-            --new-bindir='${NEW_BIN}' \
-            --old-datadir='${OLD_DATA}' \
-            --new-datadir='${NEW_DATA}'
-    "
+    debian_run_pg_tde_upgrade_cmd ""
 
     NEW_INSTALL_DIR="$(detect_install_dir "${NEW_PG_MAJOR}")" || \
-        NEW_INSTALL_DIR="/usr/lib/postgresql/${NEW_PG_MAJOR%%.*}"
+        NEW_INSTALL_DIR="${NEW_BIN%/bin}"
     export NEW_INSTALL_DIR
     write_state
     ok "pg_tde_upgrade finished"
@@ -394,32 +434,30 @@ debian_run_pg_tde_upgrade() {
 
 debian_verify_cluster() {
     load_state
-    debian_new_paths
+    debian_base_paths
 
-    sudo pg_ctlcluster "${NEW_PG_MAJOR%%.*}" "${CLUSTER_NAME}" start
+    debian_pg_ctl start "${NEW_BIN}" "${NEW_DATA}" "${NEW_PORT}"
 
-    local port
-    port="$(pg_lsclusters | awk -v v="${NEW_PG_MAJOR%%.*}" -v c="${CLUSTER_NAME}" \
-        '$1==v && $2==c {print $3}')"
-    [[ -n "$port" ]] || die "Could not resolve port for upgraded cluster"
-
-    info "ALTER EXTENSION pg_tde UPDATE + row check on port ${port}"
-    sudo -u postgres psql -p "${port}" -d postgres -v ON_ERROR_STOP=1 <<SQL
+    info "ALTER EXTENSION pg_tde UPDATE + row check (port ${NEW_PORT})"
+    sudo -u postgres psql -h "${SOCKET_DIR}" -p "${NEW_PORT}" -d postgres -v ON_ERROR_STOP=1 <<SQL
 ALTER EXTENSION pg_tde UPDATE;
 SELECT COUNT(*) AS major_upg_rows FROM major_upg_t;
 SQL
 
     info "vacuumdb --all --analyze-in-stages (doc step 6)"
-    sudo -u postgres "${NEW_BIN}/vacuumdb" -p "${port}" --all --analyze-in-stages
+    sudo -u postgres "${NEW_BIN}/vacuumdb" -h "${SOCKET_DIR}" -p "${NEW_PORT}" \
+        --all --analyze-in-stages
+
+    debian_pg_ctl stop "${NEW_BIN}" "${NEW_DATA}" "${NEW_PORT}"
 
     ok "Debian verify complete (500 rows expected in major_upg_t)"
 
     if [[ "$SKIP_DROP" != true ]]; then
-        info "Dropping old cluster ${OLD_PG_MAJOR}/${CLUSTER_NAME} (doc step 7)"
-        sudo pg_dropcluster "${OLD_PG_MAJOR%%.*}" "${CLUSTER_NAME}" || \
-            warn "pg_dropcluster failed (cluster may already be gone)"
+        info "Removing old PGDATA ${OLD_DATA}"
+        debian_pg_ctl stop "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
+        sudo rm -rf "${OLD_DATA}"
     else
-        warn "Skipping pg_dropcluster (--skip-drop)"
+        warn "Keeping old PGDATA ${OLD_DATA} (--skip-drop)"
     fi
 }
 

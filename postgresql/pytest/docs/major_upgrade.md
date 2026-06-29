@@ -76,7 +76,7 @@ sudo chown "$USER" /var/lib/pg_tde_major_upgrade
 | Method | When | What it does |
 |--------|------|--------------|
 | **`pytest`** (default on RHEL / no `pg_createcluster`) | Dev trees or CI with two install prefixes | Runs `TestPspToPspUpgrade` smoke + analyze test via `pg_tde_upgrade` |
-| **`debian`** | Ubuntu/Debian with `pg_createcluster` | Creates cluster `pg_tde_major_test`, populates TDE data, runs **`pg_tde_upgrade`** on `/var/lib/postgresql/{17,18}/…`, then `ALTER EXTENSION` + `vacuumdb` |
+| **`debian`** | Ubuntu/Debian with `initdb` as `postgres` | Creates PGDATA under `/var/lib/postgresql/pg_tde_major_upgrade/{17,18}/<name>` with `postgresql.conf` **inside** PGDATA, then `pg_tde_upgrade` + `vacuumdb` |
 | **`auto`** | Default when `--method` omitted | `debian` if `pg_createcluster` exists, else `pytest` |
 
 **Important:** The debian method uses **`pg_tde_upgrade` directly** (doc-correct
@@ -94,8 +94,10 @@ Defaults:
 
 - `OLD_PG_MAJOR=17`, `NEW_PG_MAJOR=18`
 - `PG_TDE_MAJOR_UPGRADE_DATA_DIR=/var/lib/pg_tde_major_upgrade` (workflow state only)
-- Debian cluster name: `pg_tde_major_test` (not production `main`)
-- pg_tde keyring file: `/var/lib/postgresql/17/pg_tde_major_test/major_upgrade_keyring.per` (owned by `postgres`)
+- Debian cluster name: `pg_tde_major_test` (logical label; not `pg_createcluster main`)
+- PGDATA: `/var/lib/postgresql/pg_tde_major_upgrade/17/pg_tde_major_test` (and `…/18/…` after upgrade)
+- Sockets: `/var/lib/postgresql/pg_tde_major_upgrade/run` (ports `50417` / `50418` by default)
+- pg_tde keyring: `<OLD_PGDATA>/major_upgrade_keyring.per`
 
 ### Split phases (manual package control)
 
@@ -179,5 +181,6 @@ State is written to:
 | `failed to decrypt key` after upgrade | Used plain `pg_upgrade` instead of `pg_tde_upgrade` |
 | pytest skips all upgrade tests | Missing `--old-install-dir` |
 | `pg_createcluster not found` | Use `--method pytest` or install `percona-postgresql-common` |
-| `Failed to open keyring file ... Permission denied` | Keyring must be under `$PGDATA` (owned by `postgres`); fixed in workflow — use latest script |
-| `initdb: unrecognized option '--no-data-checksums'` | PG 17 only — flag is PG 18+; pull latest script |
+| `Failed to open keyring file ... Permission denied` | Keyring must be under `$PGDATA` (owned by `postgres`) |
+| `postgresql.conf: No such file` in old PGDATA | **pg_createcluster** puts config in `/etc/postgresql/` — re-run with latest script (`initdb` layout) |
+| `initdb: unrecognized option '--no-data-checksums'` | PG 17 only — flag is PG 18+ |
