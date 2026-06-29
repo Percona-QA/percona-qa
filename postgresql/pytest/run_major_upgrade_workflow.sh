@@ -302,11 +302,36 @@ debian_pg_ctl() {
     fi
 }
 
+debian_has_postgresql_conf() {
+    # PGDATA is 0700 postgres:postgres after initdb — check as postgres.
+    sudo test -f "$1/postgresql.conf"
+}
+
 # PG 18+ defaults checksums on and accepts --no-data-checksums; PG 17 rejects that flag.
 debian_initdb_checksum_args() {
     local pg_major="${1%%.*}"
     if [[ "$pg_major" -ge 18 ]]; then
         printf '%s\0' --no-data-checksums
+    fi
+}
+
+debian_append_cluster_conf() {
+    local data_dir="$1"
+    local port="$2"
+
+    if ! sudo grep -qE '^[[:space:]]*local[[:space:]]' "${data_dir}/pg_hba.conf" 2>/dev/null; then
+        echo "local all all trust" | sudo tee -a "${data_dir}/pg_hba.conf" >/dev/null
+    fi
+    if ! sudo grep -qE '^[[:space:]]*host[[:space:]]+all[[:space:]]+all[[:space:]]+127\.0\.0\.1' \
+        "${data_dir}/pg_hba.conf" 2>/dev/null; then
+        echo "host all all 127.0.0.1/32 trust" | sudo tee -a "${data_dir}/pg_hba.conf" >/dev/null
+    fi
+    if ! sudo grep -qE '^[[:space:]]*port[[:space:]]*=' "${data_dir}/postgresql.conf" 2>/dev/null; then
+        sudo -u postgres tee -a "${data_dir}/postgresql.conf" >/dev/null <<EOF
+port = ${port}
+wal_level = replica
+include_if_exists = 'postgresql.auto.conf'
+EOF
     fi
 }
 
@@ -316,8 +341,9 @@ debian_initdb_cluster() {
     local pg_major="${3%%.*}"
     local port="$4"
 
-    if [[ -f "${data_dir}/postgresql.conf" ]]; then
+    if debian_has_postgresql_conf "${data_dir}"; then
         info "Reusing PGDATA ${data_dir}"
+        debian_append_cluster_conf "${data_dir}" "${port}"
         return 0
     fi
 
@@ -339,16 +365,7 @@ debian_initdb_cluster() {
     info "initdb PG ${pg_major} at ${data_dir}"
     sudo -u postgres "${bin_dir}/initdb" -D "${data_dir}" "${initdb_args[@]}"
 
-    if ! sudo grep -qE '^[[:space:]]*local[[:space:]]' "${data_dir}/pg_hba.conf"; then
-        echo "local all all trust" | sudo tee -a "${data_dir}/pg_hba.conf" >/dev/null
-    fi
-    echo "host all all 127.0.0.1/32 trust" | sudo tee -a "${data_dir}/pg_hba.conf" >/dev/null
-
-    sudo -u postgres tee -a "${data_dir}/postgresql.conf" >/dev/null <<EOF
-port = ${port}
-wal_level = replica
-include_if_exists = 'postgresql.auto.conf'
-EOF
+    debian_append_cluster_conf "${data_dir}" "${port}"
 }
 
 debian_run_pg_tde_upgrade_cmd() {
@@ -373,7 +390,8 @@ debian_setup_cluster() {
     mkdir -p "${UPGRADE_DATA_DIR}"
 
     debian_initdb_cluster "${OLD_DATA}" "${OLD_BIN}" "${OLD_PG_MAJOR%%.*}" "${OLD_PORT}"
-    [[ -f "${OLD_DATA}/postgresql.conf" ]] || die "initdb did not create ${OLD_DATA}/postgresql.conf"
+    debian_has_postgresql_conf "${OLD_DATA}" || die \
+        "initdb did not create ${OLD_DATA}/postgresql.conf (check initdb output above)"
 
     debian_pg_ctl start "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
 
@@ -405,8 +423,8 @@ debian_run_pg_tde_upgrade() {
 
     [[ -x "${NEW_BIN}/pg_tde_upgrade" ]] || \
         die "pg_tde_upgrade not found at ${NEW_BIN}/pg_tde_upgrade (install percona-pg-tde${NEW_PG_MAJOR%%.*})"
-    [[ -f "${OLD_DATA}/postgresql.conf" ]] || die \
-        "Missing ${OLD_DATA}/postgresql.conf — pg_createcluster layout is not supported; re-run --setup-only"
+    debian_has_postgresql_conf "${OLD_DATA}" || die \
+        "Missing ${OLD_DATA}/postgresql.conf — re-run --setup-only (pg_createcluster layout is not supported)"
 
     debian_pg_ctl stop "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
 
