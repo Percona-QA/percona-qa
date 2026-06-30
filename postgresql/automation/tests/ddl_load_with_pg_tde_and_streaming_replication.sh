@@ -219,9 +219,9 @@ for i in {1..3}; do
     rotate_master_key 30 > /dev/null 2>&1 &
     compress_wal 30 > /dev/null 2>&1 &
 
-    sleep 10                               # soak under concurrent load before crashing
-    crash_pg $PRIMARY_DATA $PRIMARY_PORT   # already waits for all procs to exit
-    start_pg $PRIMARY_DATA $PRIMARY_PORT   # already waits for pg_isready
+    sleep 10
+    crash_pg $PRIMARY_DATA $PRIMARY_PORT
+    start_pg $PRIMARY_DATA $PRIMARY_PORT
 
     wait
 done

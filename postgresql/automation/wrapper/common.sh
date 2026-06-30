@@ -53,23 +53,18 @@ crash_pg() {
     local PID=$(head -1 "$PGDATA/postmaster.pid")
     kill -9 "$PID"
 
-    # Wait for ALL postgres processes of this cluster to exit, INCLUDING client
-    # backends. Backend process titles do not contain $PGDATA (so `pgrep -f
-    # $PGDATA` misses the backends serving a concurrent load), but every backend's
-    # working directory IS the data directory. Until they exit the SysV shmem
-    # stays attached and a restart fails with "pre-existing shared memory block
-    # is still in use".
-    local DDIR
-    DDIR=$(readlink -f "$PGDATA")
-    while :; do
-        local procs="" p
-        for p in $(pgrep -x postgres 2>/dev/null || true); do
-            if [ "$(readlink -f /proc/$p/cwd 2>/dev/null)" = "$DDIR" ]; then
-                procs="$procs $p"
-            fi
-        done
-        if [ -z "$procs" ]; then
-            break
+    while kill -0 "$PID" 2>/dev/null; do
+      sleep 1
+    done
+
+    # Wait for ALL postgres processes using this datadir to exit
+    while pgrep -f "$PGDATA" >/dev/null; do
+        sleep 1
+        TIMEOUT=$((TIMEOUT - 1))
+        if [ $TIMEOUT -le 0 ]; then
+            echo "ERROR: postgres processes still running after crash"
+            pgrep -af "$PGDATA"
+            return 1
         fi
         TIMEOUT=$((TIMEOUT - 1))
         if [ "$TIMEOUT" -le 0 ]; then
@@ -79,6 +74,9 @@ crash_pg() {
         fi
         sleep 1
     done
+
+    # Give the kernel a moment to release IPC resources (helps on slower ARM systems).
+    sleep 2
 
     rm -f "$PGDATA/postmaster.pid"
     rm -f "$RUN_DIR/.s.PGSQL.$PORT"

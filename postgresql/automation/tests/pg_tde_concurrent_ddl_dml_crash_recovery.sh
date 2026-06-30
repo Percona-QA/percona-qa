@@ -442,10 +442,10 @@ for i in $(seq 1 $TRIALS); do
     stop_background_jobs
 
     log "Crashing PostgreSQL..."
-    crash_pg "$PGDATA" "$PORT"     # already waits for all procs to exit
+    crash_pg "$PGDATA" "$PORT"
 
     log "Restarting PostgreSQL..."
-    start_pg "$PGDATA" "$PORT"     # already waits for pg_isready
+    start_pg "$PGDATA" "$PORT"
 
 done
 

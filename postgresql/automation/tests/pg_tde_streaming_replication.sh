@@ -112,7 +112,7 @@ echo "4=>Create pg_tde keys on Primary Server"
 create_keys_and_load
 
 echo "Running Sysbench Load"
-run_sysbench_load 300 > /dev/null 2>&1 &
+run_sysbench_load 300 > "$RUN_DIR/run_sysbench_load.log" 2>&1 &
 pid1=$!
 rotate_wal_key 60 > "$RUN_DIR/rotate_wal_key.log" 2>&1 &
 pid2=$!
@@ -124,11 +124,11 @@ alter_encrypt_unencrypt_tables 300 > "$RUN_DIR/alter_table_am.log" 2>&1 &
 pid5=$!
 
 for i in $(seq 1 3); do
-    sleep 30                                 # soak under concurrent load before crashing
-    crash_pg $REPLICA_DATA $REPLICA_PORT     # already waits for all procs to exit
+    sleep 30
+    crash_pg $REPLICA_DATA $REPLICA_PORT
     echo "Restarting Replica Server"
-    restart_pg $REPLICA_DATA $REPLICA_PORT   # already waits for pg_isready
-    crash_pg $PRIMARY_DATA $PRIMARY_PORT      # already waits for all procs to exit
+    restart_pg $REPLICA_DATA $REPLICA_PORT
+    crash_pg $PRIMARY_DATA $PRIMARY_PORT
     echo "Restarting Primary Server"
     restart_pg $PRIMARY_DATA $PRIMARY_PORT   # already waits for pg_isready
 done
