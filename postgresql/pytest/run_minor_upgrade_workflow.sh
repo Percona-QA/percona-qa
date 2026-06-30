@@ -161,13 +161,16 @@ print_install_versions() {
     if [[ -x "${SCRIPT_DIR}/.venv/bin/python" ]]; then
         (
             cd "${SCRIPT_DIR}"
-            "${SCRIPT_DIR}/.venv/bin/python" -c "
+            "${SCRIPT_DIR}/.venv/bin/python" - "${dir}" "${prefix}" <<'PY' || true
+import sys
 from pathlib import Path
 from lib.cluster import install_version_summary_lines
-for line in install_version_summary_lines(Path('${dir}'), prefix='${prefix}'):
-    print(f'  {line}')
-"
-        ) || true
+install_dir = Path(sys.argv[1])
+prefix = sys.argv[2]
+for line in install_version_summary_lines(install_dir, prefix=prefix):
+    print(f"  {line}")
+PY
+        )
         return
     fi
     echo "  ${prefix}PostgreSQL server: $("${dir}/bin/postgres" --version 2>&1)"
@@ -177,7 +180,7 @@ for line in install_version_summary_lines(Path('${dir}'), prefix='${prefix}'):
         "${dir}/share/extension/pg_tde.control"
     do
         if [[ -f "$ctrl" ]]; then
-            echo "  ${prefix}pg_tde.control default_version: $(grep -E '^default_version' "$ctrl" | cut -d= -f2 | tr -d \"' \")"
+            echo "  ${prefix}pg_tde.control default_version: $(grep -E '^default_version' "$ctrl" | cut -d= -f2 | tr -d "' '")"
             break
         fi
     done
@@ -194,17 +197,18 @@ print_staged_state_versions() {
     fi
     (
         cd "${SCRIPT_DIR}"
-        "${SCRIPT_DIR}/.venv/bin/python" -c "
+        "${SCRIPT_DIR}/.venv/bin/python" - "${state_file}" <<'PY' 2>/dev/null || true
+import sys
 import json
 from pathlib import Path
-state = json.loads(Path('${state_file}').read_text())
-old_bin = state.get('old_pg_tde_binary_version') or ''
-old_ext = state.get('old_extversion') or ''
+state = json.loads(Path(sys.argv[1]).read_text())
+old_bin = state.get("old_pg_tde_binary_version") or ""
+old_ext = state.get("old_extversion") or ""
 if old_bin:
-    print(f'  staged Setup pg_tde_version(): {old_bin}')
+    print(f"  staged Setup pg_tde_version(): {old_bin}")
 if old_ext:
-    print(f'  staged Setup catalog extversion: {old_ext}')
-" 2>/dev/null || true
+    print(f"  staged Setup catalog extversion: {old_ext}")
+PY
     )
 }
 

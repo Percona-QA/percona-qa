@@ -209,7 +209,7 @@ for _ctrl in \
     "${INSTALL_DIR}/share/extension/pg_tde.control"
 do
     if [[ -f "$_ctrl" ]]; then
-        info "pg_tde.control default_version: $(grep -E '^default_version' "$_ctrl" | cut -d= -f2 | tr -d \"' \")"
+        info "pg_tde.control default_version: $(grep -E '^default_version' "$_ctrl" | cut -d= -f2 | tr -d "' '")"
         break
     fi
 done
