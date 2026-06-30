@@ -130,7 +130,7 @@ for i in $(seq 1 3); do
     restart_pg $REPLICA_DATA $REPLICA_PORT
     crash_pg $PRIMARY_DATA $PRIMARY_PORT
     echo "Restarting Primary Server"
-    restart_pg $PRIMARY_DATA $PRIMARY_PORT   # already waits for pg_isready
+    restart_pg $PRIMARY_DATA $PRIMARY_PORT
 done
 
 echo "Verify table and data between primary and replica node..."

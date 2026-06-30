@@ -66,13 +66,6 @@ crash_pg() {
             pgrep -af "$PGDATA"
             return 1
         fi
-        TIMEOUT=$((TIMEOUT - 1))
-        if [ "$TIMEOUT" -le 0 ]; then
-            echo "WARNING: postgres processes for $PGDATA still up after crash; force-killing:$procs"
-            kill -9 $procs 2>/dev/null || true
-            break
-        fi
-        sleep 1
     done
 
     # Give the kernel a moment to release IPC resources (helps on slower ARM systems).
