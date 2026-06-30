@@ -441,6 +441,12 @@ def _bind_cluster_to_persistent_data_dir(
     return cluster
 
 
+def _io_method_from_state(state: Dict[str, Any]) -> str:
+    """Use the io_method recorded during Setup (defaults to ``worker``)."""
+    value = (state.get("io_method") or "worker").strip()
+    return value or "worker"
+
+
 def _capture_pre_upgrade_state(
     cluster: PgCluster, scenario: str, install_dir: Path, **extras: Any
 ) -> Dict[str, Any]:
@@ -613,7 +619,7 @@ class TestPgTdeMinorUpgradeSetup:
             payload = _capture_pre_upgrade_state(
                 cluster, scenario="single_node", install_dir=install_dir,
                 data_dir=str(data_dir), socket_dir=str(socket_dir),
-                keyfile=keyfile,
+                keyfile=keyfile, io_method=io_method,
             )
             _write_state(scenario_root, payload)
         finally:
@@ -674,6 +680,7 @@ class TestPg2381MinorUpgradeSetup:
                 data_dir=str(data_dir),
                 socket_dir=str(socket_dir),
                 keyfile=keyfile,
+                io_method=io_method,
                 churn_table="pg2381_churn_t",
                 churn_expected_id="2",
             )
@@ -686,9 +693,9 @@ class TestPg2381MinorUpgradeSetup:
                 pass
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def _verify_single_cluster(
-    upgrade_data_dir, install_dir, io_method
+    upgrade_data_dir, install_dir
 ) -> Generator[Tuple[PgCluster, Dict[str, Any]], None, None]:
     _skip_if_no_upgrade_dir(upgrade_data_dir)
     scenario_root = _scenario_root(upgrade_data_dir, "single")
@@ -699,7 +706,8 @@ def _verify_single_cluster(
     socket_dir = Path(state["socket_dir"])
     socket_dir.mkdir(parents=True, exist_ok=True)
     cluster = _bind_cluster_to_persistent_data_dir(
-        install_dir, Path(state["data_dir"]), socket_dir, io_method
+        install_dir, Path(state["data_dir"]), socket_dir,
+        _io_method_from_state(state),
     )
     cluster.start()
     cluster.wait_ready(timeout=90)
@@ -772,9 +780,9 @@ class TestPgTdeMinorUpgradeVerify:
         assert new_count == str(row_count + 100)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def _verify_pg2381_cluster(
-    upgrade_data_dir, install_dir, io_method
+    upgrade_data_dir, install_dir
 ) -> Generator[Tuple[PgCluster, Dict[str, Any]], None, None]:
     _skip_if_no_upgrade_dir(upgrade_data_dir)
     scenario_root = _scenario_root(upgrade_data_dir, "single_pg2381")
@@ -785,7 +793,8 @@ def _verify_pg2381_cluster(
     socket_dir = Path(state["socket_dir"])
     socket_dir.mkdir(parents=True, exist_ok=True)
     cluster = _bind_cluster_to_persistent_data_dir(
-        install_dir, Path(state["data_dir"]), socket_dir, io_method
+        install_dir, Path(state["data_dir"]), socket_dir,
+        _io_method_from_state(state),
     )
     cluster.start()
     cluster.wait_ready(timeout=90)
@@ -860,6 +869,7 @@ class TestPgTdeMinorUpgradeSetupHA:
                 replica_data_dir=str(_ha_replica_dir(scenario_root)),
                 socket_dir=str(scenario_root / "sock"),
                 keyfile=str(scenario_root / _PERSIST_KEYFILE),
+                io_method=io_method,
             )
         finally:
             for n in (nodeB, nodeA):
@@ -880,9 +890,9 @@ class TestPgTdeMinorUpgradeSetupHA:
         _write_state(scenario_root, payload)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def _verify_ha_pair(
-    upgrade_data_dir, install_dir, io_method
+    upgrade_data_dir, install_dir
 ) -> Generator[Tuple[PgCluster, PgCluster, Dict[str, Any]], None, None]:
     _skip_if_no_upgrade_dir(upgrade_data_dir)
     scenario_root = _scenario_root(upgrade_data_dir, "ha")
@@ -892,6 +902,7 @@ def _verify_ha_pair(
 
     socket_dir = Path(state["socket_dir"])
     socket_dir.mkdir(parents=True, exist_ok=True)
+    io_method = _io_method_from_state(state)
 
     primary = _bind_cluster_to_persistent_data_dir(
         install_dir, Path(state["primary_data_dir"]), socket_dir, io_method,

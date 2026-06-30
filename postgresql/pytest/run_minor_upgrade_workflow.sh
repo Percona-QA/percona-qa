@@ -2,7 +2,7 @@
 # run_minor_upgrade_workflow.sh — End-to-end staged pg_tde minor upgrade (pytest).
 #
 # Installs Percona PG + pg_tde (source), runs Setup tests, upgrades packages,
-# runs Verify tests. Same PostgreSQL major throughout (default 18.3 → 18.4).
+# runs Verify tests. Same PostgreSQL major throughout (default 18.4.1 → 18.4.2).
 #
 # Usage:
 #   cd postgresql/pytest
@@ -29,10 +29,10 @@ cd "$SCRIPT_DIR"
 
 # ── defaults ─────────────────────────────────────────────────────────────────
 UPGRADE_DATA_DIR="${PG_TDE_UPGRADE_DATA_DIR:-/var/lib/pg_tde_minor_upgrade}"
-OLD_PG_MAJOR="${OLD_PG_MAJOR:-18.3}"
-NEW_PG_MAJOR="${NEW_PG_MAJOR:-18.4}"
+OLD_PG_MAJOR="${OLD_PG_MAJOR:-18.4.1}"
+NEW_PG_MAJOR="${NEW_PG_MAJOR:-18.4.2}"
 OLD_REPO_COMPONENT="${OLD_REPO_COMPONENT:-release}"
-NEW_REPO_COMPONENT="${NEW_REPO_COMPONENT:-testing}"
+NEW_REPO_COMPONENT="${NEW_REPO_COMPONENT:-release}"
 COMPONENTS="${COMPONENTS:-server,pg_tde}"
 
 SKIP_INSTALL=false
