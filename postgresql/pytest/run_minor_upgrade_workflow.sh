@@ -123,7 +123,6 @@ Options:
 Examples:
   bash $(basename "$0")
   OLD_SERVER_VERSION=17.10.1 NEW_SERVER_VERSION=17.10.2 bash $(basename "$0")
-  sudo mkdir -p ${UPGRADE_DATA_DIR} && sudo chown "\$USER" ${UPGRADE_DATA_DIR}
   PG_TDE_UPGRADE_DATA_DIR=/data/pg_tde_minor bash $(basename "$0") --with-pg2381
 EOF
 }
@@ -191,6 +190,17 @@ source_env() {
     # shellcheck disable=SC1091
     source "${SCRIPT_DIR}/.env.sh"
     export PG_TDE_UPGRADE_DATA_DIR="$UPGRADE_DATA_DIR"
+}
+
+ensure_upgrade_data_dir() {
+    if [[ -d "$UPGRADE_DATA_DIR" ]] && [[ -w "$UPGRADE_DATA_DIR" ]]; then
+        ok "Upgrade data dir ready: ${UPGRADE_DATA_DIR}"
+        return
+    fi
+    info "Creating ${UPGRADE_DATA_DIR} (sudo)"
+    sudo mkdir -p "$UPGRADE_DATA_DIR"
+    sudo chown "$(id -un):$(id -gn)" "$UPGRADE_DATA_DIR"
+    ok "Upgrade data dir ready: ${UPGRADE_DATA_DIR}"
 }
 
 print_install_versions() {
@@ -358,6 +368,7 @@ echo "  NEW_SERVER_VERSION: ${NEW_SERVER_VERSION} (repo=${NEW_REPO_COMPONENT})"
 echo "  repos            : ${OLD_REPO_COMPONENT} → ${NEW_REPO_COMPONENT} (QA default: release → testing)"
 echo "======================================================================"
 
+ensure_upgrade_data_dir
 ensure_pytest_env
 
 if [[ "$VERIFY_ONLY" == true ]]; then

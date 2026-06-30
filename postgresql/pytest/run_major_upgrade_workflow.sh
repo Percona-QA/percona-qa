@@ -17,11 +17,22 @@
 #   bash run_major_upgrade_workflow.sh --setup-only
 #   bash run_major_upgrade_workflow.sh --verify-only --skip-install
 #
+# Version terminology (same model as minor upgrade, but OLD/NEW differ):
+#   OLD_PG_MAJOR / NEW_PG_MAJOR       integer majors (17, 18) — install paths
+#   OLD_PG_REPO_LINE / NEW_PG_REPO_LINE   Percona lines (17.10, 18.4) → ppg-17.10, ppg-18.4
+#   OLD_SERVER_VERSION / NEW_SERVER_VERSION   optional patch verify (17.10.2, 18.4.2)
+#   OLD_REPO_COMPONENT / NEW_REPO_COMPONENT   default: release → testing
+#
+# Percona testing repos publish under ppg-17.10 / ppg-18.4, not bare ppg-17 / ppg-18.
+# QA scenarios:
+#   default     ppg-17.10 [release] → ppg-18.4 [testing]
+#   testing→testing   OLD_REPO_COMPONENT=testing NEW_REPO_COMPONENT=testing (or --testing-to-testing)
+#
 # Environment:
-#   PG_TDE_MAJOR_UPGRADE_DATA_DIR   state + keyring parent (default: /var/lib/pg_tde_major_upgrade)
-#   OLD_PG_MAJOR                    source repo pin (default: 17)
-#   NEW_PG_MAJOR                    target repo pin (default: 18)
+#   PG_TDE_MAJOR_UPGRADE_DATA_DIR   state parent (default: /var/lib/pg_tde_major_upgrade)
 #   PG_MAJOR_UPGRADE_CLUSTER        Debian cluster name (default: pg_tde_major_test)
+#
+# No manual prep: the script creates/chowns the data dir and runs both package phases.
 
 set -euo pipefail
 
@@ -31,6 +42,10 @@ cd "$SCRIPT_DIR"
 UPGRADE_DATA_DIR="${PG_TDE_MAJOR_UPGRADE_DATA_DIR:-/var/lib/pg_tde_major_upgrade}"
 OLD_PG_MAJOR="${OLD_PG_MAJOR:-17}"
 NEW_PG_MAJOR="${NEW_PG_MAJOR:-18}"
+OLD_SERVER_VERSION="${OLD_SERVER_VERSION:-}"
+NEW_SERVER_VERSION="${NEW_SERVER_VERSION:-}"
+OLD_PG_REPO_LINE="${OLD_PG_REPO_LINE:-}"
+NEW_PG_REPO_LINE="${NEW_PG_REPO_LINE:-}"
 OLD_REPO_COMPONENT="${OLD_REPO_COMPONENT:-release}"
 NEW_REPO_COMPONENT="${NEW_REPO_COMPONENT:-testing}"
 COMPONENTS="${COMPONENTS:-server,pg_tde}"
@@ -42,6 +57,7 @@ SETUP_ONLY=false
 UPGRADE_ONLY=false
 VERIFY_ONLY=false
 SKIP_DROP=false
+TESTING_TO_TESTING=false
 
 STATE_ENV="${UPGRADE_DATA_DIR}/major_upgrade_state.env"
 # Debian mode: resolved under OLD_DATA in debian_old_paths (postgres-owned).
@@ -56,11 +72,56 @@ warn()  { echo -e "${YELLOW}WARN:${NC} $*"; }
 die()   { echo -e "${RED}ERROR:${NC} $*" >&2; exit 1; }
 ok()    { echo -e "  ${GREEN}OK${NC}  $*"; }
 
+pg_integer_major() {
+    echo "$1" | cut -d. -f1
+}
+
+server_version_to_repo_line() {
+    local ver="$1"
+    if [[ "$ver" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+        echo "${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+    else
+        echo "$ver"
+    fi
+}
+
+resolve_version_defaults() {
+    OLD_PG_MAJOR_INT="$(pg_integer_major "${OLD_PG_MAJOR}")"
+    NEW_PG_MAJOR_INT="$(pg_integer_major "${NEW_PG_MAJOR}")"
+
+    # Defaults: ppg-17.10 and ppg-18.4 (testing repos do not publish bare ppg-17 / ppg-18).
+    if [[ -z "$OLD_PG_REPO_LINE" ]]; then
+        if [[ -n "$OLD_SERVER_VERSION" ]]; then
+            OLD_PG_REPO_LINE="$(server_version_to_repo_line "$OLD_SERVER_VERSION")"
+        else
+            OLD_PG_REPO_LINE="17.10"
+        fi
+    fi
+    if [[ -z "$NEW_PG_REPO_LINE" ]]; then
+        if [[ -n "$NEW_SERVER_VERSION" ]]; then
+            NEW_PG_REPO_LINE="$(server_version_to_repo_line "$NEW_SERVER_VERSION")"
+        else
+            NEW_PG_REPO_LINE="18.4"
+        fi
+    fi
+
+    if [[ "$(pg_integer_major "$OLD_PG_REPO_LINE")" != "$OLD_PG_MAJOR_INT" ]]; then
+        die "OLD_PG_REPO_LINE=${OLD_PG_REPO_LINE} does not match OLD_PG_MAJOR=${OLD_PG_MAJOR_INT}"
+    fi
+    if [[ "$(pg_integer_major "$NEW_PG_REPO_LINE")" != "$NEW_PG_MAJOR_INT" ]]; then
+        die "NEW_PG_REPO_LINE=${NEW_PG_REPO_LINE} does not match NEW_PG_MAJOR=${NEW_PG_MAJOR_INT}"
+    fi
+}
+
 usage() {
     cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Staged major upgrade (PG ${OLD_PG_MAJOR} → ${NEW_PG_MAJOR}) with pg_tde.
+Staged major upgrade (PG ${OLD_PG_MAJOR_INT:-${OLD_PG_MAJOR}} → ${NEW_PG_MAJOR_INT:-${NEW_PG_MAJOR}}) with pg_tde.
+
+Install (automated, no manual apt):
+  1) OLD: ppg-${OLD_PG_REPO_LINE:-17.10} [${OLD_REPO_COMPONENT}] → PG ${OLD_PG_MAJOR_INT:-17} at /usr/lib/postgresql/${OLD_PG_MAJOR_INT:-17}
+  2) NEW: ppg-${NEW_PG_REPO_LINE:-18.4} [${NEW_REPO_COMPONENT}] → PG ${NEW_PG_MAJOR_INT:-18} at /usr/lib/postgresql/${NEW_PG_MAJOR_INT:-18}
 
 Methods:
   pytest   Run tests/test_tde_pg_upgrade.py smoke tests with --old-install-dir
@@ -79,17 +140,22 @@ Options:
   --verify-only            Post-upgrade checks only (requires prior upgrade)
   --skip-drop              Do not remove the old major PGDATA tree at the end
   --upgrade-data-dir PATH  Override PG_TDE_MAJOR_UPGRADE_DATA_DIR
-  --old-pg-major VER       Default: ${OLD_PG_MAJOR}
-  --new-pg-major VER       Default: ${NEW_PG_MAJOR}
+  --old-pg-major VER       Source integer major (default: ${OLD_PG_MAJOR})
+  --new-pg-major VER       Target integer major (default: ${NEW_PG_MAJOR})
+  --old-pg-repo-line VER   Source repo line (default: 17.10 → ppg-17.10)
+  --new-pg-repo-line VER   Target repo line (default: 18.4 → ppg-18.4)
+  --old-server-version VER Optional patch verify on source (e.g. 17.10.2)
+  --new-server-version VER Optional patch verify on target (e.g. 18.4.2)
   --old-repo COMPONENT     Default: ${OLD_REPO_COMPONENT}
   --new-repo COMPONENT     Default: ${NEW_REPO_COMPONENT}
+  --testing-to-testing     Install both sides from testing (17.10 testing → 18.4 testing)
   -h, --help               Show this help
 
 Examples:
-  sudo mkdir -p ${UPGRADE_DATA_DIR} && sudo chown "\$USER" ${UPGRADE_DATA_DIR}
-  # (state/metadata only; pg_tde keyring is created under the cluster data dir)
-
   bash $(basename "$0")
+  bash $(basename "$0") --testing-to-testing
+  OLD_SERVER_VERSION=17.10.2 NEW_SERVER_VERSION=18.4.2 bash $(basename "$0")
+  OLD_REPO_COMPONENT=testing NEW_REPO_COMPONENT=testing bash $(basename "$0")
   bash $(basename "$0") --method debian --setup-only
   bash $(basename "$0") --upgrade-only
   bash $(basename "$0") --verify-only --skip-install
@@ -110,12 +176,28 @@ while [[ $# -gt 0 ]]; do
         --upgrade-data-dir) UPGRADE_DATA_DIR="$2"; shift 2 ;;
         --old-pg-major)     OLD_PG_MAJOR="$2"; shift 2 ;;
         --new-pg-major)     NEW_PG_MAJOR="$2"; shift 2 ;;
+        --old-pg-repo-line) OLD_PG_REPO_LINE="$2"; shift 2 ;;
+        --new-pg-repo-line) NEW_PG_REPO_LINE="$2"; shift 2 ;;
+        --old-server-version) OLD_SERVER_VERSION="$2"; shift 2 ;;
+        --new-server-version) NEW_SERVER_VERSION="$2"; shift 2 ;;
         --old-repo)         OLD_REPO_COMPONENT="$2"; shift 2 ;;
         --new-repo)         NEW_REPO_COMPONENT="$2"; shift 2 ;;
-        -h|--help)          usage; exit 0 ;;
+        --testing-to-testing) TESTING_TO_TESTING=true; shift ;;
+        -h|--help)          resolve_version_defaults; usage; exit 0 ;;
         *) die "Unknown option: $1 (try --help)" ;;
     esac
 done
+
+if [[ "$TESTING_TO_TESTING" == true ]]; then
+    OLD_REPO_COMPONENT=testing
+    NEW_REPO_COMPONENT=testing
+fi
+
+resolve_version_defaults
+
+if [[ "$TESTING_TO_TESTING" == true ]]; then
+    info "Scenario: testing → testing (ppg-${OLD_PG_REPO_LINE} → ppg-${NEW_PG_REPO_LINE})"
+fi
 
 export PG_TDE_MAJOR_UPGRADE_DATA_DIR="$UPGRADE_DATA_DIR"
 STATE_ENV="${UPGRADE_DATA_DIR}/major_upgrade_state.env"
@@ -144,15 +226,110 @@ resolve_method() {
     esac
 }
 
-install_packages() {
-    local pg_major="$1"
-    local repo_component="$2"
-    info "Installing Percona packages: pg-major=${pg_major} repo=${repo_component}"
-    bash "${SCRIPT_DIR}/setup_test_env.sh" \
-        --install-pkgs \
-        --pg-major "${pg_major}" \
-        --repo-component "${repo_component}" \
+install_packages_for_side() {
+    local side="$1"
+    local pg_major repo_line server_version repo_component label
+    if [[ "$side" == old ]]; then
+        pg_major="$OLD_PG_MAJOR_INT"
+        repo_line="$OLD_PG_REPO_LINE"
+        server_version="${OLD_SERVER_VERSION:-}"
+        repo_component="$OLD_REPO_COMPONENT"
+        label="source PG ${pg_major}"
+    else
+        pg_major="$NEW_PG_MAJOR_INT"
+        repo_line="$NEW_PG_REPO_LINE"
+        server_version="${NEW_SERVER_VERSION:-}"
+        repo_component="$NEW_REPO_COMPONENT"
+        label="target PG ${pg_major}"
+    fi
+    info "Installing ${label}: ppg-${repo_line} [${repo_component}] (unpinned apt)"
+    local setup_args=(
+        --install-pkgs
+        --pg-major "${pg_major}"
+        --pg-repo-line "${repo_line}"
+        --repo-component "${repo_component}"
         --components "${COMPONENTS}"
+    )
+    if [[ -n "$server_version" ]]; then
+        setup_args+=(--server-version "${server_version}")
+    fi
+    bash "${SCRIPT_DIR}/setup_test_env.sh" "${setup_args[@]}"
+}
+
+verify_install_tree() {
+    local install_dir="$1"
+    local pg_major_int="$2"
+    local repo_line="$3"
+    local server_version="${4:-}"
+    local label="$5"
+    if [[ ! -x "${install_dir}/bin/postgres" ]]; then
+        die "${label}: no postgres binary under ${install_dir}"
+    fi
+    local ver
+    ver="$("${install_dir}/bin/postgres" --version 2>&1 || true)"
+    if [[ -n "$server_version" ]]; then
+        if [[ "$ver" != *"${server_version}"* ]]; then
+            die "${label}: expected SERVER_VERSION ${server_version}, got: ${ver}"
+        fi
+        ok "SERVER_VERSION ${server_version} confirmed (${label})"
+    elif [[ "$repo_line" =~ ^[0-9]+\.[0-9]+$ ]]; then
+        if [[ "$ver" != *"${repo_line}"* ]]; then
+            die "${label}: expected PG ${repo_line} (ppg-${repo_line}), got: ${ver}"
+        fi
+        ok "PG ${repo_line} confirmed (${label})"
+    else
+        if [[ "$ver" != *"PostgreSQL ${pg_major_int}"* ]]; then
+            die "${label}: expected PG major ${pg_major_int}, got: ${ver}"
+        fi
+        ok "PG major ${pg_major_int} confirmed (${label})"
+    fi
+}
+
+ensure_upgrade_data_dir() {
+    if [[ -d "$UPGRADE_DATA_DIR" ]] && [[ -w "$UPGRADE_DATA_DIR" ]]; then
+        ok "Upgrade data dir ready: ${UPGRADE_DATA_DIR}"
+        return
+    fi
+    info "Creating ${UPGRADE_DATA_DIR} (sudo)"
+    sudo mkdir -p "$UPGRADE_DATA_DIR"
+    sudo chown "$(id -un):$(id -gn)" "$UPGRADE_DATA_DIR"
+    ok "Upgrade data dir ready: ${UPGRADE_DATA_DIR}"
+}
+
+ensure_debian_upgrade_root() {
+    debian_base_paths
+    info "Ensuring Debian upgrade layout under ${DEBIAN_ROOT} (sudo)"
+    sudo mkdir -p "${DEBIAN_ROOT}" "${SOCKET_DIR}"
+    sudo chmod 0755 "${DEBIAN_ROOT}" 2>/dev/null || true
+    ok "Debian upgrade root ready: ${DEBIAN_ROOT}"
+}
+
+install_old_packages() {
+    if [[ "$SKIP_INSTALL" == true ]]; then
+        return
+    fi
+    install_packages_for_side old
+    # shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/.env.sh" 2>/dev/null || true
+    OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR_INT}")" || \
+        die "Could not find PG ${OLD_PG_MAJOR_INT} install after source package phase"
+    export OLD_INSTALL_DIR
+    verify_install_tree "${OLD_INSTALL_DIR}" "${OLD_PG_MAJOR_INT}" \
+        "${OLD_PG_REPO_LINE}" "${OLD_SERVER_VERSION:-}" "source install"
+}
+
+install_new_packages() {
+    if [[ "$SKIP_INSTALL" == true ]]; then
+        return
+    fi
+    install_packages_for_side new
+    # shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/.env.sh" 2>/dev/null || true
+    NEW_INSTALL_DIR="$(detect_install_dir "${NEW_PG_MAJOR_INT}")" || \
+        die "Could not find PG ${NEW_PG_MAJOR_INT} install after target package phase"
+    export NEW_INSTALL_DIR
+    verify_install_tree "${NEW_INSTALL_DIR}" "${NEW_PG_MAJOR_INT}" \
+        "${NEW_PG_REPO_LINE}" "${NEW_SERVER_VERSION:-}" "target install"
 }
 
 detect_install_dir() {
@@ -177,8 +354,14 @@ write_state() {
     cat > "${STATE_ENV}" <<EOF
 # Generated by run_major_upgrade_workflow.sh — source before verify/upgrade-only.
 export PG_TDE_MAJOR_UPGRADE_DATA_DIR="${UPGRADE_DATA_DIR}"
-export OLD_PG_MAJOR="${OLD_PG_MAJOR}"
-export NEW_PG_MAJOR="${NEW_PG_MAJOR}"
+export OLD_PG_MAJOR="${OLD_PG_MAJOR_INT}"
+export NEW_PG_MAJOR="${NEW_PG_MAJOR_INT}"
+export OLD_PG_REPO_LINE="${OLD_PG_REPO_LINE}"
+export NEW_PG_REPO_LINE="${NEW_PG_REPO_LINE}"
+export OLD_SERVER_VERSION="${OLD_SERVER_VERSION:-}"
+export NEW_SERVER_VERSION="${NEW_SERVER_VERSION:-}"
+export OLD_REPO_COMPONENT="${OLD_REPO_COMPONENT}"
+export NEW_REPO_COMPONENT="${NEW_REPO_COMPONENT}"
 export OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-}"
 export NEW_INSTALL_DIR="${NEW_INSTALL_DIR:-}"
 export PG_MAJOR_UPGRADE_CLUSTER="${CLUSTER_NAME}"
@@ -212,7 +395,8 @@ ensure_pytest_env() {
     if [[ ! -x "${SCRIPT_DIR}/.venv/bin/pytest" ]]; then
         info "Creating Python venv (setup_test_env without --install-pkgs)"
         bash "${SCRIPT_DIR}/setup_test_env.sh" \
-            --pg-major "${NEW_PG_MAJOR}" \
+            --pg-major "${NEW_PG_MAJOR_INT}" \
+            --pg-repo-line "${NEW_PG_REPO_LINE}" \
             --repo-component "${NEW_REPO_COMPONENT}" \
             || bash "${SCRIPT_DIR}/setup_test_env.sh"
     fi
@@ -267,10 +451,10 @@ debian_base_paths() {
     SOCKET_DIR="${DEBIAN_ROOT}/run"
     OLD_PORT="${PG_MAJOR_OLD_PORT:-50417}"
     NEW_PORT="${PG_MAJOR_NEW_PORT:-50418}"
-    OLD_DATA="${DEBIAN_ROOT}/${OLD_PG_MAJOR%%.*}/${CLUSTER_NAME}"
-    NEW_DATA="${DEBIAN_ROOT}/${NEW_PG_MAJOR%%.*}/${CLUSTER_NAME}"
-    OLD_BIN="/usr/lib/postgresql/${OLD_PG_MAJOR%%.*}/bin"
-    NEW_BIN="/usr/lib/postgresql/${NEW_PG_MAJOR%%.*}/bin"
+    OLD_DATA="${DEBIAN_ROOT}/${OLD_PG_MAJOR_INT}/${CLUSTER_NAME}"
+    NEW_DATA="${DEBIAN_ROOT}/${NEW_PG_MAJOR_INT}/${CLUSTER_NAME}"
+    OLD_BIN="/usr/lib/postgresql/${OLD_PG_MAJOR_INT}/bin"
+    NEW_BIN="/usr/lib/postgresql/${NEW_PG_MAJOR_INT}/bin"
     KEYFILE="${OLD_DATA}/major_upgrade_keyring.per"
     export DEBIAN_ROOT SOCKET_DIR OLD_PORT NEW_PORT
     export OLD_DATA NEW_DATA OLD_BIN NEW_BIN KEYFILE
@@ -279,7 +463,7 @@ debian_base_paths() {
 debian_remove_legacy_pg_createclusters() {
     command -v pg_lsclusters >/dev/null 2>&1 || return 0
     local pg_major
-    for pg_major in "${OLD_PG_MAJOR%%.*}" "${NEW_PG_MAJOR%%.*}"; do
+    for pg_major in "${OLD_PG_MAJOR_INT}" "${NEW_PG_MAJOR_INT}"; do
         if pg_lsclusters 2>/dev/null | grep -qE "^${pg_major}[[:space:]]+${CLUSTER_NAME}[[:space:]]"; then
             warn "Dropping legacy pg_createcluster ${pg_major}/${CLUSTER_NAME}"
             warn "(config under /etc/postgresql — incompatible with pg_tde_upgrade)"
@@ -386,10 +570,11 @@ debian_run_pg_tde_upgrade_cmd() {
 
 debian_setup_cluster() {
     debian_base_paths
+    ensure_debian_upgrade_root
     debian_remove_legacy_pg_createclusters
-    mkdir -p "${UPGRADE_DATA_DIR}"
+    ensure_upgrade_data_dir
 
-    debian_initdb_cluster "${OLD_DATA}" "${OLD_BIN}" "${OLD_PG_MAJOR%%.*}" "${OLD_PORT}"
+    debian_initdb_cluster "${OLD_DATA}" "${OLD_BIN}" "${OLD_PG_MAJOR_INT}" "${OLD_PORT}"
     debian_has_postgresql_conf "${OLD_DATA}" || die \
         "initdb did not create ${OLD_DATA}/postgresql.conf (check initdb output above)"
 
@@ -409,7 +594,7 @@ SQL
 
     debian_pg_ctl stop "${OLD_BIN}" "${OLD_DATA}" "${OLD_PORT}"
 
-    OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR}")" || \
+    OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR_INT}")" || \
         OLD_INSTALL_DIR="${OLD_BIN%/bin}"
     export OLD_INSTALL_DIR
 
@@ -422,7 +607,7 @@ debian_run_pg_tde_upgrade() {
     debian_base_paths
 
     [[ -x "${NEW_BIN}/pg_tde_upgrade" ]] || \
-        die "pg_tde_upgrade not found at ${NEW_BIN}/pg_tde_upgrade (install percona-pg-tde${NEW_PG_MAJOR%%.*})"
+        die "pg_tde_upgrade not found at ${NEW_BIN}/pg_tde_upgrade (install percona-pg-tde${NEW_PG_MAJOR_INT})"
     debian_has_postgresql_conf "${OLD_DATA}" || die \
         "Missing ${OLD_DATA}/postgresql.conf — re-run --setup-only (pg_createcluster layout is not supported)"
 
@@ -432,7 +617,7 @@ debian_run_pg_tde_upgrade() {
         warn "Removing prior target PGDATA ${NEW_DATA}"
         sudo rm -rf "${NEW_DATA}"
     fi
-    debian_initdb_cluster "${NEW_DATA}" "${NEW_BIN}" "${NEW_PG_MAJOR%%.*}" "${NEW_PORT}"
+    debian_initdb_cluster "${NEW_DATA}" "${NEW_BIN}" "${NEW_PG_MAJOR_INT}" "${NEW_PORT}"
     debian_pg_ctl stop "${NEW_BIN}" "${NEW_DATA}" "${NEW_PORT}"
 
     warn "Using pg_tde_upgrade (required for pg_tde clusters per Percona doc)."
@@ -443,7 +628,7 @@ debian_run_pg_tde_upgrade() {
     info "pg_tde_upgrade (upgrade)"
     debian_run_pg_tde_upgrade_cmd ""
 
-    NEW_INSTALL_DIR="$(detect_install_dir "${NEW_PG_MAJOR}")" || \
+    NEW_INSTALL_DIR="$(detect_install_dir "${NEW_PG_MAJOR_INT}")" || \
         NEW_INSTALL_DIR="${NEW_BIN%/bin}"
     export NEW_INSTALL_DIR
     write_state
@@ -487,24 +672,33 @@ echo ""
 echo "======================================================================"
 echo " pg_tde staged MAJOR upgrade workflow"
 echo "  data dir : ${UPGRADE_DATA_DIR}"
-echo "  source   : PG ${OLD_PG_MAJOR} (${OLD_REPO_COMPONENT})"
-echo "  target   : PG ${NEW_PG_MAJOR} (${NEW_REPO_COMPONENT})"
+echo "  source   : PG ${OLD_PG_MAJOR_INT} (/usr/lib/postgresql/${OLD_PG_MAJOR_INT}) ppg-${OLD_PG_REPO_LINE} [${OLD_REPO_COMPONENT}]"
+echo "  target   : PG ${NEW_PG_MAJOR_INT} (/usr/lib/postgresql/${NEW_PG_MAJOR_INT}) ppg-${NEW_PG_REPO_LINE} [${NEW_REPO_COMPONENT}]"
+if [[ -n "${OLD_SERVER_VERSION}" || -n "${NEW_SERVER_VERSION}" ]]; then
+    echo "  patches  : OLD_SERVER_VERSION=${OLD_SERVER_VERSION:-<repo line>} NEW_SERVER_VERSION=${NEW_SERVER_VERSION:-<repo line>}"
+fi
 echo "  method   : ${RESOLVED_METHOD}"
 echo "  cluster  : ${CLUSTER_NAME} (debian mode only)"
+if [[ "$OLD_REPO_COMPONENT" == testing && "$NEW_REPO_COMPONENT" == testing ]]; then
+    echo "  repos    : testing → testing (both from Percona testing)"
+else
+    echo "  repos    : ${OLD_REPO_COMPONENT} → ${NEW_REPO_COMPONENT} (QA default: release → testing)"
+fi
 echo "======================================================================"
+
+ensure_upgrade_data_dir
 
 ensure_pytest_env
 
 if [[ "$VERIFY_ONLY" == true ]]; then
     if [[ "$RESOLVED_METHOD" == "debian" ]]; then
-        if [[ "$SKIP_INSTALL" != true ]]; then
-            install_packages "${NEW_PG_MAJOR}" "${NEW_REPO_COMPONENT}"
-        fi
+        install_new_packages
         debian_verify_cluster
     else
-        if [[ "$SKIP_INSTALL" != true ]]; then
-            install_packages "${NEW_PG_MAJOR}" "${NEW_REPO_COMPONENT}"
-        fi
+        install_new_packages
+        OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR_INT}")" || \
+            die "Could not find PG ${OLD_PG_MAJOR_INT} install (source major must remain on disk)"
+        export OLD_INSTALL_DIR
         source_env_new
         show_versions "verify (pytest)"
         run_pytest_smoke
@@ -514,13 +708,13 @@ if [[ "$VERIFY_ONLY" == true ]]; then
 fi
 
 if [[ "$UPGRADE_ONLY" == true ]]; then
-    install_packages "${NEW_PG_MAJOR}" "${NEW_REPO_COMPONENT}"
+    install_new_packages
     if [[ "$RESOLVED_METHOD" == "debian" ]]; then
         debian_run_pg_tde_upgrade
         info "Upgrade-only finished. Run: $0 --verify-only --skip-install"
     else
         source_env_new
-        OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR}")" || true
+        OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR_INT}")" || true
         export OLD_INSTALL_DIR
         write_state
         show_versions "upgrade-only (pytest — run smoke tests next)"
@@ -530,22 +724,14 @@ if [[ "$UPGRADE_ONLY" == true ]]; then
 fi
 
 # ── Phase 1: source packages + setup ──────────────────────────────────────────
-if [[ "$SKIP_INSTALL" != true ]]; then
-    install_packages "${OLD_PG_MAJOR}" "${OLD_REPO_COMPONENT}"
-fi
-
-OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR}")" || \
-    die "Could not find PG ${OLD_PG_MAJOR} install after package phase"
-export OLD_INSTALL_DIR
+install_old_packages
 
 if [[ "$RESOLVED_METHOD" == "debian" ]]; then
     debian_setup_cluster
 else
-    mkdir -p "${UPGRADE_DATA_DIR}"
     write_state
     source_env_new
-    # Re-pin OLD after setup_test_env may have pointed INSTALL_DIR at newest major only
-    OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR}")"
+    OLD_INSTALL_DIR="$(detect_install_dir "${OLD_PG_MAJOR_INT}")"
     export OLD_INSTALL_DIR
     write_state
     ok "Pytest method: state saved (OLD_INSTALL_DIR=${OLD_INSTALL_DIR})"
@@ -561,13 +747,7 @@ if [[ "$SETUP_ONLY" == true ]]; then
 fi
 
 # ── Phase 2: target packages + upgrade ────────────────────────────────────────
-if [[ "$SKIP_INSTALL" != true ]]; then
-    install_packages "${NEW_PG_MAJOR}" "${NEW_REPO_COMPONENT}"
-fi
-
-NEW_INSTALL_DIR="$(detect_install_dir "${NEW_PG_MAJOR}")" || \
-    die "Could not find PG ${NEW_PG_MAJOR} install after package phase"
-export NEW_INSTALL_DIR
+install_new_packages
 write_state
 
 if [[ "$RESOLVED_METHOD" == "debian" ]]; then
@@ -575,7 +755,7 @@ if [[ "$RESOLVED_METHOD" == "debian" ]]; then
     debian_verify_cluster
 else
     source_env_new
-    NEW_INSTALL_DIR="${INSTALL_DIR}"
+    NEW_INSTALL_DIR="${INSTALL_DIR:-${NEW_INSTALL_DIR}}"
     export NEW_INSTALL_DIR
     write_state
     show_versions "before pytest smoke"
