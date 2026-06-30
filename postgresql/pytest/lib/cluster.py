@@ -699,6 +699,80 @@ def read_pg_tde_default_version(install_dir: Path) -> Optional[str]:
     return None
 
 
+def install_version_summary_lines(
+    install_dir: Path, *, prefix: str = ""
+) -> List[str]:
+    """
+    Human-readable install-tree versions (no running cluster required).
+
+    Shows ``postgres --version`` and ``pg_tde.control`` ``default_version``.
+    """
+    tag = f"{prefix} " if prefix else ""
+    lines: List[str] = []
+    pg_bin = install_dir / "bin" / "postgres"
+    if pg_bin.is_file():
+        import subprocess
+
+        result = subprocess.run(
+            [str(pg_bin), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        pg_ver = (result.stdout or result.stderr).strip()
+        lines.append(f"{tag}PostgreSQL server: {pg_ver}")
+    else:
+        lines.append(
+            f"{tag}PostgreSQL server: (no postgres binary under {install_dir})"
+        )
+
+    ctrl_ver = read_pg_tde_default_version(install_dir)
+    if ctrl_ver:
+        lines.append(f"{tag}pg_tde.control default_version: {ctrl_ver}")
+    else:
+        lines.append(f"{tag}pg_tde extension: pg_tde.control not found")
+    return lines
+
+
+def cluster_runtime_version_lines(
+    cluster: "PgCluster", *, prefix: str = ""
+) -> List[str]:
+    """Query a running cluster for server + pg_tde versions."""
+    tag = f"{prefix} " if prefix else ""
+    lines: List[str] = []
+    try:
+        pg_ver = cluster.fetchone("SELECT version()")
+        if pg_ver:
+            lines.append(f"{tag}PostgreSQL server: {pg_ver}")
+    except Exception as exc:
+        lines.append(f"{tag}PostgreSQL server: (query failed: {exc})")
+
+    try:
+        tde_bin = cluster.fetchone("SELECT pg_tde_version()")
+        if tde_bin:
+            lines.append(f"{tag}pg_tde binary pg_tde_version(): {tde_bin.strip()}")
+    except Exception:
+        lines.append(f"{tag}pg_tde binary pg_tde_version(): (not available)")
+
+    try:
+        ext_ver = cluster.fetchone(
+            "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
+        )
+        if ext_ver:
+            lines.append(f"{tag}pg_tde catalog extversion: {ext_ver}")
+    except Exception:
+        pass
+    return lines
+
+
+def log_version_summary(lines: List[str]) -> None:
+    """Print version lines to stderr (visible under pytest -s and in CI logs)."""
+    import sys
+
+    for line in lines:
+        print(line, file=sys.stderr)
+
+
 def cluster_has_pg_tde_data(cluster: "PgCluster") -> bool:
     return (Path(cluster.data_dir) / "pg_tde").is_dir()
 

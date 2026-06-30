@@ -39,6 +39,11 @@ from lib import (
     restore_conf_line_raw,
 )
 from lib.cluster import initdb_args_no_data_checksums
+from lib.cluster import (
+    cluster_runtime_version_lines,
+    install_version_summary_lines,
+    log_version_summary,
+)
 
 # Do not use pytest.mark.upgrade here: conftest skips ``upgrade`` tests when
 # ``--old-install-dir`` is unset (major pg_upgrade). Staged Setup/Verify classes
@@ -447,6 +452,18 @@ def _io_method_from_state(state: Dict[str, Any]) -> str:
     return value or "worker"
 
 
+def _log_versions_for_cluster(
+    cluster: PgCluster, install_dir: Path, *, phase: str
+) -> None:
+    """Emit install-tree + runtime versions (stderr; visible with pytest -s)."""
+    log_version_summary(
+        [f"--- {phase} versions ---"]
+        + install_version_summary_lines(install_dir, prefix="packages")
+        + cluster_runtime_version_lines(cluster, prefix="running")
+        + ["---"]
+    )
+
+
 def _capture_pre_upgrade_state(
     cluster: PgCluster, scenario: str, install_dir: Path, **extras: Any
 ) -> Dict[str, Any]:
@@ -616,6 +633,8 @@ class TestPgTdeMinorUpgradeSetup:
             _populate_encrypted_table(cluster)
             cluster.execute("CHECKPOINT")
 
+            _log_versions_for_cluster(cluster, install_dir, phase="Setup (single)")
+
             payload = _capture_pre_upgrade_state(
                 cluster, scenario="single_node", install_dir=install_dir,
                 data_dir=str(data_dir), socket_dir=str(socket_dir),
@@ -673,6 +692,8 @@ class TestPg2381MinorUpgradeSetup:
             _populate_pg2381_churn_table(cluster)
             assert cluster.fetchone("SELECT id FROM pg2381_churn_t") == "2"
 
+            _log_versions_for_cluster(cluster, install_dir, phase="Setup (PG-2381)")
+
             payload = _capture_pre_upgrade_state(
                 cluster,
                 scenario="single_pg2381",
@@ -711,6 +732,7 @@ def _verify_single_cluster(
     )
     cluster.start()
     cluster.wait_ready(timeout=90)
+    _log_versions_for_cluster(cluster, install_dir, phase="Verify (single)")
 
     try:
         yield cluster, state
@@ -798,6 +820,7 @@ def _verify_pg2381_cluster(
     )
     cluster.start()
     cluster.wait_ready(timeout=90)
+    _log_versions_for_cluster(cluster, install_dir, phase="Verify (PG-2381)")
 
     try:
         yield cluster, state
@@ -863,6 +886,8 @@ class TestPgTdeMinorUpgradeSetupHA:
             nodeA.execute("CHECKPOINT")
             ReplicationManager(nodeA, nodeB).assert_catchup(timeout=60)
 
+            _log_versions_for_cluster(nodeA, install_dir, phase="Setup (HA primary)")
+
             payload = _capture_pre_upgrade_state(
                 nodeA, scenario="ha", install_dir=install_dir,
                 primary_data_dir=str(_ha_primary_dir(scenario_root)),
@@ -919,6 +944,7 @@ def _verify_ha_pair(
     replica.start()
     replica.wait_ready(timeout=90)
     repl.assert_streaming_connected(timeout=60)
+    _log_versions_for_cluster(primary, install_dir, phase="Verify (HA primary)")
 
     try:
         yield primary, replica, state

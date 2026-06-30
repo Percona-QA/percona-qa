@@ -194,19 +194,13 @@ cd postgresql/pytest
 sudo mkdir -p /var/lib/pg_tde_minor_upgrade
 sudo chown "$USER" /var/lib/pg_tde_minor_upgrade
 
-# Defaults are now 18.4.1 (release) → 18.4.2 (release)
+# Defaults: 18.4.1 from **release** → 18.4.2 from **testing**
 bash run_minor_upgrade_workflow.sh
 
-# Include PG-2381 churn scenario (drop/recreate + VACUUM FULL)
-bash run_minor_upgrade_workflow.sh --with-pg2381
-```
-
-Override repos when 18.4.2 is only in `testing`:
-
-```bash
-OLD_PG_MAJOR=18.4.1 NEW_PG_MAJOR=18.4.2 \
+# Explicit (same as defaults):
+OLD_PG_VERSION=18.4.1 NEW_PG_VERSION=18.4.2 \
 OLD_REPO_COMPONENT=release NEW_REPO_COMPONENT=testing \
-bash run_minor_upgrade_workflow.sh --with-pg2381
+bash run_minor_upgrade_workflow.sh
 ```
 
 ### B.2 Manual staged pytest (split CI jobs)
@@ -232,7 +226,7 @@ pytest tests/test_tde_minor_upgrade.py::TestPgTdeMinorUpgradeSetup \
 **Phase 3 — Verify (18.4.2 packages):**
 
 ```bash
-bash setup_test_env.sh --install-pkgs --pg-major 18.4.2 --repo-component release --components server,pg_tde
+bash setup_test_env.sh --install-pkgs --pg-major 18.4.2 --repo-component testing --components server,pg_tde
 
 pytest tests/test_tde_minor_upgrade.py::TestPgTdeMinorUpgradeVerify \
   tests/test_tde_minor_upgrade.py::TestPgTdeMinorUpgradeVerifyHA \

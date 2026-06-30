@@ -22,6 +22,7 @@ from lib.cluster import (
     IO_METHOD_LEGACY_PLACEHOLDER,
     IO_METHOD_VALUES,
     PG_IO_METHOD_MIN_MAJOR,
+    install_version_summary_lines,
     io_method_guc_supported,
     io_method_param_values,
     io_methods_available,
@@ -251,6 +252,25 @@ def pytest_configure(config):
     config._skip_section_markers = markers_for_sections(resolved)
 
     _configure_io_method_for_install(config)
+
+
+def pytest_report_header(config):
+    """Show PostgreSQL + pg_tde install versions at pytest startup."""
+    headers: list[str] = []
+    install = config.getoption("--install-dir")
+    if install:
+        headers.extend(
+            install_version_summary_lines(Path(install), prefix="INSTALL")
+        )
+    old = config.getoption("--old-install-dir")
+    if old:
+        headers.extend(
+            install_version_summary_lines(Path(old), prefix="OLD")
+        )
+    upgrade_dir = config.getoption("--upgrade-data-dir")
+    if upgrade_dir:
+        headers.append(f"upgrade-data-dir: {upgrade_dir}")
+    return headers
 
 
 def _configure_io_method_for_install(config) -> None:

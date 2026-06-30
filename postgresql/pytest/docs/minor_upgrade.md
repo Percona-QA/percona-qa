@@ -111,11 +111,11 @@ bash run_minor_upgrade_workflow.sh
 # optional: bash run_minor_upgrade_workflow.sh --with-pg2381
 ```
 
-The script:
+The script (defaults **18.4.1 → 18.4.2**, repo **release → testing**):
 
-1. `setup_test_env.sh --install-pkgs --pg-major 18.3 --repo-component release`
+1. `setup_test_env.sh --install-pkgs --pg-major 18.4.1 --repo-component release`
 2. `TestPgTdeMinorUpgradeSetup` + `TestPgTdeMinorUpgradeSetupHA`
-3. `setup_test_env.sh --install-pkgs --pg-major 18.4 --repo-component testing`
+3. `setup_test_env.sh --install-pkgs --pg-major 18.4.2 --repo-component testing`
 4. `TestPgTdeMinorUpgradeVerify` + `TestPgTdeMinorUpgradeVerifyHA`
 
 Options: `--help`, `--skip-install`, `--setup-only`, `--verify-only`, `--upgrade-only`,
