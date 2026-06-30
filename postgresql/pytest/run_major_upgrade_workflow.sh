@@ -437,7 +437,7 @@ run_pytest_smoke() {
 
     local tests=(
         "tests/test_tde_pg_upgrade.py::TestPspToPspUpgrade::test_tde_heap_data_survives"
-        "tests/test_tde_pg_upgrade.py::TestPspToPspUpgrade::test_check_mode_with_tde_configured"
+        "tests/test_tde_pg_upgrade.py::TestPspToPspUpgrade::test_check_mode_with_wal_enc_on"
         "tests/test_upgrade.py::TestUpgradePostMaintenance::test_analyze_all_after_upgrade"
     )
 

@@ -152,7 +152,7 @@ State is written to:
 |----------|--------------------------------|---------------------------|
 | Install PG 18 + pg_tde | `install_packages NEW_PG_MAJOR` | N/A (uses existing trees) |
 | Stop old cluster | `pg_ctlcluster … stop` | `old.stop()` |
-| `--check` | `pg_tde_upgrade --check` | `test_check_mode_with_tde_configured` |
+| `--check` | `pg_tde_upgrade --check` | `TestPspToPspUpgrade::test_check_mode_with_wal_enc_on` (PSP→PSP); `TestPpgToPspUpgrade::test_check_mode_with_tde_configured` (PPG→PSP) |
 | Upgrade | `pg_tde_upgrade` | `_upgrade()` helper |
 | Start + verify data | `psql` row count | `test_tde_heap_data_survives` |
 | `ALTER EXTENSION pg_tde UPDATE` | debian verify SQL | `_start_cluster_after_pg_upgrade()` |
