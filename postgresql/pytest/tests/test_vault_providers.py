@@ -16,6 +16,7 @@ Prerequisites: ``docs/vault.md``, ``scripts/setup_vault_for_pytest.sh`` or
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -107,6 +108,33 @@ def _run_change_kp(install_dir: Path, *args: str) -> subprocess.CompletedProcess
     )
 
 
+def _vault_change_kp_args(
+    cluster: PgCluster,
+    vault: VaultConfig,
+    provider_name: str,
+    *,
+    token_path: str,
+) -> list[str]:
+    db_oid = cluster.fetchone(
+        "SELECT oid FROM pg_database WHERE datname = 'postgres'"
+    )
+    args = [
+        "-D",
+        str(cluster.data_dir),
+        str(db_oid),
+        provider_name,
+        "vault-v2",
+        vault.addr,
+        vault.secret_mount,
+        token_path,
+    ]
+    if vault.ca_path:
+        args.append(vault.ca_path)
+    if vault.namespace.strip():
+        args.append(vault.namespace)
+    return args
+
+
 @pytest.mark.vault
 class TestHashicorpVaultKeyProvider:
     """Vault dev server or ``setup_vault.sh`` (no namespace)."""
@@ -163,26 +191,8 @@ class TestHashicorpVaultKeyProvider:
             cluster.execute(f"CREATE DATABASE {db}")
             cluster.execute("CREATE EXTENSION pg_tde", db)
 
-        cluster.execute(
-            "SELECT pg_tde_create_key_using_global_key_provider("
-            "'vault_key2', 'vault_keyring2')",
-            "db1",
-        )
-        cluster.execute(
-            "SELECT pg_tde_set_key_using_global_key_provider("
-            "'vault_key2', 'vault_keyring2')",
-            "db1",
-        )
-        cluster.execute(
-            "SELECT pg_tde_create_key_using_global_key_provider("
-            "'file_key2', 'file_keyring2')",
-            "db3",
-        )
-        cluster.execute(
-            "SELECT pg_tde_set_key_using_global_key_provider("
-            "'file_key2', 'file_keyring2')",
-            "db3",
-        )
+        tde.set_database_global_key("vault_key2", "vault_keyring2", dbname="db1")
+        tde.set_database_global_key("file_key2", "file_keyring2", dbname="db3")
 
         cluster.execute("CREATE TABLE t1(a INT) USING tde_heap", "db1")
         cluster.execute("CREATE TABLE t3(a INT) USING tde_heap", "db3")
@@ -261,31 +271,28 @@ class TestHashicorpVaultKeyProvider:
             "CREATE TABLE ckp_vault_t(id INT) USING tde_heap; "
             "INSERT INTO ckp_vault_t VALUES (7);"
         )
-        db_oid = int(cluster.fetchone(
-            "SELECT oid FROM pg_database WHERE datname = 'postgres'"
-        ))
+        cluster.execute("CHECKPOINT")
         token_path = vault_config.token_sql_arg(tmp_path)
+        token_path_new = str(tmp_path / "ckp_vault_token_new")
+        shutil.copy(token_path, token_path_new)
         cluster.stop(check=False)
 
-        args = [
-            "-D", str(cluster.data_dir),
-            str(db_oid),
-            "ckp_vault",
-            "vault-v2",
-            vault_config.addr,
-            vault_config.secret_mount,
-            token_path,
-        ]
-        if vault_config.ca_path:
-            args.append(vault_config.ca_path)
-
-        result = _run_change_kp(install_dir, *args)
+        result = _run_change_kp(
+            install_dir,
+            *_vault_change_kp_args(
+                cluster,
+                vault_config,
+                "ckp_vault",
+                token_path=token_path_new,
+            ),
+        )
         assert result.returncode == 0, (
             f"change_key_provider vault-v2 failed:\n{result.stdout}\n{result.stderr}"
         )
 
         cluster.start()
         cluster.wait_ready(timeout=60)
+        cluster.execute("SELECT pg_tde_verify_key();")
         assert cluster.fetchone("SELECT * FROM ckp_vault_t").strip() == "7"
 
 
@@ -348,16 +355,7 @@ class TestOpenBaoKeyProvider:
             ("db2", "kmip_key2", "kmip_keyring2"),
             ("db3", "file_key2", "file_keyring2"),
         ):
-            cluster.execute(
-                f"SELECT pg_tde_create_key_using_global_key_provider("
-                f"'{key}', '{ring}')",
-                db,
-            )
-            cluster.execute(
-                f"SELECT pg_tde_set_key_using_global_key_provider("
-                f"'{key}', '{ring}')",
-                db,
-            )
+            tde.set_database_global_key(key, ring, dbname=db)
 
         cluster.execute("CREATE TABLE t1(a INT) USING tde_heap", "db1")
         cluster.execute("CREATE TABLE t2(a INT) USING tde_heap", "db2")

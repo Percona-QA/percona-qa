@@ -510,6 +510,32 @@ class TdeManager:
             dbname,
         )
 
+    def set_database_global_key(
+        self,
+        key_name: str,
+        provider_name: str,
+        dbname: str = "postgres",
+    ) -> None:
+        """
+        Create (if needed) and activate a database principal key from a
+        **global** key provider — matches bash ``066_multiple_db_diff_key_prov.pl``.
+        """
+        create_fn = self._first_func(["pg_tde_create_key_using_global_key_provider"])
+        set_fn = self._first_func(["pg_tde_set_key_using_global_key_provider"])
+        if not create_fn or not set_fn:
+            raise RuntimeError(
+                "pg_tde global database key functions not found "
+                f"(installed: {self.available_functions()})"
+            )
+        self._execute_create_global_key_allow_duplicate(
+            f"SELECT {create_fn}('{key_name}'::text, '{provider_name}'::text)",
+            dbname,
+        )
+        self.cluster.execute(
+            f"SELECT {set_fn}('{key_name}'::text, '{provider_name}'::text)",
+            dbname,
+        )
+
     def set_global_principal_key(
         self,
         key_name: str = "test_key",
