@@ -177,6 +177,31 @@ save_test_configs() {
     # OpenBao server log — only if written/modified during this test
     find "$RUN_DIR" -maxdepth 2 -name "bao_server.log" -newer "$test_start" 2>/dev/null \
         -exec cp {} "$test_dir/bao_server.log" \; || true
+
+    # KMIP server runs as a Docker container ('kmip', started with --rm by
+    # start_kmip_server). Capture its logs only if the container was (re)started
+    # during this test, so a container lingering from an earlier test is not
+    # misattributed here. Fully best-effort: a test that never uses KMIP simply
+    # produces no file, and nothing in this block can fail the test.
+    if command -v docker >/dev/null 2>&1; then
+        local kmip_started kmip_epoch start_epoch
+        kmip_started=$(docker inspect -f '{{.State.StartedAt}}' kmip 2>/dev/null || true)
+        if [[ -n "$kmip_started" ]]; then
+            kmip_epoch=$(date -d "$kmip_started" +%s 2>/dev/null || echo 0)
+            start_epoch=$(stat -c %Y "$test_start" 2>/dev/null || echo 0)
+            [[ "$kmip_epoch" -ge "$start_epoch" ]] && \
+                docker logs kmip > "$test_dir/kmip-container.log" 2>&1 || true
+        fi
+    fi
+
+    # Background load / DDL logs written to RUN_DIR top level during this test
+    # (key rotation, WAL-encryption toggle, ALTER access-method, sysbench, etc.).
+    # Only files modified during this test are captured; best-effort.
+    find "$RUN_DIR" -maxdepth 1 -type f -name "*.log" -newer "$test_start" 2>/dev/null \
+        -exec cp {} "$test_dir/" \; || true
+    # basebackup test writes its load log here (outside RUN_DIR)
+    [[ -f /tmp/sysbench_run.log && /tmp/sysbench_run.log -nt "$test_start" ]] \
+        && cp /tmp/sysbench_run.log "$test_dir/" 2>/dev/null || true
 }
 
 ############################################
@@ -219,21 +244,36 @@ for testscript in "${TESTS[@]}"; do
         echo "❌ FAIL: $testname"
         echo "   Log: $LOG_DIR/${testname%.sh}/${testname%.sh}.log"
 
-        echo "Saving failed test artifacts..."
         FAIL_SAVE_DIR="$FAILED_DIR/${testname%.sh}_$(date +%Y%m%d_%H%M%S)"
         mkdir -p "$FAIL_SAVE_DIR"
 
-        # Copy PGDATA(s) if exist
-        [[ -d "$PGDATA" ]] && cp -r "$PGDATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$PRIMARY_DATA" ]] && cp -r "$PRIMARY_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$REPLICA_DATA" ]] && cp -r "$REPLICA_DATA" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-        [[ -d "$ARCHIVE_DIR" ]] && cp -r "$ARCHIVE_DIR" "$FAIL_SAVE_DIR/" 2>/dev/null || true
-
-        # Copy test log (now lives in per-test folder)
+        # Keep the per-test stdout log...
         cp "$LOG_DIR/${testname%.sh}/${testname%.sh}.log" "$FAIL_SAVE_DIR/" 2>/dev/null || true
 
-        echo "Artifacts saved at: $FAIL_SAVE_DIR"
+        # ...and only the conf + log files from each data dir. The full data
+        # directories (base/, pg_wal/) and wal_archive/ are huge and provide no
+        # extra value for these tests; copying them per failure overflowed the
+        # disk and wiped out all artifacts. server.log + *.conf are the useful
+        # forensic bits and are tiny, so this runs for every failure.
+        for dir in "$PGDATA" "$PRIMARY_DATA" "$REPLICA_DATA"; do
+            [[ -d "$dir" ]] || continue
+            dn=$(basename "$dir")
+            find "$dir" -maxdepth 2 -type f \( -name "*.conf" -o -name "*.log" \) 2>/dev/null \
+                | while read -r f; do
+                      cp "$f" "$FAIL_SAVE_DIR/${dn}-$(basename "$f")" 2>/dev/null || true
+                  done
+        done
+        echo "Artifacts (conf + logs) saved at: $FAIL_SAVE_DIR"
     fi
+
+    # Reclaim disk between tests. wal_archive and base_backup accumulate across
+    # the suite (only a few tests purge them) and on fast hosts grew past the
+    # volume size, filling the disk and killing the host before packaging
+    # (debian13/ubuntu-26 x86). Data dirs are already wiped per test by
+    # initialize_server/old_server_cleanup; these two are not. Their contents
+    # are saved per-test where needed (logs/<test>/) and are not packaged.
+    rm -rf "${ARCHIVE_DIR:?}"/* "${BACKUP_DIR:?}"/* 2>/dev/null || true
+    echo "Disk after ${testname%.sh}: $(df -Ph "$RUN_DIR" 2>/dev/null | awk 'NR==2{print $5" used, "$4" free"}')"
 done
 
 echo ""
