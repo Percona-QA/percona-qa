@@ -3,16 +3,24 @@
 #
 # Usage:
 #   bash setup_test_env.sh [--install-dir /path/to/pg] [--old-install-dir /path/to/old/pg] 
-#                          [--install-pkgs] [--pg-major 18.4] [--repo-component testing]
-#                          [--pg-major 18.4.1]  # patch pin: repo ppg-18.4, packages 18.4.1*
+#                          [--install-pkgs] [--pg-major 18] [--pg-repo-line 18.4]
+#                          [--server-version 18.4.1] [--repo-component testing]
 #                          [--components server,pg_tde,pg_backrest]
+#
+# Version terminology (keep these separate):
+#   PG_MAJOR       Integer PostgreSQL major (18, 17) — package names, install paths
+#   PG_REPO_LINE   Percona repo line (18.4, 17.10) → percona-release ppg-18.4
+#   SERVER_VERSION Patch level (18.4.1) — postgres --version; on apt the repo tier
+#                  selects the patch (release=18.4.1, testing=18.4.2, …)
 #
 # Environment variables (override auto-detection):
 #   INSTALL_DIR       Path to the Percona PostgreSQL install (e.g. /usr/lib/postgresql/18)
 #   OLD_INSTALL_DIR   Path to old PG install used as pg_upgrade source
 #   VAULT_ADDR        HashiCorp Vault address (only needed for vault tests)
 #   VAULT_TOKEN       Vault token
-#   PG_MAJOR          Percona repo line (18.4 → ppg-18.4) or full patch pin (18.4.1)
+#   PG_MAJOR          Integer major (18, 17)
+#   PG_REPO_LINE      Percona repo line (18.4, 17.10)
+#   SERVER_VERSION    Expected patch after install (optional verify)
 #   REPO_COMPONENT    Percona repo tier: release, testing, or experimental (default: release)
 #   COMPONENTS        Comma-separated list of components to install (default: server,pg_tde,pg_backrest)
 
@@ -30,6 +38,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # ── defaults ───────────────────────────────────────────────────────────────────
 INSTALL_PKGS=false
 PG_MAJOR="${PG_MAJOR:-18}"
+PG_REPO_LINE="${PG_REPO_LINE:-}"
+SERVER_VERSION="${SERVER_VERSION:-}"
 REPO_COMPONENT="${REPO_COMPONENT:-release}"
 COMPONENTS="${COMPONENTS:-server,pg_tde,pg_backrest}"
 
@@ -40,28 +50,37 @@ while [[ $# -gt 0 ]]; do
         --old-install-dir) OLD_INSTALL_DIR="$2"; shift 2 ;;
         --install-pkgs)    INSTALL_PKGS=true;    shift 1 ;;
         --pg-major)        PG_MAJOR="$2";        shift 2 ;;
+        --pg-repo-line)    PG_REPO_LINE="$2";    shift 2 ;;
+        --server-version)  SERVER_VERSION="$2";  shift 2 ;;
         --repo-component)  REPO_COMPONENT="$2";  shift 2 ;;
         --components)      COMPONENTS="$2";      shift 2 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-# Map PG_MAJOR → percona-release repo (ppg-X.Y) and optional apt/yum patch pin (X.Y.Z).
-# Package names always use REPO_BASE (integer major: 18, 17).
-PG_VERSION_PIN=""
-PPG_MINOR=""
-if [[ "$PG_MAJOR" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-    PG_VERSION_PIN="$PG_MAJOR"
-    PPG_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
-    REPO_BASE="${BASH_REMATCH[1]}"
-elif [[ "$PG_MAJOR" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-    PPG_MINOR="$PG_MAJOR"
-    REPO_BASE="${BASH_REMATCH[1]}"
-else
-    REPO_BASE=$(echo "$PG_MAJOR" | cut -d'.' -f1)
-    PPG_MINOR="$PG_MAJOR"
+# Reject patch strings where an integer major or repo line is expected.
+if [[ "$PG_MAJOR" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail "PG_MAJOR must be an integer (18, 17), not a patch. \
+Use --server-version ${PG_MAJOR} and --pg-repo-line X.Y (e.g. 18.4)."
 fi
+
+# Backward compat: legacy callers pass --pg-major 18.4 (repo line, not integer major).
+if [[ -z "$PG_REPO_LINE" && "$PG_MAJOR" =~ ^[0-9]+\.[0-9]+$ ]]; then
+    PG_REPO_LINE="$PG_MAJOR"
+    PG_MAJOR="${PG_MAJOR%%.*}"
+fi
+
+if [[ -z "$PG_REPO_LINE" ]]; then
+    PG_REPO_LINE="$PG_MAJOR"
+fi
+
+REPO_BASE="${PG_REPO_LINE%%.*}"
+PPG_MINOR="$PG_REPO_LINE"
 PPG_REPO="ppg-${PPG_MINOR}"
+
+if [[ "$REPO_BASE" != "$PG_MAJOR" && "$PG_REPO_LINE" != "$PG_MAJOR" ]]; then
+    warn "PG_MAJOR=${PG_MAJOR} differs from PG_REPO_LINE=${PG_REPO_LINE} (integer major ${REPO_BASE})"
+fi
 
 # ── 1. not root ────────────────────────────────────────────────────────────────
 echo ""
@@ -88,16 +107,20 @@ if [ "$INSTALL_PKGS" = true ]; then
     fi
 
     # Set up Percona format structure for repository registration hook
-    if [[ -n "$PG_VERSION_PIN" ]]; then
-        info "Repository line: ${PPG_REPO} (package pin: ${PG_VERSION_PIN})"
-    else
-        info "Repository line: ${PPG_REPO}"
+    info "PG_MAJOR=${PG_MAJOR}  PG_REPO_LINE=${PG_REPO_LINE}  repo=${PPG_REPO} [${REPO_COMPONENT}]"
+    if [[ -n "$SERVER_VERSION" ]]; then
+        info "SERVER_VERSION=${SERVER_VERSION} (apt: selected by repo tier; verified after install)"
     fi
 
-    _pkg_spec() {
+    _deb_pkg_spec() {
+        # Debian: repo component alone selects the patch (release=18.4.1, testing=18.4.2, …).
+        echo "$1"
+    }
+
+    _rpm_pkg_spec() {
         local pkg="$1"
-        if [[ -n "$PG_VERSION_PIN" ]]; then
-            echo "${pkg}=${PG_VERSION_PIN}*"
+        if [[ -n "$SERVER_VERSION" ]]; then
+            echo "${pkg}-${SERVER_VERSION}"
         else
             echo "$pkg"
         fi
@@ -137,11 +160,11 @@ if [ "$INSTALL_PKGS" = true ]; then
     
     if [ "$OS_FAMILY" = "debian" ]; then
         if [[ "$COMPONENTS" == *"server"* ]]; then
-            PKGS_TO_INSTALL+=("$(_pkg_spec "percona-postgresql-${REPO_BASE}")")
+            PKGS_TO_INSTALL+=("$(_deb_pkg_spec "percona-postgresql-${REPO_BASE}")")
         fi
         if [[ "$COMPONENTS" == *"pg_backrest"* ]]; then PKGS_TO_INSTALL+=("percona-pgbackrest"); fi
         if [[ "$COMPONENTS" == *"pg_tde"* ]]; then
-            PKGS_TO_INSTALL+=("$(_pkg_spec "percona-pg-tde${REPO_BASE}")")
+            PKGS_TO_INSTALL+=("$(_deb_pkg_spec "percona-pg-tde${REPO_BASE}")")
         fi
         
         if [ ${#PKGS_TO_INSTALL[@]} -gt 0 ]; then
@@ -151,19 +174,11 @@ if [ "$INSTALL_PKGS" = true ]; then
         
     elif [ "$OS_FAMILY" = "rhel" ]; then
         if [[ "$COMPONENTS" == *"server"* ]]; then
-            if [[ -n "$PG_VERSION_PIN" ]]; then
-                PKGS_TO_INSTALL+=("percona-postgresql${REPO_BASE}-server-${PG_VERSION_PIN}")
-            else
-                PKGS_TO_INSTALL+=("percona-postgresql${REPO_BASE}-server")
-            fi
+            PKGS_TO_INSTALL+=("$(_rpm_pkg_spec "percona-postgresql${REPO_BASE}-server")")
         fi
         if [[ "$COMPONENTS" == *"pg_backrest"* ]]; then PKGS_TO_INSTALL+=("percona-pgbackrest"); fi
         if [[ "$COMPONENTS" == *"pg_tde"* ]]; then
-            if [[ -n "$PG_VERSION_PIN" ]]; then
-                PKGS_TO_INSTALL+=("percona-pg_tde${REPO_BASE}-${PG_VERSION_PIN}")
-            else
-                PKGS_TO_INSTALL+=("percona-pg_tde${REPO_BASE}")
-            fi
+            PKGS_TO_INSTALL+=("$(_rpm_pkg_spec "percona-pg_tde${REPO_BASE}")")
         fi
         
         if [ ${#PKGS_TO_INSTALL[@]} -gt 0 ]; then
@@ -199,6 +214,14 @@ fi
 
 if [[ -z "${INSTALL_DIR:-}" ]] || [[ ! -x "${INSTALL_DIR}/bin/initdb" ]]; then
     fail "Cannot find PostgreSQL install. Pass --install-pkgs to install automatically, set INSTALL_DIR, or pass --install-dir.\n      Example: bash setup_test_env.sh --install-dir /usr/lib/postgresql/18"
+fi
+
+if [[ "$INSTALL_PKGS" == true && -n "$SERVER_VERSION" && -x "${INSTALL_DIR}/bin/postgres" ]]; then
+    _pg_ver="$("${INSTALL_DIR}/bin/postgres" --version 2>&1 || true)"
+    if [[ "$_pg_ver" != *"${SERVER_VERSION}"* ]]; then
+        fail "SERVER_VERSION mismatch: expected ${SERVER_VERSION}, got: ${_pg_ver}"
+    fi
+    ok "SERVER_VERSION ${SERVER_VERSION} confirmed (${_pg_ver})"
 fi
 
 PG_VERSION=$("${INSTALL_DIR}/bin/postgres" --version 2>&1 | grep -oP '\d+' | head -1)

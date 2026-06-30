@@ -4,9 +4,11 @@
 # Installs Percona PG + pg_tde (source), runs Setup tests, upgrades packages,
 # runs Verify tests. Same PostgreSQL integer major throughout (default 18.4.1 → 18.4.2).
 #
-# Percona repos use a two-part line (ppg-18.4, ppg-17.10), not three-part patches.
-# Pass full patch versions to OLD/NEW; setup_test_env.sh maps them to the repo line
-# and pins packages (e.g. 18.4.1 → enable ppg-18.4, install percona-postgresql-18=18.4.1*).
+# Version terminology (three distinct values — do not overload PG_MAJOR):
+#   PG_MAJOR           Integer PostgreSQL major (18) — package suffix, install path
+#   PG_REPO_LINE       Percona repo line (18.4) → percona-release enable ppg-18.4
+#   SERVER_VERSION     Patch (18.4.1) — postgres --version; apt tier selects the patch
+#                      (release → 18.4.1, testing → 18.4.2)
 #
 # Usage:
 #   cd postgresql/pytest
@@ -20,11 +22,15 @@
 #
 # Environment overrides:
 #   PG_TDE_UPGRADE_DATA_DIR   persistent data parent (default: /var/lib/pg_tde_minor_upgrade)
-#   OLD_PG_VERSION            source patch (default: 18.4.1) — alias: OLD_PG_MAJOR
-#   NEW_PG_VERSION            target patch (default: 18.4.2) — alias: NEW_PG_MAJOR
+#   OLD_SERVER_VERSION        source patch (default: 18.4.1)
+#   NEW_SERVER_VERSION        target patch (default: 18.4.2)
+#   PG_REPO_LINE              Percona repo line (default: derived from OLD_SERVER_VERSION → 18.4)
+#   PG_MAJOR                  Integer major (default: derived from PG_REPO_LINE → 18)
 #   OLD_REPO_COMPONENT        Percona repo tier for source install (default: release)
 #   NEW_REPO_COMPONENT        Percona repo tier for target install (default: testing)
 #   COMPONENTS                passed to setup_test_env.sh (default: server,pg_tde)
+#
+# Legacy aliases (deprecated): OLD_PG_VERSION, NEW_PG_VERSION, OLD_PG_MAJOR, NEW_PG_MAJOR
 #
 # Repo policy (QA default): OLD=release (shipped build), NEW=testing (candidate patch).
 
@@ -35,8 +41,11 @@ cd "$SCRIPT_DIR"
 
 # ── defaults ─────────────────────────────────────────────────────────────────
 UPGRADE_DATA_DIR="${PG_TDE_UPGRADE_DATA_DIR:-/var/lib/pg_tde_minor_upgrade}"
-OLD_PG_VERSION="${OLD_PG_VERSION:-${OLD_PG_MAJOR:-18.4.1}}"
-NEW_PG_VERSION="${NEW_PG_VERSION:-${NEW_PG_MAJOR:-18.4.2}}"
+
+# SERVER_VERSION: patch level verified via postgres --version
+OLD_SERVER_VERSION="${OLD_SERVER_VERSION:-${OLD_PG_VERSION:-${OLD_PG_MAJOR:-18.4.1}}}"
+NEW_SERVER_VERSION="${NEW_SERVER_VERSION:-${NEW_PG_VERSION:-${NEW_PG_MAJOR:-18.4.2}}}"
+
 OLD_REPO_COMPONENT="${OLD_REPO_COMPONENT:-release}"
 NEW_REPO_COMPONENT="${NEW_REPO_COMPONENT:-testing}"
 COMPONENTS="${COMPONENTS:-server,pg_tde}"
@@ -55,8 +64,8 @@ info()  { echo -e "${GREEN}==>${NC} $*"; }
 warn()  { echo -e "${YELLOW}WARN:${NC} $*"; }
 die()   { echo -e "${RED}ERROR:${NC} $*" >&2; exit 1; }
 
-pg_repo_line() {
-    # 18.4.1 → 18.4, 17.10.2 → 17.10, 18 → 18 (for display only; install uses setup_test_env)
+server_version_to_repo_line() {
+    # 18.4.1 → 18.4, 17.10.2 → 17.10
     local ver="$1"
     if [[ "$ver" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
         echo "${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
@@ -65,8 +74,18 @@ pg_repo_line() {
     fi
 }
 
-pg_integer_major() {
-    echo "$1" | cut -d. -f1
+resolve_version_defaults() {
+    PG_REPO_LINE="${PG_REPO_LINE:-$(server_version_to_repo_line "$OLD_SERVER_VERSION")}"
+    PG_MAJOR="${PG_MAJOR:-${PG_REPO_LINE%%.*}}"
+
+    [[ -n "${OLD_PG_VERSION:-}" ]] && warn "OLD_PG_VERSION is deprecated; use OLD_SERVER_VERSION"
+    [[ -n "${NEW_PG_VERSION:-}" ]] && warn "NEW_PG_VERSION is deprecated; use NEW_SERVER_VERSION"
+    if [[ -n "${OLD_PG_MAJOR:-}" && "${OLD_PG_MAJOR}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        warn "OLD_PG_MAJOR as patch is deprecated; use OLD_SERVER_VERSION (PG_MAJOR is integer major only)"
+    fi
+    if [[ -n "${NEW_PG_MAJOR:-}" && "${NEW_PG_MAJOR}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        warn "NEW_PG_MAJOR as patch is deprecated; use NEW_SERVER_VERSION (PG_MAJOR is integer major only)"
+    fi
 }
 
 usage() {
@@ -74,13 +93,15 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Full staged minor-upgrade workflow for tests/test_tde_minor_upgrade.py:
-  1) install ${OLD_PG_VERSION} (ppg-$(pg_repo_line "${OLD_PG_VERSION}"), ${OLD_REPO_COMPONENT}) + pytest venv
+  1) install SERVER_VERSION=${OLD_SERVER_VERSION} (ppg-${PG_REPO_LINE}, ${OLD_REPO_COMPONENT}) + pytest venv
   2) TestPgTdeMinorUpgradeSetup (+ optional PG-2381, HA)
-  3) install ${NEW_PG_VERSION} (ppg-$(pg_repo_line "${NEW_PG_VERSION}"), ${NEW_REPO_COMPONENT})
+  3) install SERVER_VERSION=${NEW_SERVER_VERSION} (ppg-${PG_REPO_LINE}, ${NEW_REPO_COMPONENT})
   4) TestPgTdeMinorUpgradeVerify (+ optional PG-2381, HA)
 
-Patch versions (18.4.1, 17.10.2) pin packages; percona-release uses the repo
-line only (18.4, 17.10). Integer PG major (18, 17) stays the same for both.
+Version model:
+  PG_MAJOR=${PG_MAJOR}           integer major (unchanged across minor upgrade)
+  PG_REPO_LINE=${PG_REPO_LINE}     percona-release repo line
+  SERVER_VERSION                 patch from postgres --version (apt tier selects it)
 
 Options:
   --skip-install     Skip both package-install phases (use current packages)
@@ -89,15 +110,19 @@ Options:
   --upgrade-only     Install new packages only, then exit
   --verify-only      Run Verify only (requires existing upgrade_state.json)
   --upgrade-data-dir PATH   Override PG_TDE_UPGRADE_DATA_DIR
-  --old-pg-major VER        Source patch version (default: ${OLD_PG_VERSION})
-  --new-pg-major VER        Target patch version (default: ${NEW_PG_VERSION})
+  --old-server-version VER  Source patch (default: ${OLD_SERVER_VERSION})
+  --new-server-version VER  Target patch (default: ${NEW_SERVER_VERSION})
+  --pg-repo-line VER        Percona repo line (default: ${PG_REPO_LINE})
+  --pg-major VER            Integer PG major (default: ${PG_MAJOR})
   --old-repo COMPONENT      Default: ${OLD_REPO_COMPONENT}
   --new-repo COMPONENT      Default: ${NEW_REPO_COMPONENT}
+  --old-pg-major VER        Deprecated alias for --old-server-version
+  --new-pg-major VER        Deprecated alias for --new-server-version
   -h, --help         Show this help
 
 Examples:
   bash $(basename "$0")
-  OLD_PG_VERSION=17.10.1 NEW_PG_VERSION=17.10.2 bash $(basename "$0")
+  OLD_SERVER_VERSION=17.10.1 NEW_SERVER_VERSION=17.10.2 bash $(basename "$0")
   sudo mkdir -p ${UPGRADE_DATA_DIR} && sudo chown "\$USER" ${UPGRADE_DATA_DIR}
   PG_TDE_UPGRADE_DATA_DIR=/data/pg_tde_minor bash $(basename "$0") --with-pg2381
 EOF
@@ -105,20 +130,26 @@ EOF
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --skip-install)     SKIP_INSTALL=true; shift ;;
-        --with-pg2381)      WITH_PG2381=true; shift ;;
-        --setup-only)       SETUP_ONLY=true; shift ;;
-        --upgrade-only)     UPGRADE_ONLY=true; shift ;;
-        --verify-only)      VERIFY_ONLY=true; shift ;;
-        --upgrade-data-dir) UPGRADE_DATA_DIR="$2"; shift 2 ;;
-        --old-pg-major)     OLD_PG_VERSION="$2"; shift 2 ;;
-        --new-pg-major)     NEW_PG_VERSION="$2"; shift 2 ;;
-        --old-repo)         OLD_REPO_COMPONENT="$2"; shift 2 ;;
-        --new-repo)         NEW_REPO_COMPONENT="$2"; shift 2 ;;
-        -h|--help)          usage; exit 0 ;;
+        --skip-install)         SKIP_INSTALL=true; shift ;;
+        --with-pg2381)          WITH_PG2381=true; shift ;;
+        --setup-only)           SETUP_ONLY=true; shift ;;
+        --upgrade-only)         UPGRADE_ONLY=true; shift ;;
+        --verify-only)          VERIFY_ONLY=true; shift ;;
+        --upgrade-data-dir)     UPGRADE_DATA_DIR="$2"; shift 2 ;;
+        --old-server-version)   OLD_SERVER_VERSION="$2"; shift 2 ;;
+        --new-server-version)   NEW_SERVER_VERSION="$2"; shift 2 ;;
+        --pg-repo-line)         PG_REPO_LINE="$2"; shift 2 ;;
+        --pg-major)             PG_MAJOR="$2"; shift 2 ;;
+        --old-pg-major)         warn "--old-pg-major is deprecated; use --old-server-version"; OLD_SERVER_VERSION="$2"; shift 2 ;;
+        --new-pg-major)         warn "--new-pg-major is deprecated; use --new-server-version"; NEW_SERVER_VERSION="$2"; shift 2 ;;
+        --old-repo)             OLD_REPO_COMPONENT="$2"; shift 2 ;;
+        --new-repo)             NEW_REPO_COMPONENT="$2"; shift 2 ;;
+        -h|--help)              resolve_version_defaults; usage; exit 0 ;;
         *) die "Unknown option: $1 (try --help)" ;;
     esac
 done
+
+resolve_version_defaults
 
 export PG_TDE_UPGRADE_DATA_DIR="$UPGRADE_DATA_DIR"
 
@@ -133,16 +164,27 @@ fi
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 install_packages() {
-    local pg_version="$1"
-    local repo_component="$2"
-    local repo_line
-    repo_line="$(pg_repo_line "$pg_version")"
-    info "Installing Percona packages: patch=${pg_version} repo=ppg-${repo_line} component=${repo_component}"
+    local repo_component="$1"
+    local expected_server_version="$2"
+    info "Installing packages: PG_MAJOR=${PG_MAJOR} ppg-${PG_REPO_LINE} [${repo_component}] → SERVER_VERSION ${expected_server_version}"
     bash "${SCRIPT_DIR}/setup_test_env.sh" \
         --install-pkgs \
-        --pg-major "${pg_version}" \
+        --pg-major "${PG_MAJOR}" \
+        --pg-repo-line "${PG_REPO_LINE}" \
+        --server-version "${expected_server_version}" \
         --repo-component "${repo_component}" \
         --components "${COMPONENTS}"
+}
+
+check_server_version() {
+    local expected="$1"
+    local label="$2"
+    local ver
+    ver="$("${INSTALL_DIR}/bin/postgres" --version 2>&1 || true)"
+    if [[ "$ver" != *"${expected}"* ]]; then
+        die "${label}: expected SERVER_VERSION ${expected}, got: ${ver}"
+    fi
+    ok "SERVER_VERSION ${expected} confirmed (${label})"
 }
 
 source_env() {
@@ -216,6 +258,8 @@ show_versions() {
     local label="$1"
     echo ""
     info "Versions (${label})"
+    echo "  PG_MAJOR=${PG_MAJOR}  PG_REPO_LINE=${PG_REPO_LINE}"
+    echo "  OLD_SERVER_VERSION=${OLD_SERVER_VERSION}  NEW_SERVER_VERSION=${NEW_SERVER_VERSION}"
     echo "  INSTALL_DIR=${INSTALL_DIR:-<unset>}"
     if [[ -n "${INSTALL_DIR:-}" ]]; then
         print_install_versions "" "${INSTALL_DIR}"
@@ -230,20 +274,15 @@ show_versions() {
 
 check_verify_target_packages() {
     show_versions "Verify package check"
-    local ver
-    ver="$("${INSTALL_DIR}/bin/postgres" --version 2>&1 || true)"
-    if [[ "$ver" != *"${NEW_PG_VERSION}"* ]]; then
-        die "Verify expects PostgreSQL ${NEW_PG_VERSION} on disk, but got: ${ver}. \
-Run the full workflow or: bash $(basename "$0") --upgrade-only"
-    fi
-    ok "Target patch ${NEW_PG_VERSION} confirmed in postgres --version"
+    check_server_version "${NEW_SERVER_VERSION}" "verify target"
 }
 
 ensure_pytest_env() {
     if [[ ! -x "${SCRIPT_DIR}/.venv/bin/pytest" ]]; then
         info "Creating Python venv and dependencies (setup_test_env without --install-pkgs)"
         bash "${SCRIPT_DIR}/setup_test_env.sh" \
-            --pg-major "$(pg_repo_line "${OLD_PG_VERSION}")" \
+            --pg-major "${PG_MAJOR}" \
+            --pg-repo-line "${PG_REPO_LINE}" \
             --repo-component "${OLD_REPO_COMPONENT}" \
             || bash "${SCRIPT_DIR}/setup_test_env.sh"
     fi
@@ -261,7 +300,7 @@ assert_state_file() {
 ok() { echo -e "  ${GREEN}OK${NC}  $*"; }
 
 run_setup_tests() {
-    info "Phase: pytest Setup (PG ${OLD_PG_VERSION}, ppg-$(pg_repo_line "${OLD_PG_VERSION}"))"
+    info "Phase: pytest Setup (SERVER_VERSION ${OLD_SERVER_VERSION}, ppg-${PG_REPO_LINE})"
     mkdir -p "${UPGRADE_DATA_DIR}"
 
     local pytest_args=(
@@ -286,7 +325,7 @@ run_setup_tests() {
 }
 
 run_verify_tests() {
-    info "Phase: pytest Verify (PG ${NEW_PG_VERSION}, ppg-$(pg_repo_line "${NEW_PG_VERSION}"))"
+    info "Phase: pytest Verify (SERVER_VERSION ${NEW_SERVER_VERSION}, ppg-${PG_REPO_LINE})"
     assert_state_file "single"
     assert_state_file "ha"
 
@@ -311,18 +350,19 @@ run_verify_tests() {
 echo ""
 echo "======================================================================"
 echo " pg_tde staged minor-upgrade workflow"
-echo "  data dir : ${UPGRADE_DATA_DIR}"
-echo "  source   : PG ${OLD_PG_VERSION} (ppg-$(pg_repo_line "${OLD_PG_VERSION}"), repo=${OLD_REPO_COMPONENT})"
-echo "  target   : PG ${NEW_PG_VERSION} (ppg-$(pg_repo_line "${NEW_PG_VERSION}"), repo=${NEW_REPO_COMPONENT})"
-echo "  PG major : $(pg_integer_major "${OLD_PG_VERSION}") (unchanged — same \$PGDATA path)"
-echo "  repos    : OLD=${OLD_REPO_COMPONENT} → NEW=${NEW_REPO_COMPONENT} (QA default: release → testing)"
+echo "  data dir         : ${UPGRADE_DATA_DIR}"
+echo "  PG_MAJOR         : ${PG_MAJOR} (integer major — unchanged)"
+echo "  PG_REPO_LINE     : ${PG_REPO_LINE} (percona-release ppg-${PG_REPO_LINE})"
+echo "  OLD_SERVER_VERSION: ${OLD_SERVER_VERSION} (repo=${OLD_REPO_COMPONENT})"
+echo "  NEW_SERVER_VERSION: ${NEW_SERVER_VERSION} (repo=${NEW_REPO_COMPONENT})"
+echo "  repos            : ${OLD_REPO_COMPONENT} → ${NEW_REPO_COMPONENT} (QA default: release → testing)"
 echo "======================================================================"
 
 ensure_pytest_env
 
 if [[ "$VERIFY_ONLY" == true ]]; then
     if [[ "$SKIP_INSTALL" != true ]]; then
-        install_packages "${NEW_PG_VERSION}" "${NEW_REPO_COMPONENT}"
+        install_packages "${NEW_REPO_COMPONENT}" "${NEW_SERVER_VERSION}"
     fi
     source_env
     show_versions "verify"
@@ -333,7 +373,7 @@ if [[ "$VERIFY_ONLY" == true ]]; then
 fi
 
 if [[ "$UPGRADE_ONLY" == true ]]; then
-    install_packages "${NEW_PG_VERSION}" "${NEW_REPO_COMPONENT}"
+    install_packages "${NEW_REPO_COMPONENT}" "${NEW_SERVER_VERSION}"
     source_env
     show_versions "after package upgrade"
     info "Upgrade-only finished. Run: $0 --verify-only --skip-install"
@@ -342,10 +382,11 @@ fi
 
 # ── Phase 1: old packages + Setup ───────────────────────────────────────────
 if [[ "$SKIP_INSTALL" != true ]]; then
-    install_packages "${OLD_PG_VERSION}" "${OLD_REPO_COMPONENT}"
+    install_packages "${OLD_REPO_COMPONENT}" "${OLD_SERVER_VERSION}"
 fi
 source_env
 show_versions "before Setup (source packages)"
+check_server_version "${OLD_SERVER_VERSION}" "setup source"
 run_setup_tests
 
 if [[ "$SETUP_ONLY" == true ]]; then
@@ -357,7 +398,7 @@ fi
 
 # ── Phase 2: new packages ───────────────────────────────────────────────────
 if [[ "$SKIP_INSTALL" != true ]]; then
-    install_packages "${NEW_PG_VERSION}" "${NEW_REPO_COMPONENT}"
+    install_packages "${NEW_REPO_COMPONENT}" "${NEW_SERVER_VERSION}"
 fi
 source_env
 show_versions "before Verify (target packages)"
