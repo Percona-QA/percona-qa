@@ -5,7 +5,6 @@
 #############################################
 KEYFILE="$RUN_DIR/keyring.file"
 KEY_ROTATION=${KEY_ROTATION:-1}
-CRASH_MODE=${CRASH_MODE:-1}
 TABLESPACE_TEST=${TABLESPACE_TEST:-1}
 CHANGE_KEY_PROVIDER=${CHANGE_KEY_PROVIDER:-1}
 TABLESPACE_FILE="$RUN_DIR/ts1_primary"
@@ -19,6 +18,33 @@ PG_CTL="$INSTALL_DIR/bin/pg_ctl"
 PG_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PG_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
 PSQL="$INSTALL_DIR/bin/psql"
+
+#############################################
+# HELPERS
+#############################################
+stop_both() {
+  echo "Stopping servers"
+  $PG_CTL -D $PRIMARY_DATA stop -m fast || true
+  $PG_CTL -D $REPLICA_DATA stop -m fast || true
+}
+
+rewind_and_start() {
+  ##############################################################################
+  # Take backup of postgresql.conf before pg_rewind
+  # ############################################################################
+  cp $PRIMARY_DATA/postgresql.conf $RUN_DIR/postgresql.conf
+
+  echo "Running pg_rewind"
+  $PG_REWIND --target-pgdata=$PRIMARY_DATA \
+      --source-pgdata=$REPLICA_DATA -c
+
+  ##############################################################################
+  # Restore postgresql.conf from backup as pg_rewind replaces the config file
+  # from source node into target node
+  ##############################################################################
+  mv $RUN_DIR/postgresql.conf $PRIMARY_DATA/postgresql.conf
+  start_pg $PRIMARY_DATA $PRIMARY_PORT
+}
 
 #############################################
 # CLEANUP
@@ -84,19 +110,19 @@ fi
 
 cat > $REPLICA_DATA/postgresql.conf <<EOF
 port=$REPLICA_PORT
-unix_socket_directories='$RUN_DIR'
+shared_preload_libraries='pg_tde'
+default_table_access_method='tde_heap'
 listen_addresses='*'
+unix_socket_directories='$RUN_DIR'
 logging_collector=on
 log_directory='$REPLICA_DATA'
-log_filename='server.log'
-log_statement='all'
+log_filename='replica.log'
+log_statement='ddl'
 wal_log_hints = on
-default_table_access_method='tde_heap'
-shared_preload_libraries='pg_tde'
 restore_command='cp $ARCHIVE_DIR/%f %p'
 EOF
 
-start_pg $REPLICA_DATA $REPLICA_PORT
+start_pg "$REPLICA_DATA" "$REPLICA_PORT"
 
 run_test() {
 
@@ -118,6 +144,8 @@ run_test() {
     prepare
 
   $PSQL -p $PRIMARY_PORT -c "CHECKPOINT;"
+
+  wait_for_replica_catchup $PRIMARY_PORT $REPLICA_PORT
 
   restart_pg $PRIMARY_DATA $PRIMARY_PORT
   restart_pg $REPLICA_DATA $REPLICA_PORT
@@ -221,8 +249,8 @@ run_test() {
     while [ $SECONDS -lt $end_time ]; do
 	    RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
 	    echo "Rotating master key: principal_key_test$RAND_KEY"
-            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_database_key_provider('key$RAND_KEY','local_file_provider');"
-            $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_key_using_database_key_provider('key$RAND_KEY','local_file_provider');"
+	    $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_database_key_provider('key$RAND_KEY','local_file_provider');"
+	    $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_key_using_database_key_provider('key$RAND_KEY','local_file_provider');"
 	    RAND_KEY=$(( ( RANDOM % 1000000 ) + 1 ))
             $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_create_key_using_global_key_provider('key$RAND_KEY','global_file_provider');"
             $PSQL -p $REPLICA_PORT -c "SELECT pg_tde_set_server_key_using_global_key_provider('key$RAND_KEY','global_file_provider');"
@@ -280,17 +308,11 @@ run_test() {
   ###########################################
   # Crash simulation
   ###########################################
-  if [ "$CRASH_MODE" -eq 1 ]; then
-    echo "Simulating crash on replica"
+  echo "Simulating crash on replica"
+  crash_pg $REPLICA_DATA
 
-    crash_pg $REPLICA_DATA
-
-    echo "Restarting replica for crash recovery"
-    start_pg $REPLICA_DATA $REPLICA_PORT
-
-    echo "Stopping replica cleanly after recovery"
-    stop_pg $REPLICA_DATA
-  fi
+  echo "Restarting replica for crash recovery"
+  start_pg $REPLICA_DATA $REPLICA_PORT
 
   ###########################################
   # Rewind
@@ -313,23 +335,6 @@ run_test() {
   # Validate sysbench tables
   #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM sbtest1;"
   #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM sbtest5;"
-}
-
-#############################################
-# HELPERS
-#############################################
-stop_both() {
-  echo "Stopping servers"
-  $PG_CTL -D $PRIMARY_DATA stop -m fast || true
-  $PG_CTL -D $REPLICA_DATA stop -m fast || true
-}
-
-rewind_and_start() {
-  echo "Running pg_rewind"
-  $PG_REWIND --target-pgdata=$PRIMARY_DATA \
-             --source-pgdata=$REPLICA_DATA -c
-
-  start_pg $PRIMARY_DATA $PRIMARY_PORT
 }
 
 #############################################
