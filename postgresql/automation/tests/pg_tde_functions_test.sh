@@ -15,7 +15,7 @@ rm -rf $KEYFILE || true
 initialize_server $PGDATA $PORT
 enable_pg_tde $PGDATA
 start_pg $PGDATA $PORT
-start_kmip_server
+start_cosmian_kmip_server
 start_vault_server
 
 # Actual testing starts here
@@ -30,11 +30,6 @@ $INSTALL_DIR/bin/psql -d db1 -c"SELECT pg_tde_add_database_key_provider_vault_v2
 echo "Creating Principal key using local key provider. Must pass"
 $INSTALL_DIR/bin/psql  -d db1 -c"SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring');"
 $INSTALL_DIR/bin/psql  -d db1 -c"SELECT pg_tde_set_key_using_database_key_provider('vault_key1','vault_keyring');"
-
-#echo "Trying to create Principal Key using a key provider outside the scope of db2. Must fail"
-#$INSTALL_DIR/bin/psql -d db2 -c"CREATE EXTENSION pg_tde;"
-#$INSTALL_DIR/bin/psql -d db2 -c"SELECT pg_tde_create_key_using_database_key_provider('vault_key1','vault_keyring');"
-#$INSTALL_DIR/bin/psql -d db2 -c"SELECT pg_tde_set_key_using_database_key_provider('vault_key1','vault_keyring');"
 
 $INSTALL_DIR/bin/psql  -d postgres -c"DROP DATABASE db1"
 $INSTALL_DIR/bin/psql  -d postgres -c"DROP DATABASE db2"

@@ -75,7 +75,7 @@ fi
 source "$WRAPPER_DIR/common.sh"
 source "$HELPER_DIR/setup_vault.sh"
 source "$HELPER_DIR/setup_openbao.sh"
-source "$HELPER_DIR/setup_kmip.sh"
+source "$HELPER_DIR/setup_cosmian_kmip.sh"
 
 ############################################
 # Prepare Run Directory
