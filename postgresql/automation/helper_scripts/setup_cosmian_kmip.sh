@@ -2,10 +2,10 @@
 
 set -e
 
-COSMIAN_CERTS_DIR="/tmp/cosmian_certs"
-COSMIAN_DATA_DIR="/tmp/cosmian_data"
-COSMIAN_CONFIG="/tmp/cosmian_kms.toml"
-COSMIAN_LOG="/tmp/cosmian_kms.log"
+COSMIAN_CERTS_DIR="$RUN_DIR/cosmian_certs"
+COSMIAN_DATA_DIR="$RUN_DIR/cosmian_data"
+COSMIAN_CONFIG="$RUN_DIR/cosmian_kms.toml"
+COSMIAN_LOG="$RUN_DIR/cosmian_kms.log"
 
 _gen_cosmian_certs() {
   local DIR="$COSMIAN_CERTS_DIR"
@@ -38,16 +38,41 @@ _gen_cosmian_certs() {
     -days 1 -out "$DIR/client.pem"
 }
 
+detect_arch() {
+  local uname_arch
+  uname_arch=$(uname -m)
+
+  case "$uname_arch" in
+      x86_64|amd64)
+          COSMIAN_DEB_ARCH="amd64"
+          COSMIAN_RPM_DIR="amd64"
+          COSMIAN_RPM_FILE_ARCH="x86_64"
+          ;;
+      aarch64|arm64)
+          COSMIAN_DEB_ARCH="arm64"
+          COSMIAN_RPM_DIR="arm64"
+          COSMIAN_RPM_FILE_ARCH="aarch64"
+          ;;
+      *)
+          echo "[ERROR] Unsupported architecture: $uname_arch"
+          return 1
+          ;;
+  esac
+}
+
 install_cosmian_kms() {
   local VERSION=$1
 
   echo "[INFO] Installing Cosmian KMS ${VERSION}"
+  detect_arch
 
   if command -v apt >/dev/null 2>&1; then
     # Debian / Ubuntu
-    local PKG="cosmian-kms-server-non-fips-static-openssl_${VERSION}_amd64.deb"
-    local URL="https://package.cosmian.com/kms/${VERSION}/deb/amd64/non-fips/static/${PKG}"
+    local PKG="cosmian-kms-server-non-fips-static-openssl_${VERSION}_${COSMIAN_DEB_ARCH}.deb"
+    local URL="https://package.cosmian.com/kms/${VERSION}/deb/${COSMIAN_DEB_ARCH}/non-fips/static/${PKG}"
 
+    echo "[INFO] Downloading Cosmian package:"
+    echo "       $URL"
     wget -q -O "$RUN_DIR/${PKG}" "${URL}" || {
       echo "[ERROR] Failed to download ${URL}"
       return 1
@@ -58,8 +83,11 @@ install_cosmian_kms() {
 
   elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
     # RHEL / Rocky / Alma / Oracle Linux
-    local PKG="cosmian-kms-server-non-fips-static-openssl-${VERSION}-1.x86_64.rpm"
-    local URL="https://package.cosmian.com/kms/${VERSION}/rpm/x86_64/non-fips/static/${PKG}"
+    local PKG="cosmian-kms-server-non-fips-static-openssl_${VERSION}_${COSMIAN_RPM_FILE_ARCH}.rpm"
+    local URL="https://package.cosmian.com/kms/${VERSION}/rpm/${COSMIAN_RPM_DIR}/non-fips/static/${PKG}"
+
+    echo "[INFO] Downloading Cosmian package:"
+    echo "       $URL"
 
     wget -q -O "$RUN_DIR/${PKG}" "${URL}" || {
       echo "[ERROR] Failed to download ${URL}"
@@ -67,9 +95,9 @@ install_cosmian_kms() {
     }
 
     if command -v dnf >/dev/null 2>&1; then
-      sudo dnf install -y "/tmp/${PKG}" || return 1
+      sudo dnf install -y "${RUN_DIR}/${PKG}" || return 1
     else
-      sudo yum install -y "/tmp/${PKG}" || return 1
+      sudo yum install -y "${RUN_DIR}/${PKG}" || return 1
     fi
 
   else
@@ -86,23 +114,34 @@ install_cosmian_kms() {
     sudo chmod 755 /usr/local/cosmian/lib/ossl-modules/legacy.so
 
   echo "[INFO] Cosmian KMS installed successfully"
+  verify_cosmian_kms
+}
 
-  if ! cosmian_kms --version; then
-    echo "[ERROR] cosmian_kms is installed but not executable by current user"
+verify_cosmian_kms() {
+  local output
+  if ! output=$(cosmian_kms --version 2>&1); then
+    echo "$output"
+    if echo "$output" | grep -q "GLIBC_"; then
+        echo "[ERROR] Cosmian KMS requires a newer glibc version."
+    else
+        echo "[ERROR] cosmian_kms failed to execute."
+    fi
+
     return 1
   fi
 }
 
 start_cosmian_kmip_server() {
-  if ! cosmian_kms --version >/dev/null 2>&1; then
-    install_cosmian_kms 5.16.2
+  if command -v cosmian_kms >/dev/null 2>&1; then
+    verify_cosmian_kms
+    echo "[INFO] Found Cosmian KMS: $(cosmian_kms --version)"
   else
-    echo "Found cosmian_kms version installed: $(cosmian_kms --version)"
+    install_cosmian_kms 5.16.2
   fi
 
-    # Kill any previously running cosmian KMIP server
-    pkill -9 -f cosmian_kms 2>/dev/null || true
-    sleep 1
+  # Kill any previously running cosmian KMIP server
+  pkill -9 -f cosmian_kms 2>/dev/null || true
+  sleep 1
 
   echo "[INFO] Generating Cosmian KMS certificates..."
   rm -rf "$COSMIAN_CERTS_DIR"
@@ -154,7 +193,7 @@ EOF
   if ! _kmip_port_open; then
     echo "[ERROR] Cosmian KMS did not start within 30 seconds"
     cat "$COSMIAN_LOG"
-    exit 1
+    return 1
   fi
 
   kmip_server_address="127.0.0.1"
