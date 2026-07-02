@@ -80,7 +80,7 @@ source "$HELPER_DIR/setup_cosmian_kmip.sh"
 ############################################
 # Prepare Run Directory
 ############################################
-rm -rf "$RUN_DIR"
+sudo rm -rf "$RUN_DIR"
 mkdir -p "$RUN_DIR"
 
 ############################################
