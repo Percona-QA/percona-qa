@@ -497,3 +497,6 @@ $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_set_default_key_using_global_
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_global_key_provider('vault_keyring12');"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_default_key()"
 $INSTALL_DIR/bin/psql -d postgres -c"SELECT pg_tde_delete_global_key_provider('keyring_file12');"
+
+# cleanup
+stop_cosmian_kmip_server
