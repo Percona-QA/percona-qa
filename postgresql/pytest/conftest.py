@@ -14,6 +14,7 @@ from lib.test_sections import (
     markers_for_sections,
     item_matches_skipped_section,
 )
+from lib.external_key_providers import ensure_external_key_providers
 from lib.kmip import kmip_config_from_options, kmip_runtime_ready
 from lib.kmip_profiles import resolve_session_kmip_config
 from lib.vault import vault_config_from_options, vault_runtime_ready
@@ -251,6 +252,10 @@ def pytest_configure(config):
     config._skip_sections = resolved  # noqa: SLF001
     config._skip_section_markers = markers_for_sections(resolved)
 
+    provider_warnings = ensure_external_key_providers(config)
+    if provider_warnings:
+        config._external_key_provider_warnings = provider_warnings  # noqa: SLF001
+
     _configure_io_method_for_install(config)
 
 
@@ -353,6 +358,8 @@ def pytest_report_header(config):
     skipped = getattr(config, "_skip_sections", None)
     if skipped:
         lines.append(f"skip-sections: {', '.join(skipped)}")
+    for warn in getattr(config, "_external_key_provider_warnings", ()):
+        lines.append(f"external-key-provider: {warn}")
     return lines or None
 
 
@@ -587,13 +594,17 @@ def pytest_collection_modifyitems(config, items):
     )
     skip_openbao = pytest.mark.skip(
         reason=(
-            "OpenBao not configured — source scripts/setup_openbao_for_pytest.sh "
-            "(see docs/vault.md § Install OpenBao)"
+            "OpenBao not configured — run setup_test_env.sh (installs bao) or "
+            "./scripts/install_openbao.sh; pytest auto-starts dev server when binaries exist"
         )
     )
     vault_kmip_ready, vault_kmip_skip_reason = vault_kmip_runtime_ready()
     skip_kmip = pytest.mark.skip(
-        reason=kmip_skip_reason or "--kmip-server-address not provided"
+        reason=(
+            kmip_skip_reason
+            or "KMIP not configured — run setup_test_env.sh (installs cosmian_kms) or "
+            "./scripts/install_cosmian_kms.sh; pytest auto-starts when binary exists"
+        )
     )
     skip_vault_kmip = pytest.mark.skip(
         reason=vault_kmip_skip_reason or "KMIP_VAULT_HOST not set"

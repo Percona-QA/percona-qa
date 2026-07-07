@@ -18,6 +18,7 @@
 #   OLD_INSTALL_DIR   Path to old PG install used as pg_upgrade source
 #   VAULT_ADDR        HashiCorp Vault address (only needed for vault tests)
 #   VAULT_TOKEN       Vault token
+#   PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS=1  Skip auto-start of Cosmian/OpenBao in pytest
 #   PG_MAJOR          Integer major (18, 17)
 #   PG_REPO_LINE      Percona repo line (18.4, 17.10)
 #   SERVER_VERSION    Expected patch after install (optional verify)
@@ -42,6 +43,7 @@ PG_REPO_LINE="${PG_REPO_LINE:-}"
 SERVER_VERSION="${SERVER_VERSION:-}"
 REPO_COMPONENT="${REPO_COMPONENT:-release}"
 COMPONENTS="${COMPONENTS:-server,pg_tde,pg_backrest}"
+SETUP_EXTERNAL_KEY_PROVIDERS=true
 
 # ── parse args ─────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -54,6 +56,8 @@ while [[ $# -gt 0 ]]; do
         --server-version)  SERVER_VERSION="$2";  shift 2 ;;
         --repo-component)  REPO_COMPONENT="$2";  shift 2 ;;
         --components)      COMPONENTS="$2";      shift 2 ;;
+        --setup-external-key-providers) SETUP_EXTERNAL_KEY_PROVIDERS=true; shift 1 ;;
+        --no-setup-external-key-providers) SETUP_EXTERNAL_KEY_PROVIDERS=false; shift 1 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -333,6 +337,51 @@ echo "=== 6. Python dependencies ==="
     "psutil>=5.9"
 ok "Dependencies installed"
 
+# ── 6a. external key providers (Cosmian KMIP + OpenBao) ───────────────────────
+echo ""
+echo "=== 6a. External key providers (Cosmian KMIP + OpenBao) ==="
+
+if [[ "$SETUP_EXTERNAL_KEY_PROVIDERS" == true ]]; then
+  _have_cosmian=false
+  if command -v cosmian_kms >/dev/null 2>&1 || [[ -x /usr/sbin/cosmian_kms ]]; then
+    _have_cosmian=true
+    ok "cosmian_kms already installed"
+  elif [[ -x "${SCRIPT_DIR}/scripts/install_cosmian_kms.sh" ]]; then
+    info "Installing Cosmian KMS (KMIP tests)..."
+    if bash "${SCRIPT_DIR}/scripts/install_cosmian_kms.sh"; then
+      _have_cosmian=true
+      ok "Cosmian KMS installed"
+    else
+      warn "Cosmian KMS install failed — KMIP tests will skip unless KMIP_* is set"
+    fi
+  else
+    warn "scripts/install_cosmian_kms.sh not found"
+  fi
+
+  _have_openbao=false
+  if command -v bao >/dev/null 2>&1; then
+    _have_openbao=true
+    ok "OpenBao (bao) already installed"
+  elif [[ -x "${SCRIPT_DIR}/scripts/install_openbao.sh" ]]; then
+    info "Installing OpenBao (vault/openbao tests)..."
+    if bash "${SCRIPT_DIR}/scripts/install_openbao.sh"; then
+      _have_openbao=true
+      ok "OpenBao installed"
+    else
+      warn "OpenBao install failed — vault/openbao tests will skip unless VAULT_* is set"
+    fi
+  else
+    warn "scripts/install_openbao.sh not found"
+  fi
+
+  if [[ "$_have_cosmian" == true && "$_have_openbao" == true ]]; then
+    info "pytest auto-starts Cosmian KMIP + OpenBao dev server when you run the suite"
+    info "(opt out: PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS=1 or --skip-sections=kmip,vault,openbao)"
+  fi
+else
+  info "Skipping external key provider install (--no-setup-external-key-providers)"
+fi
+
 # ── 7. environment file ────────────────────────────────────────────────────────
 echo ""
 echo "=== 7. Environment file ==="
@@ -345,6 +394,11 @@ export PATH="${INSTALL_DIR}/bin:\$PATH"
 export OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-}"
 export VAULT_ADDR="${VAULT_ADDR:-}"
 export VAULT_TOKEN="${VAULT_TOKEN:-}"
+# Cosmian KMIP + OpenBao: pytest auto-starts local servers when binaries are installed.
+# Manual setup (same shell as pytest): source scripts/setup_cosmian_for_pytest.sh
+#   and/or source scripts/setup_openbao_for_pytest.sh
+# Opt out of auto-start: export PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS=1
+export PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS="${PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS:-}"
 export VIRTUAL_ENV="${VENV_DIR}"
 export PATH="${VENV_DIR}/bin:\$PATH"
 if [[ -f "${VENV_DIR}/bin/activate" ]]; then
@@ -405,4 +459,8 @@ echo "======================================================================"
 echo " Environment ready. Run tests like this:"
 echo ""
 echo "   source ${ENV_FILE}"
+echo "   pytest tests/ -v"
+echo ""
+echo " Cosmian KMIP + OpenBao start automatically when pytest collects"
+echo " vault/kmip/openbao tests (requires cosmian_kms + bao from step 6a)."
 echo "======================================================================"

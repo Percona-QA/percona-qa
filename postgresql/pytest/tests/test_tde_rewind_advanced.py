@@ -3649,7 +3649,7 @@ class TestTdeRewindSysbenchLoop:
           2. Immediate stop the current primary (simulated crash)
           3. Promote the standby
           4. Run sysbench again on the new primary (drives divergence)
-          5. Rewind the old primary against the new primary
+          5. Live-source rewind the old primary against the running new primary
           6. Re-attach the old primary as streaming standby and assert catch-up
           7. Verify a synthetic ``post_promotion`` marker row count matches
              on both nodes.
@@ -3738,8 +3738,9 @@ class TestTdeRewindSysbenchLoop:
                 )
                 _run_sysbench(new_primary, op="run", duration=10)
 
-                # Rewind the old primary against the new primary.
-                result = _run_rewind_pgdata(install_dir, current_primary, new_primary)
+                # Live-source rewind (bash script uses --source-server; target
+                # is stopped, promoted primary keeps running).
+                result = _run_rewind_live(install_dir, current_primary, new_primary)
                 assert result.returncode == 0, (
                     f"Round {label} pg_tde_rewind failed:\n{result.stderr}"
                 )
