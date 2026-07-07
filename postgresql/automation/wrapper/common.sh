@@ -89,14 +89,14 @@ enable_pg_tde() {
 }
 
 get_pg_major_version() {
-    $INSTALL_DIR/bin/postgres --version | awk '{print $3}' | cut -d. -f1
+    $INSTALL_DIR/bin/postgres --version | awk '{sub(/[^0-9].*/, "", $3); print $3}'
 }
 
 # Return the major version from an arbitrary PostgreSQL bin directory.
 # Usage: get_pg_major_version_from_dir /path/to/pgsql/bin
 get_pg_major_version_from_dir() {
     local bin_dir="$1"
-    "$bin_dir/postgres" --version | awk '{print $3}' | cut -d. -f1
+    "$bin_dir/postgres" --version | awk '{sub(/[^0-9].*/, "", $3); print $3}'
 }
 
 # Start a PostgreSQL cluster using a specific binary directory.
