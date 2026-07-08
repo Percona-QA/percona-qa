@@ -11,6 +11,7 @@ All KMIP guides for **pg_tde pytest** live in this folder. Each filename states
 |------------|-----------|
 | Run KMIP tests locally (Cosmian, default CI path) | **[quickstart.md](quickstart.md)** |
 | Set up **Fortanix DSM** and run pytest against it | **[vendor-lab-fortanix.md](vendor-lab-fortanix.md)** |
+| Set up **Thales CipherTrust** KMIP client + certs | **`scripts/setup_ciphertrust_kmip.sh`** |
 | Sign off a vendor KMS after pg_tde / libkmip changes | **[vendor-signoff.md](vendor-signoff.md)** |
 | Understand CI vs vendor-lab testing (why Cosmian in CI) | **[ci-strategy.md](ci-strategy.md)** |
 | Find which pytest file covers which KMIP scenario | **[test-catalog.md](test-catalog.md)** |
