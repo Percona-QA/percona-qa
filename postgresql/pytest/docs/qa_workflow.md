@@ -3,6 +3,7 @@
 > **Audience:** Build team, release management, engineering leadership  
 > **Executive summary:** [qa_workflow_executive_summary.md](qa_workflow_executive_summary.md)  
 > **Test coverage summary:** [qa_test_coverage_executive_summary.md](qa_test_coverage_executive_summary.md)  
+> **Modules by area (no filenames):** [qa_test_modules.md](qa_test_modules.md)  
 > **Platform example:** Ubuntu 26.04 x86_64 (same flow applies to other Linux targets in `package_testing/`)
 
 This document describes the full QA cycle for **Percona PostgreSQL with pg_tde**:

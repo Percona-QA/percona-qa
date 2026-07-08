@@ -1,6 +1,6 @@
 # Test sections (`--skip-sections`)
 
-> **QA workflow overview:** [qa_workflow.md](qa_workflow.md) · [Executive summary](qa_workflow_executive_summary.md) · [Test coverage](qa_test_coverage_executive_summary.md)
+> **QA workflow overview:** [qa_workflow.md](qa_workflow.md) · [Executive summary](qa_workflow_executive_summary.md) · [Test coverage](qa_test_coverage_executive_summary.md) · [Modules by area](qa_test_modules.md)
 
 Skip whole feature areas when a release or environment does not support them
 (e.g. no `pg_rewind` in the package). This is **explicit and user-controlled**;
