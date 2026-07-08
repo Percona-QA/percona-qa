@@ -293,8 +293,7 @@ ensure_pytest_env() {
         bash "${SCRIPT_DIR}/setup_test_env.sh" \
             --pg-major "${PG_MAJOR}" \
             --pg-repo-line "${PG_REPO_LINE}" \
-            --repo-component "${OLD_REPO_COMPONENT}" \
-            || bash "${SCRIPT_DIR}/setup_test_env.sh"
+            --repo-component "${OLD_REPO_COMPONENT}"
     fi
 }
 

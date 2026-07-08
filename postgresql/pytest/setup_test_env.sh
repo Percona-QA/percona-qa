@@ -1,29 +1,7 @@
 #!/usr/bin/env bash
 # setup_test_env.sh — Prepare the pytest environment for percona-pg-automation tests.
 #
-# Usage:
-#   bash setup_test_env.sh [--install-dir /path/to/pg] [--old-install-dir /path/to/old/pg] 
-#                          [--install-pkgs] [--pg-major 18] [--pg-repo-line 18.4]
-#                          [--server-version 18.4.1] [--repo-component testing]
-#                          [--components server,pg_tde,pg_backrest]
-#
-# Version terminology (keep these separate):
-#   PG_MAJOR       Integer PostgreSQL major (18, 17) — package names, install paths
-#   PG_REPO_LINE   Percona repo line (18.4, 17.10) → percona-release ppg-18.4
-#   SERVER_VERSION Patch level (18.4.1) — postgres --version; on apt the repo tier
-#                  selects the patch (release=18.4.1, testing=18.4.2, …)
-#
-# Environment variables (override auto-detection):
-#   INSTALL_DIR       Path to the Percona PostgreSQL install (e.g. /usr/lib/postgresql/18)
-#   OLD_INSTALL_DIR   Path to old PG install used as pg_upgrade source
-#   VAULT_ADDR        HashiCorp Vault address (only needed for vault tests)
-#   VAULT_TOKEN       Vault token
-#   PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS=1  Skip auto-start of Cosmian/OpenBao in pytest
-#   PG_MAJOR          Integer major (18, 17)
-#   PG_REPO_LINE      Percona repo line (18.4, 17.10)
-#   SERVER_VERSION    Expected patch after install (optional verify)
-#   REPO_COMPONENT    Percona repo tier: release, testing, or experimental (default: release)
-#   COMPONENTS        Comma-separated list of components to install (default: server,pg_tde,pg_backrest)
+# Run with no arguments or --help to print usage.
 
 set -euo pipefail
 
@@ -45,7 +23,54 @@ REPO_COMPONENT="${REPO_COMPONENT:-release}"
 COMPONENTS="${COMPONENTS:-server,pg_tde,pg_backrest}"
 SETUP_EXTERNAL_KEY_PROVIDERS=true
 
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Prepare the pytest environment for percona-pg-automation tests:
+detect PostgreSQL, create a Python venv, install dependencies, optional
+Percona packages, and Cosmian KMIP + OpenBao for vault/kmip tests.
+
+Version terminology (keep these separate):
+  PG_MAJOR       Integer PostgreSQL major (${PG_MAJOR}) — package names, install paths
+  PG_REPO_LINE   Percona repo line (${PG_REPO_LINE:-<auto>}) → percona-release ppg-X.Y
+  SERVER_VERSION Patch level — postgres --version; on apt the repo tier selects
+                 the patch (release=18.4.1, testing=18.4.2, …)
+
+Options:
+  --install-dir PATH          PostgreSQL install root (e.g. /usr/lib/postgresql/18)
+  --old-install-dir PATH      Old PG install for pg_upgrade tests
+  --install-pkgs              Install Percona packages from configured repository
+  --pg-major N                Integer major version (default: ${PG_MAJOR})
+  --pg-repo-line X.Y          Percona repo line (default: same as --pg-major)
+  --server-version X.Y.Z      Expected patch after install (verified with --install-pkgs)
+  --repo-component TIER       Percona repo tier: release, testing, experimental
+                              (default: ${REPO_COMPONENT})
+  --components LIST           Comma-separated: server, pg_tde, pg_backrest
+                              (default: ${COMPONENTS})
+  --setup-external-key-providers     Install Cosmian KMS + OpenBao (default)
+  --no-setup-external-key-providers  Skip Cosmian/OpenBao install
+  -h, --help                  Show this help and exit
+
+Environment variables (override auto-detection):
+  INSTALL_DIR, OLD_INSTALL_DIR, VAULT_ADDR, VAULT_TOKEN
+  PG_MAJOR, PG_REPO_LINE, SERVER_VERSION, REPO_COMPONENT, COMPONENTS
+  PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS=1  Skip auto-start of Cosmian/OpenBao in pytest
+
+Examples:
+  bash $(basename "$0") --install-pkgs --pg-major 18 --pg-repo-line 18.4
+  bash $(basename "$0") --install-dir /usr/lib/postgresql/18
+  bash $(basename "$0") --install-pkgs --repo-component testing --server-version 18.4.2
+  bash $(basename "$0") --no-setup-external-key-providers
+EOF
+}
+
 # ── parse args ─────────────────────────────────────────────────────────────────
+if [[ $# -eq 0 ]]; then
+    usage
+    exit 0
+fi
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --install-dir)     INSTALL_DIR="$2";     shift 2 ;;
@@ -58,7 +83,8 @@ while [[ $# -gt 0 ]]; do
         --components)      COMPONENTS="$2";      shift 2 ;;
         --setup-external-key-providers) SETUP_EXTERNAL_KEY_PROVIDERS=true; shift 1 ;;
         --no-setup-external-key-providers) SETUP_EXTERNAL_KEY_PROVIDERS=false; shift 1 ;;
-        *) echo "Unknown option: $1"; exit 1 ;;
+        -h|--help)         usage; exit 0 ;;
+        *) fail "Unknown option: $1 (try --help)" ;;
     esac
 done
 

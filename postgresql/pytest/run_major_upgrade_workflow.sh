@@ -397,8 +397,7 @@ ensure_pytest_env() {
         bash "${SCRIPT_DIR}/setup_test_env.sh" \
             --pg-major "${NEW_PG_MAJOR_INT}" \
             --pg-repo-line "${NEW_PG_REPO_LINE}" \
-            --repo-component "${NEW_REPO_COMPONENT}" \
-            || bash "${SCRIPT_DIR}/setup_test_env.sh"
+            --repo-component "${NEW_REPO_COMPONENT}"
     fi
 }
 
