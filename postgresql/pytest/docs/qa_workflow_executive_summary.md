@@ -1,6 +1,7 @@
 # pg_tde QA — Executive Summary (slide deck)
 
 > Full workflow: [qa_workflow.md](qa_workflow.md)  
+> Test coverage: [qa_test_coverage_executive_summary.md](qa_test_coverage_executive_summary.md)  
 > Use this document for management briefings. Each section = one slide.
 
 ---
