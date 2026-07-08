@@ -2,7 +2,7 @@
 
 > **Audience:** Management, build/release, onboarding QA  
 > **Full catalog:** [coverage_reports/test_catalog_2026-05-14.md](../coverage_reports/test_catalog_2026-05-14.md) (per-test detail)  
-> **QA workflow:** [qa_workflow.md](qa_workflow.md)
+> **QA workflow:** [qa_workflow.md](qa_workflow.md) · **Modules by area:** [qa_test_modules.md](qa_test_modules.md)
 
 ---
 
