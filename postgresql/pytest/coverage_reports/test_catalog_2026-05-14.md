@@ -573,10 +573,21 @@ copy across tablespaces can't decrypt).
 
 ### 3.6 `TestChecksums` (2 tests)
 
+**Note:** These tests pin the **default pytest harness** (`tde_primary`, most
+modules): clusters are still created with `initdb_args_no_data_checksums()`
+(`--no-data-checksums` on PG 18+). That is **not** the same as the
+**PG-2399** `pg_tde_checksums` path in §10.1, which uses `initdb -k`
+(checksums **on**) and validates encrypted pages after decrypt.
+
 | # | Test | Purpose |
 |---|---|---|
-| 3.6.1 | `test_tde_requires_checksums_disabled` | TDE is documented as incompatible with `data_checksums`. On PG18+ initdb defaults checksums on, so we must pass `--no-data-checksums`. Test asserts cluster came up with checksums off. |
-| 3.6.2 | `test_no_checksums_with_tde` | `SHOW data_checksums` returns `'off'` on `tde_primary`. |
+| 3.6.1 | `test_tde_requires_checksums_disabled` | Default TDE test clusters disable `data_checksums` at initdb (PG 18+ needs `--no-data-checksums`; PG 17− checksums are off by default). After encrypted DML, asserts `SHOW data_checksums` is `off`. |
+| 3.6.2 | `test_no_checksums_with_tde` | Same initdb policy on a fresh cluster; encrypted table DML succeeds with checksums off. |
+
+**PG-2399 / `pg_tde_checksums`:** With checksums enabled (`initdb -k`), TDE
+clusters work and `pg_tde_checksums` behaves like `pg_checksums` on plain
+heap and **decrypts** `tde_heap` pages before validating page checksums — see
+§10.1. The “skip encrypted pages” behaviour was removed.
 
 ### 3.7 `TestDynamicEncryptionState` (3 tests)
 
@@ -806,22 +817,23 @@ Direct CLI coverage for `pg_tde_checksums`, `pg_tde_resetwal`,
 
 ### 10.1 `TestPgTdeChecksumsCLI` (8 tests)
 
-`pg_tde_checksums` is the TDE-aware counterpart to `pg_checksums`: it
-**skips** encrypted pages (because encrypted page bytes don't satisfy
-PG's standard CRC) but validates plain-heap pages normally. Full parity
-with ``automation/tests/pg_tde_checksums_test.sh`` (initdb ``-k``, ``io_method``,
-pre-extension smoke, combined ``tde_heap`` + ``heap`` verify, corruption matrix).
+Since **PG-2399**, `pg_tde_checksums` is the TDE-aware counterpart to
+`pg_checksums`: for `tde_heap` it **decrypts** each page, then validates (or
+enables) the standard PostgreSQL page checksum; plain `heap` pages use the
+normal algorithm unchanged. Encrypted-page corruption is **detected**, not
+skipped. Tests use `initdb -k` (checksums **on**) via `_build_tde_cluster_with_checksums`
+— parity with `pg_tde_checksums_test.sh` and `pg_tde/t/pg_tde_checksums.pl`.
 
 | # | Test | Purpose |
 |---|---|---|
 | 10.1.1 | `test_binary_exists` | Binary present in install. |
-| 10.1.2 | `test_fresh_initdb_pg_checksums_before_extension` | Bash step 2: ``pg_checksums -c`` on stopped PGDATA before ``CREATE EXTENSION``. |
-| 10.1.3 | `test_fresh_initdb_pg_tde_checksums_before_extension` | Bash step 3: ``pg_tde_checksums -c`` on same pre-extension PGDATA. |
-| 10.1.4 | `test_verify_encrypted_and_plain_tables_before_corruption` | Bash step 7: both ``test`` (``tde_heap``) and ``test1`` (``heap``) pass verify. |
-| 10.1.5 | `test_clean_tde_cluster_passes` | A freshly populated TDE cluster verifies clean. |
-| 10.1.6 | `test_ignores_corruption_on_encrypted_relation` | Corrupt ``tde_heap`` page → ``pg_tde_checksums`` exits 0 (optional ``pg_checksums`` contrast). |
-| 10.1.7 | `test_detects_corruption_on_plain_heap_relation` | Corrupt plain ``heap`` page → non-zero exit + failure message. |
-| 10.1.8 | `test_passes_with_wal_encryption_disabled` | Tool operates on relation files in `base/...`, not WAL — must work regardless of `wal_encrypt` setting. |
+| 10.1.2 | `test_fresh_initdb_pg_checksums_before_extension` | Bash step 2: `pg_checksums -c` on stopped PGDATA before `CREATE EXTENSION`. |
+| 10.1.3 | `test_fresh_initdb_pg_tde_checksums_before_extension` | Bash step 3: `pg_tde_checksums -c` on same pre-extension PGDATA. |
+| 10.1.4 | `test_verify_encrypted_and_plain_tables_before_corruption` | Bash step 7: both `test` (`tde_heap`) and `test1` (`heap`) pass verify. |
+| 10.1.5 | `test_clean_tde_cluster_passes` | Fresh checksum-enabled TDE cluster passes verify. |
+| 10.1.6 | `test_detects_corruption_on_encrypted_relation` | Corrupt `tde_heap` page → `pg_tde_checksums -c` exits non-zero (PG-2399). |
+| 10.1.7 | `test_detects_corruption_on_plain_heap_relation` | Corrupt plain `heap` page → non-zero exit + checksum failure message. |
+| 10.1.8 | `test_passes_with_wal_encryption_disabled` | Verify works on relation files regardless of `wal_encrypt` setting. |
 
 ### 10.2 `TestPgTdeResetWal` (3 tests)
 
