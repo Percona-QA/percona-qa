@@ -5,16 +5,18 @@
 > regression it guards against.
 >
 > **Scope**: **501** tests across **26** test modules. Tests are listed in the
-> order they appear in the source files. Each test is documented with:
+> order they appear in the source files. **§18–24** document **Cosmian KMIP**
+> and **OpenBao** external key-provider tests only (other KMS vendor labs are
+> covered in `docs/kmip/test-catalog.md`). Each test is documented with:
 >
 > * **Purpose** — one-line statement of what's under test.
 > * **Flow** — the operative steps the test takes.
 > * **Asserts / catches** — what proves pass/fail and what regression
 >   it would catch.
 >
-> Last refreshed: 2026-05-19 (§11, §17, §18–24 — see
-> [`coverage_2026-05-19.md`](coverage_2026-05-19.md) and
-> [`coverage_2026-05-19-external-key-providers.md`](coverage_2026-05-19-external-key-providers.md)).
+> Last refreshed: 2026-07-09 (§18–24 — Cosmian KMIP + OpenBao; see also
+> [`coverage_2026-05-19-external-key-providers.md`](coverage_2026-05-19-external-key-providers.md)
+> and [`docs/kmip/test-catalog.md`](../docs/kmip/test-catalog.md)).
 
 ---
 
@@ -40,13 +42,13 @@
 | 15 | `test_upgrade.py` | 47 | **`pg_upgrade`** major bump (heap + TDE via new PGDATA) — not 18.3→18.4 in-place |
 | 16 | `test_waldump.py` | 33 | `pg_tde_waldump` |
 | 17 | `test_pdg_migration.py` | **10** | Percona Distribution migration doc (same/different server) |
-| 18 | `test_kmip.py` | **10** | KMIP provider smoke, bash parity, offline CLI, PR #595 negatives |
-| 19 | `test_kmip_server_revalidation.py` | **1×N** | Post–libkmip revalidation per `KMIP_REVALIDATE_PROFILES` |
-| 20 | `test_vault_providers.py` | **10** | Vault KV v2 + OpenBao scenarios 1–3 |
-| 21 | `test_vault_hashicorp_parity.py` | **2** | HashiCorp mount-metadata + `change_database_key_provider_vault_v2` |
-| 22 | `test_openbao_bash_parity.py` | **8** | `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 |
-| 23 | `test_external_key_provider_regressions.py` | **7** | PG-2125 KMIP lifecycle; PG-1959 namespace; OpenBao s11 |
-| 24 | `test_vault_kmip.py` | **2** | Vault KMIP engine customer regression (`register symmetric key: -2`) |
+| 18 | `test_kmip_common_matrix.py` | **9** | Cosmian KMIP — shared matrix (Layer B) |
+| 19 | `test_kmip_server_revalidation.py` | **1** | Cosmian KMIP — revalidation checklist (Layer A) |
+| 20 | `test_kmip.py` | **24** | Cosmian KMIP — extended suite (bash parity, WAL, negatives) |
+| 21 | `test_external_key_provider_regressions.py` | **4 + 3** | PG-2125 KMIP lifecycle; OpenBao PG-1959 + scenario 11 |
+| 22 | `test_vault_kv_common_matrix.py` | **3** | OpenBao KV v2 — shared vault matrix |
+| 23 | `test_vault_providers.py` (`TestOpenBaoKeyProvider`) | **3** | OpenBao scenarios 1–3 |
+| 24 | `test_openbao_bash_parity.py` | **8** | OpenBao scenarios 4–10, 12 (`pg_tde_open_bao_tests.sh`) |
 
 **Conventions used in this document**
 
@@ -1350,86 +1352,224 @@ custom rmgr ID 140 at postmaster startup; server log contains both
 
 ---
 
-## 18. `test_kmip.py` (10 tests)
+## 18. `test_kmip_common_matrix.py` (9 tests) — Cosmian KMIP, Layer B
 
-Cosmian KMS via `scripts/setup_cosmian_for_pytest.sh` (or `KMIP_*` from a vendor lab).
+**Purpose:** Shared KMIP regression run against the default **Cosmian** profile
+(`KMIP_PROFILE=cosmian`). Same nine scenarios are parametrized for other KMS
+profiles in CI/lab sign-off; this catalog documents the Cosmian path only.
 
-| Class / test | Purpose |
+**Run:** `source scripts/setup_cosmian_for_pytest.sh && ./scripts/run_kmip_matrix.sh`
+
+**Implementation:** `lib/kmip_common_matrix.py` · Markers: `kmip`, `kmip_matrix`
+
+### `TestKmipCommonMatrix` (3 tests)
+
+| Test | Purpose |
 |---|---|
-| `TestKmipKeyProvider` | Add global KMIP provider, `create_key`, DML, restart, rotate |
-| `test_kmip_bash_parity_*` | Mirrors slices of `pg_tde_functions_test.sh` KMIP paths |
-| `test_change_kmip_provider_connection_offline` | Offline CLI updates KMIP connection only (keys already on KMS) |
-| `test_kmip_repeated_create_key_is_idempotent` | Duplicate `create_key` after principal set |
-| PR #595 negatives | Invalid host/port, missing provider |
+| `test_global_smoke_restart` | Add global KMIP provider → set principal key → `tde_heap` (120 rows) → restart → row count |
+| `test_key_rotation` | Rotate principal key on same provider → restart → encrypted data readable |
+| `test_multi_db_file_and_kmip` | `db1` file principal key; `db2` KMIP principal key; both survive restart |
 
-Runbook: `docs/kmip.md`.
+### `TestKmipChangeKeyProviderSql` (6 tests)
 
----
-
-## 19. `test_kmip_server_revalidation.py` (1 test × profiles)
-
-`test_kmip_revalidation_checklist[parametrize]` runs `lib/kmip_revalidation.py` checklist per profile in `KMIP_REVALIDATE_PROFILES` (default `cosmian`). Marker: `kmip_revalidation`.
-
-Runbook: `docs/kmip_revalidation.md`, `./scripts/run_kmip_revalidation.sh`.
-
----
-
-## 20. `test_vault_providers.py` (10 tests)
-
-HashiCorp Vault KV v2 and OpenBao scenarios 1–3 from `pg_tde_open_bao_tests.sh`. Requires `scripts/setup_vault_for_pytest.sh` and/or `setup_openbao_for_pytest.sh`.
-
-| Class | Theme |
+| Test | Purpose |
 |---|---|
-| `TestHashicorpVaultKeyProvider` | Global vault provider, server key, encrypted tables |
-| `TestOpenBaoKeyProvider` | Namespaced mounts, DB-scoped vs global providers (s1–3) |
+| `test_change_database_kmip_provider_updates_options` | `pg_tde_change_database_key_provider_kmip` updates catalog `options` |
+| `test_change_global_kmip_provider_updates_options` | `pg_tde_change_global_key_provider_kmip` updates global catalog entry |
+| `test_change_database_kmip_provider_while_in_use_keeps_data_readable` | Online reconfig with 50 encrypted rows → `pg_tde_verify_key` → restart |
+| `test_change_global_kmip_provider_while_in_use_keeps_data_readable` | Global provider change with active server key → verify after restart |
+| `test_change_nonexistent_database_kmip_provider_fails` | Unknown DB provider name → error |
+| `test_change_nonexistent_global_kmip_provider_fails` | Unknown global provider name → error |
 
 ---
 
-## 21. `test_vault_hashicorp_parity.py` (2 tests)
+## 19. `test_kmip_server_revalidation.py` (1 test) — Cosmian KMIP, Layer A
 
-Ports `pg_tde_hashicorp_vault_mount_permission_warning_test.sh` and `pg_tde_change_database_key_provider_vault_v2.sh`.
+**Purpose:** Integrated post–PR #595 / PG-2125 checklist on **Cosmian** (default
+`KMIP_REVALIDATE_PROFILES=cosmian`). One parametrized test runs all seven steps
+in sequence on a single cluster.
 
-| Test | Bash source |
+| Test | Checklist (`lib/kmip_revalidation.py`) |
 |---|---|
-| `test_hashicorp_kv_only_token_without_mount_metadata` | KV-only token; no `sys/mounts` read |
-| `test_change_database_key_provider_vault_v2_after_kv_reseed` | `vault kv` export/delete/import + online `pg_tde_change_database_key_provider_vault_v2` |
+| `test_kmip_revalidation_checklist` | 1. `add_global_key_provider_kmip` (TLS validate) → 2. register principal key → 3. encrypted DML (100 rows) → 4. read after restart → 5. rotate key + INSERT → 6. second restart → 7. database-scope KMIP provider + DML + restart |
+
+**Run:** `KMIP_MATRIX_SUITE=checklist ./scripts/run_kmip_matrix.sh` or
+`./scripts/run_kmip_revalidation.sh`
+
+Marker: `kmip_revalidation` · Runbook: `docs/kmip/vendor-signoff.md`
 
 ---
 
-## 22. `test_openbao_bash_parity.py` (8 tests)
+## 20. `test_kmip.py` (24 tests) — Cosmian KMIP extended suite
 
-OpenBao scenarios 4–10 and 12 from `pg_tde_open_bao_tests.sh`. Often needs KMIP + file providers in addition to OpenBao.
+**Purpose:** Cosmian-first advanced coverage — bash/TAP parity, delete provider,
+offline CLI, rotation churn, mixed topologies, WAL, negatives. Uses single
+`kmip_config` fixture (Cosmian after `setup_cosmian_for_pytest.sh`).
 
-| Test | Scenario |
+**Run:** `pytest tests/test_kmip.py -v` · Markers: `kmip`, `encryption`
+
+### `TestKmipKeyProviderBasics` (2 tests)
+
+| Test | Purpose |
 |---|---|
-| `test_openbao_scenario4_multi_provider_single_database` | 4 |
-| `test_openbao_scenario5_global_file_provider_change` | 5 |
-| `test_openbao_scenario6_local_and_global_vault_providers` | 6 |
-| `test_openbao_scenario7_default_key_rotation` | 7 |
-| `test_openbao_scenario8_dump_restore_provider_migration` | 8 (`slow`) |
-| `test_openbao_scenario9_default_and_local_keys` | 9 |
-| `test_openbao_scenario10_delete_global_with_active_db_key` | 10 |
-| `test_openbao_scenario12_delete_unused_global_provider` | 12 |
+| `test_kmip_global_provider_register_locate_get_after_restart` | Global provider + principal key + 200-row table; restart; REGISTER/LOCATE/GET path |
+| `test_kmip_key_rotation_register_second_key` | Second key name on same provider (another REGISTER) |
 
-Scenario 11: `test_vault_delete_provider_after_server_key_on_file` in §23.
+### `TestKmipBashParityScenarios` (3 tests)
 
----
+| Test | Bash / TAP source | Purpose |
+|---|---|---|
+| `test_multiple_databases_file_and_kmip_providers` | functions_test s2, `t/066` | `db1` file key; `db2` KMIP key; restart |
+| `test_kmip_global_default_principal_key_two_databases` | functions_test s3 | Global default KMIP key; per-DB local file key |
+| `test_kmip_database_scoped_provider` | functions_test s4 | Database-local KMIP provider on `sbtest2` |
 
-## 23. `test_external_key_provider_regressions.py` (7 tests)
+### `TestKmipDeleteKeyProvider` (2 tests)
 
-| Class | Jira / theme |
+| Test | Purpose |
 |---|---|
-| `TestKmipCppClientRegression` | PG-2125 / PR #595 — lifecycle, offline change, idempotent create |
-| `TestVaultOpenBaoNamespaceRegression` | PG-1959 — namespace + kv-only token (OpenBao mount warning bash) |
-| `test_vault_delete_provider_after_server_key_on_file` | OpenBao scenario 11 |
+| `test_delete_unused_kmip_global_provider` | Delete global KMIP provider not in use |
+| `test_delete_kmip_global_provider_in_use_fails` | Delete fails when principal key still uses provider |
+
+### `TestKmipChangeKeyProviderCLI` (1 test)
+
+| Test | Purpose |
+|---|---|
+| `test_change_kmip_provider_connection_offline` | Offline `pg_tde_change_key_provider … kmip …` updates connection only; data readable after restart |
+
+### `TestKmipLibkmipClientPr595` (2 tests)
+
+| Test | Purpose |
+|---|---|
+| `test_kmip_invalid_server_host_rejected_on_add_provider` | Bad host → clear KMIP/connect error |
+| `test_kmip_build_links_cpp_kmipclient` | `ldd pg_tde.so` shows C++ runtime (PR #595 build) |
+
+### `TestKmipKeyRotationChurn` (2 tests)
+
+| Test | Purpose |
+|---|---|
+| `test_four_rotations_all_generations_readable` | 4 principal-key rotations; interleaved restarts |
+| `test_default_key_rotation_file_then_kmip_chain` | Default key: file → KMIP provider A → KMIP provider B |
+
+### `TestKmipMultiDatabaseIsolation` (2 tests)
+
+| Test | Purpose |
+|---|---|
+| `test_three_databases_distinct_kmip_principal_keys` | Three DBs, three distinct KMIP principal keys on one global provider |
+| `test_new_database_inherits_kmip_global_default_key` | New DB uses global default KMIP key without per-DB setup |
+
+### `TestKmipMixedProviderTopology` (2 tests)
+
+| Test | Purpose |
+|---|---|
+| `test_global_kmip_table_and_database_file_table` | Global KMIP for server; database file provider for local table |
+| `test_global_kmip_plus_database_scoped_kmip_on_second_db` | Global KMIP + per-database KMIP on second DB |
+
+### `TestKmipStorageCornerCases` (2 tests)
+
+| Test | Purpose |
+|---|---|
+| `test_partitioned_table_readable_after_kmip_rotation` | Partitioned `tde_heap` survives KMIP key rotation |
+| `test_toast_wide_row_survives_triple_kmip_rotation` | Wide TOAST rows (9 KB) survive 3 KMIP rotations + restart |
+
+### `TestKmipWalAndServerKey` (1 test)
+
+| Test | Purpose |
+|---|---|
+| `test_wal_encryption_triple_restart_with_bulk_dml` | WAL encryption on; 3000 rows; 3 restart/checkpoint cycles |
+
+### `TestKmipFailureAndCornerCases` (4 tests)
+
+| Test | Purpose |
+|---|---|
+| `test_cannot_add_duplicate_global_kmip_provider_name` | Duplicate global provider name → error |
+| `test_delete_database_kmip_provider_in_use_fails` | Delete in-use database KMIP provider → error |
+| `test_read_fails_after_kmip_server_loses_all_keys` | Fresh Cosmian with no keys → read fails (`@pytest.mark.cosmian`) |
+| `test_non_tls_tcp_endpoint_rejected_on_add_provider` | Plain TCP (no TLS) → SSL/handshake error |
+
+### `TestKmipDumpRestore` (1 test, `@pytest.mark.slow`)
+
+| Test | Purpose |
+|---|---|
+| `test_pg_dump_table_into_second_db_with_new_kmip_key` | `pg_dump` encrypted table → restore into second DB with different KMIP principal key |
 
 ---
 
-## 24. `test_vault_kmip.py` (2 tests)
+## 21. `test_external_key_provider_regressions.py` — Cosmian KMIP + OpenBao (7 tests)
 
-HashiCorp Vault **KMIP engine** (not KV v2). Customer repro: `register symmetric key: -2`. Marker `vault_kmip`. May be `xfail` unless `VAULT_KMIP_REQUIRE_REGISTER_SUCCESS=1`.
+### `TestKmipCppClientRegression` (4 tests) — Cosmian / PG-2125
 
-Runbook: `docs/vault_kmip.md`, `scripts/setup_vault_kmip_for_pytest.sh`.
+| Test | Purpose |
+|---|---|
+| `test_kmip_full_lifecycle_multiple_restarts` | 500 rows → rotate → 2 restarts → tail row readable |
+| `test_kmip_repeated_create_key_is_idempotent` | Re-run `create_key` for same name must not break provider |
+| `test_kmip_wal_encryption_with_server_key` | WAL encryption + 2000 rows + restart |
+| `test_kmip_requires_cpp_kmipclient_build` | `xfail` if `pg_tde.so` lacks C++ link (pre-595 package) |
+
+**Run:** `pytest tests/test_external_key_provider_regressions.py::TestKmipCppClientRegression -v`
+
+### `TestVaultOpenBaoNamespaceRegression` (2 tests) — OpenBao / PG-1959
+
+| Test | Purpose |
+|---|---|
+| `test_vault_namespace_provider_roundtrip_after_restart` | Namespaced global Vault provider + encrypted DML survives restart |
+| `test_vault_kv_only_token_without_mount_metadata` | Port of `pg_tde_openbao_vault_mount_permission_warning_test.sh` — KV-only token without `sys/mounts` |
+
+### OpenBao scenario 11 (1 test)
+
+| Test | Purpose |
+|---|---|
+| `test_vault_delete_provider_after_server_key_on_file` | Delete global Vault provider after server key moved to file provider |
+
+---
+
+## 22. `test_vault_kv_common_matrix.py` (3 tests) — OpenBao KV v2
+
+**Purpose:** Shared Vault KV v2 matrix parametrized by profile. For OpenBao use
+`VAULT_KV_PROFILES=openbao` after `source scripts/setup_openbao_for_pytest.sh`.
+
+**Run:** `./scripts/run_vault_kv_matrix.sh` · **Implementation:** `lib/vault_kv_common_matrix.py`
+
+| Test | Purpose |
+|---|---|
+| `test_global_smoke_restart` | `pg_tde_add_global_key_provider_vault_v2` → principal key → 80 encrypted rows → restart |
+| `test_key_rotation` | Rotate principal key → restart → data readable |
+| `test_database_scoped_provider` | Per-database Vault provider + encrypted table + restart |
+
+---
+
+## 23. `test_vault_providers.py` — `TestOpenBaoKeyProvider` (3 tests)
+
+**Purpose:** OpenBao scenarios 1–3 from `pg_tde_open_bao_tests.sh`. Requires
+`scripts/setup_openbao_for_pytest.sh` (namespace `pg_tde_ns1/`, mount `pg_tde`).
+Scenarios 2–3 also need Cosmian KMIP (`kmip_config` fixture).
+
+| Test | Bash scenario | Purpose |
+|---|---|---|
+| `test_openbao_database_provider_outside_db_catalog_scope` | 1 | DB-scoped Vault provider on `db1`; DML + restart |
+| `test_openbao_global_vault_multi_db_with_kmip_and_file` | 2 | `db1` Vault, `db2` KMIP, `db3` file; all readable after restart |
+| `test_openbao_local_db_vault_and_global_kmip_default` | 3 | DB Vault provider + global KMIP default key |
+
+---
+
+## 24. `test_openbao_bash_parity.py` (8 tests)
+
+**Purpose:** OpenBao scenarios 4–10 and 12 from `pg_tde_open_bao_tests.sh`.
+Requires OpenBao **and** Cosmian KMIP for most scenarios.
+
+**Run:** `source scripts/setup_openbao_for_pytest.sh && ./scripts/run_openbao_revalidation.sh`
+
+| Test | Scenario | Purpose |
+|---|---|---|
+| `test_openbao_scenario4_multi_provider_single_database` | 4 | One DB: Vault + KMIP + file providers together |
+| `test_openbao_scenario5_global_file_provider_change` | 5 | `change_global_key_provider_file` with KMIP present |
+| `test_openbao_scenario6_local_and_global_vault_providers` | 6 | Global KMIP table + DB-scoped Vault table |
+| `test_openbao_scenario7_default_key_rotation` | 7 | Default key rotation: Vault → KMIP → file |
+| `test_openbao_scenario8_dump_restore_provider_migration` | 8 (`slow`) | `pg_dump` restore + add KMIP DB provider on restored DB |
+| `test_openbao_scenario9_default_and_local_keys` | 9 | Default + local keys; delete provider/key |
+| `test_openbao_scenario10_delete_global_with_active_db_key` | 10 | Global Vault key bound on DB → delete must fail |
+| `test_openbao_scenario12_delete_unused_global_provider` | 12 | Delete unused global Vault provider |
+
+Scenario 11: `test_vault_delete_provider_after_server_key_on_file` in §21.
 
 ---
 
@@ -1442,9 +1582,9 @@ without requiring everything to be installed:
 | Skip condition | Affects |
 |---|---|
 | `--old-install-dir` not provided | All of `test_upgrade.py`, `test_tde_pg_upgrade.py` |
-| `KMIP_*` / `VAULT_*` / `OPENBAO_*` unset | `@pytest.mark.kmip`, `vault`, `openbao`, `vault_kmip`, `kmip_revalidation` modules; use `scripts/setup_*_for_pytest.sh` |
+| `KMIP_*` unset / Cosmian not running | §18–20, §21 KMIP regressions; use `scripts/setup_cosmian_for_pytest.sh` |
+| `VAULT_*` / OpenBao not reachable | §21–24 OpenBao tests; use `scripts/setup_openbao_for_pytest.sh` |
 | `--skip-sections=kmip,vault` | Skips entire external-key-provider sections via `lib/test_sections.py` |
-| Vault / OpenBao not reachable | Same as above; legacy bash scripts now have pytest ports in §18–24 |
 | `pg_tde_*` binary missing in install | Individual CLI tests in `test_tde_cli_tools.py`, `test_change_key_provider.py`, `test_waldump.py`, `test_pg_basebackup.py::TestPgTdeBaseBackupWalEncryption` |
 | `pg_tde_function_exists(...)` returns false | `TestTdeVerifyDeleteKeyApis` (verify/delete APIs may be missing on older builds) |
 | `cluster.major_version < 15` | `STRATEGY = wal_log` / `file_copy` tests in `test_template_databases.py` |
