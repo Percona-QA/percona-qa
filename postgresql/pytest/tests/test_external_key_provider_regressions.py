@@ -9,11 +9,16 @@ Regression tests for external key providers (KMIP + Vault/OpenBao).
   **namespace** support ([PR #442](https://github.com/percona/pg_tde/pull/442))
   and namespaced mount-path parsing ([PR #492](https://github.com/percona/pg_tde/pull/492)).
 
+* Empty / invalid provider options for **KMIP and Vault/OpenBao** must return
+  a SQL error; the backend must not crash. Broader KMIP matrix:
+  ``tests/test_kmip.py::TestKmipFailureAndCornerCases``.
+
 Prerequisites: KMIP + OpenBao setup scripts (see ``docs/kmip/README.md``, ``docs/vault.md``).
 """
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -66,6 +71,55 @@ def _add_global_vault(
 
 def _assert_postgres_alive(cluster: PgCluster) -> None:
     assert cluster.is_ready(), "PostgreSQL backend died (KMIP/Vault regression)"
+
+
+def _assert_add_rejects_without_crash(
+    cluster: PgCluster,
+    sql: str,
+    *,
+    expect_fail: bool = True,
+) -> str:
+    """
+    Run provider-add SQL and assert the backend stays alive.
+
+    When ``expect_fail`` is True, the call must return a SQL error (validation /
+    connect failure) rather than succeed.
+    """
+    result = cluster.execute_allow_error(sql)
+    err = f"{result.stderr or ''}{result.stdout or ''}"
+    lower = err.lower()
+
+    _assert_postgres_alive(cluster)
+    assert "server closed the connection" not in lower, (
+        f"backend crashed on provider add:\nSQL: {sql}\nERR: {err}"
+    )
+    assert "connection to the server was lost" not in lower, (
+        f"backend crashed on provider add:\nSQL: {sql}\nERR: {err}"
+    )
+    if expect_fail:
+        assert result.returncode != 0, (
+            f"expected validation/connect error, got success:\nSQL: {sql}\n{err}"
+        )
+    assert cluster.fetchone("SELECT 1") == "1"
+    return err
+
+
+def _vault_add_fn(tde: TdeManager, *, scope: str) -> str:
+    if scope == "global":
+        fn = tde._first_func([
+            "pg_tde_add_global_key_provider_vault_v2",
+            "pg_tde_add_global_key_provider_vault",
+            "pg_tde_add_key_provider_vault_v2",
+            "pg_tde_add_key_provider_vault",
+        ])
+    else:
+        fn = tde._first_func([
+            "pg_tde_add_database_key_provider_vault_v2",
+            "pg_tde_add_database_key_provider_vault",
+        ])
+    if fn is None:
+        pytest.skip(f"pg_tde add_{scope}_key_provider_vault* not in this build")
+    return fn
 
 
 @pytest.mark.kmip
@@ -167,6 +221,159 @@ class TestKmipCppClientRegression:
             pytest.xfail(
                 "PG-2125 fix (PR #595) not present: pg_tde.so lacks C++ kmipclient"
             )
+
+
+@pytest.mark.kmip
+class TestKmipEmptyCertificateParamsRegression:
+    """
+    Empty certificate-path arguments to ``pg_tde_add_*_key_provider_kmip`` must
+    produce a SQL error; the backend must stay alive.
+
+    Same class of bug also affects Vault/OpenBao (see
+    ``TestVaultEmptyProviderParamsRegression``).
+
+    Full parametrized matrix:
+    ``test_kmip.py::TestKmipFailureAndCornerCases::test_empty_kmip_certificate_params_rejected_without_crash``.
+    """
+
+    @pytest.mark.parametrize(
+        "fn,sql_args",
+        [
+            (
+                "pg_tde_add_database_key_provider_kmip",
+                "'kmip_empty_all', '127.0.0.1', 5696, '', '', ''",
+            ),
+            (
+                "pg_tde_add_global_key_provider_kmip",
+                "'kmip_empty_all', '127.0.0.1', 5696, '', '', ''",
+            ),
+        ],
+        ids=["database_all_empty", "global_all_empty"],
+    )
+    def test_empty_certificate_paths_do_not_crash_backend(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_config: KmipConfig,
+        fn: str,
+        sql_args: str,
+    ):
+        # kmip_config ensures the KMIP section is configured; empty paths must
+        # fail in local validation before (or without relying on) a live KMS.
+        _ = kmip_config
+        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_empty_certs")
+        err = _assert_add_rejects_without_crash(
+            cluster, f"SELECT {fn}({sql_args});"
+        )
+        assert re.search(
+            r"cert|certificate|key|ca|empty|missing|invalid|path|required|file|kmip",
+            err.lower(),
+        ), f"unexpected error from {fn}:\n{err}"
+
+    def test_empty_ca_with_valid_client_paths_does_not_crash_backend(
+        self, pg_factory, tmp_path: Path, kmip_config: KmipConfig
+    ):
+        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_empty_ca")
+        cert, key, _ca = kmip_config.sql_literal_paths()
+        host = kmip_config.connect_host().replace("'", "''")
+        sql = (
+            "SELECT pg_tde_add_global_key_provider_kmip("
+            f"'kmip_empty_ca', '{host}', {kmip_config.port}, "
+            f"'{cert}', '{key}', '');"
+        )
+        _assert_add_rejects_without_crash(cluster, sql)
+
+    def test_empty_key_and_ca_with_valid_cert_does_not_crash_backend(
+        self, pg_factory, tmp_path: Path, kmip_config: KmipConfig
+    ):
+        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_empty_key")
+        cert, _key, _ca = kmip_config.sql_literal_paths()
+        host = kmip_config.connect_host().replace("'", "''")
+        sql = (
+            "SELECT pg_tde_add_global_key_provider_kmip("
+            f"'kmip_empty_key', '{host}', {kmip_config.port}, "
+            f"'{cert}', '', '');"
+        )
+        _assert_add_rejects_without_crash(cluster, sql)
+
+
+@pytest.mark.vault
+@pytest.mark.openbao
+class TestVaultEmptyProviderParamsRegression:
+    """
+    Empty / invalid Vault provider options must not crash the backend.
+
+    Applies to HashiCorp Vault and OpenBao ``vault_v2`` providers, same as KMIP.
+    """
+
+    @pytest.mark.parametrize(
+        "scope",
+        ["global", "database"],
+        ids=["global_all_empty", "database_all_empty"],
+    )
+    def test_empty_vault_provider_paths_do_not_crash_backend(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        vault_config: VaultConfig,
+        scope: str,
+    ):
+        _ = vault_config
+        cluster = _tde_cluster(pg_factory, tmp_path, f"vault_empty_{scope}")
+        fn = _vault_add_fn(TdeManager(cluster), scope=scope)
+        # name, url, mount, token_path, ca_path — all path-like fields empty
+        sql = f"SELECT {fn}('vault_empty_all', '', '', '', '');"
+        err = _assert_add_rejects_without_crash(cluster, sql)
+        assert re.search(
+            r"vault|url|token|empty|missing|invalid|path|required|file|ca|mount",
+            err.lower(),
+        ), f"unexpected error from {fn}:\n{err}"
+
+    def test_empty_token_path_with_valid_url_does_not_crash_backend(
+        self, pg_factory, tmp_path: Path, vault_config: VaultConfig
+    ):
+        cluster = _tde_cluster(pg_factory, tmp_path, "vault_empty_token")
+        fn = _vault_add_fn(TdeManager(cluster), scope="global")
+        url = vault_config.addr.replace("'", "''")
+        mount = vault_config.secret_mount.replace("'", "''")
+        sql = f"SELECT {fn}('vault_empty_token', '{url}', '{mount}', '', '');"
+        err = _assert_add_rejects_without_crash(cluster, sql)
+        assert re.search(
+            r"vault|token|empty|missing|invalid|path|required|file|auth",
+            err.lower(),
+        ), f"unexpected error from {fn}:\n{err}"
+
+    def test_nonexistent_token_file_does_not_crash_backend(
+        self, pg_factory, tmp_path: Path, vault_config: VaultConfig
+    ):
+        cluster = _tde_cluster(pg_factory, tmp_path, "vault_bad_token_file")
+        fn = _vault_add_fn(TdeManager(cluster), scope="global")
+        url = vault_config.addr.replace("'", "''")
+        mount = vault_config.secret_mount.replace("'", "''")
+        missing = str(tmp_path / "does_not_exist_vault_token").replace("'", "''")
+        sql = (
+            f"SELECT {fn}('vault_bad_token', '{url}', '{mount}', "
+            f"'{missing}', '');"
+        )
+        err = _assert_add_rejects_without_crash(cluster, sql)
+        assert re.search(
+            r"vault|token|missing|invalid|path|required|file|no such|cannot|open",
+            err.lower(),
+        ), f"unexpected error from {fn}:\n{err}"
+
+    def test_empty_url_with_token_file_does_not_crash_backend(
+        self, pg_factory, tmp_path: Path, vault_config: VaultConfig
+    ):
+        cluster = _tde_cluster(pg_factory, tmp_path, "vault_empty_url")
+        fn = _vault_add_fn(TdeManager(cluster), scope="database")
+        token = vault_config.token_sql_arg(tmp_path).replace("'", "''")
+        mount = vault_config.secret_mount.replace("'", "''")
+        sql = f"SELECT {fn}('vault_empty_url', '', '{mount}', '{token}', '');"
+        err = _assert_add_rejects_without_crash(cluster, sql)
+        assert re.search(
+            r"vault|url|empty|missing|invalid|path|required|http|address",
+            err.lower(),
+        ), f"unexpected error from {fn}:\n{err}"
 
 
 @pytest.mark.vault

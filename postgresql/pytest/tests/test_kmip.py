@@ -820,6 +820,92 @@ class TestKmipFailureAndCornerCases:
                 proc.terminate()
                 proc.join(timeout=5)
 
+    @pytest.mark.parametrize(
+        "scope,cert_kind,key_kind,ca_kind",
+        [
+            ("global", "empty", "empty", "empty"),
+            ("database", "empty", "empty", "empty"),
+            ("global", "valid", "valid", "empty"),
+            ("global", "valid", "empty", "empty"),
+            ("database", "valid", "empty", "empty"),
+        ],
+        ids=[
+            "global_all_empty",
+            "database_all_empty",
+            "global_empty_ca",
+            "global_empty_key_and_ca",
+            "database_empty_key_and_ca",
+        ],
+    )
+    def test_empty_kmip_certificate_params_rejected_without_crash(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_config: KmipConfig,
+        scope: str,
+        cert_kind: str,
+        key_kind: str,
+        ca_kind: str,
+    ):
+        """
+        Empty certificate-path arguments must return a validation error, not
+        crash the backend.
+
+        Vault/OpenBao empty-option coverage lives in
+        ``test_external_key_provider_regressions.py``.
+
+        Repro shapes:
+          * ``add_*_key_provider_kmip(..., '', '', '')``
+          * valid client cert/key with empty CA path
+          * valid client cert with empty key and CA paths
+        """
+        cluster = _tde_cluster(pg_factory, tmp_path, f"kmip_empty_{scope}")
+        host = kmip_config.connect_host().replace("'", "''")
+        port = kmip_config.port
+        valid_cert, valid_key, valid_ca = kmip_config.sql_literal_paths()
+
+        cert = valid_cert if cert_kind == "valid" else ""
+        key = valid_key if key_kind == "valid" else ""
+        ca = valid_ca if ca_kind == "valid" else ""
+        provider = _unique(f"empty_{scope}")
+
+        if scope == "global":
+            fn = "pg_tde_add_global_key_provider_kmip"
+        else:
+            fn = "pg_tde_add_database_key_provider_kmip"
+
+        sql = (
+            f"SELECT {fn}("
+            f"'{provider}', '{host}', {port}, '{cert}', '{key}', '{ca}');"
+        )
+        result = cluster.execute_allow_error(sql)
+        err = f"{result.stderr or ''}{result.stdout or ''}"
+        lower = err.lower()
+
+        assert cluster.is_ready(), (
+            "PostgreSQL backend crashed when empty KMIP certificate parameters "
+            f"were passed to {fn} (expected a validation error).\n"
+            f"SQL: {sql}\nERR: {err}"
+        )
+        assert result.returncode != 0, (
+            f"expected validation error from {fn}, got success:\n{err}"
+        )
+        assert "server closed the connection" not in lower, err
+        assert "connection to the server was lost" not in lower, err
+        assert re.search(
+            r"cert|certificate|key|ca|empty|missing|invalid|path|required|file|kmip",
+            lower,
+        ), f"unexpected error from {fn} (want cert/path validation):\n{err}"
+        assert cluster.fetchone("SELECT 1") == "1"
+
+        listing = (
+            "pg_tde_list_all_global_key_providers"
+            if scope == "global"
+            else "pg_tde_list_all_database_key_providers"
+        )
+        names = cluster.execute(f"SELECT name FROM {listing}()")
+        assert provider not in names.splitlines() and provider not in names
+
 
 def _tcp_accept_close_worker(port_queue: multiprocessing.Queue) -> None:
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
