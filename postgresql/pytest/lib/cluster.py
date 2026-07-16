@@ -2,6 +2,7 @@
 import getpass
 import logging
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -19,6 +20,44 @@ PG_IO_METHOD_MIN_MAJOR = 18
 IO_METHOD_VALUES: Tuple[str, ...] = ("worker", "sync", "io_uring")
 # Placeholder passed to tests on PG < 18; never written to postgresql.conf.
 IO_METHOD_LEGACY_PLACEHOLDER = "worker"
+
+# Leading digits of the version token from ``postgres --version``.
+# Handles ``17.2``, ``18.4.1``, ``19beta2``, ``19rc1``, ``19devel``.
+_POSTGRES_MAJOR_RE = re.compile(r"^(\d+)")
+
+
+def parse_postgres_major_version(version_output: str) -> int:
+    """
+    Extract the integer major from ``postgres --version`` stdout.
+
+    Examples::
+
+        postgres (PostgreSQL) 17.2     → 17
+        postgres (PostgreSQL) 18.4     → 18
+        postgres (PostgreSQL) 19beta2  → 19
+        postgres (PostgreSQL) 19rc1    → 19
+    """
+    text = (version_output or "").strip()
+    if not text:
+        raise ValueError("empty postgres --version output")
+
+    # Usual form: ``postgres (PostgreSQL) <version>``
+    parts = text.split()
+    candidates = []
+    if len(parts) >= 3:
+        candidates.append(parts[2])
+    candidates.extend(parts)
+
+    for token in candidates:
+        # Strip a leading "v" if present; keep only the major digits.
+        token = token.lstrip("vV")
+        match = _POSTGRES_MAJOR_RE.match(token)
+        if match:
+            return int(match.group(1))
+
+    raise ValueError(
+        f"could not parse PostgreSQL major version from: {version_output!r}"
+    )
 
 
 def prepend_install_lib_dirs(env: Dict[str, str], *install_roots: Path) -> None:
@@ -43,7 +82,7 @@ def prepend_install_lib_dirs(env: Dict[str, str], *install_roots: Path) -> None:
 
 
 def postgres_major_version(install_dir: Path) -> int:
-    """Return major version number for binaries under ``install_dir`` (e.g. 17, 18)."""
+    """Return major version number for binaries under ``install_dir`` (e.g. 17, 18, 19)."""
     bin_pg = Path(install_dir) / "bin" / "postgres"
     env = os.environ.copy()
     prepend_install_lib_dirs(env, Path(install_dir))
@@ -54,8 +93,7 @@ def postgres_major_version(install_dir: Path) -> int:
         check=True,
         env=env,
     )
-    # "postgres (PostgreSQL) 17.2" → 17
-    return int(result.stdout.split()[2].split(".")[0])
+    return parse_postgres_major_version(result.stdout)
 
 
 def io_method_guc_supported(install_dir: Path) -> bool:
@@ -542,16 +580,7 @@ class PgCluster:
     @property
     def major_version(self) -> int:
         if self._major_version is None:
-            env = os.environ.copy()
-            prepend_install_lib_dirs(env, self.install_dir)
-            result = subprocess.run(
-                [str(self.bin / "postgres"), "--version"],
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            # "postgres (PostgreSQL) 17.1" → 17
-            self._major_version = int(result.stdout.split()[2].split(".")[0])
+            self._major_version = postgres_major_version(self.install_dir)
         return self._major_version
 
     def controldata(self, field: str) -> str:

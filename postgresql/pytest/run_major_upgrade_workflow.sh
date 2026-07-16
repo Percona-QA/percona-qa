@@ -73,7 +73,8 @@ die()   { echo -e "${RED}ERROR:${NC} $*" >&2; exit 1; }
 ok()    { echo -e "  ${GREEN}OK${NC}  $*"; }
 
 pg_integer_major() {
-    echo "$1" | cut -d. -f1
+    # "19", "19.0", "19beta2", "19rc1" → 19
+    echo "$1" | sed -E 's/^[^0-9]*([0-9]+).*/\1/'
 }
 
 server_version_to_repo_line() {
