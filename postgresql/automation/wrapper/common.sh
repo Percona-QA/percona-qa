@@ -212,6 +212,7 @@ install_pgbackrest() {
         sudo apt-get install -y percona-pgbackrest
     elif [ -f /etc/redhat-release ]; then
 	wget -q https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+	sudo yum install -y ./percona-release-latest.noarch.rpm
 	sudo percona-release enable-only ppg-18
 	sudo yum install -y percona-pgbackrest
     fi
