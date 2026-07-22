@@ -275,17 +275,16 @@ class TestHashicorpVaultKeyProvider:
         token_path = vault_config.token_sql_arg(tmp_path)
         token_path_new = str(tmp_path / "ckp_vault_token_new")
         shutil.copy(token_path, token_path_new)
+        # Capture OID while the server is up — offline CLI needs it after stop.
+        change_args = _vault_change_kp_args(
+            cluster,
+            vault_config,
+            "ckp_vault",
+            token_path=token_path_new,
+        )
         cluster.stop(check=False)
 
-        result = _run_change_kp(
-            install_dir,
-            *_vault_change_kp_args(
-                cluster,
-                vault_config,
-                "ckp_vault",
-                token_path=token_path_new,
-            ),
-        )
+        result = _run_change_kp(install_dir, *change_args)
         assert result.returncode == 0, (
             f"change_key_provider vault-v2 failed:\n{result.stdout}\n{result.stderr}"
         )

@@ -89,15 +89,8 @@ def _add_global_kmip(tde: TdeManager, kmip: KmipConfig, name: str) -> None:
 def _set_db_key(
     cluster: PgCluster, key: str, ring: str, dbname: str
 ) -> None:
-    cluster.execute(
-        f"SELECT pg_tde_create_key_using_database_key_provider("
-        f"'{key}', '{ring}')",
-        dbname,
-    )
-    cluster.execute(
-        f"SELECT pg_tde_set_key_using_database_key_provider('{key}', '{ring}')",
-        dbname,
-    )
+    """Create+set DB principal key; tolerate keys left on shared OpenBao/KMIP."""
+    TdeManager(cluster).set_database_principal_key(key, ring, dbname=dbname)
 
 
 @pytest.mark.vault

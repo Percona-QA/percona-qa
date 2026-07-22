@@ -31,6 +31,7 @@ import subprocess
 import time
 import os
 import signal
+import uuid
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -2263,17 +2264,18 @@ class TestTdeRewindRandomized:
 
     @pytest.mark.vault
     def test_rewind_with_vault_key_provider(
-        self, install_dir: Path, tmp_path: Path, io_method: str,
-        vault_addr: str, vault_token: str,
+        self,
+        install_dir: Path,
+        tmp_path: Path,
+        io_method: str,
+        vault_config,
     ):
         """
         Diverge with vault key provider active; pg_tde_rewind must succeed
         even when encryption keys are managed by an external vault.
-        Requires --vault-addr and --vault-token.
-        """
-        if not vault_addr:
-            pytest.skip("--vault-addr not provided")
 
+        Requires ``--vault-addr`` (and token / token-file) via ``vault_config``.
+        """
         keyfile = str(tmp_path / "keyring_vault_rewind.file")
         primary, standby, tde, _ = _make_tde_ha_pair(
             install_dir, tmp_path, io_method, keyfile=keyfile
@@ -2281,10 +2283,15 @@ class TestTdeRewindRandomized:
         try:
             tde.add_global_key_provider_vault(
                 provider_name="vault_rewind_provider",
-                vault_url=vault_addr,
-                secret_mount_point="secret",
-                vault_token=vault_token,
+                vault_url=vault_config.addr,
+                secret_mount_point=vault_config.secret_mount,
+                token_path=vault_config.token_sql_arg(tmp_path),
+                ca_path=vault_config.ca_path,
+                namespace=vault_config.namespace,
             )
+            # Unique key name — shared OpenBao/Vault retain keys across runs.
+            key_name = f"vault_rewind_key_{uuid.uuid4().hex[:10]}"
+            tde.set_global_principal_key(key_name, "vault_rewind_provider")
             primary.execute(
                 "CREATE TABLE vault_rewind_t (id INT) USING tde_heap; "
                 "INSERT INTO vault_rewind_t SELECT generate_series(1,100); "
