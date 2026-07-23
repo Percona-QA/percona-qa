@@ -16,7 +16,7 @@ in [kmip/vault-kmip-engine.md](kmip/vault-kmip-engine.md) / `tests/test_vault_km
 |--------|-----------|--------|
 | `tests/test_vault_providers.py::TestHashicorpVaultKeyProvider` | `vault` | Vault dev / `setup_vault.sh` / Docker |
 | `tests/test_vault_providers.py::TestOpenBaoKeyProvider` | `vault`, `openbao` | `install_openbao.sh` + `setup_openbao_for_pytest.sh` |
-| `tests/test_openbao_bash_parity.py` | `vault`, `openbao` | same (+ KMIP for scenarios 4–8) |
+| `tests/test_openbao_key_providers.py` | `vault`, `openbao` | same (+ KMIP for scenarios 4–8) |
 
 Legacy smoke: `tests/test_encryption.py::TestKeyManagement::test_vault_key_provider`.
 
@@ -78,7 +78,7 @@ KMIP-backed scenarios (open_bao_tests 2–8): `run_openbao_revalidation.sh` auto
 
 ```bash
 pytest tests/test_vault_providers.py::TestOpenBaoKeyProvider -v
-pytest tests/test_openbao_bash_parity.py -v
+pytest tests/test_openbao_key_providers.py -v
 pytest -m openbao -v
 ```
 
@@ -109,9 +109,9 @@ pytest tests/ --skip-sections=vault -v
 | `pg_tde_change_database_key_provider_vault_v2.sh` | `tests/test_vault_hashicorp_parity.py::TestHashicorpVaultChangeDatabaseKeyProviderV2` |
 | `pg_tde_openbao_vault_mount_permission_warning_test.sh` | `tests/test_external_key_provider_regressions.py::test_vault_kv_only_token_without_mount_metadata` |
 | `pg_tde_open_bao_tests.sh` scenarios 1–3 | `tests/test_vault_providers.py::TestOpenBaoKeyProvider` |
-| `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 | `tests/test_openbao_bash_parity.py` |
+| `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 | `tests/test_openbao_key_providers.py` |
 | `pg_tde_open_bao_tests.sh` scenario 11 | `tests/test_external_key_provider_regressions.py::test_vault_delete_provider_after_server_key_on_file` |
-| `pg_tde_functions_test.sh` (vault parts) | `tests/test_vault_providers.py::TestHashicorpVaultKeyProvider` |
+| `pg_tde_functions_test.sh` | `tests/test_key_provider_lifecycle.py` (full s1–12); vault slices also in `tests/test_vault_providers.py::TestHashicorpVaultKeyProvider` |
 | `t/064_delete_key_providers.pl` | `test_delete_*_vault_*` |
 
 ### Run parity suites
@@ -122,7 +122,7 @@ pytest tests/test_vault_hashicorp_parity.py -v
 
 source scripts/setup_openbao_for_pytest.sh
 source scripts/setup_cosmian_for_pytest.sh
-pytest tests/test_openbao_bash_parity.py -v
+pytest tests/test_openbao_key_providers.py -v
 ```
 
 ## Jira regressions

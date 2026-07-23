@@ -1155,9 +1155,22 @@ class TestUpgradeNegativeExtended:
 
         Not related to pg_tde version skew. Uses a manual initdb (not ``_upgrade``'s
         align helper) so the on→off mismatch cannot be silently "fixed" away.
+
+        ``--install-dir`` must be the *newer* PG (upgrade target). On PG18+ the
+        target needs ``--no-data-checksums``; on PG17- checksums are already off
+        by default.
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
+
+        old_maj = postgres_major_version(Path(old_install_dir))
+        new_maj = postgres_major_version(install_dir)
+        if new_maj < old_maj:
+            pytest.skip(
+                f"upgrade target must be newer than source "
+                f"(--install-dir={install_dir} is {new_maj}, "
+                f"--old-install-dir is {old_maj}); swap the flags"
+            )
 
         old = _make_old_cluster(
             old_install_dir, tmp_path, io_method, extra_initdb=["--data-checksums"]
@@ -1175,16 +1188,16 @@ class TestUpgradeNegativeExtended:
         new_cluster = PgCluster(
             new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method
         )
-        no_ck = initdb_args_no_data_checksums(install_dir)
-        assert no_ck, (
-            f"--no-data-checksums required on PG18+ target; "
-            f"got major={new_cluster.major_version} from {install_dir}"
-        )
-        new_cluster.initdb(extra_args=no_ck)
+        # PG18+: default is checksums on → must pass --no-data-checksums.
+        # PG17-: default is already off → no flag (and --no-data-checksums
+        # does not exist).
+        new_extra = initdb_args_no_data_checksums(install_dir) or None
+        new_cluster.initdb(extra_args=new_extra)
         new_ck = int(new_cluster.controldata("Data page checksum version") or "0")
         assert new_ck == 0, (
-            "new cluster should have data checksums off after "
-            f"{no_ck}; got checksum version={new_ck}"
+            "new cluster should have data checksums off "
+            f"(extra_args={new_extra!r}, major={new_maj}); "
+            f"got checksum version={new_ck}"
         )
 
         result = _run_pg_upgrade(

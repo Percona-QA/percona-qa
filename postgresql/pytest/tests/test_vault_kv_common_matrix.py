@@ -8,7 +8,7 @@ Set ``VAULT_*`` for your lab, then pick profile(s):
 
 Server-specific (run separately):
   * ``tests/test_vault_hashicorp_parity.py`` — change provider, kv-only token (root)
-  * ``tests/test_openbao_bash_parity.py`` — OpenBao scenarios 4–12
+  * ``tests/test_openbao_key_providers.py`` — OpenBao scenarios 4–12
   * ``tests/test_vault_kmip.py`` — Vault **KMIP engine** (not KV)
 """
 from __future__ import annotations

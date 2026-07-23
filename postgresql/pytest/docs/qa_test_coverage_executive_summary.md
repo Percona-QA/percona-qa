@@ -156,10 +156,11 @@ Shared **matrix pattern** — same scenarios on every backend ([key_provider_mat
 | **Cosmian KMIP** | `test_kmip_common_matrix.py`, `test_kmip_server_revalidation.py`, `test_kmip.py` | 34+ | Every build |
 | **Fortanix / Thales / Akeyless** | Same matrix, `KMIP_PROFILE=*` | 34+ each | Scheduled sign-off |
 | **Vault KV v2** | `test_vault_kv_common_matrix.py`, `test_vault_providers.py` | 13 | Every build (dev) + Enterprise lab |
-| **OpenBao** | `test_openbao_bash_parity.py` | 8 | Every build |
+| **OpenBao** | `test_openbao_key_providers.py` | 8 | Every build |
 | **File keyring** | `test_file_keyring_common_matrix.py` | 2 | Dev/test only |
 | **Regressions** | `test_external_key_provider_regressions.py` | 7 | PG-2125, PG-1959, namespace |
 | **Vault KMIP engine** | `test_vault_kmip.py` | 2 | Lab only (not prod path) |
+| **Key-provider lifecycle** | `test_key_provider_lifecycle.py` | 12 | Vault/OpenBao + KMIP |
 
 **Shared KMIP scenarios:** add provider → create key → encrypted DML → restart → rotate → online `change_*_key_provider_kmip`.
 
@@ -296,7 +297,8 @@ pytest --list-test-sections                       # all sections
 | `test_recovery.py` | 10 | `recovery` |
 | `test_vault_providers.py` | 10 | `vault` |
 | `test_kmip_common_matrix.py` | 9 | `kmip_matrix` |
-| `test_openbao_bash_parity.py` | 8 | `openbao` |
+| `test_openbao_key_providers.py` | 8 | `openbao` |
+| `test_key_provider_lifecycle.py` | 12 | `vault` |
 | `test_external_key_provider_regressions.py` | 7 | `kmip`, `vault`, `openbao` |
 | `test_unlogged_recovery.py` | 7 | `recovery` |
 | `test_pg_basebackup.py` | 6 | `backup` |

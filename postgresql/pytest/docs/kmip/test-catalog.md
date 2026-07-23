@@ -18,7 +18,7 @@ automation). Use this when signing off a KMS vendor, validating [PR #595](https:
 | Extended / advanced | `tests/test_kmip.py` | 24 | Single profile (`kmip_config`) | `kmip`, `encryption` |
 | PG-2125 regression | `tests/test_external_key_provider_regressions.py` | 4 | Single profile | `kmip`, `bug` |
 | Vault KMIP engine | `tests/test_vault_kmip.py` | 2 | `vault_kmip` only | `kmip`, `vault_kmip`, `bug` |
-| OpenBao + KMIP mix | `tests/test_openbao_bash_parity.py` | 5 scenarios | KMIP + OpenBao | `vault`, `openbao`, `kmip` |
+| OpenBao + KMIP mix | `tests/test_openbao_key_providers.py` | 5 scenarios | KMIP + OpenBao | `vault`, `openbao`, `kmip` |
 | OpenBao multi-DB | `tests/test_vault_providers.py` | 2 | KMIP + OpenBao | `vault`, `openbao` |
 | Offline CLI (kmip) | `tests/test_change_key_provider.py` | 1 | No live server | `encryption` |
 | Offline CLI (kmip) | `tests/test_kmip.py` | 1 | Live KMIP | `kmip` |
@@ -257,7 +257,7 @@ source /tmp/vault_kmip_pytest.env
 
 ---
 
-## 6. OpenBao scenarios using KMIP — `tests/test_openbao_bash_parity.py`
+## 6. OpenBao scenarios using KMIP — `tests/test_openbao_key_providers.py`
 
 Requires OpenBao **and** KMIP (`kmip_config` + `vault_config`).
 

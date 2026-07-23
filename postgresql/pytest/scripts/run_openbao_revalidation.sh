@@ -65,7 +65,7 @@ echo ""
 
 exec pytest \
     tests/test_vault_providers.py::TestOpenBaoKeyProvider \
-    tests/test_openbao_bash_parity.py \
+    tests/test_openbao_key_providers.py \
     tests/test_external_key_provider_regressions.py::TestVaultOpenBaoNamespaceRegression \
     -v \
     "$@"

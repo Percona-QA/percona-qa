@@ -9,7 +9,7 @@ separate modules.
 |-------|------|-------------|--------------|
 | **Shared matrix** | `tests/test_kmip_common_matrix.py` | `tests/test_vault_kv_common_matrix.py` | `tests/test_file_keyring_common_matrix.py` |
 | **Full checklist** | `tests/test_kmip_server_revalidation.py` | *(in common matrix)* | *(in common matrix)* |
-| **Server-specific** | `tests/test_vault_kmip.py` (Vault KMIP engine Register -2) | `tests/test_vault_hashicorp_parity.py`, `tests/test_openbao_bash_parity.py` | `tests/test_encryption.py` (extended) |
+| **Server-specific** | `tests/test_vault_kmip.py` (Vault KMIP engine Register -2) | `tests/test_vault_hashicorp_parity.py`, `tests/test_openbao_key_providers.py` | `tests/test_encryption.py` (extended) |
 | **Extended / Cosmian-only** | `tests/test_kmip.py` (bash parity, advanced) | — | — |
 
 ## KMIP profiles

@@ -48,7 +48,7 @@
 | 21 | `test_external_key_provider_regressions.py` | **4 + 3** | PG-2125 KMIP lifecycle; OpenBao PG-1959 + scenario 11 |
 | 22 | `test_vault_kv_common_matrix.py` | **3** | OpenBao KV v2 — shared vault matrix |
 | 23 | `test_vault_providers.py` (`TestOpenBaoKeyProvider`) | **3** | OpenBao scenarios 1–3 |
-| 24 | `test_openbao_bash_parity.py` | **8** | OpenBao scenarios 4–10, 12 (`pg_tde_open_bao_tests.sh`) |
+| 24 | `test_openbao_key_providers.py` | **8** | OpenBao scenarios 4–10, 12 (`pg_tde_open_bao_tests.sh`) |
 
 **Conventions used in this document**
 
@@ -1563,7 +1563,7 @@ Scenarios 2–3 also need Cosmian KMIP (`kmip_config` fixture).
 
 ---
 
-## 24. `test_openbao_bash_parity.py` (8 tests)
+## 24. `test_openbao_key_providers.py` (8 tests)
 
 **Purpose:** OpenBao scenarios 4–10 and 12 from `pg_tde_open_bao_tests.sh`.
 Requires OpenBao **and** Cosmian KMIP for most scenarios.

@@ -44,7 +44,7 @@ if [[ "${VAULT_KV_INCLUDE_SPECIFIC:-0}" == "1" ]]; then
     TARGETS+=(
         tests/test_vault_hashicorp_parity.py
         tests/test_external_key_provider_regressions.py::TestVaultOpenBaoNamespaceRegression
-        tests/test_openbao_bash_parity.py
+        tests/test_openbao_key_providers.py
     )
 fi
 

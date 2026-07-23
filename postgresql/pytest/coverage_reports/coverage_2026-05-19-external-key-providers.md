@@ -34,7 +34,7 @@ Tests remain **opt-in** via `@pytest.mark.kmip` / `vault` / `openbao` and skip w
 | `tests/test_kmip_server_revalidation.py` | 1×N profiles | `kmip`, `kmip_revalidation` | Post–libkmip checklist per KMS profile |
 | `tests/test_vault_providers.py` | 10 | `vault`, `openbao` | Vault KV v2 + OpenBao s1–3 (unchanged count; baseline) |
 | `tests/test_vault_hashicorp_parity.py` | 2 | `vault` | HashiCorp mount-metadata + `change_database_key_provider_vault_v2` |
-| `tests/test_openbao_bash_parity.py` | 8 | `vault`, `openbao` | `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 |
+| `tests/test_openbao_key_providers.py` | 8 | `vault`, `openbao` | `pg_tde_open_bao_tests.sh` scenarios 4–10, 12 |
 | `tests/test_external_key_provider_regressions.py` | 7 | `bug`, `kmip`, `vault`, `openbao` | PG-2125 KMIP lifecycle; PG-1959 namespace + kv-only token; OpenBao s11 |
 | `tests/test_vault_kmip.py` | 2 | `kmip`, `vault_kmip`, `bug` | HashiCorp **Vault KMIP engine** — customer `register symmetric key: -2` |
 
@@ -136,7 +136,7 @@ pytest tests/test_vault_hashicorp_parity.py tests/test_vault_providers.py::TestH
 # OpenBao (+ KMIP for scenarios 2–8)
 source scripts/setup_openbao_for_pytest.sh
 source scripts/setup_cosmian_for_pytest.sh
-pytest tests/test_openbao_bash_parity.py tests/test_external_key_provider_regressions.py -v
+pytest tests/test_openbao_key_providers.py tests/test_external_key_provider_regressions.py -v
 
 # Skip sections when services unavailable
 pytest tests/ --skip-sections=kmip,vault -v
@@ -152,7 +152,7 @@ pytest tests/ --collect-only -q
 # => 501 tests collected
 
 pytest tests/test_kmip.py tests/test_vault_hashicorp_parity.py \
-  tests/test_openbao_bash_parity.py tests/test_vault_kmip.py \
+  tests/test_openbao_key_providers.py tests/test_vault_kmip.py \
   tests/test_external_key_provider_regressions.py tests/test_vault_providers.py \
   --collect-only -q
 # => 40 tests (external-key-provider focused modules)
