@@ -25,6 +25,7 @@ These tests intentionally exercise the encrypted-in-repo path
 from __future__ import annotations
 
 import hashlib
+import re
 import shutil
 import time
 from pathlib import Path
@@ -201,6 +202,32 @@ def _start_restored_with_keyring(
     return cluster
 
 
+def _find_repo_wal_segments(repo_path: Path, stanza: str) -> List[Path]:
+    """WAL segment files under ``<repo>/archive/<stanza>/`` (exclude logs/spool)."""
+    archive = repo_path / "archive" / stanza
+    if not archive.is_dir():
+        return []
+    pattern = re.compile(r"^[0-9A-F]{24}(-[0-9a-f]+)?$")
+    return [
+        p for p in archive.rglob("*")
+        if p.is_file() and pattern.match(p.name)
+    ]
+
+
+def _assert_marker_absent_from_archived_wal(
+    repo_path: Path, stanza: str, marker: str
+) -> None:
+    segs = _find_repo_wal_segments(repo_path, stanza)
+    assert segs, f"No archived WAL segments under {repo_path / 'archive' / stanza}"
+    marker_b = marker.encode()
+    for seg in segs:
+        data = seg.read_bytes()
+        assert marker_b not in data, (
+            f"Plaintext marker {marker!r} found in archived WAL {seg} — "
+            "encrypted-in-repo path unexpectedly stored decrypted WAL"
+        )
+
+
 def _pg_tde_keyring_fingerprint(cluster: PgCluster) -> str:
     """
     Content hash of on-disk WAL key material under ``pg_tde/``.
@@ -241,15 +268,9 @@ class TestArchiveAsyncEncryptedWalPrimaryOnly:
         bm.backup(backup_type="full")
         bm.wait_for_wal_archive(primary, timeout=60)
 
-        # Prove the repo holds ciphertext (marker must not appear in archive files).
-        archive_root = tmp_path / "repo"
-        archive_bytes = b"".join(
-            p.read_bytes() for p in archive_root.rglob("*") if p.is_file()
-        )
-        assert marker.encode() not in archive_bytes, (
-            "Plaintext marker found in pgBackRest repo — encrypted-in-repo "
-            "path unexpectedly stored decrypted WAL"
-        )
+        # Prove archived WAL is ciphertext (do not scan repo logs — they may
+        # contain SQL text when log_statement=all).
+        _assert_marker_absent_from_archived_wal(tmp_path / "repo", "async_ok", marker)
 
         primary.stop(check=False)
         restore_dir = tmp_path / "restore_primary"
