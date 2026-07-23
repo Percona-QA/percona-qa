@@ -105,7 +105,7 @@ hostname = "127.0.0.1"
 port = 9998
 
 [logging]
-rust_log = "info,cosmian_kms=info"
+rust_log = "info,cosmian_kms=trace"
 EOF
 
     echo "[INFO] Starting Cosmian container..."
@@ -116,6 +116,9 @@ EOF
         -v "$RUN_DIR:$RUN_DIR" \
         "$COSMIAN_IMAGE" \
         -c "$COSMIAN_CONFIG"
+
+    rm -f "$COSMIAN_LOG" || true
+    docker logs -f "$COSMIAN_CONTAINER" >"$COSMIAN_LOG" 2>&1 &
 
     echo "[INFO] Waiting for KMIP server..."
 
