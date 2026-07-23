@@ -569,8 +569,12 @@ class TestEncryptedArchiveMultiNodeConcerns:
     ):
         """
         Contrast to multi-node: restarting the *same* primary rotates the
-        active WAL key but keeps historical keys in PGDATA, so its own
-        encrypted archive remains usable.
+        active WAL key but keeps historical keys in PGDATA.
+
+        A backup taken *before* restart does not contain the post-restart WAL
+        key. Recovery of post-restart archived WAL therefore requires the
+        keyring from the stopped primary's PGDATA (where keys were retained),
+        not only the keyring baked into the older backup.
         """
         primary = _start_tde_primary(pg_factory, "restart_pri")
         bm = _setup_encrypted_in_repo_pgbackrest(
@@ -585,20 +589,62 @@ class TestEncryptedArchiveMultiNodeConcerns:
         primary.restart()  # new active WAL key generation
         primary.wait_ready(timeout=60)
         fp_after = _pg_tde_keyring_fingerprint(primary)
-        # Keyring directory content should still exist; fingerprint may grow.
         assert fp_after, "keyring missing after restart"
         assert fp_before, "keyring missing before restart"
 
         primary.execute(
             "INSERT INTO async_enc VALUES (7001, 'after_restart_row')"
         )
+        # Ensure the post-restart insert is closed into an archived segment.
+        primary.execute("CHECKPOINT")
+        primary.execute("SELECT pg_switch_wal()")
         bm.wait_for_wal_archive(primary, timeout=60)
+
+        # Preserve the live keyring (pre- + post-restart WAL keys) before stop.
+        live_keys = tmp_path / "primary_keys_after_restart"
+        shutil.copytree(primary.data_dir / "pg_tde", live_keys)
 
         primary.stop(check=False)
         restore_dir = tmp_path / "restore_same_primary"
         bm.restore(str(restore_dir), pg_tde_wal_restore=False)
+
+        # Negative control: backup keyring alone cannot decrypt post-restart WAL.
+        # Recovery may refuse to start, or start without replaying those segments.
+        try:
+            restored_backup_keys = _start_restored_with_keyring(
+                restore_dir, install_dir, tmp_path, io_method, bm,
+            )
+        except (RuntimeError, TimeoutError):
+            log_tail = ""
+            if (restore_dir / "server.log").exists():
+                log_tail = (restore_dir / "server.log").read_text()[-2000:].lower()
+            assert any(m in log_tail for m in _ARCHIVE_FAIL_MARKERS), (
+                "Expected recovery/decrypt failure without post-restart keys.\n"
+                f"log:\n{log_tail}"
+            )
+        else:
+            try:
+                assert restored_backup_keys.fetchone(
+                    f"SELECT COUNT(*) FROM async_enc WHERE payload LIKE '{marker}%'"
+                ) == "60", "Pre-restart rows must come from the backup itself"
+                post = restored_backup_keys.fetchone(
+                    "SELECT COUNT(*) FROM async_enc WHERE id = 7001"
+                )
+                assert post == "0", (
+                    "Post-restart row must NOT appear when recovering with only "
+                    f"the pre-restart backup keyring (got count={post!r})"
+                )
+            finally:
+                restored_backup_keys.stop(check=False)
+
+        # Positive: same backup + archive, but with retained keys from PGDATA.
+        restore_dir2 = tmp_path / "restore_with_retained_keys"
+        bm.restore(str(restore_dir2), pg_tde_wal_restore=False)
+        if (restore_dir2 / "pg_tde").exists():
+            shutil.rmtree(restore_dir2 / "pg_tde")
+        shutil.copytree(live_keys, restore_dir2 / "pg_tde")
         restored = _start_restored_with_keyring(
-            restore_dir, install_dir, tmp_path, io_method, bm,
+            restore_dir2, install_dir, tmp_path, io_method, bm,
         )
         try:
             assert restored.fetchone(
@@ -606,6 +652,9 @@ class TestEncryptedArchiveMultiNodeConcerns:
             ) == "60"
             assert restored.fetchone(
                 "SELECT COUNT(*) FROM async_enc WHERE id = 7001"
-            ) == "1"
+            ) == "1", (
+                "With retained post-restart keys from the same primary PGDATA, "
+                "archived WAL after restart must replay"
+            )
         finally:
             restored.stop(check=False)
