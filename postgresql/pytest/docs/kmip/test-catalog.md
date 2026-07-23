@@ -15,7 +15,7 @@ automation). Use this when signing off a KMS vendor, validating [PR #595](https:
 |-------|-----------------|------:|---------------|--------|
 | Shared matrix | `tests/test_kmip_common_matrix.py` | 9 | All `KMIP_REVALIDATE_PROFILES` | `kmip`, `kmip_matrix` |
 | Full checklist | `tests/test_kmip_server_revalidation.py` | 1×N profiles | All profiles | `kmip`, `kmip_revalidation` |
-| Extended / advanced | `tests/test_kmip.py` | 24 | Single profile (`kmip_config`) | `kmip`, `encryption` |
+| Extended / advanced | `tests/test_kmip.py` | 26 | Single profile (`kmip_config`) | `kmip`, `encryption` |
 | PG-2125 regression | `tests/test_external_key_provider_regressions.py` | 4 | Single profile | `kmip`, `bug` |
 | Vault KMIP engine | `tests/test_vault_kmip.py` | 2 | `vault_kmip` only | `kmip`, `vault_kmip`, `bug` |
 | OpenBao + KMIP mix | `tests/test_openbao_key_providers.py` | 5 scenarios | KMIP + OpenBao | `vault`, `openbao`, `kmip` |
@@ -148,6 +148,17 @@ Ports `pg_tde_functions_test.sh` / TAP KMIP scenarios.
 | `test_multiple_databases_file_and_kmip_providers` | functions_test s2, `t/066` | `db1` file key; `db2` KMIP key; restart |
 | `test_kmip_global_default_principal_key_two_databases` | functions_test s3 | Global default KMIP key; `test1` local file key; `test2` inherits default |
 | `test_kmip_database_scoped_provider` | functions_test s4 | Database-local KMIP provider on `sbtest2` |
+
+### `TestKmipDefaultPrincipalKeyAcrossRestarts`
+
+KMIP-backed **global default principal key** must survive PostgreSQL restart
+(including Cosmian + ``io_method=io_uring``, where startup-time key retrieve
+has failed in the field).
+
+| Test | Description |
+|------|-------------|
+| `test_kmip_global_default_principal_key_survives_postgres_restart` | Set KMIP default key → encrypted DML → restart → decrypt + post-restart insert |
+| `test_kmip_global_default_principal_key_survives_repeated_restarts_under_io_uring` | Same under `io_method=io_uring` with 3 restart cycles + new DB inheritance (`--io-method=io_uring` or `--io-method-matrix`) |
 
 ### `TestKmipDeleteKeyProvider`
 

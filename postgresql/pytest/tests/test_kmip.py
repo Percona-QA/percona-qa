@@ -685,6 +685,167 @@ class TestKmipStorageCornerCases:
             assert got == "9000"
 
 
+class TestKmipDefaultPrincipalKeyAcrossRestarts:
+    """
+    Global *default* principal key stored in KMIP must remain retrievable
+    across PostgreSQL restarts (including ``io_method=io_uring``).
+
+    Pre-restart KMIP ops (add provider / create+set default key / encrypted
+    DML) succeed; the failure mode to catch is startup after restart when
+    pg_tde re-fetches the default principal key from Cosmian/KMIP.
+    """
+
+    _KMIP_RETRIEVE_FAIL_MARKERS = (
+        "could not retrieve key from kmip",
+        "failed to retrieve principal key",
+        "connection closed or error while reading",
+        "i/o failure",
+        "expected 8, got 0",
+    )
+
+    def _assert_restart_reloaded_default_key(
+        self, cluster: PgCluster, *, dbname: str = "postgres"
+    ) -> None:
+        """Restart and prove the KMIP default key is still usable."""
+        log_path = cluster.data_dir / "server.log"
+        # Truncate so post-restart failures are unambiguous.
+        if log_path.exists():
+            log_path.write_text("")
+
+        try:
+            cluster.restart()
+            cluster.wait_ready(timeout=120)
+        except RuntimeError as exc:
+            log_tail = cluster.read_log(80).lower()
+            raise AssertionError(
+                "PostgreSQL failed to restart while reloading the KMIP "
+                "default principal key.\n"
+                f"exception: {exc}\n"
+                f"log:\n{cluster.read_log(80)}"
+            ) from exc
+
+        log_l = cluster.read_log(120).lower()
+        hits = [m for m in self._KMIP_RETRIEVE_FAIL_MARKERS if m in log_l]
+        assert not hits, (
+            "Server log shows KMIP principal-key retrieval failure after "
+            f"restart (markers={hits}):\n{cluster.read_log(120)}"
+        )
+        assert cluster.is_ready()
+
+    def test_kmip_global_default_principal_key_survives_postgres_restart(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_config: KmipConfig,
+    ):
+        """
+        Set a KMIP-backed global default principal key, write encrypted rows,
+        restart once, and verify decrypt + further DML still work.
+        """
+        ring = _unique("kmip_def_restart")
+        key = f"{ring}_default"
+        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_def_rst")
+        tde = TdeManager(cluster)
+
+        _add_global_kmip(tde, kmip_config, ring)
+        tde.set_global_default_principal_key(key, ring)
+
+        cluster.execute(
+            "CREATE TABLE def_kmip (id INT PRIMARY KEY, payload TEXT) "
+            "USING tde_heap"
+        )
+        cluster.execute(
+            "INSERT INTO def_kmip "
+            "SELECT i, md5(i::text) FROM generate_series(1, 200) i"
+        )
+        assert cluster.fetchone("SELECT COUNT(*) FROM def_kmip") == "200"
+
+        self._assert_restart_reloaded_default_key(cluster)
+        assert cluster.fetchone("SELECT COUNT(*) FROM def_kmip") == "200"
+        assert cluster.fetchone(
+            "SELECT md5(string_agg(payload, '' ORDER BY id)) FROM def_kmip"
+        )
+
+        # Post-restart write path must still use the same default key.
+        cluster.execute("INSERT INTO def_kmip VALUES (201, 'after_restart')")
+        self._assert_restart_reloaded_default_key(cluster)
+        assert cluster.fetchone(
+            "SELECT COUNT(*) FROM def_kmip WHERE id = 201"
+        ) == "1"
+
+    def test_kmip_global_default_principal_key_survives_repeated_restarts_under_io_uring(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        kmip_config: KmipConfig,
+        io_method: str,
+        install_dir: Path,
+    ):
+        """
+        Same default-key path under ``io_method=io_uring`` with several
+        restart cycles (the io_uring × Cosmian TLS/retrieve failure mode).
+        """
+        from lib.cluster import io_method_usable, io_uring_runtime_ready
+
+        if not io_method_usable(install_dir, "io_uring"):
+            ready, issues = io_uring_runtime_ready(install_dir)
+            hint = "; ".join(issues) if issues else "build/runtime not ready"
+            pytest.skip(
+                f"io_uring unavailable ({hint}); "
+                "see docs/io_uring_system_setup.md"
+            )
+        if io_method != "io_uring":
+            pytest.skip(
+                "requires io_method=io_uring "
+                "(pass --io-method=io_uring or --io-method-matrix)"
+            )
+
+        ring = _unique("kmip_def_uring")
+        key = f"{ring}_default"
+        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_def_uring")
+        tde = TdeManager(cluster)
+
+        assert cluster.fetchone("SHOW io_method") == "io_uring"
+
+        _add_global_kmip(tde, kmip_config, ring)
+        tde.set_global_default_principal_key(key, ring)
+
+        cluster.execute(
+            "CREATE TABLE def_uring (id INT PRIMARY KEY, payload TEXT) "
+            "USING tde_heap"
+        )
+        cluster.execute(
+            "INSERT INTO def_uring "
+            "SELECT i, 'uring_' || md5(i::text) FROM generate_series(1, 100) i"
+        )
+
+        for cycle in range(1, 4):
+            cluster.execute(
+                f"INSERT INTO def_uring VALUES "
+                f"(1000 + {cycle}, 'cycle_{cycle}')"
+            )
+            self._assert_restart_reloaded_default_key(cluster)
+            assert cluster.fetchone(
+                "SELECT COUNT(*) FROM def_uring"
+            ) == str(100 + cycle)
+            assert cluster.fetchone(
+                f"SELECT payload FROM def_uring WHERE id = {1000 + cycle}"
+            ) == f"cycle_{cycle}"
+
+        # Inherited default key on a new database after the churn.
+        cluster.execute("CREATE DATABASE uredb")
+        cluster.execute("CREATE EXTENSION pg_tde", dbname="uredb")
+        cluster.execute(
+            "CREATE TABLE t (id INT PRIMARY KEY) USING tde_heap; "
+            "INSERT INTO t VALUES (1)",
+            dbname="uredb",
+        )
+        self._assert_restart_reloaded_default_key(cluster)
+        assert cluster.fetchone(
+            "SELECT COUNT(*) FROM t", dbname="uredb"
+        ) == "1"
+
+
 class TestKmipWalAndServerKey:
     """WAL encryption path with KMIP server key under churn."""
 

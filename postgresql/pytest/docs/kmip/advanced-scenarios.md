@@ -23,6 +23,8 @@ One test (`test_read_fails_after_kmip_server_loses_all_keys`) requires local
 |-------|------|------------------|
 | **KeyRotationChurn** | `test_four_rotations_all_generations_readable` | 4 principal-key rotations, inserts each gen, restarts |
 | | `test_default_key_rotation_file_then_kmip_chain` | Global default key: file → KMIP → second KMIP ring |
+| **DefaultPrincipalKeyAcrossRestarts** | `test_kmip_global_default_principal_key_survives_postgres_restart` | KMIP default key reload after restart |
+| | `test_kmip_global_default_principal_key_survives_repeated_restarts_under_io_uring` | Same under `io_uring` × 3 restarts |
 | **MultiDatabaseIsolation** | `test_three_databases_distinct_kmip_principal_keys` | 3 DBs, same global ring, distinct principal keys |
 | | `test_new_database_inherits_kmip_global_default_key` | `CREATE DATABASE` + inherited KMIP default |
 | **MixedProviderTopology** | `test_global_kmip_table_and_database_file_table` | Global KMIP + DB-scoped file on `postgres` |
