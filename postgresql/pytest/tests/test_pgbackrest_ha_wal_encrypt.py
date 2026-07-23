@@ -41,6 +41,14 @@ _TDE_PARAMS: Dict[str, str] = {
     "default_table_access_method": "'tde_heap'",
 }
 
+# Standbys must not undercut primary hot-standby GUCs or recovery aborts
+# ("max_wal_senders = 5 is a lower setting than on the primary … 10").
+_HA_REPLICA_PARAMS: Dict[str, str] = {
+    **_TDE_PARAMS,
+    "max_wal_senders": "10",
+    "max_replication_slots": "10",
+}
+
 _AUTO_CONF_OVERRIDE_KEYS = frozenset(
     {
         "port",
@@ -187,7 +195,7 @@ def _bootstrap_3node_wal_encrypt_pgbackrest(
         standby = pg_factory(name)
         repl = ReplicationManager(primary, standby)
         repl.create_standby_from_backup(use_tde_basebackup=True)
-        standby.write_default_config("replica", extra_params=_TDE_PARAMS)
+        standby.write_default_config("replica", extra_params=_HA_REPLICA_PARAMS)
         standby.start()
         replicas.append(standby)
 
@@ -299,7 +307,7 @@ class TestPgBackRestHaWalEncryptRestore:
                 standby = pg_factory(name)
                 repl = ReplicationManager(restored, standby)
                 repl.create_standby_from_backup(use_tde_basebackup=True)
-                standby.write_default_config("replica", extra_params=_TDE_PARAMS)
+                standby.write_default_config("replica", extra_params=_HA_REPLICA_PARAMS)
                 standby.start()
                 fresh.append(standby)
 
@@ -372,7 +380,7 @@ class TestPgBackRestHaWalEncryptRestore:
                     shutil.rmtree(standby.data_dir)
                 shutil.copytree(frozen, standby.data_dir)
                 (standby.data_dir / "postmaster.pid").unlink(missing_ok=True)
-                standby.write_default_config("replica", extra_params=_TDE_PARAMS)
+                standby.write_default_config("replica", extra_params=_HA_REPLICA_PARAMS)
                 ReplicationManager(restored, standby).rewire_standby_conninfo()
 
                 log_path = standby.data_dir / "server.log"
