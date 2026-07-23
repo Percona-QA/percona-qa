@@ -688,7 +688,8 @@ class TestKmipStorageCornerCases:
 class TestKmipDefaultPrincipalKeyAcrossRestarts:
     """
     Global *default* principal key stored in KMIP must remain retrievable
-    across PostgreSQL restarts (including ``io_method=io_uring``).
+    across PostgreSQL restarts for every ``io_method`` (worker / sync /
+    io_uring).
 
     Pre-restart KMIP ops (add provider / create+set default key / encrypted
     DML) succeed; the failure mode to catch is startup after restart when
@@ -773,76 +774,67 @@ class TestKmipDefaultPrincipalKeyAcrossRestarts:
             "SELECT COUNT(*) FROM def_kmip WHERE id = 201"
         ) == "1"
 
-    def test_kmip_global_default_principal_key_survives_repeated_restarts_under_io_uring(
+    def test_kmip_global_default_principal_key_survives_repeated_restarts(
         self,
         pg_factory,
         tmp_path: Path,
         kmip_config: KmipConfig,
         io_method: str,
-        install_dir: Path,
     ):
         """
-        Same default-key path under ``io_method=io_uring`` with several
-        restart cycles (the io_uring × Cosmian TLS/retrieve failure mode).
+        KMIP default principal key survives several restart cycles under the
+        active ``io_method`` (worker / sync / io_uring via ``--io-method-matrix``).
         """
-        from lib.cluster import io_method_usable, io_uring_runtime_ready
-
-        if not io_method_usable(install_dir, "io_uring"):
-            ready, issues = io_uring_runtime_ready(install_dir)
-            hint = "; ".join(issues) if issues else "build/runtime not ready"
-            pytest.skip(
-                f"io_uring unavailable ({hint}); "
-                "see docs/io_uring_system_setup.md"
-            )
-        if io_method != "io_uring":
-            pytest.skip(
-                "requires io_method=io_uring "
-                "(pass --io-method=io_uring or --io-method-matrix)"
-            )
-
-        ring = _unique("kmip_def_uring")
+        ring = _unique("kmip_def_multi")
         key = f"{ring}_default"
-        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_def_uring")
+        cluster = _tde_cluster(pg_factory, tmp_path, "kmip_def_multi")
         tde = TdeManager(cluster)
 
-        assert cluster.fetchone("SHOW io_method") == "io_uring"
+        try:
+            shown = cluster.fetchone("SHOW io_method")
+        except RuntimeError:
+            shown = None
+        if shown is not None:
+            assert shown == io_method, (
+                f"expected io_method={io_method!r}, got {shown!r}"
+            )
 
         _add_global_kmip(tde, kmip_config, ring)
         tde.set_global_default_principal_key(key, ring)
 
         cluster.execute(
-            "CREATE TABLE def_uring (id INT PRIMARY KEY, payload TEXT) "
+            "CREATE TABLE def_multi (id INT PRIMARY KEY, payload TEXT) "
             "USING tde_heap"
         )
         cluster.execute(
-            "INSERT INTO def_uring "
-            "SELECT i, 'uring_' || md5(i::text) FROM generate_series(1, 100) i"
+            "INSERT INTO def_multi "
+            "SELECT i, 'multi_' || md5(i::text) FROM generate_series(1, 100) i"
         )
 
         for cycle in range(1, 4):
             cluster.execute(
-                f"INSERT INTO def_uring VALUES "
+                f"INSERT INTO def_multi VALUES "
                 f"(1000 + {cycle}, 'cycle_{cycle}')"
             )
             self._assert_restart_reloaded_default_key(cluster)
             assert cluster.fetchone(
-                "SELECT COUNT(*) FROM def_uring"
+                "SELECT COUNT(*) FROM def_multi"
             ) == str(100 + cycle)
             assert cluster.fetchone(
-                f"SELECT payload FROM def_uring WHERE id = {1000 + cycle}"
+                f"SELECT payload FROM def_multi WHERE id = {1000 + cycle}"
             ) == f"cycle_{cycle}"
 
         # Inherited default key on a new database after the churn.
-        cluster.execute("CREATE DATABASE uredb")
-        cluster.execute("CREATE EXTENSION pg_tde", dbname="uredb")
+        cluster.execute("CREATE DATABASE multidef")
+        cluster.execute("CREATE EXTENSION pg_tde", dbname="multidef")
         cluster.execute(
             "CREATE TABLE t (id INT PRIMARY KEY) USING tde_heap; "
             "INSERT INTO t VALUES (1)",
-            dbname="uredb",
+            dbname="multidef",
         )
         self._assert_restart_reloaded_default_key(cluster)
         assert cluster.fetchone(
-            "SELECT COUNT(*) FROM t", dbname="uredb"
+            "SELECT COUNT(*) FROM t", dbname="multidef"
         ) == "1"
 
 

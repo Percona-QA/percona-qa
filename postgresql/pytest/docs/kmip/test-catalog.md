@@ -158,7 +158,7 @@ has failed in the field).
 | Test | Description |
 |------|-------------|
 | `test_kmip_global_default_principal_key_survives_postgres_restart` | Set KMIP default key → encrypted DML → restart → decrypt + post-restart insert |
-| `test_kmip_global_default_principal_key_survives_repeated_restarts_under_io_uring` | Same under `io_method=io_uring` with 3 restart cycles + new DB inheritance (`--io-method=io_uring` or `--io-method-matrix`) |
+| `test_kmip_global_default_principal_key_survives_repeated_restarts` | Same with 3 restart cycles + new DB inheritance (runs for each `--io-method-matrix` value) |
 
 ### `TestKmipDeleteKeyProvider`
 
