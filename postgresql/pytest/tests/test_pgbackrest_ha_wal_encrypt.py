@@ -41,12 +41,15 @@ _TDE_PARAMS: Dict[str, str] = {
     "default_table_access_method": "'tde_heap'",
 }
 
-# Standbys must not undercut primary hot-standby GUCs or recovery aborts
-# ("max_wal_senders = 5 is a lower setting than on the primary … 10").
-_HA_REPLICA_PARAMS: Dict[str, str] = {
+# Hot-standby GUCs recorded in the backup control file. Restored/replica
+# clusters must meet or exceed these before recovery starts, or PostgreSQL
+# aborts with "insufficient parameter settings".
+_HA_PARAMS: Dict[str, str] = {
     **_TDE_PARAMS,
+    "wal_level": "replica",
     "max_wal_senders": "10",
     "max_replication_slots": "10",
+    "hot_standby": "on",
 }
 
 _AUTO_CONF_OVERRIDE_KEYS = frozenset(
@@ -107,7 +110,7 @@ def _start_restored_primary_cluster(
         restore_dir, port, install_dir,
         socket_dir=socket_dir, io_method=io_method,
     )
-    cluster.write_default_config("primary", extra_params=_TDE_PARAMS)
+    cluster.write_default_config("primary", extra_params=_HA_PARAMS)
     _strip_restored_auto_conf_socket_overrides(restore_dir)
     cluster.add_hba_entry("local all all trust")
     cluster.start()
@@ -161,10 +164,7 @@ def _bootstrap_3node_wal_encrypt_pgbackrest(
     primary.write_default_config(
         "primary",
         extra_params={
-            **_TDE_PARAMS,
-            "wal_level": "replica",
-            "max_wal_senders": "10",
-            "hot_standby": "on",
+            **_HA_PARAMS,
             "wal_keep_size": "'64MB'",
         },
     )
@@ -195,7 +195,7 @@ def _bootstrap_3node_wal_encrypt_pgbackrest(
         standby = pg_factory(name)
         repl = ReplicationManager(primary, standby)
         repl.create_standby_from_backup(use_tde_basebackup=True)
-        standby.write_default_config("replica", extra_params=_HA_REPLICA_PARAMS)
+        standby.write_default_config("replica", extra_params=_HA_PARAMS)
         standby.start()
         replicas.append(standby)
 
@@ -263,16 +263,7 @@ def _start_restored_primary(
         restore_dir, install_dir, socket_dir, io_method,
     )
     _configure_replication_hba(restored)
-    restored.configure(
-        {
-            "wal_level": "replica",
-            "max_wal_senders": "10",
-            "hot_standby": "on",
-        }
-    )
-    _strip_restored_auto_conf_socket_overrides(restore_dir)
-    restored.restart()
-    restored.wait_ready(timeout=120)
+    # Config already has _HA_PARAMS from boot; only refresh HBA for basebackup.
     assert restored.fetchone("SHOW pg_tde.wal_encrypt") == "on"
     assert restored.fetchone(
         f"SELECT COUNT(*) FROM ha_enc WHERE payload LIKE '{state.marker}%'",
@@ -307,7 +298,7 @@ class TestPgBackRestHaWalEncryptRestore:
                 standby = pg_factory(name)
                 repl = ReplicationManager(restored, standby)
                 repl.create_standby_from_backup(use_tde_basebackup=True)
-                standby.write_default_config("replica", extra_params=_HA_REPLICA_PARAMS)
+                standby.write_default_config("replica", extra_params=_HA_PARAMS)
                 standby.start()
                 fresh.append(standby)
 
@@ -380,7 +371,7 @@ class TestPgBackRestHaWalEncryptRestore:
                     shutil.rmtree(standby.data_dir)
                 shutil.copytree(frozen, standby.data_dir)
                 (standby.data_dir / "postmaster.pid").unlink(missing_ok=True)
-                standby.write_default_config("replica", extra_params=_HA_REPLICA_PARAMS)
+                standby.write_default_config("replica", extra_params=_HA_PARAMS)
                 ReplicationManager(restored, standby).rewire_standby_conninfo()
 
                 log_path = standby.data_dir / "server.log"
