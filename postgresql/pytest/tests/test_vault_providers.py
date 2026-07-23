@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 import pytest
@@ -115,6 +116,19 @@ def _vault_change_kp_args(
     *,
     token_path: str,
 ) -> list[str]:
+    """
+    Build ``pg_tde_change_key_provider … vault-v2`` argv.
+
+    The CLI accepts only ``<url> <mount> <token_path> [<ca_path>]`` and writes
+    those four JSON fields. It has **no namespace parameter** (unlike the SQL
+    ``*_vault_v2`` APIs), so do not pass ``vault.namespace`` — that would be
+    stored as ``caPath`` and break OpenBao / Vault Enterprise lookups.
+    """
+    if vault.namespace.strip():
+        raise ValueError(
+            "pg_tde_change_key_provider vault-v2 cannot preserve namespace; "
+            "skip offline CLI change when VAULT_NAMESPACE is set"
+        )
     db_oid = cluster.fetchone(
         "SELECT oid FROM pg_database WHERE datname = 'postgres'"
     )
@@ -130,8 +144,6 @@ def _vault_change_kp_args(
     ]
     if vault.ca_path:
         args.append(vault.ca_path)
-    if vault.namespace.strip():
-        args.append(vault.namespace)
     return args
 
 
@@ -262,11 +274,25 @@ class TestHashicorpVaultKeyProvider:
         install_dir: Path,
         vault_config: VaultConfig,
     ):
-        """Offline CLI updates Vault connection; keys must already be in Vault."""
+        """
+        Offline CLI updates Vault connection (token path); keys stay in Vault.
+
+        Skipped for OpenBao / Vault Enterprise: ``pg_tde_change_key_provider``
+        vault-v2 has no namespace field, so a rewrite would drop ``namespace``
+        from provider JSON and ``pg_tde_verify_key`` fails with key-not-found.
+        Use online ``pg_tde_change_*_key_provider_vault_v2`` when namespaced.
+        """
+        if vault_config.namespace.strip():
+            pytest.skip(
+                "pg_tde_change_key_provider vault-v2 has no namespace arg "
+                "(OpenBao / VAULT_NAMESPACE); use SQL change_*_vault_v2 online"
+            )
+
         cluster = _tde_cluster(pg_factory, tmp_path, "ckp_vault")
         tde = TdeManager(cluster)
         _add_db_vault(tde, vault_config, "ckp_vault", tmp_path, "postgres")
-        tde.set_database_principal_key("ckp_key", "ckp_vault", dbname="postgres")
+        key_name = f"ckp_key_{uuid.uuid4().hex[:10]}"
+        tde.set_database_principal_key(key_name, "ckp_vault", dbname="postgres")
         cluster.execute(
             "CREATE TABLE ckp_vault_t(id INT) USING tde_heap; "
             "INSERT INTO ckp_vault_t VALUES (7);"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # build_from_source.sh
 # Clone (or update) Percona PostgreSQL, then build and install PostgreSQL
-# and pg_tde from source.
+# and pg_tde from source. Optionally install pg_stat_monitor (opt-in).
 #
 # Usage:
 #   bash build_from_source.sh [BUILD_TYPE] [OPTIONS]
@@ -9,21 +9,27 @@
 # Build types: debug (default), debugoptimized, release, coverage, sanitize
 #
 # Options:
-#   --clean      Wipe pg_tde meson build dir and rebuild from scratch
+#   --clean      Wipe pg_tde meson build dir (and clean pg_stat_monitor) then rebuild
 #   --pg-only    Build/install PostgreSQL only
-#   --tde-only   Build/install pg_tde only (PostgreSQL already installed)
+#   --tde-only   Build/install pg_tde only (skips PostgreSQL clone/build;
+#                use with packaged or previously built INSTALL_DIR)
+#   --psm        Also build/install pg_stat_monitor (off by default)
+#   --psm-only   Build/install pg_stat_monitor only (PostgreSQL already installed)
 #   --deps       Install system dependencies and exit
 #
 # Directory layout:
 #   WORKDIR/
 #   ├── postgres/                  Percona PostgreSQL source
 #   ├── pg_tde/                    pg_tde source (fallback if not in contrib/)
+#   ├── pg_stat_monitor/           pg_stat_monitor source (when --psm / --psm-only)
 #   ├── pginst/                    install prefix
 #   └── tde_build/                 pg_tde meson build directory
 #
 # Rebuild after source changes:
 #   bash build_from_source.sh --tde-only          # pg_tde changes only
-#   bash build_from_source.sh                     # both (incremental)
+#   bash build_from_source.sh --psm-only          # pg_stat_monitor only
+#   bash build_from_source.sh --psm               # PG + pg_tde + pg_stat_monitor
+#   bash build_from_source.sh                     # PG + pg_tde (incremental)
 
 set -euo pipefail
 
@@ -35,18 +41,21 @@ PG_SRC="${WORKDIR}/postgres"
 TDE_SRC="${TDE_SRC:-${PG_SRC}/contrib/pg_tde}"
 TDE_FALLBACK_SRC="${WORKDIR}/pg_tde"
 TDE_BUILD="${WORKDIR}/tde_build"
+PSM_SRC="${PSM_SRC:-${WORKDIR}/pg_stat_monitor}"
 
 PG_REPO="${PG_REPO:-https://github.com/percona/postgres.git}"
 PG_BRANCH="${PG_BRANCH:-PSP_REL_18_STABLE}"
 TDE_REPO="${TDE_REPO:-https://github.com/percona/pg_tde.git}"
 TDE_BRANCH="${TDE_BRANCH:-main}"
+PSM_REPO="${PSM_REPO:-https://github.com/percona/pg_stat_monitor.git}"
+PSM_BRANCH="${PSM_BRANCH:-main}"
 
 JOBS="${JOBS:-$(nproc)}"
 
 # ── parse args ─────────────────────────────────────────────────────────────────
 
 BUILD_TYPE="debug"
-DO_CLEAN=0; DO_PG=1; DO_TDE=1; DO_DEPS_ONLY=0
+DO_CLEAN=0; DO_PG=1; DO_TDE=1; DO_PSM=0; DO_DEPS_ONLY=0
 
 for arg in "$@"; do
     case $arg in
@@ -54,7 +63,13 @@ for arg in "$@"; do
         --clean)     DO_CLEAN=1 ;;
         --pg-only)   DO_TDE=0 ;;
         --tde-only)  DO_PG=0 ;;
+        --psm)       DO_PSM=1 ;;
+        --psm-only)  DO_PG=0; DO_TDE=0; DO_PSM=1 ;;
         --deps)      DO_DEPS_ONLY=1 ;;
+        -h|--help)
+            sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
         *) echo "Unknown option: $arg"; exit 1 ;;
     esac
 done
@@ -112,27 +127,32 @@ mkdir -p "$WORKDIR" "$INSTALL_DIR"
 ok "WORKDIR     : $WORKDIR"
 ok "INSTALL_DIR : $INSTALL_DIR"
 
-# ── 3. clone / update postgres ─────────────────────────────────────────────────
+# ── 3. clone / update postgres (only when building PostgreSQL) ─────────────────
 
-step "3. Percona PostgreSQL source ($PG_BRANCH)"
+if [[ "$DO_PG" -eq 1 ]]; then
+    step "3. Percona PostgreSQL source ($PG_BRANCH)"
 
-if [[ ! -d "$PG_SRC/.git" ]]; then
-    info "Cloning $PG_REPO (branch: $PG_BRANCH)"
-    git clone --branch "$PG_BRANCH" "$PG_REPO" "$PG_SRC"
-    ok "Cloned"
+    if [[ ! -d "$PG_SRC/.git" ]]; then
+        info "Cloning $PG_REPO (branch: $PG_BRANCH)"
+        git clone --branch "$PG_BRANCH" "$PG_REPO" "$PG_SRC"
+        ok "Cloned"
+    else
+        info "Updating $PG_SRC"
+        git -C "$PG_SRC" fetch origin "$PG_BRANCH"
+        git -C "$PG_SRC" checkout "$PG_BRANCH"
+        git -C "$PG_SRC" merge --ff-only "origin/$PG_BRANCH" \
+            || warn "Fast-forward failed — local changes present, skipping pull"
+        ok "$(git -C "$PG_SRC" log -1 --oneline)"
+    fi
+
+    # Initialise submodules if the selected PostgreSQL tree uses them.
+    info "Initialising submodules (if present)"
+    git -C "$PG_SRC" submodule update --init --recursive
+    ok "Submodules ready"
 else
-    info "Updating $PG_SRC"
-    git -C "$PG_SRC" fetch origin "$PG_BRANCH"
-    git -C "$PG_SRC" checkout "$PG_BRANCH"
-    git -C "$PG_SRC" merge --ff-only "origin/$PG_BRANCH" \
-        || warn "Fast-forward failed — local changes present, skipping pull"
-    ok "$(git -C "$PG_SRC" log -1 --oneline)"
+    step "3. Percona PostgreSQL source — skipped (--tde-only / --psm-only)"
+    info "Using existing install at $INSTALL_DIR (no PG clone)"
 fi
-
-# Initialise submodules if the selected PostgreSQL tree uses them.
-info "Initialising submodules (if present)"
-git -C "$PG_SRC" submodule update --init --recursive
-ok "Submodules ready"
 
 # ── 4. build PostgreSQL ────────────────────────────────────────────────────────
 
@@ -181,7 +201,7 @@ if [[ "$DO_PG" -eq 1 ]]; then
 
     ok "Installed: $("$INSTALL_DIR/bin/postgres" --version 2>&1 | head -1)"
 else
-    step "4-5. PostgreSQL — skipped (--tde-only)"
+    step "4-5. PostgreSQL — skipped"
     [[ -x "$INSTALL_DIR/bin/pg_config" ]] \
         || fail "pg_config not found at $INSTALL_DIR/bin — build PostgreSQL first"
 fi
@@ -283,9 +303,53 @@ if [[ "$DO_TDE" -eq 1 ]]; then
     CTRL=$("$PG_CONFIG" --sharedir)/extension/pg_tde.control
     [[ -f "$CTRL" ]] && ok "pg_tde.control: $CTRL" \
         || warn "pg_tde.control not found — check meson install output"
+else
+    info "pg_tde — skipped (use default build or --tde-only; not requested with --pg-only / --psm-only)"
 fi
 
-# ── 6. env file ────────────────────────────────────────────────────────────────
+# ── 6. resolve + build pg_stat_monitor (opt-in) ─────────────────────────────────
+
+if [[ "$DO_PSM" -eq 1 ]]; then
+    PG_CONFIG="$INSTALL_DIR/bin/pg_config"
+    [[ -x "$PG_CONFIG" ]] \
+        || fail "pg_config not found at $INSTALL_DIR/bin — build PostgreSQL first"
+
+    step "6b. pg_stat_monitor (PGXS) — branch: $PSM_BRANCH"
+
+    if [[ ! -d "$PSM_SRC/.git" && ! -f "$PSM_SRC/Makefile" ]]; then
+        info "Cloning $PSM_REPO (branch: $PSM_BRANCH) → $PSM_SRC"
+        git clone --branch "$PSM_BRANCH" "$PSM_REPO" "$PSM_SRC"
+        ok "pg_stat_monitor cloned"
+    elif [[ -d "$PSM_SRC/.git" ]]; then
+        info "Updating pg_stat_monitor source at $PSM_SRC"
+        git -C "$PSM_SRC" fetch origin "$PSM_BRANCH" || true
+        git -C "$PSM_SRC" checkout "$PSM_BRANCH" || true
+        git -C "$PSM_SRC" merge --ff-only "origin/$PSM_BRANCH" \
+            || warn "pg_stat_monitor fast-forward skipped (local changes or detached HEAD)"
+        ok "$(git -C "$PSM_SRC" log -1 --oneline)"
+    fi
+
+    if [[ ! -f "$PSM_SRC/Makefile" ]]; then
+        fail "pg_stat_monitor Makefile not found at $PSM_SRC (need PGXS build)"
+    fi
+
+    # meson.build is in-tree contrib style; standalone install uses Makefile + PGXS.
+    cd "$PSM_SRC"
+    if [[ "$DO_CLEAN" -eq 1 ]]; then
+        make USE_PGXS=1 PG_CONFIG="$PG_CONFIG" clean || true
+    fi
+    make USE_PGXS=1 PG_CONFIG="$PG_CONFIG" -j"$JOBS"
+    make USE_PGXS=1 PG_CONFIG="$PG_CONFIG" install
+    ok "pg_stat_monitor installed (PGXS)"
+
+    PSM_CTRL=$("$PG_CONFIG" --sharedir)/extension/pg_stat_monitor.control
+    [[ -f "$PSM_CTRL" ]] && ok "pg_stat_monitor.control: $PSM_CTRL" \
+        || warn "pg_stat_monitor.control not found — check make install output"
+else
+    info "pg_stat_monitor — skipped (pass --psm or --psm-only to install)"
+fi
+
+# ── 7. env file ────────────────────────────────────────────────────────────────
 
 step "7. Environment file"
 ENV_FILE="$WORKDIR/pg_env.sh"
@@ -299,24 +363,34 @@ EOF
 ok "Written: $ENV_FILE"
 info "Activate with:  source $ENV_FILE"
 
-# ── 7. summary ─────────────────────────────────────────────────────────────────
+# ── 8. summary ─────────────────────────────────────────────────────────────────
 
 echo ""
 echo -e "${GREEN}══════════════════════════════════════════${NC}"
 echo -e "${GREEN}  Build complete!  (type: ${BUILD_TYPE})${NC}"
 echo -e "${GREEN}══════════════════════════════════════════${NC}"
 [[ "$DO_PG" -eq 1 ]] && echo "  PostgreSQL : $("$INSTALL_DIR/bin/postgres" --version 2>&1 | head -1)"
+[[ "$DO_TDE" -eq 1 ]] && echo "  pg_tde     : installed"
+[[ "$DO_PSM" -eq 1 ]] && echo "  pg_stat_monitor : installed" \
+    || echo "  pg_stat_monitor : not installed (use --psm / --psm-only)"
 echo "  Binaries   : $INSTALL_DIR/bin"
 echo "  Env file   : $ENV_FILE"
 echo ""
 echo "  Quick start:"
 echo "    source $ENV_FILE"
 echo "    initdb --no-data-checksums -D \$PGDATA"
-echo "    echo \"shared_preload_libraries = 'pg_tde'\" >> \$PGDATA/postgresql.conf"
+if [[ "$DO_PSM" -eq 1 ]]; then
+    echo "    echo \"shared_preload_libraries = 'pg_tde,pg_stat_monitor'\" >> \$PGDATA/postgresql.conf"
+else
+    echo "    echo \"shared_preload_libraries = 'pg_tde'\" >> \$PGDATA/postgresql.conf"
+fi
 echo "    pg_ctl start -D \$PGDATA -l \$PGDATA/server.log"
 echo "    psql -c \"CREATE EXTENSION pg_tde;\""
+[[ "$DO_PSM" -eq 1 ]] && echo "    psql -c \"CREATE EXTENSION pg_stat_monitor;\""
 echo ""
 echo "  Rebuild after source changes:"
 echo "    bash $(realpath "$0") --tde-only      # pg_tde only"
-echo "    bash $(realpath "$0")                 # both (incremental)"
+echo "    bash $(realpath "$0") --psm-only      # pg_stat_monitor only"
+echo "    bash $(realpath "$0") --psm           # PG + pg_tde + pg_stat_monitor"
+echo "    bash $(realpath "$0")                 # PG + pg_tde (incremental)"
 echo ""

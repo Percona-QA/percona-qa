@@ -26,6 +26,7 @@ from lib.cluster import (
     initdb_args_no_data_checksums,
     initdb_extra_align_data_checksums_with_old,
     pg_upgrade_target_params,
+    postgres_major_version,
     prepend_install_lib_dirs,
     resolve_pg_upgrade_binary,
     should_use_pg_tde_upgrade_wrapper,
@@ -1150,7 +1151,11 @@ class TestUpgradeNegativeExtended:
     def test_upgrade_fails_checksums_on_to_off(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
-        """Old cluster has checksums on; new does not — pg_upgrade should reject."""
+        """Old cluster has checksums on; new does not — pg_upgrade should reject.
+
+        Not related to pg_tde version skew. Uses a manual initdb (not ``_upgrade``'s
+        align helper) so the on→off mismatch cannot be silently "fixed" away.
+        """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
 
@@ -1159,16 +1164,41 @@ class TestUpgradeNegativeExtended:
         )
         old.start()
         old.stop()
-
-        # New cluster must explicitly disable checksums (PG18+ defaults them on).
-        new_cluster, result = _upgrade(
-            old,
-            install_dir,
-            tmp_path,
-            io_method,
-            extra_initdb=initdb_args_no_data_checksums(install_dir),
+        old_ck = int(old.controldata("Data page checksum version") or "0")
+        assert old_ck != 0, (
+            "old cluster should have data checksums on "
+            f"(controldata checksum version={old_ck})"
         )
-        assert result.returncode != 0, "Expected failure: checksum on → off mismatch"
+
+        new_port = allocate_port()
+        new_data = tmp_path / "new"
+        new_cluster = PgCluster(
+            new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method
+        )
+        no_ck = initdb_args_no_data_checksums(install_dir)
+        assert no_ck, (
+            f"--no-data-checksums required on PG18+ target; "
+            f"got major={new_cluster.major_version} from {install_dir}"
+        )
+        new_cluster.initdb(extra_args=no_ck)
+        new_ck = int(new_cluster.controldata("Data page checksum version") or "0")
+        assert new_ck == 0, (
+            "new cluster should have data checksums off after "
+            f"{no_ck}; got checksum version={new_ck}"
+        )
+
+        result = _run_pg_upgrade(
+            old, install_dir, new_data, new_port, tmp_path, check_only=True
+        )
+        combined = (result.stdout + "\n" + result.stderr).lower()
+        assert result.returncode != 0, (
+            "Expected failure: checksum on → off mismatch\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        assert "checksum" in combined, (
+            "pg_upgrade should mention checksum mismatch; "
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
     def test_upgrade_fails_when_new_cluster_is_not_pristine(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
@@ -1301,9 +1331,24 @@ class TestUpgradeNegativeExtended:
     def test_upgrade_fails_same_data_dir_for_old_and_new(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
-        """Using the same data directory for old and new must fail."""
+        """
+        Using the same data directory for old and new must fail.
+
+        Upstream pg_upgrade has no dedicated "same path" fatal; with a real
+        major bump it fails because new PG_VERSION does not match ``-B``.
+        With same-major old/new installs the check can wrongly look like success,
+        so require distinct majors first.
+        """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
+
+        old_maj = postgres_major_version(Path(old_install_dir))
+        new_maj = postgres_major_version(install_dir)
+        if old_maj == new_maj:
+            pytest.skip(
+                f"same-datadir negative needs a real major bump "
+                f"(old={old_maj}, new={new_maj}); check --old-install-dir"
+            )
 
         old = _make_old_cluster(old_install_dir, tmp_path, io_method)
         old.start()
@@ -1324,7 +1369,20 @@ class TestUpgradeNegativeExtended:
         env = os.environ.copy()
         prepend_install_lib_dirs(env, install_dir, old.install_dir)
         result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-        assert result.returncode != 0
+        combined = (result.stdout + "\n" + result.stderr).lower()
+        assert result.returncode != 0, (
+            "pg_upgrade --check must reject identical -d/-D across a major bump\n"
+            f"cmd: {' '.join(cmd)}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        assert (
+            "different major" in combined
+            or "not compatible" in combined
+            or "failure" in combined
+        ), (
+            "expected a version/compatibility failure for same datadir; "
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
 
 # ── TDE corner cases ──────────────────────────────────────────────────────────
