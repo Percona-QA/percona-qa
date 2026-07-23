@@ -120,6 +120,8 @@ Numbers in parentheses = pytest test count per module group.
 | Module | Tests | Focus |
 |--------|------:|-------|
 | `test_pgbackrest.py` | 19 | Full/incremental backup, restore, encrypted repo |
+| `test_pgbackrest_ha_wal_encrypt.py` | 2 | 3-node restore + stale-replica failure |
+| `test_pgbackrest_wal_encrypt_archive_async.py` | 5 | `archive-async` + encrypted-in-repo multi-node key concerns |
 | `test_pg_basebackup.py` | 6 | `pg_tde_basebackup` / streaming base backup |
 | `test_pitr.py` | 2 | Point-in-time recovery with encrypted WAL |
 | `test_recovery.py` | 10 | Crash recovery, `pg_resetwal`, archive paths |

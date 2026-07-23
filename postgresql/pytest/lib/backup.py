@@ -128,6 +128,9 @@ class BackupManager:
         *,
         pg_bin: Optional[str] = None,
         compress_type: Optional[str] = None,
+        archive_async: bool = False,
+        archive_header_check: Optional[bool] = None,
+        checksum_page: Optional[bool] = None,
     ) -> None:
         """
         Write the pgBackRest configuration file.
@@ -140,6 +143,14 @@ class BackupManager:
                 byte-inspect the WAL repo (e.g. proving
                 ``pg_tde_archive_decrypt`` actually fired) need ``"none"``.
                 Leave at ``None`` for normal backups.
+            archive_async: Set ``archive-async=y`` (encrypted-in-repo WAL path;
+                not compatible with ``pg_tde_archive_decrypt`` landing under
+                ``/dev/shm``).
+            archive_header_check: When ``False``, set ``archive-header-check=n``
+                (required when archiving ``pg_tde.wal_encrypt`` ciphertext).
+            checksum_page: When ``False``, set ``checksum-page=n`` (required when
+                backing up TDE-encrypted relation pages that pgBackRest cannot
+                checksum as plaintext).
         """
         self._pg1_path = pg_path
         self._pg1_port = pg_port
@@ -167,6 +178,12 @@ class BackupManager:
         }
         if compress_type is not None:
             cfg["global"]["compress-type"] = compress_type
+        if archive_async:
+            cfg["global"]["archive-async"] = "y"
+        if archive_header_check is False:
+            cfg["global"]["archive-header-check"] = "n"
+        if checksum_page is False:
+            cfg["global"]["checksum-page"] = "n"
         cfg[f"stanza:{self.stanza}"] = {
             "pg1-path": pg_path,
             "pg1-port": str(pg_port),
@@ -207,6 +224,26 @@ class BackupManager:
                 "archive-get",
                 "%%f",
                 "%%p",
+            ]
+        )
+
+    def archive_get_command(self, pg1_data_dir: str) -> str:
+        """
+        Raw ``pgbackrest archive-get`` command suitable for ``restore_command``.
+
+        Use this for the **encrypted-in-repo** path (no ``pg_tde_restore_encrypt``):
+        archived WAL stays ciphertext and must be decrypted by the instance that
+        still holds the matching WAL keys in ``pg_tde/``.
+        """
+        return " ".join(
+            [
+                "pgbackrest",
+                f"--config={self.conf_path}",
+                f"--stanza={self.stanza}",
+                f"--pg1-path={pg1_data_dir}",
+                "archive-get",
+                "%f",
+                "%p",
             ]
         )
 
