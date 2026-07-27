@@ -146,7 +146,8 @@ Ports `pg_tde_functions_test.sh` / TAP KMIP scenarios.
 | Test | Bash / TAP source | Description |
 |------|-------------------|-------------|
 | `test_multiple_databases_file_and_kmip_providers` | functions_test s2, `t/066` | `db1` file key; `db2` KMIP key; restart |
-| `test_kmip_global_default_principal_key_two_databases` | functions_test s3 | Global default KMIP key; `test1` local file key; `test2` inherits default |
+| `test_kmip_global_default_principal_key_two_databases` | functions_test s3 (file stand-in) | Global default KMIP key; `test1` local file key; `test2` inherits default |
+| `test_default_principal_key_local_vault_and_global_kmip_survives_restart` | functions_test s3 (exact) | Local vault on `test1` + global KMIP default; list providers; restart; re-query |
 | `test_kmip_database_scoped_provider` | functions_test s4 | Database-local KMIP provider on `sbtest2` |
 
 ### `TestKmipDefaultPrincipalKeyAcrossRestarts`

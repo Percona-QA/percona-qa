@@ -193,13 +193,14 @@ class TestKeyProviderLifecycle:
         vault_config: VaultConfig,
         kmip_config: KmipConfig,
     ):
-        """Scenario 3 — local vault + KMIP default; delete keys/providers; empty lists."""
+        """Scenario 3 — local vault + KMIP default; delete keys/providers; empty lists.
+
+        Setup order matches ``pg_tde_functions_test.sh`` Scenario 3: databases
+        and vault-local key first, then global KMIP default, then restart.
+        """
         cluster = _tde_cluster(pg_factory, tmp_path, "fn_s3")
         tde = TdeManager(cluster)
         u = _uid()
-
-        _add_global_kmip(tde, kmip_config, "kmip_keyring3")
-        tde.set_global_default_principal_key(f"kmip_key3_{u}", "kmip_keyring3")
 
         cluster.execute("CREATE DATABASE test1")
         cluster.execute("CREATE DATABASE test2")
@@ -208,6 +209,9 @@ class TestKeyProviderLifecycle:
 
         _add_db_vault(tde, vault_config, "vault_keyring3", tmp_path, "test1")
         tde.set_database_principal_key(f"vault_key3_{u}", "vault_keyring3", dbname="test1")
+
+        _add_global_kmip(tde, kmip_config, "kmip_keyring3")
+        tde.set_global_default_principal_key(f"kmip_key3_{u}", "kmip_keyring3")
 
         cluster.execute(
             "CREATE TABLE t1(a INT) USING tde_heap; INSERT INTO t1 VALUES (100)", "test1"

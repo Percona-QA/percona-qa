@@ -42,6 +42,7 @@ from lib import PgCluster, TdeManager
 from lib.cluster import initdb_args_no_data_checksums
 from lib.cosmian_kms import CosmianKmsServer, find_cosmian_binary
 from lib.kmip import KmipConfig
+from lib.vault import VaultConfig
 
 pytestmark = [pytest.mark.kmip, pytest.mark.encryption]
 
@@ -259,6 +260,127 @@ class TestKmipBashParityScenarios:
         cluster.wait_ready(timeout=60)
         assert cluster.fetchone("SELECT * FROM t1", "test1").strip() == "100"
         assert cluster.fetchone("SELECT * FROM t1", "test2").strip() == "1"
+
+    @pytest.mark.vault
+    def test_default_principal_key_local_vault_and_global_kmip_survives_restart(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        vault_config: VaultConfig,
+        kmip_config: KmipConfig,
+        io_method: str,
+    ):
+        """
+        Faithful port of ``pg_tde_functions_test.sh`` Scenario 3
+        (Testing Default Principal Key), including restart.
+
+        Step order matches the bash script:
+
+          1. CREATE DATABASE test1 / test2 + pg_tde
+          2. Database-scoped vault provider + principal key on test1
+          3. Global KMIP provider + global *default* principal key
+          4. Encrypted ``t1`` in both DBs (test1 uses vault key; test2
+             inherits the KMIP default)
+          5. List database + global providers
+          6. Restart PostgreSQL
+          7. Re-query both tables and list providers again
+
+        The known failure mode is startup after step 6 when pg_tde must
+        re-fetch ``kmip_key3`` from Cosmian/KMIP (all ``io_method`` values).
+        """
+        u = _unique("s3")
+        vault_ring = f"vault_keyring3_{u}"
+        vault_key = f"vault_key3_{u}"
+        kmip_ring = f"kmip_keyring3_{u}"
+        kmip_key = f"kmip_key3_{u}"
+
+        cluster = _tde_cluster(pg_factory, tmp_path, "fn_s3_default")
+        tde = TdeManager(cluster)
+
+        # 1. Databases
+        cluster.execute("CREATE DATABASE test1")
+        cluster.execute("CREATE DATABASE test2")
+        cluster.execute("CREATE EXTENSION pg_tde", "test1")
+        cluster.execute("CREATE EXTENSION pg_tde", "test2")
+
+        # 2. Local vault key on test1 (before global KMIP default — bash order)
+        tde.add_database_key_provider_vault(
+            vault_ring,
+            vault_url=vault_config.addr,
+            secret_mount_point=vault_config.secret_mount,
+            token_path=vault_config.token_sql_arg(tmp_path),
+            ca_path=vault_config.ca_path,
+            namespace=vault_config.namespace,
+            dbname="test1",
+        )
+        tde.set_database_principal_key(vault_key, vault_ring, dbname="test1")
+
+        # 3. Global KMIP default principal key
+        _add_global_kmip(tde, kmip_config, kmip_ring)
+        tde.set_global_default_principal_key(kmip_key, kmip_ring)
+
+        # 4. Encrypted tables
+        cluster.execute(
+            "CREATE TABLE t1(a INT) USING tde_heap; INSERT INTO t1 VALUES (100)",
+            "test1",
+        )
+        cluster.execute(
+            "CREATE TABLE t1(a INT) USING tde_heap; INSERT INTO t1 VALUES (1)",
+            "test2",
+        )
+        assert cluster.fetchone("SELECT * FROM t1", "test1").strip() == "100"
+        assert cluster.fetchone("SELECT * FROM t1", "test2").strip() == "1"
+
+        # 5. List providers (pre-restart)
+        db_prov = cluster.execute(
+            "SELECT name FROM pg_tde_list_all_database_key_providers()", "test1"
+        )
+        g_prov = cluster.execute(
+            "SELECT name FROM pg_tde_list_all_global_key_providers()"
+        )
+        assert vault_ring in db_prov
+        assert kmip_ring in g_prov
+
+        # 6. Restart — must reload KMIP default key without FATAL
+        log_path = cluster.data_dir / "server.log"
+        if log_path.exists():
+            log_path.write_text("")
+        try:
+            cluster.restart()
+            cluster.wait_ready(timeout=120)
+        except RuntimeError as exc:
+            raise AssertionError(
+                "Scenario 3 restart failed while retrieving the KMIP "
+                f"default principal key (io_method={io_method!r}).\n"
+                f"exception: {exc}\n"
+                f"log:\n{cluster.read_log(100)}"
+            ) from exc
+
+        log_l = cluster.read_log(150).lower()
+        for marker in (
+            "could not retrieve key from kmip",
+            "failed to retrieve principal key",
+            "connection closed or error while reading",
+            "i/o failure",
+            "expected 8, got 0",
+        ):
+            assert marker not in log_l, (
+                f"KMIP key retrieve failure after Scenario 3 restart "
+                f"(io_method={io_method!r}, marker={marker!r}):\n"
+                f"{cluster.read_log(150)}"
+            )
+
+        # 7. Post-restart queries + provider lists
+        assert cluster.fetchone("SELECT * FROM t1", "test1").strip() == "100"
+        assert cluster.fetchone("SELECT * FROM t1", "test2").strip() == "1"
+        db_prov_after = cluster.execute(
+            "SELECT name FROM pg_tde_list_all_database_key_providers()", "test1"
+        )
+        g_prov_after = cluster.execute(
+            "SELECT name FROM pg_tde_list_all_global_key_providers()"
+        )
+        assert vault_ring in db_prov_after
+        assert kmip_ring in g_prov_after
 
     def test_kmip_database_scoped_provider(
         self, pg_factory, tmp_path: Path, kmip_config: KmipConfig
