@@ -37,7 +37,7 @@ pytest --list-test-sections
 | `replication` | `replication` | `test_replication.py` |
 | `backup` | `backup` | `test_pitr.py`, `test_pg_basebackup.py`, … |
 | `recovery` | `recovery` | `test_recovery.py`, `test_unlogged_recovery.py` |
-| `pgbackrest` | `pgbackrest` | `test_pgbackrest.py`, HA restore, `archive-async` + WAL-encrypt concerns |
+| `pgbackrest` | `pgbackrest` | `test_pg_tde_pgbackrest.py` (matrix, HA, checksum/header, archive-async) |
 | `vault` | `vault`, `openbao` | Vault/OpenBao (`tests/test_vault_providers.py`; see `docs/vault.md`) |
 | `kmip` | `kmip` | KMIP provider tests — see [kmip/README.md](kmip/README.md) |
 | `waldump` | `waldump` | `test_waldump.py` |

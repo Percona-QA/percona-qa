@@ -115,13 +115,11 @@ Numbers in parentheses = pytest test count per module group.
 
 ---
 
-## Slide 7 — Backup, recovery & WAL (84 tests)
+## Slide 7 — Backup, recovery & WAL (106 tests)
 
 | Module | Tests | Focus |
 |--------|------:|-------|
-| `test_pgbackrest.py` | 19 | Full/incremental backup, restore, encrypted repo |
-| `test_pgbackrest_ha_wal_encrypt.py` | 2 | 3-node restore + stale-replica failure |
-| `test_pgbackrest_wal_encrypt_archive_async.py` | 5 | `archive-async` + encrypted-in-repo multi-node key concerns |
+| `test_pg_tde_pgbackrest.py` | 39 | Matrix, HA restore/rewire, checksum/header options, archive-async, encrypted-in-repo PITR/rewind |
 | `test_pg_basebackup.py` | 6 | `pg_tde_basebackup` / streaming base backup |
 | `test_pitr.py` | 2 | Point-in-time recovery with encrypted WAL |
 | `test_recovery.py` | 10 | Crash recovery, `pg_resetwal`, archive paths |
@@ -287,7 +285,7 @@ pytest --list-test-sections                       # all sections
 | `test_waldump.py` | 27 | `waldump` |
 | `test_kmip.py` | 24 | `kmip` |
 | `test_partitioning.py` | 21 | `encryption` |
-| `test_pgbackrest.py` | 19 | `pgbackrest` |
+| `test_pg_tde_pgbackrest.py` | 39 | `pgbackrest` |
 | `test_bug_reproduction.py` | 18 | `bug` |
 | `test_cipher.py` | 18 | `encryption` |
 | `test_change_key_provider.py` | 16 | `encryption` |
@@ -310,4 +308,4 @@ pytest --list-test-sections                       # all sections
 | `test_vault_kmip.py` | 2 | `vault_kmip` |
 | `test_pitr.py` | 2 | `backup` |
 | `test_kmip_server_revalidation.py` | 1×N | `kmip_revalidation` (per profile) |
-| **Total** | **550** | |
+| **Total** | **580** | |

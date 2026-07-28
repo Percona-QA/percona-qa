@@ -116,7 +116,7 @@ docker compose run --rm pg-tde-tests-pkg pytest tests/test_encryption.py -v
 
 # A single test method
 docker compose run --rm pg-tde-tests-pkg \
-    pytest tests/test_pgbackrest.py::TestPgBackRest::test_full_backup_and_restore -v
+    pytest tests/test_pg_tde_pgbackrest.py::TestPgBackRest::test_full_backup_and_restore -v
 
 # Different marker selection
 docker compose run --rm pg-tde-tests-pkg \

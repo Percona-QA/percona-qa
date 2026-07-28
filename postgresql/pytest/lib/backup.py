@@ -437,6 +437,37 @@ class BackupManager:
     def check(self) -> None:
         self._run("check")
 
+    def expire(self) -> None:
+        """Run ``pgbackrest expire`` using ``repo1-retention-full`` from config."""
+        self._run("expire")
+        log.info("pgBackRest expire completed for stanza '%s'", self.stanza)
+
+    def restore_command(
+        self,
+        pg1_data_dir: str,
+        *,
+        pg_tde_wal_restore: bool = False,
+    ) -> str:
+        """
+        Build a ``restore_command`` string for *pg1_data_dir*.
+
+        When ``pg_tde_wal_restore`` is True, wrap ``archive-get`` with
+        ``pg_tde_restore_encrypt`` (plaintext-in-repo / Percona walkthrough).
+        Otherwise return raw ``pgbackrest archive-get`` (encrypted-in-repo).
+        """
+        if not pg_tde_wal_restore:
+            return self.archive_get_command(pg1_data_dir)
+        if not self._pg_bin:
+            raise ValueError(
+                "write_config(..., pg_bin='...') is required for pg_tde_wal_restore"
+            )
+        encrypt = self._pg_bin / "pg_tde_restore_encrypt"
+        if not encrypt.is_file():
+            raise FileNotFoundError(f"pg_tde_restore_encrypt not found: {encrypt}")
+        inner = self._inner_pgbackrest_archive_get(str(Path(pg1_data_dir).resolve()))
+        # PostgreSQL expand %f/%p; inner already uses %% for the wrapper argv.
+        return f'{encrypt} %f %p "{inner}"'
+
     # ── timing helpers ────────────────────────────────────────────────────
 
     def wait_for_wal_archive(self, cluster, timeout: int = 30) -> str:

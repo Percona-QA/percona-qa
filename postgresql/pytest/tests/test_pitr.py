@@ -2,7 +2,7 @@
 Point-in-time recovery (PITR) via WAL archive + restore_command.
 
 This is not the same as ``test_pg_basebackup.py`` (filesystem basebackup) or
-``test_pgbackrest.py`` (external backup tool): PITR replays archived WAL to a
+``test_pg_tde_pgbackrest.py`` (external backup tool): PITR replays archived WAL to a
 timestamp target after restoring a **data-directory copy**, which exercises
 ``recovery_target_time``, ``restore_command``, and (for TDE) decrypt wrappers.
 
