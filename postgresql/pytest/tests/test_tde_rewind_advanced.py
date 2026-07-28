@@ -6382,11 +6382,14 @@ class TestTdeRewindExtremeCornerCases:
 
 # ── Multi-segment / FSM / dry-run / PG-2397 rewind regressions ───────────────
 
-# Default ~1.1 GiB of payload (past one 1 GiB relation segment). Override for labs.
+# Default ~1.1 GiB of *on-disk* relation data (past one 1 GiB segment).
+# Override for labs: PG_TDE_MULTISEG_TARGET_BYTES=…
 _MULTISEG_TARGET_BYTES = int(
     os.environ.get("PG_TDE_MULTISEG_TARGET_BYTES", str(int(1.1 * 1024**3)))
 )
-_MULTISEG_PAYLOAD_CHARS = 2000
+# Per-row fill length. Must NOT be a single repeated character — TOAST/pglz
+# collapses ``repeat('m', N)`` so the heap never reaches a second segment.
+_MULTISEG_PAYLOAD_CHARS = 2048
 
 
 def _wait_not_in_recovery(cluster: PgCluster, timeout: int = 60) -> None:
@@ -6457,13 +6460,24 @@ def _grow_tde_heap_past_one_segment(
         f"  payload TEXT NOT NULL"
         f") USING tde_heap"
     )
-    batch = 5_000
+    # Low-compressibility payload (~2 KiB/row). ``repeat('m', N)`` TOAST-compresses
+    # to ~tens of bytes/row and never crosses the 1 GiB segment boundary in CI.
+    payload_expr = (
+        f"rpad("
+        f"md5(g::text) || md5((g * 3)::text) || md5((g * 7)::text) || "
+        f"md5((g * 11)::text) || md5((g * 13)::text),"
+        f" {_MULTISEG_PAYLOAD_CHARS},"
+        f" md5((g * 17)::text)"
+        f")"
+    )
+    batch = 10_000
     inserted = 0
-    for _ in range(400):
+    # ~1.1 GiB / ~2 KiB ≈ 550k rows; keep headroom for headers / compression.
+    max_iters = max(200, (target_bytes // (_MULTISEG_PAYLOAD_CHARS * batch)) + 80)
+    for _ in range(max_iters):
         cluster.execute(
             f"INSERT INTO {table}(payload) "
-            f"SELECT repeat('m', {_MULTISEG_PAYLOAD_CHARS}) "
-            f"FROM generate_series(1, {batch})"
+            f"SELECT {payload_expr} FROM generate_series(1, {batch}) g"
         )
         inserted += batch
         cluster.execute("CHECKPOINT")
@@ -6472,10 +6486,17 @@ def _grow_tde_heap_past_one_segment(
         if len(segs) >= 2 and total >= min(target_bytes, 1024**3 + 1):
             return inserted
     segs = _rel_main_segments(cluster, table)
+    rel_sz = cluster.fetchone(f"SELECT pg_relation_size('{table}'::regclass)")
     pytest.fail(
         f"could not grow {table} past one segment "
-        f"(segs={len(segs)}, bytes={sum(p.stat().st_size for p in segs)})"
+        f"(segs={len(segs)}, bytes={sum(p.stat().st_size for p in segs)}, "
+        f"pg_relation_size={rel_sz}, inserted={inserted})"
     )
+
+
+# Rewind without ``-c`` needs retained local WAL (default _ha_pair only sets
+# wal_keep_size when wal_encrypt=True).
+_REWIND_KEEP_WAL = {"wal_keep_size": "'4GB'"}
 
 
 class TestTdeRewindMultiSegmentCorruption:
@@ -6487,7 +6508,9 @@ class TestTdeRewindMultiSegmentCorruption:
     def test_rewind_preserves_post_basebackup_multisegment_tde_heap(
         self, install_dir: Path, tmp_path: Path, io_method: str,
     ):
-        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, extra_primary_params=_REWIND_KEEP_WAL
+        )
         try:
             n = _grow_tde_heap_past_one_segment(
                 primary, "multi_seg", _MULTISEG_TARGET_BYTES
@@ -6547,7 +6570,9 @@ class TestTdeRewindFsmVmKeyFlush:
     def test_rewind_preserves_fsm_vm_for_post_basebackup_relation(
         self, install_dir: Path, tmp_path: Path, io_method: str,
     ):
-        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, extra_primary_params=_REWIND_KEEP_WAL
+        )
         try:
             primary.execute(
                 "CREATE TABLE fsm_seg ("
@@ -6608,7 +6633,9 @@ class TestTdeRewindDryRunMustNotModifyTarget:
     def test_dry_run_leaves_relation_files_unchanged(
         self, install_dir: Path, tmp_path: Path, io_method: str,
     ):
-        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        primary, standby, _, _ = _ha_pair(
+            install_dir, tmp_path, io_method, extra_primary_params=_REWIND_KEEP_WAL
+        )
         try:
             primary.execute(
                 "CREATE TABLE dry_fsm (id INT PRIMARY KEY, f1 TEXT) USING tde_heap"
