@@ -684,7 +684,7 @@ def pg_tde_control_file_candidates(install_dir: Path) -> List[Path]:
         candidates.append(
             Path(f"/usr/share/postgresql/{maj}/extension/pg_tde.control")
         )
-    except (subprocess.CalledProcessError, ValueError, IndexError):
+    except (OSError, subprocess.CalledProcessError, ValueError, IndexError):
         pass
     pg_config = root / "bin" / "pg_config"
     if pg_config.is_file():
@@ -728,20 +728,166 @@ def read_pg_tde_default_version(install_dir: Path) -> Optional[str]:
     return None
 
 
+def _pgbackrest_version_string() -> Optional[str]:
+    import shutil
+    import subprocess
+
+    br = shutil.which("pgbackrest")
+    if not br:
+        return None
+    result = subprocess.run(
+        [br, "version"], capture_output=True, text=True, check=False
+    )
+    line = (result.stdout or result.stderr or "").strip().splitlines()
+    return line[0].strip() if line else None
+
+
+def _pg_tde_build_info_paths(install_dir: Path) -> List[Path]:
+    """Locations where ``build_from_source.sh`` may write pg_tde git metadata."""
+    paths = [
+        install_dir / "pg_tde_build_info",
+        install_dir / "share" / "pg_tde_build_info",
+    ]
+    pg_config = install_dir / "bin" / "pg_config"
+    if pg_config.is_file():
+        import subprocess
+
+        result = subprocess.run(
+            [str(pg_config), "--sharedir"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        sharedir = (result.stdout or "").strip()
+        if sharedir:
+            paths.append(Path(sharedir) / "pg_tde_build_info")
+            paths.append(Path(sharedir) / "extension" / "pg_tde_build_info")
+    return paths
+
+
+def _parse_pg_tde_build_info(path: Path) -> dict:
+    info: dict = {}
+    try:
+        for raw in path.read_text().splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            info[key.strip()] = val.strip()
+    except OSError:
+        return {}
+    return info
+
+
+def _git_describe_repo(src: Path) -> Optional[dict]:
+    """Return branch/commit/dirty for a git checkout, or None."""
+    import subprocess
+
+    if not (src / ".git").exists() and not (src / ".git").is_file():
+        return None
+    try:
+        branch = subprocess.run(
+            ["git", "-C", str(src), "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        commit = subprocess.run(
+            ["git", "-C", str(src), "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        dirty = subprocess.run(
+            ["git", "-C", str(src), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if commit.returncode != 0:
+            return None
+        br = (branch.stdout or "").strip() or "DETACHED"
+        sha = (commit.stdout or "").strip()
+        is_dirty = bool((dirty.stdout or "").strip())
+        return {
+            "source": str(src),
+            "branch": br,
+            "commit": sha,
+            "dirty": "1" if is_dirty else "0",
+        }
+    except OSError:
+        return None
+
+
+def _resolve_pg_tde_source_git(install_dir: Path) -> Optional[dict]:
+    """
+    pg_tde git identity for source builds.
+
+    Prefer ``pg_tde_build_info`` written at install time; else probe
+    ``PG_TDE_SRC`` / ``TDE_SRC`` / common lab paths.
+    """
+    for path in _pg_tde_build_info_paths(install_dir):
+        if path.is_file():
+            info = _parse_pg_tde_build_info(path)
+            if info.get("commit") or info.get("branch"):
+                return info
+
+    candidates: List[Path] = []
+    for env_key in ("PG_TDE_SRC", "TDE_SRC"):
+        v = os.environ.get(env_key, "").strip()
+        if v:
+            candidates.append(Path(v))
+    # Adjacent trees from build_from_source.sh (…/pginst/18 → …/pg_tde).
+    work = install_dir.parent
+    candidates.extend(
+        [
+            work / "pg_tde",
+            work / "src" / "pg_tde",
+            install_dir.parent.parent / "pg_tde",
+        ]
+    )
+    seen: set = set()
+    for src in candidates:
+        key = str(src.resolve()) if src.exists() else str(src)
+        if key in seen:
+            continue
+        seen.add(key)
+        if not src.is_dir():
+            continue
+        git_info = _git_describe_repo(src)
+        if git_info:
+            return git_info
+    return None
+
+
+def _format_pg_tde_source_line(info: dict, *, tag: str) -> str:
+    branch = info.get("branch") or "?"
+    commit = info.get("commit") or "?"
+    dirty = info.get("dirty", "0") in ("1", "true", "yes")
+    dirty_s = " (dirty)" if dirty else ""
+    src = info.get("source") or info.get("src") or ""
+    base = f"{tag}pg_tde source: {branch}@{commit}{dirty_s}"
+    if src:
+        return f"{base} ({src})"
+    return base
+
+
 def install_version_summary_lines(
     install_dir: Path, *, prefix: str = ""
 ) -> List[str]:
     """
     Human-readable install-tree versions (no running cluster required).
 
-    Shows ``postgres --version`` and ``pg_tde.control`` ``default_version``.
+    Shows PostgreSQL ``postgres --version``, ``pg_tde.control``
+    ``default_version``, optional source git (branch/commit), and
+    ``pgbackrest version`` when on PATH.
     """
+    import subprocess
+
     tag = f"{prefix} " if prefix else ""
     lines: List[str] = []
     pg_bin = install_dir / "bin" / "postgres"
     if pg_bin.is_file():
-        import subprocess
-
         result = subprocess.run(
             [str(pg_bin), "--version"],
             capture_output=True,
@@ -755,11 +901,33 @@ def install_version_summary_lines(
             f"{tag}PostgreSQL server: (no postgres binary under {install_dir})"
         )
 
-    ctrl_ver = read_pg_tde_default_version(install_dir)
+    try:
+        ctrl_ver = read_pg_tde_default_version(install_dir)
+    except (OSError, ValueError, IndexError, subprocess.CalledProcessError):
+        ctrl_ver = None
     if ctrl_ver:
         lines.append(f"{tag}pg_tde.control default_version: {ctrl_ver}")
     else:
         lines.append(f"{tag}pg_tde extension: pg_tde.control not found")
+
+    try:
+        git_info = _resolve_pg_tde_source_git(install_dir)
+    except OSError:
+        git_info = None
+    if git_info:
+        lines.append(_format_pg_tde_source_line(git_info, tag=tag))
+    else:
+        lines.append(f"{tag}pg_tde source: (package install or no git metadata)")
+
+    # Only once for the primary INSTALL tree (avoid duplicate when summarizing OLD).
+    if not prefix or prefix.upper() == "INSTALL":
+        br = _pgbackrest_version_string()
+        if br:
+            lines.append(f"pgBackRest: {br}")
+        else:
+            lines.append("pgBackRest: (not on PATH)")
+
+    lines.append(f"{tag}install-dir: {install_dir}")
     return lines
 
 

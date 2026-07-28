@@ -280,7 +280,7 @@ def pytest_configure(config):
 
 
 def pytest_report_header(config):
-    """Show PostgreSQL + pg_tde install versions at pytest startup."""
+    """Session header: install versions, io_uring status, skip sections, providers."""
     headers: list[str] = []
     install = config.getoption("--install-dir")
     if install:
@@ -295,7 +295,18 @@ def pytest_report_header(config):
     upgrade_dir = config.getoption("--upgrade-data-dir")
     if upgrade_dir:
         headers.append(f"upgrade-data-dir: {upgrade_dir}")
-    return headers
+    for attr in ("_io_method_pg17_note", "_io_method_install_note"):
+        note = getattr(config, attr, None)
+        if note:
+            headers.append(note)
+    for line in getattr(config, "_io_uring_status", []):
+        headers.append(line)
+    skipped = getattr(config, "_skip_sections", None)
+    if skipped:
+        headers.append(f"skip-sections: {', '.join(skipped)}")
+    for warn in getattr(config, "_external_key_provider_warnings", ()):
+        headers.append(f"external-key-provider: {warn}")
+    return headers or None
 
 
 def _configure_io_method_for_install(config) -> None:
@@ -365,22 +376,6 @@ def _configure_io_method_for_install(config) -> None:
             f"{', '.join(available)}).{detail}",
             returncode=2,
         )
-
-
-def pytest_report_header(config):
-    lines = []
-    for attr in ("_io_method_pg17_note", "_io_method_install_note"):
-        note = getattr(config, attr, None)
-        if note:
-            lines.append(note)
-    for line in getattr(config, "_io_uring_status", []):
-        lines.append(line)
-    skipped = getattr(config, "_skip_sections", None)
-    if skipped:
-        lines.append(f"skip-sections: {', '.join(skipped)}")
-    for warn in getattr(config, "_external_key_provider_warnings", ()):
-        lines.append(f"external-key-provider: {warn}")
-    return lines or None
 
 
 def pytest_generate_tests(metafunc):

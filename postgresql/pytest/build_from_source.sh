@@ -303,6 +303,31 @@ if [[ "$DO_TDE" -eq 1 ]]; then
     CTRL=$("$PG_CONFIG" --sharedir)/extension/pg_tde.control
     [[ -f "$CTRL" ]] && ok "pg_tde.control: $CTRL" \
         || warn "pg_tde.control not found — check meson install output"
+
+    # Metadata for pytest session header (branch + commit of this install).
+    _SHAREDIR=$("$PG_CONFIG" --sharedir)
+    _BUILD_INFO="${_SHAREDIR}/pg_tde_build_info"
+    {
+        echo "# Written by build_from_source.sh — used by pytest report header"
+        echo "source=${TDE_SRC}"
+        if [[ -d "${TDE_SRC}/.git" || -f "${TDE_SRC}/.git" ]]; then
+            echo "branch=$(git -C "$TDE_SRC" rev-parse --abbrev-ref HEAD 2>/dev/null || echo DETACHED)"
+            echo "commit=$(git -C "$TDE_SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+            if [[ -n "$(git -C "$TDE_SRC" status --porcelain 2>/dev/null || true)" ]]; then
+                echo "dirty=1"
+            else
+                echo "dirty=0"
+            fi
+        else
+            echo "branch=${TDE_BRANCH:-unknown}"
+            echo "commit=unknown"
+            echo "dirty=0"
+        fi
+        echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } > "$_BUILD_INFO"
+    # Also keep a copy next to the install prefix for trees without a sharedir probe.
+    cp -f "$_BUILD_INFO" "$INSTALL_DIR/pg_tde_build_info" 2>/dev/null || true
+    ok "pg_tde build info: $_BUILD_INFO"
 else
     info "pg_tde — skipped (use default build or --tde-only; not requested with --pg-only / --psm-only)"
 fi
