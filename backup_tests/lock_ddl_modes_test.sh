@@ -15,17 +15,14 @@ export PATH="$PATH:$xtrabackup_dir"
 export logdir="$HOME/backuplogs"
 export mysql_start_timeout=60
 declare -A KMIP_CONFIGS=(
-    # Hashicorp Docker Setup Configuration
-    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.py"
+    # PyKMIP Docker Configuration
+    ["pykmip"]="addr=127.0.0.1,image=mohitpercona/kmip:latest,port=5696,name=kmip_pykmip"
 
-    # Fortanix Setup Configuration
-    ["fortanix"]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
+    # Hashicorp Docker Setup Configuration
+    ["hashicorp"]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
 
     # API Configuration
     # ["ciphertrust"]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
-
-    # PyKMIP Docker Configuration
-    #["pykmip"]="addr=127.0.0.1,image=satyapercona/kmip:latest,port=5696,name=kmip_pykmip"
 )
 
 # Set tool variables
@@ -373,7 +370,7 @@ local kmip_type="$2"
     }' > "$mysqldir/bin/mysqld.my"
 
     start_kmip_server "$kmip_type"
-    [ -f "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kmip_config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
+    [ -f "${HOME}/${kimp_config[cert_dir]}/component_keyring_kmip.cnf" ] && cp "${HOME}/${kimp_config[cert_dir]}/component_keyring_kmip.cnf" "$mysqldir/lib/plugin/"
 
   elif [ "$keyring_type" = "keyring_file" ]; then
     echo "Keyring type is file. Taking file-based action..."
