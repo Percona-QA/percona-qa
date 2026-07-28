@@ -1,0 +1,27 @@
+# vector_distance.zz
+# Companion gendata file for vector_distance.yy.
+#
+# The actual VECTOR-typed schema (table `vt`) is built inside the grammar's
+# query_init rule, since RQG's built-in data generator predates support for
+# the VECTOR column type and cannot declare VECTOR(n) columns natively.
+#
+# This .zz intentionally defines a small, unrelated auxiliary table so that
+# --gendata has something valid to do; it also gives the fuzzer a secondary,
+# ordinary table if you want to extend the grammar later with JOINs between
+# VECTOR_DISTANCE queries and regular relational data (e.g. joining `vt` to
+# a lookup table by category).
+
+$tables = {
+	rows => [1, 10, 50],
+	'names' => ['aux_lookup']
+};
+
+$fields = {
+	'types' => [ 'int', 'varchar(32)' ],
+	'indexes' => [ undef ],
+};
+
+$data = {
+	'numbers' => [ 'tinyint', 'digit' ],
+	'strings' => [ 'letter', 'english' ],
+};
