@@ -21,7 +21,7 @@ It does not reference source file names — only product behaviour and scenarios
 | 6 | Major upgrade (`pg_tde_upgrade`) | 48 | PG 17→18, same data directory |
 | 7 | Major upgrade (`pg_upgrade`) | 47 | New PGDATA, heap + TDE |
 | 8 | Minor upgrade (in-place) | 11 | Patch bump, `ALTER EXTENSION` |
-| 9 | pg_tde_rewind / HA | 97 | Failover, rewind, chaos loops |
+| 9 | pg_tde_rewind / HA | ~101 | Failover, rewind, chaos loops |
 | 10 | pgBackRest integration | 19 | Backup/restore with encryption |
 | 11 | Base backup | 6 | Streaming backup, HA rebuild |
 | 12 | Point-in-time recovery | 2 | PITR with encrypted WAL |
@@ -222,6 +222,7 @@ Persistent data directory across Setup and Verify (staged workflow).
 | Negative | Unclean shutdown, bad timeline, missing files |
 | Multi-round | Several promote/rewind cycles in sequence |
 | Encrypted WAL TAP parity | Ports of upstream TAP rewind scenarios |
+| Multi-seg / dry-run / PG-2397 | Segment+FSM key flush, `--dry-run` immutability, `-c` archive-restored WAL keys |
 | Extreme corner cases | Unusual timeline / fork combinations |
 
 ---

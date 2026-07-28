@@ -22,8 +22,10 @@ advanced scenarios that stress the interaction between pg_tde and rewind:
   TestTdeRewindEncTapPorts          pg_tde/t/pg_rewind_enc_*.pl (2026 fixes)
   TestTdeRewindEncMedium            ext TS, empty-pg_wal archive mode, remote flags
   TestTdeRewindUpstreamPorts        upstream pg_rewind_*.pl options/extrafiles/…
+  TestTdeRewindMultiSegment*         multi-seg / FSM/VM / dry-run / PG-2397 -c WAL keys
 """
 
+import hashlib
 import random
 import re
 import shutil
@@ -33,7 +35,7 @@ import os
 import signal
 import uuid
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pytest
 
@@ -6374,5 +6376,353 @@ class TestTdeRewindExtremeCornerCases:
 
             count = primary.fetchone("SELECT COUNT(*) FROM immediate_t")
             assert int(count) == 2
+        finally:
+            _teardown(standby, primary)
+
+
+# ── Multi-segment / FSM / dry-run / PG-2397 rewind regressions ───────────────
+
+# Default ~1.1 GiB of payload (past one 1 GiB relation segment). Override for labs.
+_MULTISEG_TARGET_BYTES = int(
+    os.environ.get("PG_TDE_MULTISEG_TARGET_BYTES", str(int(1.1 * 1024**3)))
+)
+_MULTISEG_PAYLOAD_CHARS = 2000
+
+
+def _wait_not_in_recovery(cluster: PgCluster, timeout: int = 60) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if cluster.fetchone("SELECT pg_is_in_recovery()") == "f":
+            return
+        time.sleep(0.5)
+    raise TimeoutError("cluster still in recovery")
+
+
+def _rel_main_segments(cluster: PgCluster, table: str) -> List[Path]:
+    row = cluster.fetchone(
+        "SELECT d.oid::text || '/' || c.relfilenode::text "
+        "FROM pg_class c, pg_database d "
+        f"WHERE c.relname = '{table}' AND d.datname = current_database()"
+    )
+    assert row, f"relation {table!r} not found"
+    seg0 = cluster.data_dir / "base" / row
+    segs = [seg0]
+    n = 1
+    while True:
+        p = Path(f"{seg0}.{n}")
+        if not p.exists():
+            break
+        segs.append(p)
+        n += 1
+    return segs
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _fingerprint_base_relations(data_dir: Path) -> dict:
+    base = data_dir / "base"
+    out = {}
+    if not base.is_dir():
+        return out
+    for p in base.rglob("*"):
+        if not p.is_file():
+            continue
+        rel = str(p.relative_to(base))
+        if "/pgsql_tmp" in rel or rel.endswith(".map"):
+            continue
+        out[rel] = _sha256_file(p)
+    return out
+
+
+def _rel_integrity_fingerprint(cluster: PgCluster, table: str) -> str:
+    """Cheap integrity fingerprint (avoids huge string_agg on multi-GB tables)."""
+    return cluster.fetchone(
+        f"SELECT md5(count(*)::text || '|' || coalesce(sum(id),0)::text || '|' || "
+        f"coalesce(sum(length(payload)),0)::text) FROM {table}"
+    )
+
+
+def _grow_tde_heap_past_one_segment(
+    cluster: PgCluster, table: str, target_bytes: int
+) -> int:
+    cluster.execute(
+        f"CREATE TABLE {table} ("
+        f"  id BIGSERIAL PRIMARY KEY,"
+        f"  payload TEXT NOT NULL"
+        f") USING tde_heap"
+    )
+    batch = 5_000
+    inserted = 0
+    for _ in range(400):
+        cluster.execute(
+            f"INSERT INTO {table}(payload) "
+            f"SELECT repeat('m', {_MULTISEG_PAYLOAD_CHARS}) "
+            f"FROM generate_series(1, {batch})"
+        )
+        inserted += batch
+        cluster.execute("CHECKPOINT")
+        segs = _rel_main_segments(cluster, table)
+        total = sum(p.stat().st_size for p in segs)
+        if len(segs) >= 2 and total >= min(target_bytes, 1024**3 + 1):
+            return inserted
+    segs = _rel_main_segments(cluster, table)
+    pytest.fail(
+        f"could not grow {table} past one segment "
+        f"(segs={len(segs)}, bytes={sum(p.stat().st_size for p in segs)})"
+    )
+
+
+class TestTdeRewindMultiSegmentCorruption:
+    """
+    ``tde_heap`` > 1 GiB created *after* standby init must survive rewind across
+    all relation segments (``ensure_tde_keys`` must not poison keys for ``.1+``).
+    """
+
+    def test_rewind_preserves_post_basebackup_multisegment_tde_heap(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            n = _grow_tde_heap_past_one_segment(
+                primary, "multi_seg", _MULTISEG_TARGET_BYTES
+            )
+            segs = _rel_main_segments(primary, "multi_seg")
+            assert len(segs) >= 2, f"need ≥2 segments, got {segs}"
+
+            ReplicationManager(primary, standby).assert_catchup(timeout=600)
+
+            _promote(standby)
+            _wait_not_in_recovery(standby)
+            # Touch both segment-0 and segment-1 ranges so rewind copies partial
+            # blocks from both files (triggers ensure_tde_keys per segment).
+            standby.execute(
+                "UPDATE multi_seg SET payload = repeat('S', 100) "
+                "WHERE id <= 100 OR id > (SELECT max(id) - 100 FROM multi_seg)"
+            )
+            standby.execute("CHECKPOINT")
+            primary.execute(
+                "UPDATE multi_seg SET payload = repeat('P', 100) "
+                "WHERE id BETWEEN 200 AND 300"
+            )
+            primary.execute("CHECKPOINT")
+
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(
+                install_dir, primary, standby, restore_wal=False
+            )
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=120)
+
+            got_n = int(primary.fetchone("SELECT COUNT(*) FROM multi_seg"))
+            assert got_n == n, f"row count after rewind: {got_n} != {n}"
+            # High-id rows live in later segments — must decrypt cleanly.
+            assert primary.fetchone(
+                "SELECT length(payload) FROM multi_seg "
+                "ORDER BY id DESC LIMIT 1"
+            ) is not None
+
+            standby.start()
+            standby.wait_ready(timeout=60)
+            assert _rel_integrity_fingerprint(primary, "multi_seg") == (
+                _rel_integrity_fingerprint(standby, "multi_seg")
+            ), "multi-segment relation corrupted after rewind (target ≠ source)"
+        finally:
+            _teardown(standby, primary)
+
+
+class TestTdeRewindFsmVmKeyFlush:
+    """FSM/VM forks of a post-basebackup ``tde_heap`` must remain valid after rewind."""
+
+    def test_rewind_preserves_fsm_vm_for_post_basebackup_relation(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            primary.execute(
+                "CREATE TABLE fsm_seg ("
+                "  id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,"
+                "  f1 TEXT"
+                ") USING tde_heap"
+            )
+            primary.execute(
+                "INSERT INTO fsm_seg (f1) SELECT repeat('abcdeF', 500) "
+                "FROM generate_series(1, 5000)"
+            )
+            primary.execute("CHECKPOINT")
+            ReplicationManager(primary, standby).assert_catchup(timeout=120)
+
+            _promote(standby)
+            _wait_not_in_recovery(standby)
+            standby.execute("DELETE FROM fsm_seg WHERE id % 7 = 0")
+            standby.execute(
+                "INSERT INTO fsm_seg (f1) SELECT repeat('ghijk', 200) "
+                "FROM generate_series(1, 2000)"
+            )
+            standby.execute("VACUUM fsm_seg")
+            standby.execute("CHECKPOINT")
+            primary.execute(
+                "UPDATE fsm_seg SET f1 = repeat('P', 50) WHERE id % 11 = 0"
+            )
+            primary.execute("CHECKPOINT")
+
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata(
+                install_dir, primary, standby, restore_wal=False
+            )
+            assert result.returncode == 0, result.stderr
+
+            _repair_rewind_target_identity(primary)
+            primary.start()
+            primary.wait_ready(timeout=90)
+            log = primary.read_log(last_n=200)
+            assert "; zeroing out page" not in log, (
+                "FSM/VM fork corruption after encrypted rewind"
+            )
+            primary.execute(
+                "INSERT INTO fsm_seg (f1) VALUES (repeat('post', 100))"
+            )
+            assert int(primary.fetchone("SELECT COUNT(*) FROM fsm_seg")) > 0
+            assert primary.fetchone(
+                "SELECT length(f1) > 0 FROM fsm_seg LIMIT 1"
+            ) in ("t", "true")
+        finally:
+            _teardown(standby, primary)
+
+
+class TestTdeRewindDryRunMustNotModifyTarget:
+    """``pg_tde_rewind --dry-run`` must leave target relation files byte-identical."""
+
+    def test_dry_run_leaves_relation_files_unchanged(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        primary, standby, _, _ = _ha_pair(install_dir, tmp_path, io_method)
+        try:
+            primary.execute(
+                "CREATE TABLE dry_fsm (id INT PRIMARY KEY, f1 TEXT) USING tde_heap"
+            )
+            primary.execute(
+                "INSERT INTO dry_fsm SELECT i, repeat('x', 200) "
+                "FROM generate_series(1, 2000) i"
+            )
+            primary.execute("DELETE FROM dry_fsm WHERE id % 3 = 0")
+            primary.execute("VACUUM dry_fsm")
+            primary.execute("CHECKPOINT")
+            ReplicationManager(primary, standby).assert_catchup(timeout=60)
+
+            _promote(standby)
+            _wait_not_in_recovery(standby)
+            standby.execute("INSERT INTO dry_fsm VALUES (900001, 'S')")
+            standby.execute("CHECKPOINT")
+            primary.execute("INSERT INTO dry_fsm VALUES (900002, 'P')")
+            primary.execute("CHECKPOINT")
+
+            primary.stop(check=False)
+            standby.stop(check=False)
+
+            before = _fingerprint_base_relations(primary.data_dir)
+            result = _run_rewind_pgdata_ex(
+                install_dir, primary, standby, dry_run=True, restore_wal=False
+            )
+            assert result.returncode == 0, (
+                f"dry-run rewind failed (need kept WAL):\n{result.stderr}"
+            )
+            after = _fingerprint_base_relations(primary.data_dir)
+            changed = sorted(
+                k for k in set(before) | set(after)
+                if before.get(k) != after.get(k)
+            )
+            assert not changed, (
+                "--dry-run modified target relation files:\n  "
+                + "\n  ".join(changed[:40])
+            )
+        finally:
+            _teardown(standby, primary)
+
+
+class TestTdeRewindRestoreTargetWalDiscardedKeys:
+    """
+    PG-2397: after ``pg_tde_rewind -c`` with archive wrappers, residual
+    archive-restored WAL in ``pg_wal`` must remain readable once source
+    ``pg_tde`` replaces the target keyring (no ``invalid magic number``).
+    """
+
+    def test_rewind_c_archive_restore_no_invalid_magic_on_startup(
+        self, install_dir: Path, tmp_path: Path, io_method: str,
+    ):
+        if not wrappers_available(install_dir):
+            pytest.skip("pg_tde archive wrappers not in this build")
+
+        primary, standby, _, _ = _ha_pair(
+            install_dir,
+            tmp_path,
+            io_method,
+            wal_encrypt=True,
+            extra_primary_params={"wal_keep_size": "'0'"},
+        )
+        archive_dir = tmp_path / "archive"
+        conf_stash = tmp_path / "pg2397_conf"
+        try:
+            primary.execute(
+                "CREATE TABLE t1(id INT) USING tde_heap; "
+                "INSERT INTO t1 SELECT generate_series(1, 20000); "
+                "CHECKPOINT;"
+            )
+            ReplicationManager(primary, standby).assert_catchup(timeout=90)
+            _force_wal_archive_stable(primary, archive_dir)
+
+            _promote(standby)
+            _wait_not_in_recovery(standby)
+            standby.execute("INSERT INTO t1 VALUES (999999)")
+            _force_wal_archive_stable(standby, archive_dir)
+
+            # Recycle target's local TLI-1 segments so extractPageMap must
+            # invoke restore_command.
+            for i in range(6):
+                primary.execute(
+                    f"INSERT INTO t1 SELECT generate_series({100000 + i * 1000}, "
+                    f"{100000 + i * 1000 + 999})"
+                )
+                primary.execute("CHECKPOINT")
+                primary.execute("SELECT pg_switch_wal()")
+                time.sleep(0.3)
+            _force_wal_archive_stable(primary, archive_dir)
+
+            primary.stop(mode="smart", check=False)
+            _stash_rewind_target_configs(primary, conf_stash)
+            standby.stop(check=False)
+
+            result = _run_rewind_pgdata_ex(
+                install_dir,
+                primary,
+                standby,
+                restore_wal=True,
+                config_file=conf_stash / "postgresql.conf",
+            )
+            assert result.returncode == 0, (
+                f"rewind -c failed:\n{result.stdout}\n{result.stderr}"
+            )
+            _restore_stashed_configs(primary, conf_stash)
+            _repair_rewind_target_identity(primary)
+            _sync_archive_history_to_pg_wal(archive_dir, primary.data_dir / "pg_wal")
+
+            primary.start()
+            primary.wait_ready(timeout=120)
+            log = primary.read_log(last_n=300).lower()
+            assert "invalid magic number" not in log, log
+            assert "wal ends before consistent recovery point" not in log, log
+            assert int(primary.fetchone("SELECT COUNT(*) FROM t1")) >= 20_000
         finally:
             _teardown(standby, primary)

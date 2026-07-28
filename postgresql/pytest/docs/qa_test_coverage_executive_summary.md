@@ -95,7 +95,7 @@ Numbers in parentheses = pytest test count per module group.
 
 ---
 
-## Slide 6 — High availability & rewind (97 tests)
+## Slide 6 — High availability & rewind (~101 tests)
 
 **Module:** `test_tde_rewind_advanced.py`
 
@@ -108,6 +108,7 @@ Numbers in parentheses = pytest test count per module group.
 | Key provider edges | Rewind after key rotation |
 | Sysbench-driven stress | Sustained DML during failover |
 | Negative cases | Unclean shutdown, bad timeline |
+| Multi-seg / dry-run / PG-2397 | Segment key flush, FSM/VM, `--dry-run` immutability, `-c` discarded WAL keys |
 
 **Plus bash:** `pg_tde_rewind_*` scripts (~15) for Jenkins HA parity.
 
