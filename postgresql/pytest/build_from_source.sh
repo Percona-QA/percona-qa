@@ -36,11 +36,11 @@ set -euo pipefail
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 
 WORKDIR="${WORKDIR:-/home/ubuntu/pgwork}"
-INSTALL_DIR="${WORKDIR}/pginst/18"
-PG_SRC="${WORKDIR}/postgres"
+INSTALL_DIR="${INSTALL_DIR:-${WORKDIR}/pginst/18}"
+PG_SRC="${PG_SRC:-${WORKDIR}/postgres}"
 TDE_SRC="${TDE_SRC:-${PG_SRC}/contrib/pg_tde}"
-TDE_FALLBACK_SRC="${WORKDIR}/pg_tde"
-TDE_BUILD="${WORKDIR}/tde_build"
+TDE_FALLBACK_SRC="${TDE_FALLBACK_SRC:-${WORKDIR}/pg_tde}"
+TDE_BUILD="${TDE_BUILD:-${WORKDIR}/tde_build}"
 PSM_SRC="${PSM_SRC:-${WORKDIR}/pg_stat_monitor}"
 
 PG_REPO="${PG_REPO:-https://github.com/percona/postgres.git}"
