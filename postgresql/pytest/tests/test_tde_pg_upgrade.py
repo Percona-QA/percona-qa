@@ -298,14 +298,19 @@ def _pg_tde_control_versions(
 def _skip_unless_pg_tde_cross_minor(
     old_install_dir: Path, install_dir: Path
 ) -> None:
-    """pg_tde 2.1→2.2 smgr key migration (PR #582) during upgrade startup."""
+    """pg_tde 2.1→2.2 smgr key migration (PR #582) during upgrade startup.
+
+    Only for tests that specifically need a control ``default_version`` change.
+    ``TestPg2381EmptyKeyMigration`` no longer uses this gate — empty-key churn
+    must also run when both installs report the same version (2.2.x / 2.3.x).
+    """
     old_ver, new_ver = _pg_tde_control_versions(old_install_dir, install_dir)
     if not old_ver or not new_ver or old_ver == new_ver:
         pytest.skip(
             f"needs different pg_tde control versions (old={old_ver!r} new={new_ver!r}); "
-            "for PG17→PG18 with the same pg_tde on both installs use "
-            "TestPg2381MajorUpgradeSamePgTdeControl; for in-place package bump use "
-            "test_tde_minor_upgrade.py"
+            "empty-key churn with the same control version is covered by "
+            "TestPg2381EmptyKeyMigration; major PG + same pg_tde also by "
+            "TestPg2381MajorUpgradeSamePgTdeControl"
         )
 
 
@@ -2688,10 +2693,14 @@ class TestTdeUpgradeExtremeCornerCases:
 
 class TestPg2381EmptyKeyMigration:
     """
-    Regression for PG-2381 / PR #582: ``pg_tde_migrate_smgr_keys_file()`` must
-    skip zero-byte key files (e.g. after ``VACUUM FULL``) and empty smgr slots
-    (e.g. after ``DROP TABLE``). Without the fix, startup during ``pg_tde_upgrade``
-    failed with ``failed to decrypt key`` (misread as a ``pg_tde_upgrade`` bug).
+    Regression for PG-2381 / PR #582: ``pg_tde_migrate_smgr_keys_file()`` and
+    startup must tolerate zero-byte key files (e.g. after ``VACUUM FULL``) and
+    empty smgr slots (e.g. after ``DROP TABLE``).
+
+    Runs whenever ``--old-install-dir`` and ``--install-dir`` are set — both when
+    ``pg_tde.control`` ``default_version`` differs (classic 2.1→2.2 smgr
+    migration) and when it is the same (e.g. 2.2.x→2.2.y or 2.2 on PG17→PG18).
+    Package patch bumps often keep ``default_version`` as ``2.2`` / ``2.3``.
     """
 
     def test_major_upgrade_after_vacuum_full_empty_key_file(
@@ -2704,7 +2713,6 @@ class TestPg2381EmptyKeyMigration:
         """``VACUUM FULL`` may create 0-byte ``*_keys`` files; upgrade must succeed."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
-        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
 
         keyfile = str(tmp_path / "pg2381_vf.per")
         old = _make_old_cluster(
@@ -2742,7 +2750,6 @@ class TestPg2381EmptyKeyMigration:
         """``DROP TABLE`` may leave empty smgr key entries; upgrade must succeed."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
-        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
 
         keyfile = str(tmp_path / "pg2381_drop.per")
         old = _make_old_cluster(
@@ -2779,7 +2786,6 @@ class TestPg2381EmptyKeyMigration:
         """Full drop/recreate + ``VACUUM FULL`` (bash ``relfile_issue.sh``)."""
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
-        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
 
         keyfile = str(tmp_path / "pg2381_ghost.per")
         old = _make_old_cluster(
@@ -2814,15 +2820,15 @@ class TestPg2381EmptyKeyMigration:
         io_method: str,
     ):
         """
-        In-place pg_tde 2.1→2.2 on the same PG major (package bump): migration at
-        postmaster start + ``ALTER EXTENSION pg_tde UPDATE``.
+        Same ``$PGDATA``, swap binaries from ``--old-install-dir`` to
+        ``--install-dir`` after churn: postmaster start must tolerate empty
+        key files/slots, then ``ALTER EXTENSION pg_tde UPDATE`` (no-op when
+        ``default_version`` is unchanged, e.g. 2.2→2.2 package patch).
 
-        ``--old-install-dir`` and ``--install-dir`` must be the same PostgreSQL
-        major (e.g. two PG17 trees with pg_tde 2.1 vs 2.2 control files).
+        Requires the same PostgreSQL major on both install dirs.
         """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
-        _skip_unless_pg_tde_cross_minor(old_install_dir, install_dir)
         if postgres_major_version(old_install_dir) != postgres_major_version(
             install_dir
         ):
@@ -2875,9 +2881,11 @@ class TestPg2381MajorUpgradeSamePgTdeControl:
     same ``pg_tde.control`` ``default_version`` (e.g. 2.2 on old and new).
 
     Uses plain ``pg_upgrade`` + ``copy_pg_tde_dir`` unless WAL encryption forces
-    ``pg_tde_upgrade`` (see ``should_use_pg_tde_upgrade_wrapper``). These tests
-    complement ``TestPg2381EmptyKeyMigration`` (2.1→2.2 smgr migration) and
-    ``test_tde_minor_upgrade.py`` (in-place package bump on one PG major).
+    ``pg_tde_upgrade`` (see ``should_use_pg_tde_upgrade_wrapper``).
+
+    Overlaps with ``TestPg2381EmptyKeyMigration`` (which now also runs for the
+    same control version); this class keeps the same-control-only matrix explicit
+    for labs that only wire matching ``default_version`` trees.
     """
 
     def test_major_upgrade_ghost_repro_same_pg_tde_control(
