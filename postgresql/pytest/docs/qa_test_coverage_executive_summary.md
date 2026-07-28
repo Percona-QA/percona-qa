@@ -10,8 +10,8 @@
 
 | Metric | Value |
 |--------|------:|
-| **pytest scenarios** | **550** |
-| **Test modules** | **29** |
+| **pytest scenarios** | **~560** |
+| **Test modules** | **30** |
 | **Bash automation scripts** | **~50** (Jenkins parity) |
 | **Supported KMS backends** | Cosmian, Fortanix, Thales, Akeyless, Vault KV, OpenBao |
 | **Upgrade tracks** | Major (17→18), minor in-place (patch bump) |
@@ -38,7 +38,7 @@ All pytest tests run against **ephemeral PostgreSQL clusters** with `pg_tde` loa
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  CORE ENCRYPTION (82)     │  CIPHER / SMGR (18)                 │
+│  CORE ENCRYPTION (93)     │  CIPHER / SMGR (18)                 │
 │  PARTITIONS (21)          │  TEMPLATE DBs (14)                  │
 ├─────────────────────────────────────────────────────────────────┤
 │  UPGRADES: major pg_tde (48) + pg_upgrade (47) + minor (11)     │
@@ -61,9 +61,9 @@ Numbers in parentheses = pytest test count per module group.
 
 ---
 
-## Slide 4 — Core encryption & SQL API (82 tests)
+## Slide 4 — Core encryption & SQL API (93 tests)
 
-**Module:** `test_encryption.py` (+ `test_cipher.py`, `test_partitioning.py`, `test_template_databases.py`)
+**Module:** `test_encryption.py` (+ `test_cipher.py`, `test_partitioning.py`, `test_template_databases.py`, `test_pg_tde_product_gaps.py`)
 
 | Scenario | Examples |
 |----------|----------|
@@ -119,6 +119,7 @@ Numbers in parentheses = pytest test count per module group.
 
 | Module | Tests | Focus |
 |--------|------:|-------|
+| `test_pg_tde_product_gaps.py` | 12 | release-2.2 gaps: ACL, inherit_global_providers=off, enforce DB/role, is_encrypted TEMP, storage rewrite, default-key basebackup, multi-tenant DB providers |
 | `test_pg_tde_pgbackrest.py` | 41 | Matrix, HA, checksum/header, archive-async, failback + PG-2358 pgBackRest rewind twins |
 | `test_pg_basebackup.py` | 6 | `pg_tde_basebackup` / streaming base backup |
 | `test_pitr.py` | 2 | Point-in-time recovery with encrypted WAL |

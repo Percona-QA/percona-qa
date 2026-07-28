@@ -33,7 +33,7 @@ pytest --list-test-sections
 | `minor_upgrade` | `minor_upgrade` | Staged in-place pg_tde bump — [`docs/minor_upgrade.md`](minor_upgrade.md), CI matrix [`docs/ci_upgrade_scenarios.md`](ci_upgrade_scenarios.md) |
 | `upgrade` | `upgrade` | `test_tde_pg_upgrade.py`, `test_upgrade.py` — [`docs/major_upgrade.md`](major_upgrade.md), CI matrix [`docs/ci_upgrade_scenarios.md`](ci_upgrade_scenarios.md) |
 | `migration` | `migration` | `test_pdg_migration.py` |
-| `encryption` | `encryption` | Core pg_tde SQL/API tests |
+| `encryption` | `encryption` | Core pg_tde SQL/API + `test_pg_tde_product_gaps.py` |
 | `replication` | `replication` | `test_replication.py` |
 | `backup` | `backup` | `test_pitr.py`, `test_pg_basebackup.py`, … |
 | `recovery` | `recovery` | `test_recovery.py`, `test_unlogged_recovery.py` |

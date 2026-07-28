@@ -13,7 +13,7 @@ It does not reference source file names — only product behaviour and scenarios
 
 | # | Module | Approx. scenarios | Primary focus |
 |---|--------|------------------:|---------------|
-| 1 | Core encryption & SQL API | 82 | Tables, GUCs, extension lifecycle |
+| 1 | Core encryption & SQL API | 93 | Tables, GUCs, extension lifecycle, product gaps |
 | 2 | Cipher & SMGR | 18 | AES-128/256, cipher context reuse |
 | 3 | Providers & keys | 40+ | File keyring, global/DB scope, rotation |
 | 4 | KMIP key providers | 34+ | Cosmian + vendor KMS matrix |
@@ -51,9 +51,15 @@ It does not reference source file names — only product behaviour and scenarios
 | WAL encryption GUCs | Enable/disable WAL encryption, segment size interactions |
 | Checksums | Data checksums with TDE enabled |
 | Dynamic encryption state | Toggle encryption settings under load |
-| Enforce encryption | Policies that require TDE for new tables |
+| Enforce encryption | Policies that require TDE for new tables (cluster / database / role) |
+| Access control | Non-superuser key-mgmt denial; GRANT EXECUTE does not bypass |
+| inherit_global_providers=off | Global provider bind blocked; database-local keys still work |
+| Storage rewrite | VACUUM FULL / REINDEX CONCURRENTLY / matview keep encryption |
+| Decrypt path | `ALTER TABLE … SET ACCESS METHOD heap` |
 | Verify / delete key APIs | `pg_tde_verify_key`, key deletion rules |
 | Negative cases | Invalid provider names, missing keys, bad configuration |
+
+**Also:** `test_pg_tde_product_gaps.py` pins [pg_tde release-2.2](https://github.com/percona/pg_tde/tree/release-2.2) SQL/TAP gaps (ACL, inherit off, enforce scopes, default-key `pg_tde_basebackup -E`, multi-tenant per-DB providers).
 
 ---
 
