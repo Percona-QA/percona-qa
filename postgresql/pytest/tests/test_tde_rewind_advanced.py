@@ -6460,37 +6460,45 @@ def _grow_tde_heap_past_one_segment(
         f"  payload TEXT NOT NULL"
         f") USING tde_heap"
     )
-    # Low-compressibility payload (~2 KiB/row). ``repeat('m', N)`` TOAST-compresses
-    # to ~tens of bytes/row and never crosses the 1 GiB segment boundary in CI.
-    payload_expr = (
-        f"rpad("
-        f"md5(g::text) || md5((g * 3)::text) || md5((g * 7)::text) || "
-        f"md5((g * 11)::text) || md5((g * 13)::text),"
-        f" {_MULTISEG_PAYLOAD_CHARS},"
-        f" md5((g * 17)::text)"
-        f")"
+    # Keep payload on the *main* fork, uncompressed:
+    #   EXTENDED (default) — TOAST-compresses; heap stays << 1 GiB
+    #   EXTERNAL           — out-of-line toast table grows; main fork stays small
+    #   PLAIN              — inline, no toast/compress → main segments cross 1 GiB
+    cluster.execute(
+        f"ALTER TABLE {table} ALTER COLUMN payload SET STORAGE PLAIN"
     )
+    # Stay under toast/page limits while still packing ~2 KiB/row on the main fork.
+    payload_chars = min(_MULTISEG_PAYLOAD_CHARS, 1800)
     batch = 10_000
+    bytes_per_row = max(1200, payload_chars)
+    max_iters = max(400, (target_bytes // (bytes_per_row * batch)) + 100)
     inserted = 0
-    # ~1.1 GiB / ~2 KiB ≈ 550k rows; keep headroom for headers / compression.
-    max_iters = max(200, (target_bytes // (_MULTISEG_PAYLOAD_CHARS * batch)) + 80)
-    for _ in range(max_iters):
+    for i in range(max_iters):
         cluster.execute(
             f"INSERT INTO {table}(payload) "
-            f"SELECT {payload_expr} FROM generate_series(1, {batch}) g"
+            f"SELECT rpad((g + {i * batch})::text, {payload_chars}, "
+            f"md5((g + {i * batch})::text)) "
+            f"FROM generate_series(1, {batch}) g"
         )
         inserted += batch
-        cluster.execute("CHECKPOINT")
+        if i % 5 == 4:
+            cluster.execute("CHECKPOINT")
         segs = _rel_main_segments(cluster, table)
         total = sum(p.stat().st_size for p in segs)
         if len(segs) >= 2 and total >= min(target_bytes, 1024**3 + 1):
+            cluster.execute("CHECKPOINT")
             return inserted
     segs = _rel_main_segments(cluster, table)
     rel_sz = cluster.fetchone(f"SELECT pg_relation_size('{table}'::regclass)")
+    toast_sz = cluster.fetchone(
+        f"SELECT pg_total_relation_size('{table}'::regclass) "
+        f"- pg_relation_size('{table}'::regclass)"
+    )
     pytest.fail(
         f"could not grow {table} past one segment "
         f"(segs={len(segs)}, bytes={sum(p.stat().st_size for p in segs)}, "
-        f"pg_relation_size={rel_sz}, inserted={inserted})"
+        f"pg_relation_size={rel_sz}, toast_and_index≈{toast_sz}, "
+        f"inserted={inserted})"
     )
 
 
