@@ -530,11 +530,12 @@ class TestMigrateWithPgTde:
 
 class TestMigratePgTdeCrossMinorVersion:
     """
-    In-place package upgrade pg_tde 2.1.x → 2.2.x (same PG major) after migration
-    to Percona Distribution — complements migration.html when only packages change.
+    In-place package swap on the same PG major: restart with new binaries, then
+    ``ALTER EXTENSION pg_tde UPDATE``.
 
-    Requires ``--old-install-dir`` with pg_tde ``default_version`` 2.1 and
-    ``--install-dir`` with 2.2 (e.g. PG 17.9 → 17.10 testing repos).
+    Covers classic 2.1→2.2 control bumps and same ``default_version`` package
+    patches (e.g. 2.2.x→2.2.y where ``pg_tde.control`` still says ``2.2``).
+    Requires ``--old-install-dir`` and ``--install-dir`` with the same PG major.
     """
 
     def test_restart_before_alter_extension_after_package_swap(
@@ -548,17 +549,17 @@ class TestMigratePgTdeCrossMinorVersion:
             pytest.skip("--old-install-dir not provided")
         old_ver = read_pg_tde_default_version(old_install_dir)
         new_ver = read_pg_tde_default_version(install_dir)
-        if not old_ver or not new_ver or old_ver == new_ver:
+        if not old_ver or not new_ver:
             pytest.skip(
-                f"needs different pg_tde control versions (got old={old_ver!r} "
-                f"new={new_ver!r})"
+                f"pg_tde.control default_version missing "
+                f"(old={old_ver!r} new={new_ver!r})"
             )
 
         old_major = postgres_major_version(old_install_dir)
         new_major = postgres_major_version(install_dir)
         if old_major != new_major:
             pytest.skip(
-                "in-place pg_tde minor upgrade requires the same PostgreSQL major "
+                "in-place pg_tde package swap requires the same PostgreSQL major "
                 f"(old={old_major}, new={new_major}); use test_tde_pg_upgrade for "
                 "PG major bumps"
             )
@@ -589,7 +590,7 @@ class TestMigratePgTdeCrossMinorVersion:
         )
         old.stop()
 
-        # Simulate package upgrade: same PGDATA, binaries from --install-dir (2.2).
+        # Simulate package upgrade: same PGDATA, binaries from --install-dir.
         new = PgCluster(
             data_dir,
             port,
@@ -605,8 +606,9 @@ class TestMigratePgTdeCrossMinorVersion:
             "SELECT extversion FROM pg_extension WHERE extname='pg_tde'"
         )
         assert ext_ver == old_ver, "extversion must stay at old until ALTER EXTENSION"
-        assert "2.2" in bin_ver or new_ver in bin_ver, (
-            f"expected new binary after package swap, got {bin_ver!r}"
+        # Binary reports the new install's control version (may equal old_ver).
+        assert new_ver in bin_ver or bin_ver.startswith(new_ver), (
+            f"expected new binary version containing {new_ver!r}, got {bin_ver!r}"
         )
         assert new.fetchone("SELECT COUNT(*) FROM minor_mig") == "1"
 

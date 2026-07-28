@@ -29,7 +29,8 @@ Usage: $(basename "$0") [OPTIONS]
 
 Prepare the pytest environment for percona-pg-automation tests:
 detect PostgreSQL, create a Python venv, install dependencies, optional
-Percona packages, and Cosmian KMIP + OpenBao for vault/kmip tests.
+Percona packages, sysbench (rewind load tests), and Cosmian KMIP + OpenBao
+for vault/kmip tests.
 
 Version terminology (keep these separate):
   PG_MAJOR       Integer PostgreSQL major (${PG_MAJOR}) — package names, install paths
@@ -296,6 +297,37 @@ else
     warn "pgBackRest binary is missing from PATH. Ensure it was requested or manually installed."
 fi
 
+# ── 3b. sysbench (rewind / failover load loops) ───────────────────────────────
+echo ""
+echo "=== 3b. sysbench ==="
+
+if command -v sysbench >/dev/null 2>&1; then
+    _sb_ver=$(sysbench --version 2>/dev/null | head -n1 || true)
+    if [[ -n "${_sb_ver}" ]]; then
+        ok "sysbench already installed (${_sb_ver})"
+    else
+        ok "sysbench already installed"
+    fi
+else
+    info "Installing sysbench (TestTdeRewindSysbenchLoop / failover load tests)..."
+    if command -v apt-get >/dev/null 2>&1; then
+        if sudo apt-get install -y sysbench; then
+            ok "sysbench installed ($(sysbench --version 2>/dev/null | head -n1 || echo ok))"
+        else
+            warn "sysbench apt install failed — sysbench rewind tests will skip"
+        fi
+    elif command -v yum >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
+        _yum=$(command -v dnf || command -v yum)
+        if sudo "$_yum" install -y sysbench; then
+            ok "sysbench installed ($(sysbench --version 2>/dev/null | head -n1 || echo ok))"
+        else
+            warn "sysbench yum/dnf install failed — sysbench rewind tests will skip"
+        fi
+    else
+        warn "No apt/yum available — install sysbench manually for load-loop rewind tests"
+    fi
+fi
+
 # ── 4. Python ──────────────────────────────────────────────────────────────────
 echo ""
 echo "=== 4. Python ==="
@@ -489,4 +521,5 @@ echo "   pytest tests/ -v"
 echo ""
 echo " Cosmian KMIP + OpenBao start automatically when pytest collects"
 echo " vault/kmip/openbao tests (requires cosmian_kms + bao from step 6a)."
+echo " sysbench is installed in step 3b for TestTdeRewindSysbenchLoop."
 echo "======================================================================"
