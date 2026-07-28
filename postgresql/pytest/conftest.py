@@ -56,6 +56,26 @@ def allocate_port() -> int:
     raise RuntimeError("Could not find a free port")
 
 
+# Staged minor-upgrade parent dir (Setup/Verify share this across pytest runs).
+# Prefer the workflow path when writable; otherwise a /tmp default (no sudo).
+_DEFAULT_MINOR_UPGRADE_DATA_DIR = "/tmp/pg_tde_minor_upgrade"
+_PREFERRED_MINOR_UPGRADE_DATA_DIR = "/var/lib/pg_tde_minor_upgrade"
+
+
+def resolve_upgrade_data_dir_default() -> str:
+    """Default ``--upgrade-data-dir`` when CLI/env leave it unset."""
+    env = (os.environ.get("PG_TDE_UPGRADE_DATA_DIR") or "").strip()
+    if env:
+        return env
+    preferred = Path(_PREFERRED_MINOR_UPGRADE_DATA_DIR)
+    try:
+        if preferred.is_dir() and os.access(preferred, os.W_OK):
+            return str(preferred)
+    except OSError:
+        pass
+    return _DEFAULT_MINOR_UPGRADE_DATA_DIR
+
+
 # ── CLI options ─────────────────────────────────────────────────────────────
 
 
@@ -187,14 +207,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
     parser.addoption(
         "--upgrade-data-dir",
-        default=os.environ.get("PG_TDE_UPGRADE_DATA_DIR", ""),
+        default=resolve_upgrade_data_dir_default(),
         help=(
             "Persistent base directory for staged pg_tde minor-upgrade "
-            "tests. Setup run writes PGDATA + state.json under this "
-            "directory using --install-dir = OLD; the operator performs "
-            "the package upgrade externally; the Verify run reads the "
-            "same directory using --install-dir = NEW. CLI flag overrides "
-            "the PG_TDE_UPGRADE_DATA_DIR env var."
+            "tests. Setup writes PGDATA + state.json here with "
+            "--install-dir=OLD; after the package swap, Verify reuses the "
+            "same path with --install-dir=NEW. Default: "
+            f"$PG_TDE_UPGRADE_DATA_DIR, else {_PREFERRED_MINOR_UPGRADE_DATA_DIR} "
+            f"if writable, else {_DEFAULT_MINOR_UPGRADE_DATA_DIR}."
         ),
     )
     parser.addoption(
@@ -538,12 +558,15 @@ def upgrade_data_dir(request):
     ``<upgrade_data_dir>/ha/``); the operator performs the package
     upgrade externally; the Verify run reads the same directory back.
 
-    Returns ``None`` if neither the ``--upgrade-data-dir`` CLI flag
-    nor the ``PG_TDE_UPGRADE_DATA_DIR`` env var is set; staged tests
-    skip in that case.
+    Always set: CLI ``--upgrade-data-dir``, else ``PG_TDE_UPGRADE_DATA_DIR``,
+    else a writable default (see ``resolve_upgrade_data_dir_default``).
     """
     v = request.config.getoption("--upgrade-data-dir")
-    return Path(v) if v else None
+    if not v:
+        return None
+    path = Path(v)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 # ── port fixture ─────────────────────────────────────────────────────────────
@@ -584,7 +607,6 @@ def pytest_collection_modifyitems(config, items):
     kmip_cfg, kmip_skip_reason = resolve_session_kmip_config(config)
     kmip_ready = kmip_cfg is not None
     old_dir = config.getoption("--old-install-dir")
-    upgrade_data_dir = config.getoption("--upgrade-data-dir")
 
     vault_ready, vault_skip_reason = (
         vault_runtime_ready(vault_cfg) if vault_cfg else (False, "")
@@ -610,9 +632,7 @@ def pytest_collection_modifyitems(config, items):
         reason=vault_kmip_skip_reason or "KMIP_VAULT_HOST not set"
     )
     skip_upgrade = pytest.mark.skip(reason="--old-install-dir not provided")
-    skip_minor_upgrade = pytest.mark.skip(
-        reason="--upgrade-data-dir not provided (or set PG_TDE_UPGRADE_DATA_DIR)"
-    )
+    # minor_upgrade: --upgrade-data-dir defaults via resolve_upgrade_data_dir_default()
     skip_docker = pytest.mark.skip(reason="docker not found in PATH")
     skip_pgbackrest = pytest.mark.skip(reason="pgbackrest not installed or not on PATH")
     io_matrix = config.getoption("--io-method-matrix")
@@ -664,8 +684,6 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_kmip)
         if "upgrade" in item.keywords and not old_dir:
             item.add_marker(skip_upgrade)
-        if "minor_upgrade" in item.keywords and not upgrade_data_dir:
-            item.add_marker(skip_minor_upgrade)
         if "docker" in item.keywords and not docker_available:
             item.add_marker(skip_docker)
         if "pgbackrest" in item.keywords and not pgbr_ok:

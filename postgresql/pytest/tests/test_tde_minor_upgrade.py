@@ -391,7 +391,10 @@ _PERSIST_ROW_COUNT = 500
 
 def _skip_if_no_upgrade_dir(upgrade_data_dir: Optional[Path]) -> None:
     if upgrade_data_dir is None:
-        pytest.skip("--upgrade-data-dir not provided")
+        pytest.skip(
+            "--upgrade-data-dir resolved to empty "
+            "(unset PG_TDE_UPGRADE_DATA_DIR and pass a path)"
+        )
 
 
 def _scenario_root(upgrade_data_dir: Path, scenario: str) -> Path:
