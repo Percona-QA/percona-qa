@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -36,6 +37,11 @@ def _assert_fails(cluster: PgCluster, sql: str, *, must_contain: str = "") -> No
         assert must_contain.lower() in str(exc.value).lower(), (
             f"expected {must_contain!r} in error, got: {exc.value!r}"
         )
+
+
+def _is_true(val: Optional[str]) -> bool:
+    """psql may print bool as ``t`` or ``true`` depending on cast/format."""
+    return (val or "").strip().lower() in {"t", "true", "on", "1"}
 
 
 def _psql_as(cluster: PgCluster, user: str, sql: str, dbname: str = "postgres"):
@@ -117,6 +123,8 @@ class TestPgTdeAccessControl:
         assert any(
             s in msg for s in ("permission", "superuser", "denied", "must be")
         ), f"unexpected error after GRANT: {denied.stderr!r}"
+        # GRANTs leave dependent privileges — drop them before DROP USER.
+        tde_primary.execute("DROP OWNED BY regress_pg_tde_grant")
         tde_primary.execute("DROP USER regress_pg_tde_grant")
 
 
@@ -220,6 +228,7 @@ class TestEnforceEncryptionScopes:
         assert "encrypt" in err or "tde" in err or "heap" in err, denied.stderr
         # Superuser session without the role GUC still can create heap.
         tde_primary.execute("CREATE TABLE role_heap_ok (id INT) USING heap")
+        tde_primary.execute("DROP OWNED BY enforce_role")
         tde_primary.execute("DROP ROLE enforce_role")
 
 
@@ -228,6 +237,7 @@ class TestPgTdeIsEncryptedCoverage:
 
     def test_temp_tables_indexes_and_sequences(self, tde_primary: PgCluster):
         # TEMP relations exist only for the session — create + probe in one -c.
+        # Avoid bool::text (prints true/false); bare bool is t/f in tuples-only.
         row = tde_primary.execute(
             """
             CREATE TABLE perm_enc (id SERIAL PRIMARY KEY) USING tde_heap;
@@ -235,17 +245,23 @@ class TestPgTdeIsEncryptedCoverage:
             CREATE TEMP TABLE temp_enc (id SERIAL PRIMARY KEY) USING tde_heap;
             CREATE TEMP TABLE temp_norm (id SERIAL PRIMARY KEY) USING heap;
             SELECT
-              pg_tde_is_encrypted('perm_enc')::text,
-              pg_tde_is_encrypted('perm_norm')::text,
-              pg_tde_is_encrypted('temp_enc')::text,
-              pg_tde_is_encrypted('temp_norm')::text,
-              pg_tde_is_encrypted('perm_enc_id_seq')::text,
-              pg_tde_is_encrypted('perm_enc_pkey')::text,
-              (pg_tde_is_encrypted(NULL) IS NULL)::text;
+              pg_tde_is_encrypted('perm_enc'),
+              pg_tde_is_encrypted('perm_norm'),
+              pg_tde_is_encrypted('temp_enc'),
+              pg_tde_is_encrypted('temp_norm'),
+              pg_tde_is_encrypted('perm_enc_id_seq'),
+              pg_tde_is_encrypted('perm_enc_pkey'),
+              (pg_tde_is_encrypted(NULL) IS NULL);
             """
         )
-        parts = row.split("|")
-        assert parts == ["t", "f", "t", "f", "t", "t", "t"], row
+        parts = [p.strip().lower() for p in row.split("|")]
+        expected = ["t", "f", "t", "f", "t", "t", "t"]
+        # Some builds/psql paths emit true/false instead of t/f.
+        normalized = [
+            "t" if _is_true(p) else ("f" if p in {"f", "false", "off", "0"} else p)
+            for p in parts
+        ]
+        assert normalized == expected, row
 
 
 class TestStorageRewriteEncryption:
@@ -266,13 +282,13 @@ class TestStorageRewriteEncryption:
         assert tde_primary.fetchone("SELECT COUNT(*) FROM rewrite_t") == "200"
 
         tde_primary.execute("CREATE INDEX rewrite_idx ON rewrite_t (a)")
-        assert tde_primary.fetchone(
-            "SELECT pg_tde_is_encrypted('rewrite_idx')::text"
-        ) == "t"
+        assert _is_true(
+            tde_primary.fetchone("SELECT pg_tde_is_encrypted('rewrite_idx')")
+        )
         tde_primary.execute("REINDEX INDEX CONCURRENTLY rewrite_idx")
-        assert tde_primary.fetchone(
-            "SELECT pg_tde_is_encrypted('rewrite_idx')::text"
-        ) == "t"
+        assert _is_true(
+            tde_primary.fetchone("SELECT pg_tde_is_encrypted('rewrite_idx')")
+        )
 
     def test_matview_refresh_keeps_encryption_status(self, tde_primary: PgCluster):
         tde_primary.execute(
@@ -283,13 +299,11 @@ class TestStorageRewriteEncryption:
             "CREATE MATERIALIZED VIEW mv_enc AS "
             "SELECT id, v * 2 AS v2 FROM mv_src WITH NO DATA"
         )
-        # Matview created WITH NO DATA may not be encrypted until refreshed
-        # depending on AM inheritance — refresh and assert readable + status.
         tde_primary.execute("REFRESH MATERIALIZED VIEW mv_enc")
         assert tde_primary.fetchone("SELECT COUNT(*) FROM mv_enc") == "2"
-        assert tde_primary.fetchone(
-            "SELECT pg_tde_is_encrypted('mv_enc')::text"
-        ) == "t"
+        assert _is_true(
+            tde_primary.fetchone("SELECT pg_tde_is_encrypted('mv_enc')")
+        )
 
 
 class TestDecryptViaSetAccessMethod:
