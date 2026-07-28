@@ -2,6 +2,13 @@
 #
 # Failback lab: pg_tde.wal_encrypt + pgBackRest wrappers + pg_tde_rewind -c
 #
+# Covered in pytest by:
+#   tests/test_pg_tde_pgbackrest.py::TestPgBackRestReplicationAndRewind::
+#   test_pgbackrest_restore_then_tde_rewind_failback
+#
+# Archive / restore pattern (Percona walkthrough):
+#   https://percona.community/blog/2026/03/10/running-pgbackrest-with-pg_tde-a-practical-percona-walkthrough/
+#
 #   archive_command =
 #     pg_tde_archive_decrypt %f %p "pgbackrest --config=... --stanza=... archive-push %%p"
 #

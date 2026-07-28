@@ -1394,6 +1394,7 @@ def _run_tde_rewind_live(
     source: PgCluster,
     *,
     restore_wal: bool = True,
+    write_recovery_conf: bool = False,
 ) -> subprocess.CompletedProcess:
     connstr = (
         f"host={source.socket_dir} port={source.port} "
@@ -1408,6 +1409,30 @@ def _run_tde_rewind_live(
     ]
     if restore_wal:
         cmd.append("-c")
+    if write_recovery_conf:
+        cmd.append("--write-recovery-conf")
+    env = os.environ.copy()
+    env["PATH"] = f"{install_dir / 'bin'}:{env.get('PATH', '')}"
+    return subprocess.run(cmd, capture_output=True, text=True, env=env)
+
+
+def _run_tde_rewind_offline(
+    install_dir: Path,
+    target: PgCluster,
+    source: PgCluster,
+    *,
+    restore_wal: bool = True,
+) -> subprocess.CompletedProcess:
+    """Offline ``pg_tde_rewind`` (both nodes stopped) — PG-2358 archive repro style."""
+    cmd = [
+        str(_tde_rewind_bin(install_dir)),
+        "--target-pgdata",
+        str(target.data_dir),
+        "--source-pgdata",
+        str(source.data_dir),
+    ]
+    if restore_wal:
+        cmd.append("-c")
     env = os.environ.copy()
     env["PATH"] = f"{install_dir / 'bin'}:{env.get('PATH', '')}"
     return subprocess.run(cmd, capture_output=True, text=True, env=env)
@@ -1417,6 +1442,76 @@ def _repair_rewind_identity(cluster: PgCluster) -> None:
     """Drop stale recovery/promote leftovers after rewind (mirrors rewind suite)."""
     for name in ("recovery.signal", "standby.signal", "promote.signal"):
         (cluster.data_dir / name).unlink(missing_ok=True)
+
+
+def _prepare_pgbackrest_rewound_streaming_standby(
+    rewound: PgCluster,
+    new_primary: PgCluster,
+    *,
+    streaming_only: bool = True,
+) -> None:
+    """Attach rewound node as standby; optionally blank restore_command (overlap lab)."""
+    conn_line = (
+        f"primary_conninfo = 'host={new_primary.socket_dir} "
+        f"port={new_primary.port} user={libpq_superuser()} "
+        f"application_name=rewound'"
+    )
+    auto = rewound.data_dir / "postgresql.auto.conf"
+    lines: List[str] = []
+    if auto.exists():
+        for line in auto.read_text().splitlines():
+            raw = line.strip()
+            if raw and not raw.startswith("#") and "=" in raw:
+                key = raw.split("=", 1)[0].strip().lower()
+                if key == "primary_conninfo":
+                    continue
+                if streaming_only and key == "restore_command":
+                    continue
+            lines.append(line)
+    lines.append(conn_line)
+    lines.append("recovery_target_timeline = 'latest'")
+    if streaming_only:
+        lines.append("restore_command = ''")
+    auto.write_text("\n".join(lines) + "\n")
+    if streaming_only:
+        conf = rewound.data_dir / "postgresql.conf"
+        if conf.exists():
+            text = conf.read_text()
+            marker = (
+                "\n# percona-qa: rewound standby — WAL via streaming only\n"
+                "restore_command = ''\n"
+            )
+            if "percona-qa: rewound standby" not in text:
+                conf.write_text(text.rstrip() + marker)
+    (rewound.data_dir / "standby.signal").touch()
+    (rewound.data_dir / "recovery.signal").unlink(missing_ok=True)
+    (rewound.data_dir / "promote.signal").unlink(missing_ok=True)
+
+
+def _point_pgbackrest_at(
+    bm: BackupManager,
+    cluster: PgCluster,
+    *,
+    compress_type: Optional[str] = "none",
+) -> None:
+    """Retarget stanza + archive/restore wrappers at *cluster* (after promote)."""
+    bm.write_config(
+        pg_path=str(cluster.data_dir),
+        pg_port=cluster.port,
+        pg_socket_path=str(cluster.socket_dir),
+        pg_bin=str(cluster.bin),
+        compress_type=compress_type,
+        checksum_page=False,
+    )
+    bm.configure_postgres(cluster, pg_tde_wal_archiving=True)
+    cluster.configure(
+        {
+            "archive_timeout": "'5s'",
+            "restore_command": _pg_settings_file_string_literal(
+                bm.restore_command(str(cluster.data_dir), pg_tde_wal_restore=True)
+            ),
+        }
+    )
 
 
 # ── Encrypted-in-repo scenarios ───────────────────────────────────────────────
@@ -1750,13 +1845,24 @@ class TestPgBackRestReplicationAndRewind:
         self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
     ):
         """
-        Promote standby, diverge old primary, ``pg_tde_rewind -c`` using
-        pgBackRest ``restore_command``, then reattach as standby.
+        Failback with pgBackRest decrypt/encrypt wrappers + ``pg_tde_rewind -c``.
+
+        Bash lab (same scenario):
+          ``postgresql/bugs/pgbackrest_tde_rewind_failback.sh``
+
+        Walkthrough archive/restore pattern:
+          https://percona.community/blog/2026/03/10/running-pgbackrest-with-pg_tde-a-practical-percona-walkthrough/
+
+        Steps: primary + wal_encrypt → replica → backup → promote → diverge old
+        primary → ``pg_tde_rewind -c`` → reattach as standby → assert new_primary
+        kept / old_primary discarded → wipe+restore with ``--recovery-option``.
         """
         _tde_rewind_bin(install_dir)
 
         primary = _start_tde_primary(pg_factory, "rw_pri")
-        bm = _setup_wrapper_path(primary, tmp_path, stanza="rw_ha")
+        bm = _setup_wrapper_path(
+            primary, tmp_path, stanza="demo", compress_type="none",
+        )
 
         replica = pg_factory("rw_rep")
         repl = ReplicationManager(primary, replica)
@@ -1794,6 +1900,7 @@ class TestPgBackRestReplicationAndRewind:
             pg_socket_path=str(replica.socket_dir),
             pg_bin=str(replica.bin),
             checksum_page=False,
+            compress_type="none",
         )
         bm.configure_postgres(replica, pg_tde_wal_archiving=True)
         replica.configure(
@@ -1817,7 +1924,8 @@ class TestPgBackRestReplicationAndRewind:
         primary.stop(check=False)
 
         result = _run_tde_rewind_live(
-            install_dir, primary, replica, restore_wal=True,
+            install_dir, primary, replica,
+            restore_wal=True, write_recovery_conf=True,
         )
         assert result.returncode == 0, (
             f"pg_tde_rewind failed:\nSTDOUT:{result.stdout}\nSTDERR:{result.stderr}"
@@ -1849,6 +1957,215 @@ class TestPgBackRestReplicationAndRewind:
         assert primary.fetchone(
             "SELECT COUNT(*) FROM rw_t WHERE marker = 'old_primary'"
         ) == "0"
+
+        # Walkthrough wipe + restore with --recovery-option=restore_command=...
+        restore_dir = tmp_path / "walkthrough_restore"
+        bm.restore(str(restore_dir), pg_tde_wal_restore=True)
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=False,
+        )
+        try:
+            assert int(restored.fetchone(
+                "SELECT COUNT(*) FROM rw_t WHERE marker = 'shared'"
+            )) == 40
+            assert TdeManager(restored).is_table_encrypted("rw_t")
+        finally:
+            restored.stop(check=False)
+
+    def test_pgbackrest_rewind_wal_encryption_plus_archive(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """
+        PG-2358 archive-fetch path with **pgBackRest** wrappers (not ``cp``).
+
+        Bash: ``postgresql/bugs/PG-2358_repro_rewind_wal_encrypt_archive.sh``
+        cp-archive pytest twin:
+          ``test_tde_rewind_advanced.py::…::test_rewind_wal_encryption_plus_archive``
+
+        wal_encrypt + decrypt/encrypt wrappers around pgBackRest → promote →
+        diverge → offline ``pg_tde_rewind -c`` (fetch WAL from pgBackRest archive).
+        """
+        _tde_rewind_bin(install_dir)
+        primary = _start_tde_primary(pg_factory, "pg2358_arch_pri")
+        bm = _setup_wrapper_path(
+            primary, tmp_path, stanza="pg2358_arch", compress_type="none",
+        )
+
+        replica = pg_factory("pg2358_arch_rep")
+        repl = ReplicationManager(primary, replica)
+        repl.create_standby_from_backup(use_tde_basebackup=True)
+        replica.write_default_config(
+            "replica",
+            extra_params={
+                **_SCENARIO_HA_PARAMS,
+                "restore_command": _pg_settings_file_string_literal(
+                    bm.restore_command(
+                        str(replica.data_dir), pg_tde_wal_restore=True
+                    )
+                ),
+            },
+        )
+        replica.start()
+        repl.assert_streaming_connected(timeout=90)
+
+        primary.execute(
+            "CREATE TABLE enc_arch_t (id INT) USING tde_heap; "
+            "INSERT INTO enc_arch_t SELECT generate_series(1,300);"
+        )
+        bm.wait_for_wal_archive(primary, timeout=60)
+        repl.assert_catchup(timeout=60)
+
+        replica.promote()
+        replica.wait_ready(timeout=60)
+        assert replica.fetchone("SELECT pg_is_in_recovery()") == "f"
+        replica.execute(
+            "INSERT INTO enc_arch_t SELECT generate_series(301,600); "
+            "SELECT pg_switch_wal();"
+        )
+        _point_pgbackrest_at(bm, replica)
+        replica.restart()
+        replica.wait_ready(timeout=60)
+        bm.wait_for_wal_archive(replica, timeout=90)
+
+        primary.stop(check=False)
+        replica.stop(check=False)
+
+        result = _run_tde_rewind_offline(
+            install_dir, primary, replica, restore_wal=True,
+        )
+        assert result.returncode == 0, (
+            f"pg_tde_rewind -c (pgBackRest archive) failed:\n"
+            f"STDOUT:{result.stdout}\nSTDERR:{result.stderr}"
+        )
+        assert "invalid magic number" not in (result.stderr or "").lower(), (
+            f"PG-2358-style invalid magic while scanning archived WAL:\n"
+            f"{result.stderr}"
+        )
+
+        _repair_rewind_identity(primary)
+        primary.write_default_config("primary", extra_params=_SCENARIO_HA_PARAMS)
+        primary.start()
+        primary.wait_ready(timeout=90)
+        assert int(primary.fetchone("SELECT COUNT(*) FROM enc_arch_t")) >= 300
+
+    def test_pgbackrest_rewind_wal_key_overlap_when_target_segments_are_kept(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """
+        PG-2358 WAL-tail overlap failback with **pgBackRest** wrappers.
+
+        Bash: ``postgresql/bugs/PG-2358_repro_wal_key_overlap_kept_segments.sh``
+        cp-archive pytest twin:
+          ``…::test_rewind_wal_key_overlap_when_target_segments_are_kept``
+
+        Heavy WAL on the future rewind target, promote, more WAL on new timeline,
+        offline ``pg_tde_rewind -c``, reattach as streaming standby
+        (``restore_command=''``), verify catch-up of post-rewind inserts.
+        """
+        _tde_rewind_bin(install_dir)
+        primary = _start_tde_primary(pg_factory, "pg2358_ov_pri")
+        # Retain enough WAL for streaming catch-up after timeline/rewind edges.
+        primary.configure({"wal_keep_size": "'512MB'", "archive_timeout": "'10s'"})
+        primary.restart()
+        primary.wait_ready(timeout=60)
+
+        bm = _setup_wrapper_path(
+            primary, tmp_path, stanza="pg2358_ov", compress_type="none",
+        )
+
+        replica = pg_factory("pg2358_ov_rep")
+        repl = ReplicationManager(primary, replica)
+        repl.create_standby_from_backup(use_tde_basebackup=True)
+        replica.write_default_config(
+            "replica",
+            extra_params={
+                **_SCENARIO_HA_PARAMS,
+                "wal_keep_size": "'512MB'",
+                "archive_timeout": "'10s'",
+                "restore_command": _pg_settings_file_string_literal(
+                    bm.restore_command(
+                        str(replica.data_dir), pg_tde_wal_restore=True
+                    )
+                ),
+            },
+        )
+        replica.start()
+        repl.assert_streaming_connected(timeout=90)
+
+        primary.execute(
+            "CREATE TABLE wal_overlap_t (id INT, payload TEXT) USING tde_heap; "
+            "INSERT INTO wal_overlap_t "
+            "SELECT g, repeat(md5(g::text), 12) FROM generate_series(1,3000) g; "
+            "CHECKPOINT;"
+        )
+        for _ in range(3):
+            primary.execute("SELECT pg_switch_wal()")
+        bm.wait_for_wal_archive(primary, timeout=90)
+        repl.assert_catchup(timeout=90)
+
+        # Tail pressure on future rewind target.
+        primary.execute(
+            "INSERT INTO wal_overlap_t "
+            "SELECT g, repeat(md5(g::text), 10) FROM generate_series(3001,7000) g;"
+        )
+        primary.execute("CHECKPOINT; SELECT pg_switch_wal(); SELECT pg_switch_wal();")
+        bm.wait_for_wal_archive(primary, timeout=90)
+
+        replica.promote()
+        replica.wait_ready(timeout=90)
+        assert replica.fetchone("SELECT pg_is_in_recovery()") == "f"
+
+        replica.execute(
+            "INSERT INTO wal_overlap_t "
+            "SELECT g, repeat(md5(g::text), 8) FROM generate_series(10000, 13500) g;"
+        )
+        replica.execute("SELECT pg_switch_wal(); CHECKPOINT;")
+        _point_pgbackrest_at(bm, replica)
+        replica.restart()
+        replica.wait_ready(timeout=60)
+        bm.wait_for_wal_archive(replica, timeout=90)
+
+        primary.stop(check=False)
+        replica.stop(check=False)
+
+        result = _run_tde_rewind_offline(
+            install_dir, primary, replica, restore_wal=True,
+        )
+        assert result.returncode == 0, (
+            f"overlap rewind -c failed:\nSTDOUT:{result.stdout}\nSTDERR:{result.stderr}"
+        )
+        assert "invalid magic number" not in (result.stderr or "").lower()
+
+        _repair_rewind_identity(primary)
+        primary.write_default_config(
+            "replica",
+            extra_params={**_SCENARIO_HA_PARAMS, "wal_keep_size": "'512MB'"},
+        )
+        _prepare_pgbackrest_rewound_streaming_standby(
+            primary, replica, streaming_only=True,
+        )
+        for sig in ("standby.signal", "recovery.signal"):
+            (replica.data_dir / sig).unlink(missing_ok=True)
+
+        replica.start()
+        replica.wait_ready(timeout=90)
+        primary.start()
+        primary.wait_ready(timeout=90)
+        ReplicationManager(replica, primary).assert_streaming_connected(timeout=90)
+        ReplicationManager(replica, primary).assert_catchup(timeout=120)
+        assert int(primary.fetchone("SELECT COUNT(*) FROM wal_overlap_t")) >= 3000
+
+        replica.execute(
+            "INSERT INTO wal_overlap_t "
+            "SELECT g, repeat(md5(g::text), 6) FROM generate_series(50001,50300) g; "
+            "SELECT pg_switch_wal(); CHECKPOINT;"
+        )
+        bm.wait_for_wal_archive(replica, timeout=60)
+        ReplicationManager(replica, primary).assert_catchup(timeout=120)
+        assert primary.fetchone(
+            "SELECT COUNT(*) FROM wal_overlap_t WHERE id BETWEEN 50001 AND 50300"
+        ) == "300"
 
     def test_standby_restore_then_streaming_catchup(
         self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,

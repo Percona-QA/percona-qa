@@ -115,11 +115,11 @@ Numbers in parentheses = pytest test count per module group.
 
 ---
 
-## Slide 7 — Backup, recovery & WAL (106 tests)
+## Slide 7 — Backup, recovery & WAL (108 tests)
 
 | Module | Tests | Focus |
 |--------|------:|-------|
-| `test_pg_tde_pgbackrest.py` | 39 | Matrix, HA restore/rewire, checksum/header options, archive-async, encrypted-in-repo PITR/rewind |
+| `test_pg_tde_pgbackrest.py` | 41 | Matrix, HA, checksum/header, archive-async, failback + PG-2358 pgBackRest rewind twins |
 | `test_pg_basebackup.py` | 6 | `pg_tde_basebackup` / streaming base backup |
 | `test_pitr.py` | 2 | Point-in-time recovery with encrypted WAL |
 | `test_recovery.py` | 10 | Crash recovery, `pg_resetwal`, archive paths |
@@ -308,4 +308,4 @@ pytest --list-test-sections                       # all sections
 | `test_vault_kmip.py` | 2 | `vault_kmip` |
 | `test_pitr.py` | 2 | `backup` |
 | `test_kmip_server_revalidation.py` | 1×N | `kmip_revalidation` (per profile) |
-| **Total** | **580** | |
+| **Total** | **582** | |
