@@ -1,7 +1,8 @@
 # pg_tde Test Coverage — Executive Summary
 
 > **Audience:** Management, build/release, onboarding QA  
-> **Full catalog:** [coverage_reports/test_catalog_2026-05-14.md](../coverage_reports/test_catalog_2026-05-14.md) (per-test detail)  
+> **Full catalog:** [coverage_reports/test_catalog_2026-07-29.md](../coverage_reports/test_catalog_2026-07-29.md) (per-test detail)  
+> **PITR coverage (2026-07-29):** [coverage_reports/coverage_2026-07-29.md](../coverage_reports/coverage_2026-07-29.md)  
 > **QA workflow:** [qa_workflow.md](qa_workflow.md) · **Modules by area:** [qa_test_modules.md](qa_test_modules.md)
 
 ---
@@ -45,7 +46,7 @@ All pytest tests run against **ephemeral PostgreSQL clusters** with `pg_tde` loa
 ├─────────────────────────────────────────────────────────────────┤
 │  REWIND / HA (97)         │  REPLICATION (14)                   │
 ├─────────────────────────────────────────────────────────────────┤
-│  BACKUP: pgBackRest (19)  │  basebackup (6)  │  PITR (2)       │
+│  BACKUP: pgBackRest (72)  │  basebackup (25) │  PITR (7)       │
 │  RECOVERY / CRASH (10)    │  unlogged (7)     │  bugs (18)       │
 ├─────────────────────────────────────────────────────────────────┤
 │  WAL: waldump (27)        │  CLI tools (15)  │  change_kp (16)  │
@@ -121,9 +122,9 @@ Numbers in parentheses = pytest test count per module group.
 | Module | Tests | Focus |
 |--------|------:|-------|
 | `test_pg_tde_product_gaps.py` | 12 | release-2.2 gaps: ACL, inherit_global_providers=off, enforce DB/role, is_encrypted TEMP, storage rewrite, default-key basebackup, multi-tenant DB providers |
-| `test_pg_tde_pgbackrest.py` | 41 | Matrix, HA, checksum/header, archive-async, failback + PG-2358 pgBackRest rewind twins |
-| `test_pg_basebackup.py` | 6 | `pg_tde_basebackup` / streaming base backup |
-| `test_pitr.py` | 2 | Point-in-time recovery with encrypted WAL |
+| `test_pg_tde_pgbackrest.py` | 72 | Matrix, extended PITR + negatives, encrypted-in-repo, HA, checksum/header, archive-async, rewind |
+| `test_pg_basebackup.py` | 25 | `pg_tde_basebackup` / streaming base backup + PITR (basics/corner/negative) |
+| `test_pitr.py` | 7 | Cold-copy PITR (time/LSN/XID, exclusive, pause, multi-DB) |
 | `test_recovery.py` | 10 | Crash recovery, `pg_resetwal`, archive paths |
 | `test_unlogged_recovery.py` | 7 | UNLOGGED + TDE edge cases |
 | `test_waldump.py` | 27 | `pg_tde_waldump`, WAL encryption visibility |
@@ -287,7 +288,7 @@ pytest --list-test-sections                       # all sections
 | `test_waldump.py` | 27 | `waldump` |
 | `test_kmip.py` | 24 | `kmip` |
 | `test_partitioning.py` | 21 | `encryption` |
-| `test_pg_tde_pgbackrest.py` | 39 | `pgbackrest` |
+| `test_pg_tde_pgbackrest.py` | 72 | `pgbackrest` |
 | `test_bug_reproduction.py` | 18 | `bug` |
 | `test_cipher.py` | 18 | `encryption` |
 | `test_change_key_provider.py` | 16 | `encryption` |
@@ -303,11 +304,11 @@ pytest --list-test-sections                       # all sections
 | `test_key_provider_lifecycle.py` | 12 | `vault` |
 | `test_external_key_provider_regressions.py` | 7 | `kmip`, `vault`, `openbao` |
 | `test_unlogged_recovery.py` | 7 | `recovery` |
-| `test_pg_basebackup.py` | 6 | `backup` |
+| `test_pg_basebackup.py` | 25 | `backup` |
 | `test_vault_kv_common_matrix.py` | 3 | `vault` |
 | `test_file_keyring_common_matrix.py` | 2 | `encryption` |
 | `test_vault_hashicorp_parity.py` | 2 | `vault` |
 | `test_vault_kmip.py` | 2 | `vault_kmip` |
-| `test_pitr.py` | 2 | `backup` |
+| `test_pitr.py` | 7 | `backup` |
 | `test_kmip_server_revalidation.py` | 1×N | `kmip_revalidation` (per profile) |
 | **Total** | **582** | |

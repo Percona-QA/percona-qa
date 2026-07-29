@@ -355,6 +355,8 @@ class BackupManager:
         db_include: Optional[List[str]] = None,
         force: bool = False,
         pg_tde_wal_restore: bool = False,
+        target_exclusive: bool = False,
+        backup_set: Optional[str] = None,
     ) -> None:
         """
         Run ``pgbackrest restore``.
@@ -374,6 +376,8 @@ class BackupManager:
             db_include: list of database names; passes ``--db-include`` once per entry.
             force: pass ``--force`` (allows restore into a non-empty directory).
             pg_tde_wal_restore: wrap archive-get with ``pg_tde_restore_encrypt``.
+            target_exclusive: pass ``--target-exclusive`` (stop before the target).
+            backup_set: optional ``--set=<label>`` to restore a specific backup.
         """
         # Legacy alias support.
         if recovery_target_time and restore_type == "default":
@@ -398,6 +402,10 @@ class BackupManager:
             args.append(f"--target={target}")
         if restore_type in {"time", "lsn", "xid", "name", "immediate"}:
             args.append(f"--target-action={target_action}")
+        if target_exclusive and restore_type in {"time", "lsn", "xid"}:
+            args.append("--target-exclusive")
+        if backup_set:
+            args.append(f"--set={backup_set}")
         if delta:
             args.append("--delta")
         if force:

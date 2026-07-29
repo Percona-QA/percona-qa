@@ -6,7 +6,11 @@ checksum / archive-async modules). Covers:
 
   * Smoke + 10-scenario matrix (decrypt-wrapper / plaintext-in-repo path)
   * Advanced / negative backup cases and wrapper byte-level contract
-  * Encrypted-in-repo PITR, backup chains, delta, options (lz4, immediate,
+  * Extended pgBackRest PITR (chains, exclusive, pause/shutdown, multi-DB,
+    DROP/TRUNCATE/DML undo, key rotation) plus negative PITR (corrupt/missing
+    WAL, bad targets, unreachable XID, missing --set, keyring wipe) and
+    encrypted-in-repo time/LSN/XID/exclusive/DROP/key-rotate + negative PITR
+  * Encrypted-in-repo backup chains, delta, options (lz4, immediate,
     retention/expire), standby restore, and ``pg_tde_rewind`` failback
   * ``checksum-page=n`` / ``archive-header-check=n``
   * Patroni-like HA restore (reinit vs stale replicas)
@@ -1514,6 +1518,1063 @@ def _point_pgbackrest_at(
     )
 
 
+# ── Extended pgBackRest PITR (wrapper / plaintext-in-repo path) ────────────────
+
+
+class TestPgBackRestPitrScenarios:
+    """
+    PITR scenarios beyond the matrix basics (time/LSN/XID alone).
+
+    Covers recovery across backup chains, exclusive targets, pause/shutdown
+    actions, multi-DB consistency, DROP/TRUNCATE undo, key rotation, DML
+    undo, and a negative pre-backup target.
+    """
+
+    def test_pitr_by_time_after_full_and_diff(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """PITR must replay WAL that spans a full + diff backup chain."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_diff"
+        )
+        _create_matrix_schema(tde_primary)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute(
+            "INSERT INTO matrix_t1 VALUES (40001, 'pre_diff', 'kept')"
+        )
+        bm.backup(backup_type="diff")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute(
+            "INSERT INTO matrix_t1 VALUES (40002, 'post_diff', 'kept')"
+        )
+        bm.wait_for_wal_archive(tde_primary)
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute(
+            "INSERT INTO matrix_t1 VALUES (40003, 'after_target', 'discarded')"
+        )
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_diff"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t1 WHERE marker = 'pre_diff'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t1 WHERE marker = 'post_diff'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t1 WHERE marker = 'after_target'"
+            ) == "0"
+        finally:
+            restored.stop()
+
+    def test_pitr_exclusive_lsn(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """``--target-exclusive`` stops before the record at the target LSN."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_excl"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_excl (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_excl VALUES (1, 'base')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute("INSERT INTO pitr_excl VALUES (2, 'at_lsn')")
+        target_lsn = tde_primary.fetchone("SELECT pg_current_wal_lsn()")
+        tde_primary.execute("INSERT INTO pitr_excl VALUES (3, 'after_lsn')")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_excl"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            target_exclusive=True,
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_excl WHERE id = 1"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_excl WHERE id = 3"
+            ) == "0", "Post-LSN row must not be replayed with --target-exclusive"
+        finally:
+            restored.stop()
+
+    def test_pitr_pause_then_promote(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """``target-action=pause`` then resume/promote must honor the time target."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_pause"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_pause (id INT PRIMARY KEY) USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_pause VALUES (1), (2)")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("INSERT INTO pitr_pause VALUES (99)")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_pause"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="pause",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False,
+        )
+        try:
+            deadline = time.time() + 90
+            paused = False
+            while time.time() < deadline:
+                try:
+                    if restored.fetchone("SELECT pg_is_in_recovery()") == "t":
+                        state = restored.fetchone(
+                            "SELECT pg_get_wal_replay_pause_state()"
+                        )
+                        if state in ("paused", "pause requested"):
+                            paused = True
+                            break
+                except Exception:
+                    pass
+                time.sleep(0.5)
+            assert paused, "PITR did not reach recovery pause state"
+
+            restored.execute("SELECT pg_wal_replay_resume()")
+            try:
+                restored.execute(
+                    "SELECT pg_promote(wait := true, wait_seconds := 60)"
+                )
+            except RuntimeError:
+                pass
+            deadline = time.time() + 60
+            while time.time() < deadline:
+                if restored.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    break
+                time.sleep(0.5)
+            assert restored.fetchone("SELECT pg_is_in_recovery()") == "f"
+            assert restored.fetchone("SELECT COUNT(*) FROM pitr_pause") == "2"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_pause WHERE id = 99"
+            ) == "0"
+        finally:
+            restored.stop(check=False)
+
+    def test_pitr_multi_db_by_time(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """Time PITR must keep consistent pre-target rows in postgres and matrix_db."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_multidb"
+        )
+        _create_matrix_schema(tde_primary)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute(
+            "INSERT INTO matrix_t1 VALUES (50001, 'pre_target', 'kept')"
+        )
+        tde_primary.execute(
+            "INSERT INTO matrix_t2 VALUES (50001, 'kept')",
+            dbname="matrix_db",
+        )
+        bm.wait_for_wal_archive(tde_primary)
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute(
+            "INSERT INTO matrix_t1 VALUES (50002, 'post_target', 'discarded')"
+        )
+        tde_primary.execute(
+            "INSERT INTO matrix_t2 VALUES (50002, 'discarded')",
+            dbname="matrix_db",
+        )
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_multidb"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t1 WHERE marker = 'pre_target'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t1 WHERE marker = 'post_target'"
+            ) == "0"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t2 WHERE id = 50001",
+                dbname="matrix_db",
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM matrix_t2 WHERE id = 50002",
+                dbname="matrix_db",
+            ) == "0"
+            tde = TdeManager(restored)
+            assert tde.is_table_encrypted("matrix_t1")
+            assert tde.is_table_encrypted("matrix_t2", dbname="matrix_db")
+        finally:
+            restored.stop()
+
+    def test_pitr_before_drop_table_restores_tde_heap(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """Time PITR taken before DROP TABLE must bring the encrypted table back."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_drop_tbl"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_drop_t (id INT PRIMARY KEY, v TEXT) USING tde_heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO pitr_drop_t VALUES (1, 'keep'), (2, 'keep')"
+        )
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("DROP TABLE pitr_drop_t")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_drop_tbl"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_drop_t"
+            ) == "2"
+            assert TdeManager(restored).is_table_encrypted("pitr_drop_t")
+        finally:
+            restored.stop()
+
+    def test_pitr_before_drop_database_sibling(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """PITR before DROP DATABASE must restore the sibling DB + tde_heap rows."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_drop_db"
+        )
+        tde_primary.execute(
+            "CREATE TABLE keep_pg (id INT PRIMARY KEY, v TEXT) USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO keep_pg VALUES (1, 'postgres_db')")
+        tde_primary.execute("CREATE DATABASE appdb")
+        tde_primary.execute("CREATE EXTENSION pg_tde", dbname="appdb")
+        TdeManager(tde_primary).set_global_principal_key(dbname="appdb")
+        tde_primary.execute(
+            "CREATE TABLE t (id INT PRIMARY KEY, v TEXT) USING tde_heap",
+            dbname="appdb",
+        )
+        tde_primary.execute(
+            "INSERT INTO t VALUES (10, 'appdb_row')", dbname="appdb"
+        )
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("DROP DATABASE appdb")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_drop_db"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone("SELECT COUNT(*) FROM keep_pg") == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pg_database WHERE datname = 'appdb'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT v FROM t WHERE id = 10", dbname="appdb"
+            ) == "appdb_row"
+        finally:
+            restored.stop()
+
+    def test_pitr_before_truncate_keeps_rows(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """PITR before TRUNCATE must restore the pre-truncate encrypted rows."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_trunc"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_trunc (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO pitr_trunc "
+            "SELECT i, 'seed' FROM generate_series(1, 200) i"
+        )
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("TRUNCATE pitr_trunc")
+        tde_primary.execute(
+            "INSERT INTO pitr_trunc VALUES (999, 'post_trunc')"
+        )
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_trunc"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone("SELECT COUNT(*) FROM pitr_trunc") == "200"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_trunc WHERE id = 999"
+            ) == "0"
+        finally:
+            restored.stop()
+
+    def test_pitr_across_principal_key_rotation(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """PITR after a principal-key rotate must decrypt rows from both key gens."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_keyrot"
+        )
+        tde = TdeManager(tde_primary)
+        tde_primary.execute(
+            "CREATE TABLE pitr_rot (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_rot VALUES (1, 'key1')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde.rotate_principal_key("pitr_rot_key2")
+        tde_primary.execute("INSERT INTO pitr_rot VALUES (2, 'key2')")
+        bm.wait_for_wal_archive(tde_primary)
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("INSERT INTO pitr_rot VALUES (3, 'after_target')")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_keyrot"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_rot WHERE marker = 'key1'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_rot WHERE marker = 'key2'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_rot WHERE marker = 'after_target'"
+            ) == "0"
+            active = TdeManager(restored).principal_key_name()
+            assert active == "pitr_rot_key2", f"expected rotated key, got {active}"
+        finally:
+            restored.stop()
+
+    def test_pitr_by_lsn_after_full_and_incr(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """LSN PITR must work when the archive spans a full + incr backup chain."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_incr"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_incr (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_incr VALUES (1, 'full')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute("INSERT INTO pitr_incr VALUES (2, 'incr')")
+        bm.backup(backup_type="incr")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute("INSERT INTO pitr_incr VALUES (3, 'pre_target')")
+        tde_primary.execute("CHECKPOINT")
+        target_lsn = tde_primary.fetchone("SELECT pg_current_wal_lsn()")
+        tde_primary.execute("INSERT INTO pitr_incr VALUES (4, 'post_target')")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_incr"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_incr WHERE id <= 3"
+            ) == "3"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_incr WHERE marker = 'post_target'"
+            ) == "0"
+        finally:
+            restored.stop()
+
+    def test_pitr_exclusive_time(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """``--target-exclusive`` with type=time must drop the post-boundary row."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_excl_time"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_excl_t (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_excl_t VALUES (1, 'base')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute("INSERT INTO pitr_excl_t VALUES (2, 'at_time')")
+        # Capture time *after* the commit so exclusive stop is at/after this xact.
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("INSERT INTO pitr_excl_t VALUES (3, 'after_time')")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_excl_time"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            target_exclusive=True,
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_excl_t WHERE id = 1"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_excl_t WHERE marker = 'after_time'"
+            ) == "0"
+        finally:
+            restored.stop()
+
+    def test_pitr_target_action_shutdown(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """``target-action=shutdown`` stops at the target; restart sees pre-target data."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_shutdown"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_shut (id INT PRIMARY KEY) USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_shut VALUES (1), (2)")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("INSERT INTO pitr_shut VALUES (99)")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_shutdown"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="shutdown",
+            pg_tde_wal_restore=True,
+        )
+
+        port = allocate_port()
+        restored = PgCluster(
+            restore_dir, port, install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        restored.write_default_config("primary", extra_params=_TDE_RESTORED_PARAMS)
+        _strip_restored_auto_conf_socket_overrides(restore_dir)
+        restored.add_hba_entry("local all all trust")
+
+        # First start: recover to target then shut down.
+        try:
+            restored.start(timeout=120)
+        except RuntimeError:
+            # pg_ctl -w may fail because the server exits after reaching the target.
+            pass
+
+        deadline = time.time() + 120
+        while time.time() < deadline:
+            pid = restore_dir / "postmaster.pid"
+            if not pid.exists() and not restored.is_ready():
+                break
+            time.sleep(0.5)
+        else:
+            # Force stop if still running so the second start is clean.
+            restored.stop(check=False)
+
+        # Clear leftover recovery signal if present; auto.conf already has the target.
+        (restore_dir / "recovery.signal").unlink(missing_ok=True)
+        (restore_dir / "standby.signal").unlink(missing_ok=True)
+
+        restored.start(timeout=60)
+        restored.wait_ready(timeout=60)
+        try:
+            assert restored.fetchone("SELECT pg_is_in_recovery()") == "f"
+            assert restored.fetchone("SELECT COUNT(*) FROM pitr_shut") == "2"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_shut WHERE id = 99"
+            ) == "0"
+        finally:
+            restored.stop(check=False)
+
+    def test_pitr_undoes_update_and_delete(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """PITR must undo post-target UPDATE/DELETE on encrypted rows."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_dml"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_dml (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute(
+            "INSERT INTO pitr_dml VALUES (1, 'orig'), (2, 'orig'), (3, 'orig')"
+        )
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        target_time = tde_primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        tde_primary.execute("UPDATE pitr_dml SET marker = 'changed' WHERE id = 1")
+        tde_primary.execute("DELETE FROM pitr_dml WHERE id = 2")
+        tde_primary.execute("INSERT INTO pitr_dml VALUES (4, 'new')")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_dml"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT marker FROM pitr_dml WHERE id = 1"
+            ) == "orig"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_dml WHERE id = 2"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_dml WHERE id = 4"
+            ) == "0"
+            assert restored.fetchone("SELECT COUNT(*) FROM pitr_dml") == "3"
+        finally:
+            restored.stop()
+
+    def test_negative_pitr_target_before_backup(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """
+        A recovery target earlier than the backup's consistency point must not
+        silently succeed as a healthy primary with full post-backup data.
+        """
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_too_early"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_early (id INT PRIMARY KEY) USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_early VALUES (1)")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+        tde_primary.execute("INSERT INTO pitr_early VALUES (2)")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_too_early"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target="1999-01-01 00:00:00+00",
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False,
+        )
+        try:
+            # Remain in recovery / fail the target rather than promote with both rows.
+            in_recovery = restored.fetchone("SELECT pg_is_in_recovery()")
+            log_content = restored.read_log().lower()
+            target_missed = (
+                "recovery ended before configured recovery target was reached"
+                in log_content
+                or "could not find recovery target" in log_content
+                or "recovery target" in log_content
+            )
+            assert in_recovery == "t" or target_missed, (
+                "Expected stuck recovery or a recovery-target error for a "
+                f"pre-backup timestamp.\nLog:\n{restored.read_log(80)}"
+            )
+            # Must not look like a clean promote that includes post-backup row 2.
+            if in_recovery == "f":
+                assert restored.fetchone(
+                    "SELECT COUNT(*) FROM pitr_early WHERE id = 2"
+                ) != "1" or target_missed
+        finally:
+            restored.stop(check=False)
+
+
+# ── Negative pgBackRest PITR ──────────────────────────────────────────────────
+
+
+def _repo_wal_files(repo_root: Path, stanza: str) -> List[Path]:
+    archive = repo_root / "archive" / stanza
+    wal_pattern = re.compile(r"^[0-9A-F]{24}")
+    return sorted(
+        f for f in archive.rglob("*")
+        if f.is_file() and wal_pattern.match(f.name)
+    )
+
+
+def _assert_pitr_did_not_reach_target(cluster: PgCluster) -> None:
+    """Shared assertions for negative PITR: stuck recovery and/or target error."""
+    in_recovery = cluster.fetchone("SELECT pg_is_in_recovery()")
+    log_l = cluster.read_log().lower()
+    markers = (
+        "recovery ended before configured recovery target was reached",
+        "could not find recovery target",
+        "waiting for wal",
+        "failed with exit code",
+        "invalid resource manager id",
+        "invalid magic number",
+        "could not read from file",
+        "unexpected pageaddr",
+        "incorrect resource manager",
+        "fatal",
+        "panic",
+        "corrupt",
+        "decrypt",
+    )
+    hit = any(m in log_l for m in markers)
+    assert in_recovery == "t" or hit, (
+        "Negative PITR must stay in recovery or log a recovery/WAL failure.\n"
+        f"Log:\n{cluster.read_log(100)}"
+    )
+
+
+class TestPgBackRestPitrNegative:
+    """Failure paths for pgBackRest PITR with WAL-encrypted TDE clusters."""
+
+    def test_negative_pitr_corrupt_archived_wal(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """Corrupting the newest archived WAL must prevent reaching the LSN target."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_corrupt"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_neg_c (id INT PRIMARY KEY) USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_neg_c VALUES (1)")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute("INSERT INTO pitr_neg_c VALUES (2); CHECKPOINT;")
+        target_lsn = tde_primary.fetchone("SELECT pg_current_wal_lsn()")
+        tde_primary.execute("SELECT pg_switch_wal()")
+        bm.wait_for_wal_archive(tde_primary)
+
+        wal_files = _repo_wal_files(tmp_path / "repo", "pitr_neg_corrupt")
+        assert wal_files, "expected archived WAL to corrupt"
+        # Overwrite newest segment with garbage (keep size so archive-get succeeds).
+        victim = wal_files[-1]
+        size = victim.stat().st_size
+        victim.write_bytes(b"\x00" * min(size, 8192) + os.urandom(max(0, size - 8192)))
+
+        restore_dir = tmp_path / "restore_pitr_neg_corrupt"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        # Startup may fail hard on corrupt WAL, or hang in recovery.
+        port = allocate_port()
+        restored = PgCluster(
+            restore_dir, port, install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        restored.write_default_config("primary", extra_params=_TDE_RESTORED_PARAMS)
+        _strip_restored_auto_conf_socket_overrides(restore_dir)
+        restored.add_hba_entry("local all all trust")
+        start_failed = False
+        try:
+            try:
+                restored.start(timeout=60)
+                restored.wait_ready(timeout=30)
+            except (RuntimeError, TimeoutError):
+                start_failed = True
+            if not start_failed:
+                _assert_pitr_did_not_reach_target(restored)
+                assert restored.fetchone("SELECT pg_is_in_recovery()") == "t"
+        finally:
+            restored.stop(check=False)
+        if start_failed:
+            log_l = restored.read_log().lower()
+            assert any(
+                m in log_l
+                for m in (
+                    "invalid",
+                    "corrupt",
+                    "fatal",
+                    "panic",
+                    "could not",
+                    "wal",
+                    "recovery",
+                )
+            ), f"Expected WAL/recovery failure in log:\n{restored.read_log(80)}"
+
+    def test_negative_pitr_archive_removed(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """Removing the archive tree after backup must block LSN PITR."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_noarch"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_neg_a (id INT) USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_neg_a VALUES (1)")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        tde_primary.execute("INSERT INTO pitr_neg_a VALUES (2); CHECKPOINT;")
+        target_lsn = tde_primary.fetchone("SELECT pg_current_wal_lsn()")
+        tde_primary.execute("SELECT pg_switch_wal()")
+        bm.wait_for_wal_archive(tde_primary)
+
+        archive_dir = tmp_path / "repo" / "archive" / "pitr_neg_noarch"
+        assert archive_dir.is_dir()
+        shutil.rmtree(archive_dir)
+
+        restore_dir = tmp_path / "restore_pitr_neg_noarch"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False,
+        )
+        try:
+            _assert_pitr_did_not_reach_target(restored)
+        finally:
+            restored.stop(check=False)
+
+    def test_negative_pitr_invalid_lsn_rejected(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """Malformed LSN must fail at restore time or during recovery startup."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_badlsn"
+        )
+        tde_primary.execute("CREATE TABLE t (id INT) USING tde_heap")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_bad_lsn"
+        try:
+            bm.restore(
+                str(restore_dir),
+                restore_type="lsn",
+                target="not-a-valid-lsn",
+                target_action="promote",
+                pg_tde_wal_restore=True,
+            )
+        except (RuntimeError, ValueError):
+            return
+
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False,
+            timeout=30,
+        )
+        try:
+            _assert_pitr_did_not_reach_target(restored)
+        finally:
+            restored.stop(check=False)
+
+    def test_negative_pitr_invalid_time_rejected(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """Malformed recovery target timestamp must fail restore or recovery."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_badtime"
+        )
+        tde_primary.execute("CREATE TABLE t (id INT) USING tde_heap")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_bad_time"
+        try:
+            bm.restore(
+                str(restore_dir),
+                restore_type="time",
+                target="not-a-timestamp",
+                target_action="promote",
+                pg_tde_wal_restore=True,
+            )
+        except (RuntimeError, ValueError):
+            return
+
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False,
+            timeout=30,
+        )
+        try:
+            _assert_pitr_did_not_reach_target(restored)
+        finally:
+            restored.stop(check=False)
+
+    def test_negative_pitr_unreachable_xid(
+        self, tde_primary: PgCluster, tmp_path: Path,
+        install_dir: Path, io_method: str,
+    ):
+        """An XID far ahead of reality must not promote as a healthy primary."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_xid"
+        )
+        tde_primary.execute(
+            "CREATE TABLE pitr_neg_x (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        tde_primary.execute("INSERT INTO pitr_neg_x VALUES (1, 'only')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+        tde_primary.execute("INSERT INTO pitr_neg_x VALUES (2, 'extra')")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_pitr_neg_xid"
+        bm.restore(
+            str(restore_dir),
+            restore_type="xid",
+            target="2000000000",
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_dir, install_dir, tmp_path, io_method, promote=False,
+        )
+        try:
+            _assert_pitr_did_not_reach_target(restored)
+            # Must not look like a clean promote past all archived WAL.
+            if restored.fetchone("SELECT pg_is_in_recovery()") == "f":
+                pytest.fail(
+                    "Unreachable XID target unexpectedly left recovery"
+                )
+        finally:
+            restored.stop(check=False)
+
+    def test_negative_pitr_nonexistent_backup_set(
+        self, tde_primary: PgCluster, tmp_path: Path,
+    ):
+        """``--set`` for a label that does not exist must fail the restore."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_set"
+        )
+        tde_primary.execute("CREATE TABLE t (id INT) USING tde_heap")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(tde_primary)
+
+        restore_dir = tmp_path / "restore_bad_set"
+        with pytest.raises(RuntimeError) as exc:
+            bm.restore(
+                str(restore_dir),
+                restore_type="time",
+                target="2020-01-01 00:00:00+00",
+                target_action="promote",
+                backup_set="19990101-000000F",
+                pg_tde_wal_restore=True,
+            )
+        err = str(exc.value).lower()
+        assert (
+            "unable to find" in err
+            or "not found" in err
+            or "does not exist" in err
+            or "backup set" in err
+            or "no backup" in err
+            or "set" in err
+        ), f"Unexpected error for missing --set:\n{exc.value}"
+
+    def test_negative_pitr_lsn_requires_target(
+        self, tde_primary: PgCluster, tmp_path: Path,
+    ):
+        """API guard: type=lsn without target must raise before invoking pgBackRest."""
+        bm = _setup_tde_pgbackrest_source(
+            tde_primary, tmp_path, stanza="pitr_neg_api"
+        )
+        with pytest.raises(ValueError, match="requires target"):
+            bm.restore(
+                str(tmp_path / "restore_api"),
+                restore_type="lsn",
+                target=None,
+                pg_tde_wal_restore=True,
+            )
+
+    def test_negative_pitr_restored_without_pg_tde_keyring(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """
+        Wrapper-path PITR restore with ``pg_tde/`` removed must not start cleanly:
+        encrypted heap (and WAL keys) require the keyring.
+        """
+        primary = _start_tde_primary(pg_factory, "pitr_neg_nokey_wrap")
+        bm = _setup_wrapper_path(primary, tmp_path, stanza="pitr_neg_nokey_wrap")
+        primary.execute(
+            "CREATE TABLE pitr_nk (id INT PRIMARY KEY, v TEXT) USING tde_heap"
+        )
+        primary.execute("INSERT INTO pitr_nk VALUES (1, 'secret')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+        primary.execute("INSERT INTO pitr_nk VALUES (2, 'post')")
+        bm.wait_for_wal_archive(primary, timeout=60)
+        target_time = primary.fetchone("SELECT clock_timestamp()::text")
+
+        restore_dir = tmp_path / "restore_pitr_neg_nokey"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=True,
+        )
+        pg_tde = restore_dir / "pg_tde"
+        assert pg_tde.is_dir()
+        shutil.rmtree(pg_tde)
+
+        port = allocate_port()
+        restored = PgCluster(
+            restore_dir, port, install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        restored.write_default_config("primary", extra_params=_TDE_RESTORED_PARAMS)
+        _strip_restored_auto_conf_socket_overrides(restore_dir)
+        restored.add_hba_entry("local all all trust")
+        start_failed = False
+        try:
+            try:
+                restored.start(timeout=45)
+                restored.wait_ready(timeout=30)
+            except (RuntimeError, TimeoutError):
+                start_failed = True
+            log_l = restored.read_log().lower()
+            key_err = any(
+                m in log_l
+                for m in ("pg_tde", "encrypt", "decrypt", "key", "fatal", "could not")
+            )
+            assert start_failed or key_err, (
+                "Expected keyring/decrypt failure after removing pg_tde/.\n"
+                f"Log:\n{restored.read_log(80)}"
+            )
+        finally:
+            restored.stop(check=False)
+
+
 # ── Encrypted-in-repo scenarios ───────────────────────────────────────────────
 
 
@@ -1562,6 +2623,386 @@ class TestEncryptedInRepoBackupRestorePitr:
             assert restored.fetchone("SHOW pg_tde.wal_encrypt") == "on"
         finally:
             restored.stop(check=False)
+
+    def test_encrypted_in_repo_pitr_by_lsn(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        primary = _start_tde_primary(pg_factory, "enc_pitr_lsn")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_lsn")
+        _seed_table(primary, "pitr_lsn_t", "seed", n=50)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        primary.execute(
+            "INSERT INTO pitr_lsn_t VALUES (9101, 'pre_target', 'kept')"
+        )
+        primary.execute("CHECKPOINT")
+        target_lsn = primary.fetchone("SELECT pg_current_wal_lsn()")
+        primary.execute(
+            "INSERT INTO pitr_lsn_t VALUES (9102, 'post_target', 'discarded')"
+        )
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        restore_dir = tmp_path / "restore_pitr_lsn"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=True, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_lsn_t WHERE marker = 'pre_target'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_lsn_t WHERE marker = 'post_target'"
+            ) == "0"
+        finally:
+            restored.stop(check=False)
+
+    def test_encrypted_in_repo_pitr_by_xid(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        primary = _start_tde_primary(pg_factory, "enc_pitr_xid")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_xid")
+        _seed_table(primary, "pitr_xid_t", "seed", n=50)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        primary.execute(
+            "INSERT INTO pitr_xid_t VALUES (9201, 'pre_target', 'kept')"
+        )
+        pre_xid = primary.fetchone(
+            "SELECT xmin::text::bigint FROM pitr_xid_t WHERE id = 9201"
+        )
+        primary.execute(
+            "INSERT INTO pitr_xid_t VALUES (9202, 'post_target', 'discarded')"
+        )
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        restore_dir = tmp_path / "restore_pitr_xid"
+        bm.restore(
+            str(restore_dir),
+            restore_type="xid",
+            target=pre_xid,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=True, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_xid_t WHERE marker = 'pre_target'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM pitr_xid_t WHERE marker = 'post_target'"
+            ) == "0"
+        finally:
+            restored.stop(check=False)
+
+    def test_encrypted_in_repo_pitr_before_drop_table(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Encrypted-in-repo time PITR must restore a table dropped after the target."""
+        primary = _start_tde_primary(pg_factory, "enc_pitr_drop")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_drop")
+        _seed_table(primary, "enc_drop_t", "seed", n=40)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        target_time = primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        primary.execute("DROP TABLE enc_drop_t")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        restore_dir = tmp_path / "restore_enc_drop"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=True, promote="wait",
+        )
+        try:
+            assert restored.fetchone("SELECT COUNT(*) FROM enc_drop_t") == "40"
+            assert TdeManager(restored).is_table_encrypted("enc_drop_t")
+        finally:
+            restored.stop(check=False)
+
+    def test_encrypted_in_repo_pitr_across_key_rotation(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Ciphertext-in-repo PITR after key rotate must read both key generations."""
+        primary = _start_tde_primary(pg_factory, "enc_pitr_rot")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_rot")
+        tde = TdeManager(primary)
+        primary.execute(
+            "CREATE TABLE enc_rot_t (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        primary.execute("INSERT INTO enc_rot_t VALUES (1, 'key1')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        tde.rotate_principal_key("enc_pitr_rot_key2")
+        primary.execute("INSERT INTO enc_rot_t VALUES (2, 'key2')")
+        bm.wait_for_wal_archive(primary, timeout=60)
+        target_time = primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        primary.execute("INSERT INTO enc_rot_t VALUES (3, 'after')")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        restore_dir = tmp_path / "restore_enc_rot"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=True, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM enc_rot_t WHERE marker = 'key1'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM enc_rot_t WHERE marker = 'key2'"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM enc_rot_t WHERE marker = 'after'"
+            ) == "0"
+        finally:
+            restored.stop(check=False)
+
+    def test_encrypted_in_repo_pitr_exclusive_lsn(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Encrypted-in-repo ``--target-exclusive`` LSN must drop the post-LSN row."""
+        primary = _start_tde_primary(pg_factory, "enc_pitr_excl")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_excl")
+        primary.execute(
+            "CREATE TABLE enc_excl_t (id INT PRIMARY KEY, marker TEXT) "
+            "USING tde_heap"
+        )
+        primary.execute("INSERT INTO enc_excl_t VALUES (1, 'base')")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        primary.execute("INSERT INTO enc_excl_t VALUES (2, 'at_lsn')")
+        target_lsn = primary.fetchone("SELECT pg_current_wal_lsn()")
+        primary.execute("INSERT INTO enc_excl_t VALUES (3, 'after_lsn')")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        restore_dir = tmp_path / "restore_enc_excl"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            target_exclusive=True,
+            pg_tde_wal_restore=False,
+        )
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=True, promote="wait",
+        )
+        try:
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM enc_excl_t WHERE id = 1"
+            ) == "1"
+            assert restored.fetchone(
+                "SELECT COUNT(*) FROM enc_excl_t WHERE id = 3"
+            ) == "0"
+        finally:
+            restored.stop(check=False)
+
+    def test_negative_encrypted_in_repo_pitr_missing_wal(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Ciphertext archive: deleting needed WAL must block LSN PITR."""
+        primary = _start_tde_primary(pg_factory, "enc_pitr_miss")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_miss")
+        _seed_table(primary, "enc_miss_t", "seed", n=20)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        primary.execute(
+            "INSERT INTO enc_miss_t VALUES (7001, 'target', 'x'); CHECKPOINT;"
+        )
+        target_lsn = primary.fetchone("SELECT pg_current_wal_lsn()")
+        primary.execute("SELECT pg_switch_wal()")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        wal_files = _repo_wal_files(tmp_path / "repo", "enc_pitr_miss")
+        assert wal_files, "expected archived WAL"
+        wal_files[-1].unlink()
+
+        restore_dir = tmp_path / "restore_enc_miss"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        restored = _start_scenario_restored(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+            encrypted_in_repo=True, promote=False,
+        )
+        try:
+            _assert_pitr_did_not_reach_target(restored)
+        finally:
+            restored.stop(check=False)
+
+    def test_negative_encrypted_in_repo_pitr_corrupt_wal(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Corrupting ciphertext WAL must prevent a clean PITR promote."""
+        primary = _start_tde_primary(pg_factory, "enc_pitr_corrupt")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_corrupt")
+        primary.execute(
+            "CREATE TABLE enc_c_t (id INT PRIMARY KEY) USING tde_heap"
+        )
+        primary.execute("INSERT INTO enc_c_t VALUES (1)")
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        primary.execute("INSERT INTO enc_c_t VALUES (2); CHECKPOINT;")
+        target_lsn = primary.fetchone("SELECT pg_current_wal_lsn()")
+        primary.execute("SELECT pg_switch_wal()")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        wal_files = _repo_wal_files(tmp_path / "repo", "enc_pitr_corrupt")
+        assert wal_files
+        victim = wal_files[-1]
+        size = victim.stat().st_size
+        victim.write_bytes(b"\xff" * size)
+
+        restore_dir = tmp_path / "restore_enc_corrupt"
+        bm.restore(
+            str(restore_dir),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        port = allocate_port()
+        cluster = PgCluster(
+            restore_dir, port, install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        cluster.write_default_config("primary", extra_params=_SCENARIO_HA_PARAMS)
+        _scenario_strip_auto_conf(restore_dir)
+        restore_cmd = bm.restore_command(
+            str(restore_dir.resolve()), pg_tde_wal_restore=False
+        )
+        with (restore_dir / "postgresql.auto.conf").open("a") as f:
+            f.write(
+                f"restore_command = {_pg_settings_file_string_literal(restore_cmd)}\n"
+            )
+        _scenario_configure_hba(cluster)
+        start_failed = False
+        try:
+            try:
+                cluster.start(timeout=60)
+                cluster.wait_ready(timeout=30)
+            except (RuntimeError, TimeoutError):
+                start_failed = True
+            if not start_failed:
+                _assert_pitr_did_not_reach_target(cluster)
+        finally:
+            cluster.stop(check=False)
+        if start_failed:
+            log_l = cluster.read_log().lower()
+            assert any(
+                m in log_l
+                for m in (
+                    "invalid", "corrupt", "fatal", "decrypt", "wal", "could not",
+                )
+            ), f"Expected corrupt-WAL failure:\n{cluster.read_log(80)}"
+
+    def test_negative_encrypted_in_repo_pitr_without_keyring(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Time PITR of ciphertext WAL without ``pg_tde/`` must not succeed cleanly."""
+        primary = _start_tde_primary(pg_factory, "enc_pitr_nokey")
+        bm = _setup_encrypted_in_repo(primary, tmp_path, stanza="enc_pitr_nokey")
+        _seed_table(primary, "enc_nk_t", "seed", n=25)
+        bm.backup(backup_type="full")
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        primary.execute(
+            "INSERT INTO enc_nk_t VALUES (8001, 'pre', 'kept')"
+        )
+        bm.wait_for_wal_archive(primary, timeout=60)
+        target_time = primary.fetchone("SELECT clock_timestamp()::text")
+        time.sleep(2)
+        primary.execute(
+            "INSERT INTO enc_nk_t VALUES (8002, 'post', 'x')"
+        )
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        restore_dir = tmp_path / "restore_enc_pitr_nokey"
+        bm.restore(
+            str(restore_dir),
+            restore_type="time",
+            target=target_time,
+            target_action="promote",
+            pg_tde_wal_restore=False,
+        )
+        shutil.rmtree(restore_dir / "pg_tde")
+
+        port = allocate_port()
+        cluster = PgCluster(
+            restore_dir, port, install_dir,
+            socket_dir=tmp_path, io_method=io_method,
+        )
+        cluster.write_default_config("primary", extra_params=_SCENARIO_HA_PARAMS)
+        _scenario_strip_auto_conf(restore_dir)
+        restore_cmd = bm.restore_command(
+            str(restore_dir.resolve()), pg_tde_wal_restore=False
+        )
+        with (restore_dir / "postgresql.auto.conf").open("a") as f:
+            f.write(
+                f"restore_command = {_pg_settings_file_string_literal(restore_cmd)}\n"
+            )
+        _scenario_configure_hba(cluster)
+        start_failed = False
+        try:
+            try:
+                cluster.start(timeout=45)
+                cluster.wait_ready(timeout=30)
+                if cluster.fetchone("SELECT pg_is_in_recovery()") == "f":
+                    cnt = cluster.fetchone(
+                        "SELECT COUNT(*) FROM enc_nk_t WHERE marker = 'pre'"
+                    )
+                    if cnt == "1":
+                        pytest.fail(
+                            "PITR promoted and read encrypted rows without pg_tde/"
+                        )
+            except (RuntimeError, TimeoutError):
+                start_failed = True
+        finally:
+            cluster.stop(check=False)
+        log_l = cluster.read_log(80).lower()
+        assert start_failed or any(
+            m in log_l
+            for m in ("pg_tde", "encrypt", "decrypt", "key", "fatal", "could not")
+        ), f"Expected keyring failure for encrypted-in-repo PITR:\n{cluster.read_log(80)}"
 
     def test_encrypted_in_repo_full_diff_incr_restore(
         self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,

@@ -467,4 +467,4 @@ pytest --list-test-sections
 **23 functional modules** in pytest cover encryption, keys, every supported KMS, both major upgrade tools, minor in-place upgrades, HA/rewind, backup/DR, replication, CLI utilities, and filed bug regressions. Bash automation and multi-OS smoke extend this for Jenkins and release promotion.
 
 For per-test detail (purpose, flow, asserts), see the deep catalog:
-`coverage_reports/test_catalog_2026-05-14.md`.
+`coverage_reports/test_catalog_2026-07-29.md`.

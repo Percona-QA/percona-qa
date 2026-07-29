@@ -1,28 +1,24 @@
-# pg_tde / pytest — Deep Test Catalog (2026-05-14)
+# pg_tde / pytest — Deep Test Catalog (2026-07-29)
 
-> **Superseded for PITR / basebackup / pgBackRest sections:** see
-> [`test_catalog_2026-07-29.md`](test_catalog_2026-07-29.md) and
-> [`coverage_2026-07-29.md`](coverage_2026-07-29.md) (2026-07-29 refresh).
->
 > **Audience**: anyone who needs to know what every test in
 > `postgresql/pytest/tests/` actually does, why it exists, and what
 > regression it guards against.
 >
-> **Scope**: **501** tests across **26** test modules. Tests are listed in the
-> order they appear in the source files. **§18–24** document **Cosmian KMIP**
-> and **OpenBao** external key-provider tests only (other KMS vendor labs are
-> covered in `docs/kmip/test-catalog.md`). Each test is documented with:
+> **Scope**: **671** tests collected (`pytest tests/ --collect-only`, 2026-07-29)
+> across the pytest tree. Tests are listed in the order they appear in the
+> source files. **§18–24** document **Cosmian KMIP** and **OpenBao** external
+> key-provider tests only (other KMS vendor labs are covered in
+> `docs/kmip/test-catalog.md`). Each test is documented with:
 >
 > * **Purpose** — one-line statement of what's under test.
 > * **Flow** — the operative steps the test takes.
 > * **Asserts / catches** — what proves pass/fail and what regression
 >   it would catch.
 >
-> Last refreshed: 2026-07-09 (§18–24 — Cosmian KMIP + OpenBao; see also
-> [`coverage_2026-05-19-external-key-providers.md`](coverage_2026-05-19-external-key-providers.md)
-> and [`docs/kmip/test-catalog.md`](../docs/kmip/test-catalog.md)).
-> **PITR triad (§§5–7) last full rewrite:** 2026-07-29 in
-> [`test_catalog_2026-07-29.md`](test_catalog_2026-07-29.md).
+> Last refreshed: **2026-07-29** (§§5–7 — PITR across cold copy /
+> `pg_basebackup` / pgBackRest; see also
+> [`coverage_2026-07-29.md`](coverage_2026-07-29.md)).
+> Prior full catalog baseline: [`test_catalog_2026-05-14.md`](test_catalog_2026-05-14.md).
 
 ---
 
@@ -35,9 +31,9 @@
 | 2a | `test_cipher.py` | 18 | All cipher coverage: `pg_tde.cipher` GUC (6) + SMGR cipher-context reuse (12, PR #554 / PG-2278) |
 | 3 | `test_encryption.py` | 82 | Core pg_tde encryption, GUCs, key providers, SQL API (cipher tests have moved to `test_cipher.py`) |
 | 4 | `test_partitioning.py` | 21 | Partitioned tables × tde_heap |
-| 5 | `test_pg_basebackup.py` | 6 | `pg_basebackup` / `pg_tde_basebackup` |
-| 6 | `test_pgbackrest.py` | 23 | pgBackRest integration |
-| 7 | `test_pitr.py` | 2 | Point-in-time recovery |
+| 5 | `test_pg_basebackup.py` | **25** | `pg_basebackup` / `pg_tde_basebackup` + **PITR** (basics / corner / negative) |
+| 6 | `test_pg_tde_pgbackrest.py` | **72** | pgBackRest + **extended PITR** (was `test_pgbackrest.py`) |
+| 7 | `test_pitr.py` | **7** | Point-in-time recovery (cold PGDATA copy) |
 | 8 | `test_recovery.py` | 10 | Crash recovery + WAL utilities |
 | 9 | `test_replication.py` | 13 | Streaming + logical replication |
 | 10 | `test_tde_cli_tools.py` | 15 | `pg_tde_checksums` / `_resetwal` / `_archive_decrypt` / `_restore_encrypt` |
@@ -66,6 +62,10 @@
   legitimately exits non-zero when it hits the zero-padded tail of a
   switched segment. Helper `_assert_ok_or_eof_tail` accepts that.
 * "Plain heap" = `USING heap`; "tde_heap" = `USING tde_heap`.
+* **PITR triad:** `test_pitr.py` (cold copy) ≠ `test_pg_basebackup.py`
+  (basebackup base image) ≠ `test_pg_tde_pgbackrest.py` (pgBackRest repo).
+  Same `recovery_target_*` knobs; different backup/archive paths. See
+  [`coverage_2026-07-29.md`](coverage_2026-07-29.md).
 
 ---
 
@@ -265,113 +265,127 @@ kmip variants live in bash automation, blocked on external services).
 
 ---
 
-## 7. `test_pitr.py` (2 tests)
+## 7. `test_pitr.py` (7 tests)
 
-Point-in-time recovery via `archive_command` + `restore_command` to a
-`recovery_target_time` target. Distinct from `test_pg_basebackup.py`
-(filesystem basebackup, no WAL replay) and `test_pgbackrest.py` (external
-tool driving the same workflow).
+Point-in-time recovery via `archive_command` + `restore_command` after a
+**cold `copytree` of PGDATA**. Distinct from:
 
-### 7.1 `TestPitr.test_pitr_plain`
+* `test_pg_basebackup.py` — base image is `pg_basebackup` / `pg_tde_basebackup -E`
+* `test_pg_tde_pgbackrest.py` — base image + archive go through pgBackRest
 
-* **Purpose** — vanilla PITR: take a cold cluster copy, drop a table
-  after a marker timestamp, recover the copy to that timestamp.
-* **Flow** —
-  1. Enable `archive_mode=on` + `archive_command='cp %p <dir>/%f'`.
-  2. `CREATE TABLE pitr_tbl`, INSERT 100 rows.
-  3. Stop cluster, `shutil.copytree` of $PGDATA to `pitr_restore/`
-     (this is the cold base copy — **taken before** the PITR target
-     time, fixing the original timing bug).
-  4. Restart, capture `pitr_time = now()`, sleep 1s, `DROP TABLE
-     pitr_tbl`, switch WAL, sleep 1s for the archiver, stop.
-  5. Start a *second* PgCluster pointing at the copied data dir on a
-     new port. Replace `postgresql.auto.conf` with `recovery_target_time
-     = '<pitr_time>'`, `recovery_target_action = promote`,
-     `restore_command = 'cp <archive_dir>/%f %p'`. Touch
-     `recovery.signal`.
-* **Asserts** — `SELECT COUNT(*) FROM pitr_tbl` on the recovered
-  cluster returns `100` (i.e. the drop never replayed).
+### 7.1 `TestPitr` (2 tests)
 
-### 7.2 `TestPitr.test_pitr_encrypted_wal`
+#### 7.1.1 `test_pitr_plain`
 
-* **Purpose** — PITR with `pg_tde.wal_encrypt = on` AND the
+* **Purpose** — vanilla PITR: cold cluster copy, drop a table after a
+  marker timestamp, recover the copy to that timestamp.
+* **Flow** — enable `archive_mode` + `cp` archive; INSERT; stop +
+  `copytree`; restart; capture time; `DROP TABLE`; archive; recover with
+  `recovery_target_time` + `promote`.
+* **Asserts** — dropped table is present again (drop never replayed).
+
+#### 7.1.2 `test_pitr_encrypted_wal`
+
+* **Purpose** — same shape with `pg_tde.wal_encrypt` +
   `pg_tde_archive_decrypt` / `pg_tde_restore_encrypt` wrappers.
-* **Flow** — same shape as 7.1 but on `tde_primary`:
-  * `archive_command` built via `archive_restore_conf_values(...,
-    use_tde_wrappers=True)` — invokes `pg_tde_archive_decrypt` to
-    write decryptable copies to the archive.
-  * Recovery cluster brought up with `shared_preload_libraries='pg_tde'`,
-    `default_table_access_method='tde_heap'`, `pg_tde.wal_encrypt='on'`,
-    and `restore_command` built via `restore_conf_line_raw(...,
-    use_tde_wrappers=True)`.
-* **Catches** — any breakage in the encrypted-WAL PITR path:
-  archived segments unreadable, missing wrappers, or recovery failing
-  to engage WAL decryption.
+* **Catches** — encrypted-WAL archive/restore wrapper breakage.
+
+### 7.2 `TestPitrTargetKinds` (3 tests)
+
+| # | Test | Purpose |
+|---|---|---|
+| 7.2.1 | `test_pitr_by_lsn_encrypted_wal` | `recovery_target_lsn` with encrypted WAL. |
+| 7.2.2 | `test_pitr_by_xid_encrypted_wal` | `recovery_target_xid` with encrypted WAL. |
+| 7.2.3 | `test_pitr_exclusive_lsn_drops_boundary_commit` | `recovery_target_inclusive=off` stops before the LSN boundary commit. |
+
+### 7.3 `TestPitrRecoveryActions` (1 test)
+
+#### 7.3.1 `test_pitr_pause_then_promote_encrypted_wal`
+
+* **Purpose** — `recovery_target_action=pause` then
+  `pg_wal_replay_resume` / `pg_promote`; encrypted WAL still applies.
+
+### 7.4 `TestPitrTdeHeapAndWalEncrypt` (1 test)
+
+#### 7.4.1 `test_pitr_tde_heap_survives_drop_database_sibling`
+
+* **Purpose** — PITR before `DROP DATABASE appdb` restores the sibling
+  DB with readable `tde_heap` rows (keyring intact).
 
 ---
 
-## 5. `test_pg_basebackup.py` (6 tests)
+## 5. `test_pg_basebackup.py` (25 tests)
 
 ### `TestPgBaseBackup` (3 tests)
 
 #### 5.1 `test_basebackup_plain_cluster`
 
 * **Purpose** — smoke test of `pg_basebackup` against a plaintext cluster.
-* **Flow** — INSERT 100 rows, `PgBaseBackup(primary_cluster).take(backup_dir)`,
+* **Flow** — INSERT 100 rows, `PgBaseBackup(...).take(backup_dir)`,
   assert `<backup_dir>/PG_VERSION` exists.
 
 #### 5.2 `test_basebackup_with_tde`
 
 * **Purpose** — smoke test of `pg_tde_basebackup` against a TDE cluster.
-* **Flow** — same as 5.1 but via `TdeManager.tde_basebackup`.
 
 #### 5.3 `test_restore_from_basebackup`
 
-* **Purpose** — end-to-end restore round-trip.
-* **Flow** — INSERT 1000 rows, take a basebackup, copy it to a fresh
-  data dir on a new port, start the second cluster, `SELECT COUNT(*)`
-  must return 1000.
+* **Purpose** — end-to-end restore round-trip (COUNT == 1000).
 
 ### `TestTdeHaFailoverRebuild` (1 test)
 
 #### 5.4 `test_ha_failover_and_rebuild`
 
-* **Purpose** — HA failover: kill primary, promote standby, rebuild
-  the dead primary as the new standby via `pg_tde_basebackup`.
-* **Flow** — Start with `tde_replica_pair`, INSERT 1000 rows on the
-  primary, wait for catchup, stop primary, promote standby, INSERT
-  rows 1001-2000 on the new primary. Wipe the old primary's data dir,
-  rebuild it via `tde_basebackup` from the new primary, configure
-  `primary_conninfo` to point at the new primary, restart, wait for
-  catchup, assert COUNT == 2000.
+* **Purpose** — promote standby, rebuild old primary via
+  `pg_tde_basebackup`, assert catchup COUNT == 2000.
 
 ### `TestPgTdeBaseBackupWalEncryption` (2 tests)
 
-Covers the `-E` flag of `pg_tde_basebackup`.
-
 #### 5.5 `test_pg_tde_basebackup_E_creates_encrypted_target`
 
-* **Purpose** — `-E` must produce encrypted WAL on the *destination*.
-* **Flow** — `enable_wal_encryption()` on the source so the WAL is
-  encrypted with the source key. Insert a unique plaintext marker
-  before the backup. `tde_basebackup(..., encrypt_wal=True)` (which
-  pre-seeds `pg_tde/` on the target). Iterate over every 24-char WAL
-  segment file in `<dst>/pg_wal/` and assert the marker bytes are NOT
-  present in any of them.
-* **Asserts** — `pg_tde/` directory exists on the target;
-  no plaintext marker leaks on disk; the target is self-decryptable.
+* **Purpose** — `-E` must produce encrypted WAL on the destination
+  (no plaintext marker leak in `pg_wal/`).
 
 #### 5.6 `test_pg_tde_basebackup_warning_when_E_missing`
 
-* **Purpose** — when the source has TDE keys configured but `-E` is
-  omitted, `pg_tde_basebackup` must emit the "source has WAL keys, but
-  no WAL encryption configured for the target backups" warning. With
-  `-E` it must NOT emit that warning.
-* **Flow** — runs `pg_tde_basebackup` twice via raw `subprocess.run`
-  (so stderr is captured): first without `-E`, then again with `-E`
-  and a pre-seeded `pg_tde/` directory.
-* **Asserts** — phrase `"WAL keys"` present in stderr without `-E`,
-  absent with `-E`. Both runs `returncode == 0`.
+* **Purpose** — without `-E`, warning about WAL keys; with `-E`, no warning.
+
+### `TestPitrWithPgBasebackup` (5 tests) — **PITR basics**
+
+Base image = live basebackup (not cold `copytree`). File archive +
+hand-written `recovery_target_*`.
+
+| # | Test | Purpose |
+|---|---|---|
+| 5.7 | `test_pitr_from_pg_basebackup_by_time` | Plain heap, time PITR. |
+| 5.8 | `test_pitr_from_pg_basebackup_by_lsn` | Plain heap, LSN PITR. |
+| 5.9 | `test_pitr_from_pg_tde_basebackup_encrypted_wal_by_time` | `-E` + wrappers, time PITR. |
+| 5.10 | `test_pitr_from_pg_tde_basebackup_by_lsn` | `-E` + wrappers, LSN PITR. |
+| 5.11 | `test_pitr_from_pg_tde_basebackup_by_xid` | `-E` + wrappers, XID PITR. |
+
+### `TestPitrWithPgBasebackupCornerCases` (8 tests)
+
+| # | Test | Purpose |
+|---|---|---|
+| 5.12 | `test_pitr_exclusive_lsn` | Inclusive=off drops post-LSN row. |
+| 5.13 | `test_pitr_pause_then_promote` | Pause → resume → promote honors time target. |
+| 5.14 | `test_pitr_before_drop_table` | Table reappears after PITR. |
+| 5.15 | `test_pitr_before_drop_database_sibling` | Sibling DB + tde_heap restored. |
+| 5.16 | `test_pitr_before_truncate` | Pre-TRUNCATE rows restored. |
+| 5.17 | `test_pitr_across_principal_key_rotation` | Both key gens readable at target. |
+| 5.18 | `test_pitr_undoes_update_and_delete` | Post-target DML undone. |
+| 5.19 | `test_pitr_multi_db_by_time` | Consistent cut across two DBs. |
+
+### `TestPitrWithPgBasebackupNegative` (6 tests)
+
+| # | Test | Purpose |
+|---|---|---|
+| 5.20 | `test_negative_pitr_missing_wal` | Newest archive segment deleted → stuck/fail. |
+| 5.21 | `test_negative_pitr_corrupt_archived_wal` | Zeroed WAL → startup/recovery failure. |
+| 5.22 | `test_negative_pitr_target_before_backup` | 1999 target must not clean-promote post-backup rows. |
+| 5.23 | `test_negative_pitr_unreachable_xid` | Far-future XID stays in recovery. |
+| 5.24 | `test_negative_pitr_without_pg_tde_keyring` | Wipe `pg_tde/` after restore → fail. |
+| 5.25 | `test_negative_pitr_archive_removed` | Empty archive blocks LSN PITR (plain path). |
 
 ---
 
@@ -771,48 +785,114 @@ AM. All tests use `tde_primary`.
 
 ---
 
-## 6. `test_pgbackrest.py` (23 tests)
+## 6. `test_pg_tde_pgbackrest.py` (72 tests)
 
-pgBackRest integration with pg_tde and `pg_tde.wal_encrypt`.
+pgBackRest integration with pg_tde and `pg_tde.wal_encrypt`. Formerly
+`test_pgbackrest.py` (unified with HA / checksum / archive-async modules).
+
+PITR here uses **`pgbackrest restore --type=time|lsn|xid`** (and related
+flags), not hand-written cold-copy recovery. Distinct from §5 / §7.
 
 ### 6.1 `TestPgBackRest` (3 smoke tests)
 
 | # | Test | Purpose |
 |---|---|---|
-| 6.1.1 | `test_full_backup_and_restore` | Full backup → restore into a clean dir → row count matches. |
-| 6.1.2 | `test_incremental_backup` | Full + incremental backup chain; restore yields rows from both. |
-| 6.1.3 | `test_backup_with_tde` | pgBackRest + pg_tde.wal_encrypt end-to-end (the Percona walkthrough). |
+| 6.1.1 | `test_full_backup_and_restore` | Full backup → restore → row count + checksum. |
+| 6.1.2 | `test_incremental_backup` | Full + incremental chain. |
+| 6.1.3 | `test_backup_with_tde` | pgBackRest + WAL encrypt walkthrough. |
 
-### 6.2 `TestPgBackRestMatrix` (10 tests) — full feature matrix
+### 6.2 `TestPgBackRestMatrix` (10 tests)
 
 | # | Test | Purpose |
 |---|---|---|
-| 6.2.1 | `test_full_restore_recovers_to_latest` | Standard restore to head of timeline. |
-| 6.2.2 | `test_delta_restore_into_existing_directory` | `--type=delta` succeeds when the target dir already exists. |
-| 6.2.3 | `test_standby_restore_starts_in_recovery` | Restore with `--type=standby`; cluster comes up `pg_is_in_recovery=t`. |
-| 6.2.4 | `test_pitr_by_time` | `--type=time --target='…'`. |
-| 6.2.5 | `test_pitr_by_lsn` | `--type=lsn --target=<lsn>`. |
-| 6.2.6 | `test_pitr_by_xid` | `--type=xid --target=<xid>`. |
-| 6.2.7 | `test_selective_db_restore_includes_named_db_only` | `--db-include` restores only the named user databases. |
-| 6.2.8 | `test_force_restore_overwrites_dirty_target` | `--force` overrides the safety check. |
-| 6.2.9 | `test_backup_chain_full_diff_incr_visible_in_info` | `pgbackrest info` shows full / diff / incr backups in the chain. |
-| 6.2.10 | `test_check_command_succeeds_after_stanza_setup` | `pgbackrest check` returns 0 after stanza-create. |
+| 6.2.1 | `test_full_restore_recovers_to_latest` | Restore to head of timeline. |
+| 6.2.2 | `test_delta_restore_into_existing_directory` | `--delta` into non-empty dir. |
+| 6.2.3 | `test_standby_restore_starts_in_recovery` | `--type=standby`. |
+| 6.2.4 | `test_pitr_by_time` | `--type=time`. |
+| 6.2.5 | `test_pitr_by_lsn` | `--type=lsn`. |
+| 6.2.6 | `test_pitr_by_xid` | `--type=xid`. |
+| 6.2.7 | `test_selective_db_restore_includes_named_db_only` | `--db-include`. |
+| 6.2.8 | `test_force_restore_overwrites_dirty_target` | `--force`. |
+| 6.2.9 | `test_backup_chain_full_diff_incr_visible_in_info` | `info` shows chain. |
+| 6.2.10 | `test_check_command_succeeds_after_stanza_setup` | `pgbackrest check`. |
 
 ### 6.3 `TestPgBackRestAdvancedAndNegative` (4 tests)
 
 | # | Test | Purpose |
 |---|---|---|
-| 6.3.1 | `test_backup_chain_with_tde_key_rotation` | Take backup, rotate principal key, take another backup, restore; key evolution doesn't break the chain. |
-| 6.3.2 | `test_negative_restore_missing_tde_library` | Restore into a cluster without pg_tde loaded → encrypted data unreadable (documented behaviour). |
-| 6.3.3 | `test_negative_pitr_missing_wal` | Remove a WAL segment from the archive → PITR fails cleanly. |
-| 6.3.4 | `test_concurrent_ddl_during_backup` | High DDL churn during pgBackRest execution → backup still completes. |
+| 6.3.1 | `test_backup_chain_with_tde_key_rotation` | Key evolution across full/diff/incr. |
+| 6.3.2 | `test_negative_restore_missing_tde_library` | No `pg_tde` in preload → fail. |
+| 6.3.3 | `test_negative_pitr_missing_wal` | Delete newest repo WAL → LSN PITR stuck. |
+| 6.3.4 | `test_concurrent_ddl_during_backup` | DDL churn during backup. |
 
-### 6.4 `TestPgBackRestEncryptedWalWrappersContract` (2 tests, byte-level)
+### 6.4 `TestPgBackRestEncryptedWalWrappersContract` (2 tests)
 
 | # | Test | Purpose |
 |---|---|---|
-| 6.4.1 | `test_archive_push_decrypts_wal_into_repo` | After `archive_command` runs through `pg_tde_archive_decrypt`, the WAL files in the pgBackRest repo are **plaintext** (verified by grepping for the inserted marker). |
-| 6.4.2 | `test_restore_encrypt_round_trip_keeps_wal_encrypted` | After a full restore with `pg_tde_wal_restore=True`, the WAL on the target is re-encrypted (no marker bytes in any segment). |
+| 6.4.1 | `test_archive_push_decrypts_wal_into_repo` | Repo WAL is plaintext after decrypt wrapper. |
+| 6.4.2 | `test_restore_encrypt_round_trip_keeps_wal_encrypted` | Restored `pg_wal` stays encrypted. |
+
+### 6.5 `TestPgBackRestPitrScenarios` (13 tests) — **extended PITR**
+
+| # | Test | Purpose |
+|---|---|---|
+| 6.5.1 | `test_pitr_by_time_after_full_and_diff` | Time PITR across full+diff chain. |
+| 6.5.2 | `test_pitr_exclusive_lsn` | `--target-exclusive` LSN. |
+| 6.5.3 | `test_pitr_pause_then_promote` | `target-action=pause` then promote. |
+| 6.5.4 | `test_pitr_multi_db_by_time` | Consistent cut across DBs. |
+| 6.5.5 | `test_pitr_before_drop_table_restores_tde_heap` | Undo DROP TABLE. |
+| 6.5.6 | `test_pitr_before_drop_database_sibling` | Undo DROP DATABASE. |
+| 6.5.7 | `test_pitr_before_truncate_keeps_rows` | Undo TRUNCATE. |
+| 6.5.8 | `test_pitr_across_principal_key_rotation` | Both key gens at target. |
+| 6.5.9 | `test_pitr_by_lsn_after_full_and_incr` | LSN PITR across full+incr. |
+| 6.5.10 | `test_pitr_exclusive_time` | `--target-exclusive` time. |
+| 6.5.11 | `test_pitr_target_action_shutdown` | Shutdown at target; restart sees data. |
+| 6.5.12 | `test_pitr_undoes_update_and_delete` | Undo post-target DML. |
+| 6.5.13 | `test_negative_pitr_target_before_backup` | Pre-backup timestamp must fail cleanly. |
+
+### 6.6 `TestPgBackRestPitrNegative` (8 tests)
+
+| # | Test | Purpose |
+|---|---|---|
+| 6.6.1 | `test_negative_pitr_corrupt_archived_wal` | Garbage newest WAL segment. |
+| 6.6.2 | `test_negative_pitr_archive_removed` | `rm -rf` archive tree. |
+| 6.6.3 | `test_negative_pitr_invalid_lsn_rejected` | Malformed LSN. |
+| 6.6.4 | `test_negative_pitr_invalid_time_rejected` | Malformed time. |
+| 6.6.5 | `test_negative_pitr_unreachable_xid` | Far-future XID. |
+| 6.6.6 | `test_negative_pitr_nonexistent_backup_set` | `--set=` missing label. |
+| 6.6.7 | `test_negative_pitr_lsn_requires_target` | API `ValueError` without target. |
+| 6.6.8 | `test_negative_pitr_restored_without_pg_tde_keyring` | Wipe `pg_tde/` after restore. |
+
+### 6.7 `TestEncryptedInRepoBackupRestorePitr` (12 tests)
+
+Ciphertext WAL remains in the pgBackRest repo (`pg_tde_wal_archiving=False`).
+
+| # | Test | Purpose |
+|---|---|---|
+| 6.7.1 | `test_encrypted_in_repo_pitr_by_time` | Time PITR. |
+| 6.7.2 | `test_encrypted_in_repo_pitr_by_lsn` | LSN PITR. |
+| 6.7.3 | `test_encrypted_in_repo_pitr_by_xid` | XID PITR. |
+| 6.7.4 | `test_encrypted_in_repo_pitr_before_drop_table` | Undo DROP TABLE. |
+| 6.7.5 | `test_encrypted_in_repo_pitr_across_key_rotation` | Key rotate + PITR. |
+| 6.7.6 | `test_encrypted_in_repo_pitr_exclusive_lsn` | Exclusive LSN. |
+| 6.7.7 | `test_negative_encrypted_in_repo_pitr_missing_wal` | Missing WAL. |
+| 6.7.8 | `test_negative_encrypted_in_repo_pitr_corrupt_wal` | Corrupt ciphertext. |
+| 6.7.9 | `test_negative_encrypted_in_repo_pitr_without_keyring` | No `pg_tde/` after time PITR. |
+| 6.7.10 | `test_encrypted_in_repo_full_diff_incr_restore` | Chain restore (not PITR cut). |
+| 6.7.11 | `test_encrypted_in_repo_delta_restore_after_diff` | Delta restore. |
+| 6.7.12 | `test_encrypted_in_repo_restore_fails_without_pg_tde_keyring` | Default restore without keyring. |
+
+### 6.8 Other classes (brief)
+
+| Class | Tests | Theme |
+|---|---|---|
+| `TestWrapperPathPgBackRestOptions` | 3 | lz4, immediate restore, retention/expire |
+| `TestPgBackRestReplicationAndRewind` | 4 | Restore + `pg_tde_rewind` failback / PG-2358-style |
+| `TestPgBackRestChecksumPageAndArchiveHeaderCheck` | 3 | `checksum-page=n` / `archive-header-check=n` |
+| `TestPgBackRestHaWalEncryptRestore` | 2 | Reinit vs stale replicas after primary restore |
+| `TestPgBackRestHaEncryptedArchiveRestoreRewire` | 1 | Restore primary + rewire replica |
+| `TestArchiveAsyncEncryptedWalPrimaryOnly` | 1 | `archive-async` round-trip |
+| `TestEncryptedArchiveMultiNodeConcerns` | 4 | Multi-node encrypted archive / keyring concerns |
 
 ---
 
