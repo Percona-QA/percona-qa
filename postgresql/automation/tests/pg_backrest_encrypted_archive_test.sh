@@ -219,12 +219,6 @@ $PGBACKREST \
     --pg1-path="$RESTORE_DATA" \
     restore
 
-#############################################
-# Copy pg_tde metadata
-#############################################
-
-cp -R "$PRIMARY_DATA/pg_tde" "$RESTORE_DATA/"
-
 cat > "$RESTORE_DATA/postgresql.conf" <<EOF
 
 port=$RESTORE_PORT
