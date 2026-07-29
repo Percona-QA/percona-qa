@@ -270,3 +270,275 @@ wait_for_replica_catchup() {
         sleep 1; elapsed=$((elapsed + 1))
     done
 }
+
+cleanup_patroni_cluster()
+{
+    echo "Cleaning Patroni cluster"
+
+    pkill -f "/usr/bin/patroni" || true
+    pkill -f "/usr/bin/etcd" || true
+
+    sleep 2
+
+    pkill -9 -f "/usr/bin/patroni" || true
+    pkill -9 -f "/usr/bin/etcd" || true
+
+    # Free ports explicitly
+    for p in 2379 2380
+    do
+        local pids
+        pids=$(lsof -tiTCP:$p -sTCP:LISTEN 2>/dev/null || true)
+        [ -n "$pids" ] && kill -9 $pids
+    done
+
+    rm -rf "$PATRONI_BASE" "$ETCD_DATA"
+
+    mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
+}
+
+start_etcd()
+{
+    echo "Starting etcd"
+
+    etcd \
+        --name=default \
+        --data-dir="$ETCD_DATA" \
+        --listen-client-urls=http://127.0.0.1:2379 \
+        --advertise-client-urls=http://127.0.0.1:2379 \
+        --listen-peer-urls=http://127.0.0.1:2380 \
+        --initial-advertise-peer-urls=http://127.0.0.1:2380 \
+        --initial-cluster="default=http://127.0.0.1:2380" \
+        --initial-cluster-state=new \
+        > "$PATRONI_BASE/etcd.log" 2>&1 &
+
+    local ETCD_PID=$!
+    echo $ETCD_PID > "$PATRONI_BASE/etcd.pid"
+
+    sleep 1
+
+    if ! kill -0 $ETCD_PID 2>/dev/null; then
+        echo "etcd failed to start"
+        cat "$PATRONI_BASE/etcd.log"
+        return 1
+    fi
+
+    wait_for_port 2379 || return 1
+    wait_for_port 2380 || return 1
+
+    for i in {1..30}
+    do
+        if ETCDCTL_API=3 etcdctl \
+            --endpoints=http://127.0.0.1:2379 \
+            endpoint health >/dev/null 2>&1
+        then
+            echo "etcd is healthy"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "etcd failed health check"
+    cat "$PATRONI_BASE/etcd.log"
+    return 1
+}
+
+generate_patroni_config()
+{
+    local node=$1
+    local port=$((5431 + node))
+    local rest=$((8007 + node))
+
+    local dir="$PATRONI_BASE/node$node"
+
+    mkdir -p "$dir"
+    rm -rf "$dir/data"
+
+    cat > "$dir/patroni.yml" <<EOF
+scope: $PATRONI_CLUSTER
+name: node$node
+
+restapi:
+  listen: 127.0.0.1:$rest
+  connect_address: 127.0.0.1:$rest
+
+etcd3:
+  host: 127.0.0.1:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  users:
+    replicator:
+      password: replpass
+      options:
+        - replication
+
+postgresql:
+  listen: 127.0.0.1:$port
+  connect_address: 127.0.0.1:$port
+
+  data_dir: $dir/data
+  bin_dir: $INSTALL_DIR/bin
+
+  authentication:
+    replication:
+      username: replicator
+      password: replpass
+    superuser:
+      username: postgres
+      password: postgres
+
+  create_replica_methods:
+    - basebackup
+
+  basebackup:
+    checkpoint: fast
+
+  parameters:
+    shared_preload_libraries: 'pg_tde'
+    wal_level: replica
+    hot_standby: on
+    max_wal_senders: 10
+    max_replication_slots: 10
+    shared_buffers: 256MB
+    logging_collector: on
+    log_destination: stderr
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+EOF
+}
+
+initialize_patroni_cluster()
+{
+    local nodes=$1
+
+    cleanup_patroni_cluster
+
+    start_etcd
+
+    for i in $(seq 1 $nodes)
+    do
+        generate_patroni_config $i
+    done
+}
+
+start_patroni_cluster()
+{
+    local nodes=$1
+
+    echo "Starting Patroni cluster ($nodes nodes)"
+
+    # Start node1 first
+    patroni "$PATRONI_BASE/node1/patroni.yml" \
+       > "$PATRONI_BASE/node1/patroni.log" 2>&1 &
+
+    wait_for_patroni_leader
+
+    # Start remaining nodes
+    for i in $(seq 2 $nodes)
+    do
+        local dir="$PATRONI_BASE/node$i"
+        patroni "$dir/patroni.yml" \
+           > "$dir/patroni.log" 2>&1 &
+    done
+
+    if [ $nodes -gt 1 ]; then
+        wait_for_patroni_replicas $((nodes - 1))
+    fi
+}
+
+wait_for_patroni_leader()
+{
+    echo "Waiting for Patroni leader"
+
+    for i in {1..60}
+    do
+        local leader
+
+	leader=$(patronictl -c \
+	    "$PATRONI_BASE/node1/patroni.yml" \
+	    list 2>/dev/null | awk -F'|' '/Leader/ {gsub(/ /, "", $2); print $2}')
+
+        if [ -n "$leader" ]
+        then
+            echo "Leader: $leader"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    echo "Leader not elected"
+    exit 1
+}
+
+wait_for_patroni_replicas()
+{
+    local expected=$1
+    echo "Waiting for $expected replica(s)"
+
+    for i in {1..120}
+    do
+        local count
+        count=$(patronictl -c "$PATRONI_BASE/node1/patroni.yml" list 2>/dev/null | awk -F'|' '
+            {
+                role=$4
+                gsub(/^[ \t]+|[ \t]+$/, "", role)
+                if (role == "Replica")
+                    count++
+            }
+            END {
+                print count+0
+            }')
+
+        echo "Attempt $i: replica count=$count expected=$expected"
+
+        if [ "$count" -eq "$expected" ] ; then
+            echo "Replicas ready"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    echo "Replicas did not join"
+    exit 1
+}
+
+wait_for_port()
+{
+    local port=$1
+    local host=${2:-127.0.0.1}
+    local timeout=${3:-60}
+
+    echo "Waiting for $host:$port"
+
+    for i in $(seq 1 $timeout)
+    do
+        if nc -z "$host" "$port" >/dev/null 2>&1
+        then
+            echo "Port $port is ready"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    echo "ERROR: Timeout waiting for $host:$port"
+    return 1
+}
