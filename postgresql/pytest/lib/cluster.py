@@ -748,6 +748,11 @@ def _pg_tde_build_info_paths(install_dir: Path) -> List[Path]:
         install_dir / "pg_tde_build_info",
         install_dir / "share" / "pg_tde_build_info",
     ]
+    # build_from_source.sh falls back here when /usr sharedir is not writable.
+    workdir = os.environ.get("WORKDIR", "").strip()
+    if workdir:
+        paths.append(Path(workdir) / "pg_tde_build_info")
+    paths.append(Path.home() / "pgwork" / "pg_tde_build_info")
     pg_config = install_dir / "bin" / "pg_config"
     if pg_config.is_file():
         import subprocess

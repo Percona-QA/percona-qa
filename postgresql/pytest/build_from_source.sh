@@ -305,9 +305,10 @@ if [[ "$DO_TDE" -eq 1 ]]; then
         || warn "pg_tde.control not found — check meson install output"
 
     # Metadata for pytest session header (branch + commit of this install).
+    # Packaged PG sharedirs under /usr are often only root-writable; never abort
+    # the build if we cannot place the file there.
     _SHAREDIR=$("$PG_CONFIG" --sharedir)
-    _BUILD_INFO="${_SHAREDIR}/pg_tde_build_info"
-    {
+    _build_info_body() {
         echo "# Written by build_from_source.sh — used by pytest report header"
         echo "source=${TDE_SRC}"
         if [[ -d "${TDE_SRC}/.git" || -f "${TDE_SRC}/.git" ]]; then
@@ -324,10 +325,52 @@ if [[ "$DO_TDE" -eq 1 ]]; then
             echo "dirty=0"
         fi
         echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    } > "$_BUILD_INFO"
-    # Also keep a copy next to the install prefix for trees without a sharedir probe.
-    cp -f "$_BUILD_INFO" "$INSTALL_DIR/pg_tde_build_info" 2>/dev/null || true
-    ok "pg_tde build info: $_BUILD_INFO"
+    }
+    _write_build_info() {
+        local dest="$1"
+        local parent
+        parent=$(dirname "$dest")
+        if [[ -w "$parent" ]] || [[ -e "$dest" && -w "$dest" ]]; then
+            _build_info_body > "$dest"
+            return 0
+        fi
+        # Non-interactive sudo (common on CI / passwordless lab VMs).
+        if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+            _build_info_body | sudo -n tee "$dest" >/dev/null
+            return 0
+        fi
+        return 1
+    }
+
+    _BUILD_INFO=""
+    for _cand in \
+        "${_SHAREDIR}/pg_tde_build_info" \
+        "${INSTALL_DIR}/pg_tde_build_info" \
+        "${WORKDIR}/pg_tde_build_info"
+    do
+        if _write_build_info "$_cand"; then
+            _BUILD_INFO="$_cand"
+            break
+        fi
+    done
+
+    if [[ -n "$_BUILD_INFO" ]]; then
+        for _mirror in \
+            "${_SHAREDIR}/pg_tde_build_info" \
+            "${INSTALL_DIR}/pg_tde_build_info" \
+            "${WORKDIR}/pg_tde_build_info"
+        do
+            [[ "$_mirror" == "$_BUILD_INFO" ]] && continue
+            _write_build_info "$_mirror" 2>/dev/null || \
+                cp -f "$_BUILD_INFO" "$_mirror" 2>/dev/null || true
+        done
+        ok "pg_tde build info: $_BUILD_INFO"
+    else
+        warn "could not write pg_tde_build_info under ${_SHAREDIR}, ${INSTALL_DIR}, or ${WORKDIR}"
+        warn "pytest session header will omit pg_tde git metadata (install is fine)"
+        warn "to record it:  sudo tee ${_SHAREDIR}/pg_tde_build_info >/dev/null <<'EOF'"
+        warn "  (re-run with write access to sharedir, or export WORKDIR to a writable tree)"
+    fi
 else
     info "pg_tde — skipped (use default build or --tde-only; not requested with --pg-only / --psm-only)"
 fi
