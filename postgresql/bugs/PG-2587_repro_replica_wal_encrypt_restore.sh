@@ -344,7 +344,7 @@ FOUND=0
 LAST_WAITING_LSN=""
 STUCK_COUNT=0
 for i in $(seq 1 24); do
-  sql -c "INSERT INTO scenario_restore SELECT g, repeat('y',200) FROM generate_series($((10000+i)),$((10000+i))) g;" >/dev/null 2>&1 || true
+  sql -c "INSERT INTO t1 SELECT g, repeat('y',200) FROM generate_series($((10000+i)),$((10000+i))) g;" >/dev/null 2>&1 || true
   sql -c "CHECKPOINT; SELECT pg_switch_wal();" >/dev/null 2>&1 || true
   sleep 5
 
