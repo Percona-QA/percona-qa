@@ -83,10 +83,21 @@ BIN="$INSTALL_DIR/bin"
 PSQL="$BIN/psql"
 PG_CTL="$BIN/pg_ctl"
 INITDB="$BIN/initdb"
-PG_BASEBACKUP="$BIN/pg_basebackup"
 ISREADY="$BIN/pg_isready"
 WALDUMP="$BIN/pg_tde_waldump"
 PGBR="$(command -v pgbackrest || true)"
+
+# internal/patroni/config.go remaps pg_basebackup -> pg_tde_basebackup (and
+# pg_rewind -> pg_tde_rewind) whenever pg_tde is enabled — real Patroni never
+# clones a standby with vanilla pg_basebackup in this setup. Use the same
+# tool here rather than bypassing whatever pg_tde-specific handling it does.
+if [[ -x "$BIN/pg_tde_basebackup" ]]; then
+  PG_BASEBACKUP="$BIN/pg_tde_basebackup"
+else
+  echo "NOTE: pg_tde_basebackup not found — falling back to plain pg_basebackup"
+  echo "      (real Patroni clusters with pg_tde enabled never do this)"
+  PG_BASEBACKUP="$BIN/pg_basebackup"
+fi
 
 for b in "$PSQL" "$PG_CTL" "$INITDB" "$PG_BASEBACKUP"; do
   [[ -x "$b" ]] || { echo "ERROR: missing $b"; exit 1; }
@@ -200,6 +211,15 @@ EOF
 
 "$INITDB" -D "$PRIMARY" --no-data-checksums >/dev/null
 
+# Matches the real operator topology (confirmed root cause of PG-2609):
+# instances[].walVolumeClaimSpec puts pg_wal on a SEPARATE volume, making it a
+# symlink to a SIBLING of PGDATA rather than a plain subdirectory. The
+# pgbackrest-restore.log attached to PG-2587 confirms this same layout
+# (--link-map=pg_wal=/pgdata/pg18_wal). Reproduce it here on the primary too.
+PRIMARY_WAL_DIR="$REPRO_ROOT/primary_wal"
+mv "$PRIMARY/pg_wal" "$PRIMARY_WAL_DIR"
+ln -s "$PRIMARY_WAL_DIR" "$PRIMARY/pg_wal"
+
 # Matches the bug's ACTUAL archive_command/restore_command: PLAIN pgbackrest
 # calls, no pg_tde_archive_decrypt/pg_tde_restore_encrypt wrapper anywhere.
 # WAL ships (and is fetched back) still encrypted end-to-end.
@@ -260,6 +280,12 @@ pgbackrest --config="$CONF" --stanza="$STANCE" stanza-create
 echo
 echo "── Set up streaming replica ──"
 "$PG_BASEBACKUP" -h "$SOCK" -p "$P_PORT" -D "$REPLICA" -U "$PG_SUPERUSER" -Fp -Xs -R -w
+
+# Same symlinked-pg_wal layout on the replica.
+REPLICA_WAL_DIR="$REPRO_ROOT/replica_wal"
+mv "$REPLICA/pg_wal" "$REPLICA_WAL_DIR"
+ln -s "$REPLICA_WAL_DIR" "$REPLICA/pg_wal"
+
 cat >> "$REPLICA/postgresql.conf" <<EOF
 port = $P_PORT_REPLICA
 unix_socket_directories = '$SOCK_REPLICA'
