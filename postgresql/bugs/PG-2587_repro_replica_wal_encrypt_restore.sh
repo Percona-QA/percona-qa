@@ -320,6 +320,13 @@ echo
 echo "── Step 8: full backup ──"
 pgbackrest --config="$CONF" --stanza="$STANCE" --type=full backup
 
+# Everything before this line is pre-restore noise (e.g. the replica's own
+# benign "invalid magic number" during its initial backup-recovery, which
+# just means "end of valid WAL reached" — normal, unrelated to encryption).
+# Only lines AFTER this marker count as evidence of the actual PG-2587
+# mechanism: a replica that can't follow the primary past the restore.
+RESTORE_MARKER_LINE=$(wc -l < "$REPLICA_LOG" | tr -d ' ')
+
 echo
 echo "── Step 9: restore in place onto the primary (this is what creates the"
 echo "   new timeline once it reopens for read/write, per the bug report) ──"
@@ -330,11 +337,36 @@ wait_ready "$SOCK" "$P_PORT"
 echo "primary back online after restore."
 
 echo
-echo "── Watching replica for the PG-2587 failure signature (up to 2 min) ──"
+echo "── Keep the primary generating fresh (timeline-2) WAL for several"
+echo "   cycles, watching whether the replica's recovery ever advances past"
+echo "   the fork point or stays permanently stuck at the same LSN ──"
 FOUND=0
-for _ in $(seq 1 24); do
+LAST_WAITING_LSN=""
+STUCK_COUNT=0
+for i in $(seq 1 24); do
+  sql -c "INSERT INTO scenario_restore SELECT g, repeat('y',200) FROM generate_series($((10000+i)),$((10000+i))) g;" >/dev/null 2>&1 || true
+  sql -c "CHECKPOINT; SELECT pg_switch_wal();" >/dev/null 2>&1 || true
   sleep 5
-  if grep -qE "invalid magic number|has already been removed" "$REPLICA_LOG" 2>/dev/null; then
+
+  NEW_LINES="$(tail -n "+$((RESTORE_MARKER_LINE+1))" "$REPLICA_LOG" 2>/dev/null)"
+  if echo "$NEW_LINES" | grep -qE "invalid magic number|has already been removed"; then
+    FOUND=1
+  fi
+
+  CUR_WAITING_LSN="$(echo "$NEW_LINES" | grep -oE "waiting for WAL to become available at [0-9A-F/]+" | tail -n1)"
+  if [[ -n "$CUR_WAITING_LSN" ]]; then
+    if [[ "$CUR_WAITING_LSN" == "$LAST_WAITING_LSN" ]]; then
+      STUCK_COUNT=$((STUCK_COUNT+1))
+    else
+      STUCK_COUNT=0
+      LAST_WAITING_LSN="$CUR_WAITING_LSN"
+    fi
+  fi
+  echo "  cycle $i: waiting_lsn='${CUR_WAITING_LSN:-<none>}' stuck_count=$STUCK_COUNT"
+  # Stuck at the exact same "waiting for WAL" LSN across 4+ cycles (20s+)
+  # despite the primary actively producing new timeline-2 WAL is the real
+  # signature — not just a transient recovery pause.
+  if [[ "$STUCK_COUNT" -ge 4 ]]; then
     FOUND=1
     break
   fi
@@ -344,13 +376,26 @@ echo
 echo "════════════════════════════════════════════════════════"
 echo " SUMMARY"
 echo "════════════════════════════════════════════════════════"
-if [[ "$FOUND" -eq 1 ]]; then
-  echo " REPRODUCED — replica log shows the PG-2587 signature:"
-  grep -E "invalid magic number|has already been removed|new target timeline|waiting for WAL to become available" "$REPLICA_LOG" | tail -20
+POST_RESTORE_LOG="$(tail -n "+$((RESTORE_MARKER_LINE+1))" "$REPLICA_LOG" 2>/dev/null)"
+if [[ "$FOUND" -eq 1 && "$STUCK_COUNT" -ge 4 ]]; then
+  echo " REPRODUCED — replica stuck at the same LSN ($LAST_WAITING_LSN) across"
+  echo " $STUCK_COUNT consecutive checks despite the primary producing new"
+  echo " timeline-2 WAL. Post-restore replica log:"
+  echo "$POST_RESTORE_LOG" | tail -30
+elif [[ "$FOUND" -eq 1 ]]; then
+  echo " Saw 'invalid magic number'/'has already been removed' AFTER the"
+  echo " restore, but the replica did not stay stuck at one LSN for 4+"
+  echo " consecutive checks — likely transient, not the permanent-hang bug."
+  echo " Post-restore replica log:"
+  echo "$POST_RESTORE_LOG" | tail -30
 else
-  echo " NOT reproduced this pass — replica log tail:"
-  tail -n 40 "$REPLICA_LOG" 2>/dev/null || true
+  echo " NOT reproduced this pass. Post-restore replica log:"
+  echo "$POST_RESTORE_LOG" | tail -30
 fi
+echo
+echo " (Pre-restore replica log lines are NOT evidence of PG-2587 — the"
+echo "  replica's own 'invalid magic number' during its initial backup-recovery"
+echo "  is normal end-of-valid-WAL detection, unrelated to this bug.)"
 echo
 echo " Replica log: $REPLICA_LOG"
 echo " Primary log: $(ls -1t "$PRIMARY/log"/postgresql-*.log 2>/dev/null | head -n1)"
