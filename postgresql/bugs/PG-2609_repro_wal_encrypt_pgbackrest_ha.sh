@@ -213,6 +213,27 @@ EOF
 
 "$INITDB" -D "$PRIMARY" --no-data-checksums >/dev/null
 
+# ROOT CAUSE (confirmed by the pg_tde dev team, 2026-07-30): pg_tde_archive_decrypt
+# derives its key directory as `<dir-containing-the-segment>/../pg_tde`
+# (pg_tde_fe_archive_common.h:derive_tde_dir_from_segment_path — pure string
+# concat, not a real path resolution). That's correct when pg_wal is a plain
+# subdirectory of PGDATA (`..` walks back to PGDATA) — which is what every
+# earlier pass of this script had, and why none of them ever reproduced the
+# bug. But the operator supports a SEPARATE WAL VOLUME (instances[].walVolumeClaimSpec),
+# making pg_wal a symlink to a SIBLING of PGDATA (e.g. PGDATA=/pgdata/pg18,
+# pg_wal -> /pgdata/pg18_wal). The OS resolves the symlink *during* traversal,
+# so `pg_wal/../pg_tde` lands at /pgdata/pg_tde (parent of the WAL volume) —
+# the WRONG directory — instead of the real /pgdata/pg18/pg_tde. The tool
+# silently misses the actual key state, decrypts garbage, and produces
+# exactly the "mismatch of segment size" error. Reproducing that here by
+# moving pg_wal out to a sibling directory and symlinking it back, matching
+# the operator's actual on-disk layout.
+WAL_DIR="$REPRO_ROOT/primary_wal"
+mv "$PRIMARY/pg_wal" "$WAL_DIR"
+ln -s "$WAL_DIR" "$PRIMARY/pg_wal"
+echo "pg_wal is now a symlink to a sibling dir (matches operator's walVolumeClaimSpec layout):"
+ls -l "$PRIMARY/pg_wal"
+
 # pgBackRest check/backup require the literal string "pgbackrest" in the
 # archive_command GUC (ERROR 068 if only a wrapper script path is set).
 # Match pytest BackupManager: decrypt wraps archive-push; %%p survives conf escape.

@@ -93,8 +93,11 @@ for b in "$PSQL" "$PG_CTL" "$INITDB" "$PG_BASEBACKUP"; do
 done
 [[ -n "$PGBR" ]] || { echo "ERROR: pgbackrest not on PATH"; exit 1; }
 
+# initdb creates a superuser matching the OS user (e.g. ubuntu), not "postgres".
+# Database name is still "postgres"; do not force -U postgres on clients.
 export PGDATABASE=postgres
-sql() { "$PSQL" -h "$SOCK" -p "$P_PORT" -d postgres -v ON_ERROR_STOP=1 "$@"; }
+PG_SUPERUSER="${PGUSER:-$(id -un)}"
+sql() { "$PSQL" -h "$SOCK" -p "$P_PORT" -U "$PG_SUPERUSER" -d postgres -v ON_ERROR_STOP=1 "$@"; }
 
 wait_ready() {
   local sock="$1" port="$2"
@@ -256,7 +259,7 @@ pgbackrest --config="$CONF" --stanza="$STANCE" stanza-create
 
 echo
 echo "── Set up streaming replica ──"
-"$PG_BASEBACKUP" -h "$SOCK" -p "$P_PORT" -D "$REPLICA" -U postgres -Fp -Xs -R -w
+"$PG_BASEBACKUP" -h "$SOCK" -p "$P_PORT" -D "$REPLICA" -U "$PG_SUPERUSER" -Fp -Xs -R -w
 cat >> "$REPLICA/postgresql.conf" <<EOF
 port = $P_PORT_REPLICA
 unix_socket_directories = '$SOCK_REPLICA'
