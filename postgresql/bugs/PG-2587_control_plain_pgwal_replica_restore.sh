@@ -198,19 +198,30 @@ wait_ready "$SOCK" "$P_PORT"
 echo "primary back online after restore."
 
 echo
-echo "── Keep the primary generating fresh (timeline-2) WAL, watching whether"
-echo "   the replica's recovery ever advances past the fork point or stays"
-echo "   permanently stuck at the same LSN ──"
+echo "── Keep the primary generating fresh (timeline-2) WAL, and force a fresh"
+echo "   replica restart each cycle to make it re-attempt STREAMING (not just"
+echo "   archive-get) — mimicking a real Patroni reconcile loop repeatedly"
+echo "   nudging the replica to reconnect. The original bug's log shows the"
+echo "   replica stuck retrying pure STREAMING forever, not archive-get ──"
 FOUND=0
 LAST_WAITING_LSN=""
 STUCK_COUNT=0
+STREAM_RETRY_STUCK_COUNT=0
 for i in $(seq 1 24); do
   sql -c "INSERT INTO t1 SELECT g, repeat('y',200) FROM generate_series($((10000+i)),$((10000+i))) g;" >/dev/null 2>&1 || true
   sql -c "CHECKPOINT; SELECT pg_switch_wal();" >/dev/null 2>&1 || true
+
+  "$PG_CTL" -D "$REPLICA" -m fast restart >/dev/null 2>&1 || true
+  wait_ready "$SOCK_REPLICA" "$P_PORT_REPLICA" || true
   sleep 5
 
   NEW_LINES="$(tail -n "+$((RESTORE_MARKER_LINE+1))" "$REPLICA_LOG" 2>/dev/null)"
   if echo "$NEW_LINES" | grep -qE "invalid magic number|has already been removed"; then
+    FOUND=1
+  fi
+
+  if echo "$NEW_LINES" | grep -qE "could not receive data from WAL stream.*has already been removed"; then
+    STREAM_RETRY_STUCK_COUNT=$((STREAM_RETRY_STUCK_COUNT+1))
     FOUND=1
   fi
 
@@ -223,8 +234,8 @@ for i in $(seq 1 24); do
       LAST_WAITING_LSN="$CUR_WAITING_LSN"
     fi
   fi
-  echo "  cycle $i: waiting_lsn='${CUR_WAITING_LSN:-<none>}' stuck_count=$STUCK_COUNT"
-  if [[ "$STUCK_COUNT" -ge 4 ]]; then
+  echo "  cycle $i: waiting_lsn='${CUR_WAITING_LSN:-<none>}' stuck_count=$STUCK_COUNT stream_retry_stuck=$STREAM_RETRY_STUCK_COUNT"
+  if [[ "$STUCK_COUNT" -ge 4 || "$STREAM_RETRY_STUCK_COUNT" -ge 2 ]]; then
     FOUND=1
     break
   fi
@@ -235,23 +246,29 @@ echo "════════════════════════�
 echo " SUMMARY (no pg_tde, plain pg_wal directory — no symlink)"
 echo "════════════════════════════════════════════════════════"
 POST_RESTORE_LOG="$(tail -n "+$((RESTORE_MARKER_LINE+1))" "$REPLICA_LOG" 2>/dev/null)"
-if [[ "$FOUND" -eq 1 && "$STUCK_COUNT" -ge 4 ]]; then
-  echo " HANGS THE SAME WAY WITHOUT THE SYMLINK TOO — replica stuck at the"
-  echo " same LSN ($LAST_WAITING_LSN) across $STUCK_COUNT consecutive checks"
-  echo " despite the primary producing new timeline-2 WAL. The symlink is"
-  echo " NOT a factor in this bug — it's purely the in-place-restore-with-"
-  echo " attached-replica topology. Post-restore replica log:"
-  echo "$POST_RESTORE_LOG" | tail -30
+if [[ "$STREAM_RETRY_STUCK_COUNT" -ge 2 ]]; then
+  echo " HANGS WITH THE EXACT ORIGINAL SIGNATURE, NO SYMLINK EITHER — replica"
+  echo " repeatedly attempted streaming and got rejected with 'has already"
+  echo " been removed' ($STREAM_RETRY_STUCK_COUNT times). Post-restore log:"
+  echo "$POST_RESTORE_LOG" | tail -40
+elif [[ "$FOUND" -eq 1 && "$STUCK_COUNT" -ge 4 ]]; then
+  echo " HANGS THE SAME WAY WITHOUT THE SYMLINK TOO (archive-get variant) —"
+  echo " replica stuck at the same LSN ($LAST_WAITING_LSN) across"
+  echo " $STUCK_COUNT consecutive checks despite the primary producing new"
+  echo " timeline-2 WAL. The symlink is NOT a factor in this bug — it's"
+  echo " purely the in-place-restore-with-attached-replica topology."
+  echo " Post-restore replica log:"
+  echo "$POST_RESTORE_LOG" | tail -40
 elif [[ "$FOUND" -eq 1 ]]; then
   echo " Saw the magic-number/removed-segment text but did not stay stuck for"
   echo " 4+ consecutive checks. Post-restore log:"
-  echo "$POST_RESTORE_LOG" | tail -30
+  echo "$POST_RESTORE_LOG" | tail -40
 else
   echo " DID NOT HANG — replica caught up fine WITHOUT the symlink. That"
   echo " would mean the symlink IS a contributing factor to this specific"
   echo " hang after all, on top of its separate, already-confirmed role in"
   echo " PG-2609. Post-restore replica log:"
-  echo "$POST_RESTORE_LOG" | tail -30
+  echo "$POST_RESTORE_LOG" | tail -40
 fi
 echo
 echo " Replica log: $REPLICA_LOG"

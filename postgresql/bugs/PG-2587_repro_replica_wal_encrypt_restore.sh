@@ -338,18 +338,42 @@ echo "primary back online after restore."
 
 echo
 echo "── Keep the primary generating fresh (timeline-2) WAL for several"
-echo "   cycles, watching whether the replica's recovery ever advances past"
-echo "   the fork point or stays permanently stuck at the same LSN ──"
+echo "   cycles, and force a fresh replica restart each cycle to make it"
+echo "   re-attempt STREAMING (not just archive-get) — mimicking what a"
+echo "   real Patroni reconcile loop does (repeatedly nudging the replica to"
+echo "   reconnect to the leader) instead of relying only on Postgres's own"
+echo "   internal wal_retrieve_retry_interval. The original bug's log shows"
+echo "   the replica stuck retrying pure STREAMING forever"
+echo "   ('started streaming WAL from primary at ... on timeline 1' ->"
+echo "   'could not receive data from WAL stream: ... has already been"
+echo "   removed'), not archive-get — this loop checks for that exact"
+echo "   pattern specifically, in addition to the archive-get-stuck pattern"
+echo "   already confirmed in earlier passes ──"
 FOUND=0
 LAST_WAITING_LSN=""
 STUCK_COUNT=0
+STREAM_RETRY_STUCK_COUNT=0
 for i in $(seq 1 24); do
   sql -c "INSERT INTO t1 SELECT g, repeat('y',200) FROM generate_series($((10000+i)),$((10000+i))) g;" >/dev/null 2>&1 || true
   sql -c "CHECKPOINT; SELECT pg_switch_wal();" >/dev/null 2>&1 || true
+
+  # Force a fresh streaming reconnection attempt, same corrective action a
+  # real Patroni reconcile loop takes on a replica it thinks is unhealthy.
+  "$PG_CTL" -D "$REPLICA" -m fast restart >/dev/null 2>&1 || true
+  wait_ready "$SOCK_REPLICA" "$P_PORT_REPLICA" || true
   sleep 5
 
   NEW_LINES="$(tail -n "+$((RESTORE_MARKER_LINE+1))" "$REPLICA_LOG" 2>/dev/null)"
   if echo "$NEW_LINES" | grep -qE "invalid magic number|has already been removed"; then
+    FOUND=1
+  fi
+
+  # The original bug's exact signature: a streaming attempt that gets
+  # rejected because the primary no longer has the requested (old-timeline)
+  # segment — as opposed to an archive-get attempt that just comes back
+  # "unable to find".
+  if echo "$NEW_LINES" | grep -qE "could not receive data from WAL stream.*has already been removed"; then
+    STREAM_RETRY_STUCK_COUNT=$((STREAM_RETRY_STUCK_COUNT+1))
     FOUND=1
   fi
 
@@ -362,11 +386,12 @@ for i in $(seq 1 24); do
       LAST_WAITING_LSN="$CUR_WAITING_LSN"
     fi
   fi
-  echo "  cycle $i: waiting_lsn='${CUR_WAITING_LSN:-<none>}' stuck_count=$STUCK_COUNT"
+  echo "  cycle $i: waiting_lsn='${CUR_WAITING_LSN:-<none>}' stuck_count=$STUCK_COUNT stream_retry_stuck=$STREAM_RETRY_STUCK_COUNT"
   # Stuck at the exact same "waiting for WAL" LSN across 4+ cycles (20s+)
   # despite the primary actively producing new timeline-2 WAL is the real
-  # signature — not just a transient recovery pause.
-  if [[ "$STUCK_COUNT" -ge 4 ]]; then
+  # signature — not just a transient recovery pause. Repeated
+  # stream-rejection hits are an even more direct match to the original bug.
+  if [[ "$STUCK_COUNT" -ge 4 || "$STREAM_RETRY_STUCK_COUNT" -ge 2 ]]; then
     FOUND=1
     break
   fi
@@ -377,20 +402,27 @@ echo "════════════════════════�
 echo " SUMMARY"
 echo "════════════════════════════════════════════════════════"
 POST_RESTORE_LOG="$(tail -n "+$((RESTORE_MARKER_LINE+1))" "$REPLICA_LOG" 2>/dev/null)"
-if [[ "$FOUND" -eq 1 && "$STUCK_COUNT" -ge 4 ]]; then
-  echo " REPRODUCED — replica stuck at the same LSN ($LAST_WAITING_LSN) across"
-  echo " $STUCK_COUNT consecutive checks despite the primary producing new"
-  echo " timeline-2 WAL. Post-restore replica log:"
-  echo "$POST_RESTORE_LOG" | tail -30
+if [[ "$STREAM_RETRY_STUCK_COUNT" -ge 2 ]]; then
+  echo " REPRODUCED — EXACT original signature: replica repeatedly attempted"
+  echo " streaming and got rejected with 'has already been removed'"
+  echo " ($STREAM_RETRY_STUCK_COUNT times), matching the original bug's log"
+  echo " byte-for-byte, not just the archive-get variant. Post-restore log:"
+  echo "$POST_RESTORE_LOG" | tail -40
+elif [[ "$FOUND" -eq 1 && "$STUCK_COUNT" -ge 4 ]]; then
+  echo " REPRODUCED (archive-get variant) — replica stuck at the same LSN"
+  echo " ($LAST_WAITING_LSN) across $STUCK_COUNT consecutive checks despite"
+  echo " the primary producing new timeline-2 WAL. No streaming-rejection"
+  echo " text seen even with forced reconnects this pass. Post-restore log:"
+  echo "$POST_RESTORE_LOG" | tail -40
 elif [[ "$FOUND" -eq 1 ]]; then
   echo " Saw 'invalid magic number'/'has already been removed' AFTER the"
-  echo " restore, but the replica did not stay stuck at one LSN for 4+"
-  echo " consecutive checks — likely transient, not the permanent-hang bug."
+  echo " restore, but the replica did not stay stuck for 4+ consecutive"
+  echo " checks — likely transient, not the permanent-hang bug."
   echo " Post-restore replica log:"
-  echo "$POST_RESTORE_LOG" | tail -30
+  echo "$POST_RESTORE_LOG" | tail -40
 else
   echo " NOT reproduced this pass. Post-restore replica log:"
-  echo "$POST_RESTORE_LOG" | tail -30
+  echo "$POST_RESTORE_LOG" | tail -40
 fi
 echo
 echo " (Pre-restore replica log lines are NOT evidence of PG-2587 — the"

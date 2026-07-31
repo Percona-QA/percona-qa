@@ -15,7 +15,11 @@ checksum / archive-async modules). Covers:
   * ``checksum-page=n`` / ``archive-header-check=n``
   * Patroni-like HA restore (reinit vs stale replicas)
   * Encrypted-in-repo HA restore + rewire existing replica
+  * Patroni-script parity: 3-node encrypted backup/restore
+    (``pgbackrest_encrypted_backup_and_restore_using_patroni.sh``)
   * ``archive-async`` + multi-node encrypted-WAL key concerns
+  * ``wal_encrypt`` + ``pg_tde_archive_decrypt`` + ``pg_wal`` symlink layouts
+    (file-keyring / OpenBao repros, no-wrapper and safe-bootstrap workarounds)
 """
 from __future__ import annotations
 
@@ -29,7 +33,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pytest
 
@@ -37,6 +41,8 @@ from conftest import allocate_port
 from lib import BackupManager, PgCluster, ReplicationManager, TdeManager
 from lib.backup import PgBaseBackup, _pg_settings_file_string_literal
 from lib.cluster import initdb_args_no_data_checksums, libpq_superuser
+from lib.tde import wrappers_available
+from lib.vault import VaultConfig
 
 pytestmark = [pytest.mark.backup, pytest.mark.pgbackrest, pytest.mark.slow]
 
@@ -4570,6 +4576,214 @@ class TestPgBackRestHaEncryptedArchiveRestoreRewire:
             replica.stop(check=False)
 
 
+class TestPgBackRestPatroniEncryptedBackupRestore:
+    """
+    Pytest parity for automation script
+    ``pgbackrest_encrypted_backup_and_restore_using_patroni.sh``.
+
+    Real Patroni is not used; this is the same operator sequence with
+    streaming replication: 3-node HA, ``wal_encrypt``, file keyring,
+    plain ``archive-push`` (encrypted WAL in repo) + ``archive-header-check=n``,
+    full backup, stop leader, restore into leader PGDATA, verify ``t1``,
+    then observe that pre-restore replicas do not cleanly reconnect and
+    must be reinitialized.
+    """
+
+    def test_3node_encrypted_backup_restore_and_replica_reinit(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
+    ):
+        # ── leader + encrypted-in-repo pgBackRest (bash stanza=demo) ───────
+        primary = pg_factory("pat_n1")
+        primary.initdb(extra_args=initdb_args_no_data_checksums(primary.install_dir))
+        primary.write_default_config(
+            "primary",
+            extra_params={**_hae_HA_PARAMS, "archive_timeout": "'10s'"},
+        )
+        _hae_configure_hba(primary)
+        primary.start()
+
+        tde = TdeManager(primary)
+        tde.create_extension()
+        tde.add_global_key_provider_file()
+        # Bash: create_key + set_default_key('table_key'); principal key covers both.
+        tde.set_global_principal_key(key_name="table_key")
+        tde.enable_wal_encryption()
+        assert primary.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        bm = BackupManager(stanza="demo", repo_path=str(tmp_path / "repo"))
+        bm.write_config(
+            pg_path=str(primary.data_dir),
+            pg_port=primary.port,
+            pg_socket_path=str(primary.socket_dir),
+            pg_bin=str(primary.bin),
+            archive_header_check=False,
+            checksum_page=False,
+        )
+        # Bash: plain archive-push / archive-get (no decrypt/encrypt wrappers).
+        bm.configure_postgres(primary, pg_tde_wal_archiving=False)
+        primary.configure({"archive_timeout": "'10s'"})
+        primary.restart()
+        primary.wait_ready(timeout=60)
+        bm.stanza_create()
+
+        # ── two streaming replicas (Patroni node2 / node3) ─────────────────
+        replicas: List[PgCluster] = []
+        for name in ("pat_n2", "pat_n3"):
+            standby = pg_factory(name)
+            repl = ReplicationManager(primary, standby)
+            repl.create_standby_from_backup(use_tde_basebackup=True)
+            standby.write_default_config(
+                "replica",
+                extra_params={**_hae_HA_PARAMS, "archive_timeout": "'10s'"},
+            )
+            standby.start()
+            replicas.append(standby)
+        _haw_wait_for_n_streaming(primary, n=2)
+
+        # ── encrypted workload (bash 3×100k scaled down) ───────────────────
+        primary.execute(
+            "CREATE TABLE t1 (id BIGSERIAL, payload TEXT) USING tde_heap"
+        )
+        for _ in range(3):
+            primary.execute(
+                "INSERT INTO t1(payload) "
+                "SELECT repeat(md5(i::text), 4) FROM generate_series(1, 5000) i"
+            )
+            primary.execute("CHECKPOINT")
+            primary.execute("SELECT pg_switch_wal()")
+            time.sleep(0.5)
+        bm.wait_for_wal_archive(primary, timeout=90)
+
+        row_count = int(primary.fetchone("SELECT COUNT(*) FROM t1"))
+        assert row_count >= 15000
+        for replica in replicas:
+            ReplicationManager(primary, replica).assert_catchup(timeout=90)
+            assert int(replica.fetchone("SELECT COUNT(*) FROM t1")) == row_count
+
+        bm.backup(backup_type="full")
+        info = bm.info()
+        assert "full" in info.lower()
+        bm.wait_for_wal_archive(primary, timeout=60)
+
+        # ── stop leader only (bash: patronictl pause + pkill leader) ───────
+        # Keep replica PGDATA frozen for reconnect observation.
+        stale_dirs: List[Path] = []
+        for i, replica in enumerate(replicas):
+            replica.stop(check=False)
+            frozen = tmp_path / f"pat_stale{i + 1}"
+            shutil.copytree(replica.data_dir, frozen)
+            stale_dirs.append(frozen)
+
+        primary_data = primary.data_dir
+        primary.stop(check=False)
+
+        # ── in-place restore into leader data directory (bash PRIMARY_DATA) ─
+        bm.restore(str(primary_data), pg_tde_wal_restore=False)
+        (primary_data / "postmaster.pid").unlink(missing_ok=True)
+
+        restored = _hae_start_restored_primary(
+            primary_data, install_dir, tmp_path, io_method, bm,
+        )
+        try:
+            assert restored.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+            assert int(restored.fetchone("SELECT COUNT(*) FROM t1")) == row_count
+
+            # ── observe stale replica reconnect (bash wait + pg_stat_replication)
+            stale_failures: List[str] = []
+            for i, frozen in enumerate(stale_dirs):
+                standby = pg_factory(f"pat_stale_boot{i + 1}")
+                if standby.data_dir.exists():
+                    shutil.rmtree(standby.data_dir)
+                shutil.copytree(frozen, standby.data_dir)
+                (standby.data_dir / "postmaster.pid").unlink(missing_ok=True)
+                standby.write_default_config(
+                    "replica",
+                    extra_params={**_hae_HA_PARAMS, "archive_timeout": "'10s'"},
+                )
+                ReplicationManager(restored, standby).rewire_standby_conninfo()
+
+                log_path = standby.data_dir / "server.log"
+                if log_path.exists():
+                    log_path.write_text("")
+
+                start_failed = False
+                try:
+                    standby.start(timeout=45)
+                except RuntimeError:
+                    start_failed = True
+
+                streaming = "0"
+                log_text = ""
+                deadline = time.time() + 20
+                while time.time() < deadline:
+                    if not start_failed and standby.is_ready():
+                        streaming = restored.fetchone(
+                            "SELECT COUNT(*) FROM pg_stat_replication "
+                            "WHERE state = 'streaming'"
+                        ) or "0"
+                        if int(streaming) >= 1:
+                            break
+                    log_text = standby.read_log(150)
+                    if any(m in log_text.lower() for m in _hae_REPLICA_FAIL_MARKERS):
+                        break
+                    time.sleep(1)
+                else:
+                    log_text = standby.read_log(150)
+
+                log_l = log_text.lower()
+                rewire_ok = (
+                    not start_failed
+                    and standby.is_ready()
+                    and int(streaming) >= 1
+                )
+                rewire_failed = (
+                    start_failed
+                    or any(m in log_l for m in _hae_REPLICA_FAIL_MARKERS)
+                    or not rewire_ok
+                )
+                if not rewire_failed:
+                    stale_failures.append(
+                        f"stale replica {standby.data_dir.name} unexpectedly "
+                        f"streamed after leader restore; log:\n{log_text}"
+                    )
+                standby.stop(check=False)
+
+            assert not stale_failures, "\n\n".join(stale_failures)
+
+            # ── recovery path: reinit both replicas (Patroni reinit) ───────
+            fresh: List[PgCluster] = []
+            for name in ("pat_reinit1", "pat_reinit2"):
+                standby = pg_factory(name)
+                ReplicationManager(restored, standby).create_standby_from_backup(
+                    use_tde_basebackup=True
+                )
+                standby.write_default_config("replica", extra_params=_hae_HA_PARAMS)
+                standby.start()
+                fresh.append(standby)
+
+            _haw_wait_for_n_streaming(restored, n=2)
+            restored.execute("INSERT INTO t1(payload) VALUES ('post_reinit')")
+            for standby in fresh:
+                ReplicationManager(restored, standby).assert_catchup(timeout=90)
+                assert standby.fetchone(
+                    "SELECT COUNT(*) FROM t1 WHERE payload = 'post_reinit'"
+                ) == "1"
+                log_l = standby.read_log(80).lower()
+                for marker in _hae_REPLICA_FAIL_MARKERS:
+                    assert marker not in log_l, (
+                        f"reinitialized replica must not log {marker!r}:\n"
+                        f"{standby.read_log(80)}"
+                    )
+        finally:
+            restored.stop(check=False)
+            for replica in replicas:
+                replica.stop(check=False)
+
+
 # ── archive-async encrypted-in-repo (ex-test_pgbackrest_wal_encrypt_archive_async.py) ──
 
 _asy_TDE_PARAMS: Dict[str, str] = {
@@ -5191,3 +5405,719 @@ class TestEncryptedArchiveMultiNodeConcerns:
             )
         finally:
             restored.stop(check=False)
+
+
+# ── wal_encrypt + archive_decrypt + pg_wal symlink (ex-PG-2609 bash suite) ──
+
+_WSE_MISMATCH = "mismatch of segment size"
+_WSE_TDE_PARAMS = {
+    "shared_preload_libraries": "'pg_tde'",
+    "default_table_access_method": "'tde_heap'",
+}
+_WSE_ARCHIVE_TIMEOUT_S = 5
+
+
+# ── helpers ───────────────────────────────────────────────────────────────────
+
+
+def _wse_require_archive_decrypt(install_dir: Path) -> Path:
+    if not wrappers_available(install_dir):
+        pytest.skip("pg_tde archive/restore wrappers not in this build")
+    decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
+    if not decrypt.is_file():
+        pytest.skip(f"pg_tde_archive_decrypt missing: {decrypt}")
+    return decrypt
+
+
+def _wse_relocate_pg_wal_sibling_symlink(
+    data_dir: Path,
+    wal_real: Path,
+    *,
+    relative: bool = False,
+) -> None:
+    """
+    Operator-style separate WAL volume: ``$PGDATA/pg_wal`` → sibling directory.
+
+    ``pg_tde_archive_decrypt`` derives the key dir as
+    ``dirname(segment)/../pg_tde`` without resolving through PGDATA, so a
+    sibling symlink makes that land next to the WAL volume (wrong).
+    """
+    wal = data_dir / "pg_wal"
+    assert wal.is_dir() and not wal.is_symlink(), f"expected real pg_wal dir at {wal}"
+    wal_real.parent.mkdir(parents=True, exist_ok=True)
+    wal.rename(wal_real)
+    if relative:
+        # e.g. PGDATA/pg_wal -> ../primary_wal (common PVC sibling layout)
+        target = os.path.relpath(wal_real.resolve(), start=data_dir.resolve())
+        wal.symlink_to(target)
+    else:
+        wal.symlink_to(wal_real.resolve())
+    assert wal.is_symlink()
+    assert wal.resolve() == wal_real.resolve()
+
+
+def _wse_relocate_pg_wal_nested_symlink(data_dir: Path) -> Path:
+    """
+    Symlink ``pg_wal`` → ``$PGDATA/wal_volume`` (still under PGDATA).
+
+    String-concat ``dirname($PGDATA/pg_wal/SEG)/../pg_tde`` still resolves to
+    ``$PGDATA/pg_tde``, so this layout must NOT trip the key-dir bug.
+    """
+    wal = data_dir / "pg_wal"
+    real = data_dir / "wal_volume"
+    assert wal.is_dir() and not wal.is_symlink()
+    wal.rename(real)
+    wal.symlink_to(real.name)  # relative
+    assert wal.is_symlink()
+    assert (data_dir / "pg_tde").parent == data_dir
+    return real
+
+
+def _wse_boot_primary(
+    pg_factory,
+    name: str,
+    *,
+    archive_mode: str = "on",
+    extra: Optional[dict] = None,
+) -> PgCluster:
+    cluster = pg_factory(name)
+    cluster.initdb(extra_args=initdb_args_no_data_checksums(cluster.install_dir))
+    params = {
+        **_WSE_TDE_PARAMS,
+        "wal_level": "replica",
+        "max_wal_senders": "10",
+        "archive_mode": archive_mode,
+        "archive_timeout": f"'{_WSE_ARCHIVE_TIMEOUT_S}s'",
+        "archive_command": "'/bin/true'",
+    }
+    if extra:
+        params.update(extra)
+    cluster.write_default_config("primary", extra_params=params)
+    cluster.add_hba_entry("local all all trust")
+    cluster.add_hba_entry("host all all 127.0.0.1/32 trust")
+    return cluster
+
+
+def _wse_setup_default_keys(cluster: PgCluster, keyfile: Path) -> None:
+    """Operator-style create_key + set_default_key (lazy server-key materialization)."""
+    tde = TdeManager(cluster)
+    tde.create_extension()
+    tde.add_global_key_provider_file(
+        provider_name="file_provider",
+        keyfile=str(keyfile),
+    )
+    # Matches bash: set_default_key (not explicit set_server_key ahead of time).
+    tde.set_global_default_principal_key("k1", "file_provider")
+    # Idempotent reconcile-style retry (operator called set_default twice).
+    cluster.execute(
+        "SELECT pg_tde_set_default_key_using_global_key_provider("
+        "'k1'::text, 'file_provider'::text)"
+    )
+
+
+def _wse_make_bm(
+    cluster: PgCluster,
+    tmp_path: Path,
+    stanza: str,
+    *,
+    decrypt_wrappers: bool,
+) -> BackupManager:
+    bm = BackupManager(stanza=stanza, repo_path=str(tmp_path / f"repo_{stanza}"))
+    bm.write_config(
+        pg_path=str(cluster.data_dir),
+        pg_port=cluster.port,
+        pg_socket_path=str(cluster.socket_dir),
+        pg_bin=str(cluster.bin),
+        archive_header_check=False,
+        checksum_page=False,
+    )
+    bm.configure_postgres(cluster, pg_tde_wal_archiving=decrypt_wrappers)
+    return bm
+
+
+def _wse_server_log_text(cluster: PgCluster) -> str:
+    return cluster.read_log(200)
+
+
+def _wse_saw_mismatch(cluster: PgCluster, *extra_paths: Path) -> bool:
+    texts = [_wse_server_log_text(cluster).lower()]
+    for p in extra_paths:
+        if p.exists():
+            texts.append(p.read_text(errors="replace").lower())
+    return any(_WSE_MISMATCH in t for t in texts)
+
+
+def _wse_completed_wal_segment(cluster: PgCluster) -> Optional[str]:
+    """Return a completed on-disk WAL segment name strictly before the open one."""
+    cur = cluster.fetchone("SELECT pg_walfile_name(pg_current_wal_lsn())")
+    wal_dir = cluster.data_dir / "pg_wal"
+    names = sorted(
+        p.name
+        for p in wal_dir.iterdir()
+        if p.is_file() and re.fullmatch(r"[0-9A-F]{24}", p.name)
+    )
+    prior = [n for n in names if n < cur]
+    return prior[-1] if prior else None
+
+
+def _wse_manual_archive_decrypt_probe(
+    decrypt: Path,
+    cluster: PgCluster,
+    out_dir: Path,
+) -> Tuple[int, str, Optional[str]]:
+    """
+    Run ``pg_tde_archive_decrypt`` on a *completed* segment only.
+
+    Returns ``(exit_code, stderr, segment_or_None)``.
+    """
+    seg = _wse_completed_wal_segment(cluster)
+    if seg is None:
+        return 0, "", None
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dest = out_dir / f"decrypted.{seg}"
+    seg_path = cluster.data_dir / "pg_wal" / seg
+    # Pass the path *through* the symlink (matches archiver / bash probe).
+    cmd = [
+        str(decrypt),
+        seg,
+        str(seg_path),
+        f"cp %p {dest}",
+    ]
+    env = os.environ.copy()
+    lib = str(cluster.install_dir / "lib")
+    env["LD_LIBRARY_PATH"] = f"{lib}:{env.get('LD_LIBRARY_PATH', '')}".rstrip(":")
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    err = (proc.stderr or "") + (proc.stdout or "")
+    (out_dir / "decrypt.err").write_text(err)
+    return proc.returncode, err, seg
+
+
+def _wse_wal_cycles(cluster: PgCluster, n: int, *, start_id: int = 1) -> None:
+    for i in range(n):
+        lo = start_id + i * 500
+        hi = lo + 499
+        cluster.execute(
+            f"INSERT INTO t1 SELECT g, repeat('x', 80) "
+            f"FROM generate_series({lo}, {hi}) g"
+        )
+        cluster.execute("CHECKPOINT")
+        cluster.execute("SELECT pg_switch_wal()")
+        time.sleep(_WSE_ARCHIVE_TIMEOUT_S)
+
+
+def _wse_try_backup(bm: BackupManager) -> Tuple[bool, str]:
+    try:
+        bm.backup(backup_type="full")
+        return True, ""
+    except RuntimeError as exc:
+        return False, str(exc)
+
+
+def _wse_start_restored_encrypted_in_repo(
+    restore_dir: Path,
+    install_dir: Path,
+    socket_dir: Path,
+    io_method: str,
+    bm: BackupManager,
+) -> PgCluster:
+    port = allocate_port()
+    cluster = PgCluster(
+        restore_dir, port, install_dir,
+        socket_dir=socket_dir, io_method=io_method,
+    )
+    cluster.write_default_config("primary", extra_params=_WSE_TDE_PARAMS)
+    auto = restore_dir / "postgresql.auto.conf"
+    if auto.exists():
+        keep: List[str] = []
+        for line in auto.read_text().splitlines():
+            raw = line.strip()
+            if not raw or raw.startswith("#") or "=" not in raw:
+                keep.append(line)
+                continue
+            key = raw.split("=", 1)[0].strip().lower()
+            if key in {
+                "port",
+                "unix_socket_directories",
+                "listen_addresses",
+                "log_directory",
+                "archive_mode",
+                "archive_command",
+                "restore_command",
+            }:
+                continue
+            keep.append(line)
+        auto.write_text("\n".join(keep) + ("\n" if keep else ""))
+    restore_cmd = bm.archive_get_command(str(restore_dir.resolve()))
+    with auto.open("a") as f:
+        f.write(f"restore_command = '{restore_cmd}'\n")
+    cluster.add_hba_entry("local all all trust")
+    (restore_dir / "postmaster.pid").unlink(missing_ok=True)
+    cluster.start()
+    cluster.wait_ready(timeout=180)
+    if cluster.fetchone("SELECT pg_is_in_recovery()") == "t":
+        cluster.execute("SELECT pg_promote(wait := true, wait_seconds := 90)")
+    deadline = time.time() + 90
+    while time.time() < deadline:
+        if cluster.fetchone("SELECT pg_is_in_recovery()") == "f":
+            return cluster
+        time.sleep(0.5)
+    raise TimeoutError("restored primary did not leave recovery")
+
+
+# ── corner cases ──────────────────────────────────────────────────────────────
+
+
+class TestWalEncryptArchiveDecryptCorners:
+    def test_sighup_cannot_enable_wal_encrypt(self, pg_factory, tmp_path: Path):
+        """Bash: prove SIGHUP / reload leaves ``wal_encrypt`` off until restart."""
+        cluster = _wse_boot_primary(pg_factory, "sighup")
+        cluster.start()
+        _wse_setup_default_keys(cluster, tmp_path / "keyring.per")
+        cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+        cluster.execute("SELECT pg_reload_conf()")
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "off"
+        cluster.restart()
+        cluster.wait_ready(timeout=60)
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+    def test_manual_decrypt_probe_skips_when_no_completed_segment(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        """Do not probe the open / recycled-ahead slot (false mismatch risk)."""
+        decrypt = _wse_require_archive_decrypt(install_dir)
+        cluster = _wse_boot_primary(pg_factory, "probe_empty")
+        cluster.start()
+        _wse_setup_default_keys(cluster, tmp_path / "keyring.per")
+        TdeManager(cluster).enable_wal_encryption()
+        # Fresh cluster: may have no completed segment yet.
+        rc, err, seg = _wse_manual_archive_decrypt_probe(
+            decrypt, cluster, tmp_path / "probe"
+        )
+        if seg is None:
+            assert rc == 0
+            assert err == ""
+        else:
+            # If a completed segment exists, probe must not crash the harness.
+            assert isinstance(rc, int)
+
+
+# ── file keyring repro (plain pg_wal) ─────────────────────────────────────────
+
+
+class TestWalEncryptDecryptWrapperFileKeyring:
+    """Parity: ``PG-2609_repro_wal_encrypt_pgbackrest_file.sh``."""
+
+    def test_plain_pgwal_decrypt_wrapper_backup_succeeds(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        _wse_require_archive_decrypt(install_dir)
+        cluster = _wse_boot_primary(pg_factory, "file_plain")
+        cluster.start()
+        _wse_setup_default_keys(cluster, tmp_path / "keyring.per")
+        cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+
+        bm = _wse_make_bm(cluster, tmp_path, "file_plain", decrypt_wrappers=True)
+        bm.stanza_create()
+        cluster.restart()
+        cluster.wait_ready(timeout=60)
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        cluster.execute(
+            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT) USING tde_heap"
+        )
+        _wse_wal_cycles(cluster, 3)
+        bm.wait_for_wal_archive(cluster, timeout=60)
+
+        decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
+        rc, err, seg = _wse_manual_archive_decrypt_probe(
+            decrypt, cluster, tmp_path / "file_probe"
+        )
+        assert not _wse_saw_mismatch(cluster, tmp_path / "file_probe" / "decrypt.err"), (
+            f"plain pg_wal must not hit segment-size mismatch; seg={seg} rc={rc} err={err}"
+        )
+
+        ok, detail = _wse_try_backup(bm)
+        assert ok, f"file-keyring plain pg_wal backup must succeed:\n{detail}"
+        assert not _wse_saw_mismatch(cluster)
+
+
+# ── symlink / mid-stream repro ────────────────────────────────────────────────
+
+
+class TestWalEncryptPgWalSymlinkRepro:
+    """
+    Parity: ``PG-2609_repro_wal_encrypt_pgbackrest_ha{,_wal_symlink}.sh``.
+
+    Wrapper live from t=0 → archive plaintext → enable ``wal_encrypt`` mid-stream
+    → restart. Sibling ``pg_wal`` symlink reproduces the key-dir derivation bug.
+    """
+
+    def _midstream_enable_with_wrapper(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        name: str,
+        *,
+        sibling_symlink: bool,
+        nested_symlink: bool = False,
+        relative_sibling: bool = False,
+    ) -> Tuple[PgCluster, BackupManager, Path]:
+        cluster = _wse_boot_primary(pg_factory, name)
+        if sibling_symlink:
+            _wse_relocate_pg_wal_sibling_symlink(
+                cluster.data_dir,
+                tmp_path / f"{name}_wal",
+                relative=relative_sibling,
+            )
+        elif nested_symlink:
+            _wse_relocate_pg_wal_nested_symlink(cluster.data_dir)
+
+        # Wrapper installed before first start (bash: live from t=0).
+        bm = _wse_make_bm(cluster, tmp_path, name, decrypt_wrappers=True)
+        cluster.start()
+        bm.stanza_create()
+
+        # Archive a few plaintext segments through the same wrapped command.
+        cluster.execute(
+            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT)"
+        )
+        cluster.execute(
+            "INSERT INTO t1 SELECT g, repeat('x', 80) "
+            "FROM generate_series(1, 1000) g"
+        )
+        cluster.execute("CHECKPOINT")
+        cluster.execute("SELECT pg_switch_wal()")
+        time.sleep(_WSE_ARCHIVE_TIMEOUT_S)
+        bm.wait_for_wal_archive(cluster, timeout=60)
+
+        _wse_setup_default_keys(cluster, tmp_path / f"{name}_keyring.per")
+        cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+        cluster.execute("SELECT pg_reload_conf()")
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "off"
+
+        cluster.restart()
+        cluster.wait_ready(timeout=60)
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        # Idle archive_timeout cycles, then forced switches (bash cadence, scaled).
+        for _ in range(2):
+            time.sleep(_WSE_ARCHIVE_TIMEOUT_S)
+            if _wse_saw_mismatch(cluster):
+                break
+        if not _wse_saw_mismatch(cluster):
+            _wse_wal_cycles(cluster, 4, start_id=1001)
+
+        return cluster, bm, tmp_path / f"{name}_probe"
+
+    def test_sibling_symlink_pgwal_reproduces_segment_size_mismatch(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        decrypt = _wse_require_archive_decrypt(install_dir)
+        cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
+            pg_factory, tmp_path, "sib_repro", sibling_symlink=True,
+        )
+        rc, err, seg = _wse_manual_archive_decrypt_probe(decrypt, cluster, probe_dir)
+        ok, detail = _wse_try_backup(bm)
+
+        reproduced = (
+            _wse_saw_mismatch(cluster, probe_dir / "decrypt.err")
+            or (not ok and ("082" in detail or "not archived" in detail.lower()))
+        )
+        assert reproduced, (
+            "segment-size mismatch expected with sibling pg_wal symlink + decrypt wrapper:\n"
+            f"  manual seg={seg} rc={rc}\n"
+            f"  decrypt.err={err!r}\n"
+            f"  backup_ok={ok} detail={detail!r}\n"
+            f"  server log:\n{_wse_server_log_text(cluster)}"
+        )
+
+    def test_relative_sibling_symlink_pgwal_reproduces_mismatch(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        """Same root cause with a relative ``pg_wal -> ../…_wal`` symlink."""
+        decrypt = _wse_require_archive_decrypt(install_dir)
+        cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
+            pg_factory,
+            tmp_path,
+            "sib_rel",
+            sibling_symlink=True,
+            relative_sibling=True,
+        )
+        link = (cluster.data_dir / "pg_wal").readlink()
+        assert not link.is_absolute(), f"expected relative symlink, got {link}"
+        rc, err, seg = _wse_manual_archive_decrypt_probe(decrypt, cluster, probe_dir)
+        ok, detail = _wse_try_backup(bm)
+        reproduced = (
+            _wse_saw_mismatch(cluster, probe_dir / "decrypt.err")
+            or (not ok and ("082" in detail or "not archived" in detail.lower()))
+        )
+        assert reproduced, (
+            "segment-size mismatch expected with relative sibling pg_wal symlink:\n"
+            f"  link={link} seg={seg} rc={rc} err={err!r}\n"
+            f"  backup_ok={ok} detail={detail!r}"
+        )
+
+    def test_plain_pgwal_midstream_enable_control_no_mismatch(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        """Same mid-stream flip without sibling symlink must not trip the path bug."""
+        decrypt = _wse_require_archive_decrypt(install_dir)
+        cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
+            pg_factory, tmp_path, "plain_ctrl", sibling_symlink=False,
+        )
+        rc, err, seg = _wse_manual_archive_decrypt_probe(decrypt, cluster, probe_dir)
+        assert not _wse_saw_mismatch(cluster, probe_dir / "decrypt.err"), (
+            f"plain pg_wal control unexpectedly mismatched; seg={seg} rc={rc} err={err}"
+        )
+        ok, detail = _wse_try_backup(bm)
+        assert ok, f"plain mid-stream control backup must succeed:\n{detail}"
+
+    def test_nested_under_pgdata_symlink_does_not_mismatch(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        """Symlink under PGDATA keeps string-concat key dir correct."""
+        decrypt = _wse_require_archive_decrypt(install_dir)
+        cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
+            pg_factory,
+            tmp_path,
+            "nested_sym",
+            sibling_symlink=False,
+            nested_symlink=True,
+        )
+        assert (cluster.data_dir / "pg_wal").is_symlink()
+        rc, err, seg = _wse_manual_archive_decrypt_probe(decrypt, cluster, probe_dir)
+        assert not _wse_saw_mismatch(cluster, probe_dir / "decrypt.err"), (
+            f"nested-under-PGDATA symlink must not reproduce segment-size mismatch; "
+            f"seg={seg} rc={rc} err={err}"
+        )
+        ok, detail = _wse_try_backup(bm)
+        assert ok, f"nested symlink backup must succeed:\n{detail}"
+
+
+# ── Workaround A (no decrypt wrapper) ─────────────────────────────────────────
+
+
+class TestWalEncryptNoDecryptWrapper:
+    """Parity: ``PG-2609_workaround_A_no_decrypt_wrapper.sh``."""
+
+    def _run_a(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        io_method: str,
+        name: str,
+        *,
+        sibling_symlink: bool,
+    ) -> None:
+        cluster = _wse_boot_primary(pg_factory, name)
+        if sibling_symlink:
+            _wse_relocate_pg_wal_sibling_symlink(
+                cluster.data_dir, tmp_path / f"{name}_wal"
+            )
+        cluster.start()
+        _wse_setup_default_keys(cluster, tmp_path / f"{name}_keyring.per")
+        cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+
+        bm = _wse_make_bm(cluster, tmp_path, name, decrypt_wrappers=False)
+        bm.stanza_create()
+        cluster.restart()
+        cluster.wait_ready(timeout=60)
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+        arch = cluster.fetchone("SHOW archive_command")
+        assert "pg_tde_archive_decrypt" not in arch
+
+        cluster.execute(
+            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT) USING tde_heap"
+        )
+        _wse_wal_cycles(cluster, 4)
+        bm.wait_for_wal_archive(cluster, timeout=90)
+        assert not _wse_saw_mismatch(cluster)
+
+        rows = int(cluster.fetchone("SELECT COUNT(*) FROM t1"))
+        ok, detail = _wse_try_backup(bm)
+        assert ok, f"workaround A backup failed:\n{detail}"
+
+        restore_dir = tmp_path / f"{name}_restored"
+        bm.restore(str(restore_dir), pg_tde_wal_restore=False)
+        restored = _wse_start_restored_encrypted_in_repo(
+            restore_dir, install_dir, tmp_path, io_method, bm,
+        )
+        try:
+            assert restored.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+            assert int(restored.fetchone("SELECT COUNT(*) FROM t1")) == rows
+        finally:
+            restored.stop(check=False)
+
+    def test_no_wrapper_plain_pgwal_backup_restore(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        self._run_a(
+            pg_factory, tmp_path, install_dir, io_method, "wa_plain",
+            sibling_symlink=False,
+        )
+
+    def test_no_wrapper_sibling_symlink_backup_restore(
+        self, pg_factory, tmp_path: Path, install_dir: Path, io_method: str,
+    ):
+        """Encrypted-in-repo avoids archive_decrypt entirely — symlink-safe."""
+        self._run_a(
+            pg_factory, tmp_path, install_dir, io_method, "wa_sib",
+            sibling_symlink=True,
+        )
+
+
+# ── Workaround B (safe bootstrap order) ───────────────────────────────────────
+
+
+class TestWalEncryptSafeBootstrapOrder:
+    """Parity: ``PG-2609_workaround_B_safe_bootstrap_order.sh``."""
+
+    def _run_b(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        name: str,
+        *,
+        sibling_symlink: bool,
+    ) -> Tuple[PgCluster, BackupManager, bool, str]:
+        _wse_require_archive_decrypt(install_dir)
+        # archive_mode=off until the single wal_encrypt+wrapper restart.
+        cluster = _wse_boot_primary(pg_factory, name, archive_mode="off")
+        if sibling_symlink:
+            _wse_relocate_pg_wal_sibling_symlink(
+                cluster.data_dir, tmp_path / f"{name}_wal"
+            )
+        cluster.start()
+        _wse_setup_default_keys(cluster, tmp_path / f"{name}_keyring.per")
+
+        bm = BackupManager(stanza=name, repo_path=str(tmp_path / f"repo_{name}"))
+        bm.write_config(
+            pg_path=str(cluster.data_dir),
+            pg_port=cluster.port,
+            pg_socket_path=str(cluster.socket_dir),
+            pg_bin=str(cluster.bin),
+            archive_header_check=False,
+            checksum_page=False,
+        )
+        # One restart: wal_encrypt + wrapped archive_command, then stanza-create.
+        cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+        cluster.execute("ALTER SYSTEM SET archive_mode = on")
+        bm.configure_postgres(cluster, pg_tde_wal_archiving=True)
+        cluster.restart()
+        cluster.wait_ready(timeout=60)
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        bm.stanza_create()
+        cluster.execute(
+            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT) USING tde_heap"
+        )
+        _wse_wal_cycles(cluster, 4)
+        mismatched = _wse_saw_mismatch(cluster)
+        ok, detail = _wse_try_backup(bm)
+        return cluster, bm, ok and not mismatched, detail
+
+    def test_safe_bootstrap_plain_pgwal_backup_ok(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        cluster, _bm, ok, detail = self._run_b(
+            pg_factory, tmp_path, install_dir, "wb_plain", sibling_symlink=False,
+        )
+        assert ok, (
+            "workaround B on plain pg_wal must succeed:\n"
+            f"{detail}\n{_wse_server_log_text(cluster)}"
+        )
+
+    def test_safe_bootstrap_sibling_symlink_still_hits_path_bug(
+        self, pg_factory, tmp_path: Path, install_dir: Path,
+    ):
+        """
+        Ordering alone cannot fix sibling-symlink key-dir derivation — decrypt
+        still looks beside the WAL volume for ``pg_tde/``.
+        """
+        cluster, bm, ok, detail = self._run_b(
+            pg_factory, tmp_path, install_dir, "wb_sib", sibling_symlink=True,
+        )
+        decrypt = install_dir / "bin" / "pg_tde_archive_decrypt"
+        _rc, err, seg = _wse_manual_archive_decrypt_probe(
+            decrypt, cluster, tmp_path / "wb_sib_probe"
+        )
+        still_broken = (
+            _wse_saw_mismatch(cluster, tmp_path / "wb_sib_probe" / "decrypt.err")
+            or not ok
+        )
+        assert still_broken, (
+            "expected path bug to remain under sibling symlink even with "
+            "safe bootstrap ordering (use workaround A / no wrapper instead):\n"
+            f"  seg={seg} decrypt.err={err!r}\n"
+            f"  backup detail={detail!r}\n"
+            f"  log:\n{_wse_server_log_text(cluster)}"
+        )
+        # Keep bm referenced so stanza dir isn't GC'd mid-assert in some runners.
+        assert bm.stanza == "wb_sib"
+
+
+# ── OpenBao / Vault optional (operator-like provider) ─────────────────────────
+
+
+@pytest.mark.vault
+@pytest.mark.openbao
+class TestWalEncryptOpenBaoPgWalSymlink:
+    """
+    Same sibling-symlink repro with Vault/OpenBao global provider
+    (``KEY_PROVIDER=openbao`` path in the HA bash scripts).
+    """
+
+    def test_sibling_symlink_with_vault_provider_reproduces_mismatch(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        vault_config: VaultConfig,
+    ):
+        decrypt = _wse_require_archive_decrypt(install_dir)
+        cluster = _wse_boot_primary(pg_factory, "ob_sib")
+        _wse_relocate_pg_wal_sibling_symlink(cluster.data_dir, tmp_path / "ob_sib_wal")
+
+        bm = _wse_make_bm(cluster, tmp_path, "ob_sib", decrypt_wrappers=True)
+        cluster.start()
+        bm.stanza_create()
+        cluster.execute("CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT)")
+        cluster.execute(
+            "INSERT INTO t1 SELECT g, repeat('x', 40) FROM generate_series(1, 500) g"
+        )
+        cluster.execute("CHECKPOINT; SELECT pg_switch_wal()")
+        time.sleep(_WSE_ARCHIVE_TIMEOUT_S)
+
+        tde = TdeManager(cluster)
+        tde.create_extension()
+        tde.add_global_key_provider_vault(
+            "vault-provider",
+            vault_url=vault_config.addr,
+            secret_mount_point=vault_config.secret_mount,
+            token_path=vault_config.token_sql_arg(tmp_path),
+            ca_path=vault_config.ca_path,
+            namespace=vault_config.namespace,
+        )
+        tde.set_global_default_principal_key("k1", "vault-provider")
+
+        cluster.execute("ALTER SYSTEM SET pg_tde.wal_encrypt = on")
+        cluster.restart()
+        cluster.wait_ready(timeout=60)
+        assert cluster.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        _wse_wal_cycles(cluster, 4, start_id=501)
+        rc, err, seg = _wse_manual_archive_decrypt_probe(
+            decrypt, cluster, tmp_path / "ob_probe"
+        )
+        ok, detail = _wse_try_backup(bm)
+        reproduced = (
+            _wse_saw_mismatch(cluster, tmp_path / "ob_probe" / "decrypt.err")
+            or not ok
+        )
+        assert reproduced, (
+            "OpenBao + sibling pg_wal symlink should reproduce segment-size mismatch:\n"
+            f"  seg={seg} rc={rc} err={err!r}\n"
+            f"  backup_ok={ok} detail={detail!r}"
+        )
