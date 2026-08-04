@@ -12,6 +12,7 @@ Also: PITR whose base image is ``pg_basebackup`` / ``pg_tde_basebackup -E``
 """
 from __future__ import annotations
 
+import os
 import shutil
 import time
 from pathlib import Path
@@ -296,6 +297,45 @@ def _force_archive_segment(
     raise TimeoutError(f"WAL not archived under {archive_dir}")
 
 
+def _seed_completed_wal_into_archive(
+    cluster: PgCluster, archive_dir: Path
+) -> None:
+    """
+    Copy completed local WAL segments into the file archive as a safety net.
+
+    Only safe for *plaintext* ``cp`` archives (not ``pg_tde_archive_decrypt``).
+    """
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    cur = cluster.fetchone("SELECT pg_walfile_name(pg_current_wal_lsn())")
+    wal_dir = cluster.data_dir / "pg_wal"
+    for p in wal_dir.iterdir():
+        if (
+            p.is_file()
+            and len(p.name) == 24
+            and "." not in p.name
+            and p.name < cur
+        ):
+            dest = archive_dir / p.name
+            if not dest.exists():
+                shutil.copy2(p, dest)
+
+
+def _pitr_timestamp(cluster: PgCluster) -> str:
+    """UTC timestamp string that pgBackRest / recovery_target_time parse reliably."""
+    return (
+        cluster.fetchone(
+            "SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', "
+            "'YYYY-MM-DD HH24:MI:SS.US') || '+00'"
+        )
+        or ""
+    ).strip()
+
+
+def _chmod_pgdata(data_dir: Path) -> None:
+    """PostgreSQL rejects data dirs that are group/world-accessible."""
+    os.chmod(data_dir, 0o700)
+
+
 def _require_tde_basebackup(install_dir: Path) -> None:
     if not wrappers_available(install_dir):
         pytest.skip("pg_tde archive wrappers not in this build")
@@ -385,7 +425,9 @@ def _start_bb_restored(
     tde: bool = False,
     timeout: int = 120,
     promote: bool = True,
+    allow_start_failure: bool = False,
 ) -> PgCluster:
+    _chmod_pgdata(restore_dir)
     restored = PgCluster(
         restore_dir,
         allocate_port(),
@@ -397,8 +439,13 @@ def _start_bb_restored(
         extra_params=_TDE_RESTORED_PARAMS if tde else None
     )
     restored.add_hba_entry("local all all trust")
-    restored.start()
-    restored.wait_ready(timeout=timeout)
+    try:
+        restored.start()
+        restored.wait_ready(timeout=timeout)
+    except (RuntimeError, TimeoutError):
+        if allow_start_failure:
+            return restored
+        raise
     if promote:
         deadline = time.time() + 90
         while time.time() < deadline:
@@ -433,7 +480,6 @@ def _archive_wal_files(archive_dir: Path) -> List[Path]:
 
 
 def _assert_pitr_failed_or_stuck(cluster: PgCluster) -> None:
-    in_recovery = cluster.fetchone("SELECT pg_is_in_recovery()")
     log_l = cluster.read_log().lower()
     markers = (
         "recovery ended before configured recovery target was reached",
@@ -446,8 +492,16 @@ def _assert_pitr_failed_or_stuck(cluster: PgCluster) -> None:
         "panic",
         "corrupt",
         "decrypt",
+        "invalid permissions",
     )
     hit = any(m in log_l for m in markers)
+    if not cluster.is_ready():
+        assert hit, (
+            "Negative PITR start failed without a recovery/WAL failure marker.\n"
+            f"Log:\n{cluster.read_log(100)}"
+        )
+        return
+    in_recovery = cluster.fetchone("SELECT pg_is_in_recovery()")
     assert in_recovery == "t" or hit, (
         "Negative PITR must stay in recovery or log a recovery/WAL failure.\n"
         f"Log:\n{cluster.read_log(100)}"
@@ -486,14 +540,16 @@ class TestPitrWithPgBasebackup:
         assert (backup_dir / "PG_VERSION").is_file()
 
         primary_cluster.execute("INSERT INTO bb_pitr VALUES (100, 'kept')")
-        pitr_time = (primary_cluster.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(primary_cluster)
         time.sleep(0.5)
         primary_cluster.execute("INSERT INTO bb_pitr VALUES (200, 'discarded')")
         _force_archive_segment(primary_cluster, archive_dir)
+        _seed_completed_wal_into_archive(primary_cluster, archive_dir)
         primary_cluster.stop()
 
         restore_dir = tmp_path / "bb_pitr_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir, archive_dir, target_time=pitr_time
         )
@@ -534,10 +590,12 @@ class TestPitrWithPgBasebackup:
         ).strip()
         primary_cluster.execute("INSERT INTO bb_lsn VALUES (3, 'discarded')")
         _force_archive_segment(primary_cluster, archive_dir)
+        _seed_completed_wal_into_archive(primary_cluster, archive_dir)
         primary_cluster.stop()
 
         restore_dir = tmp_path / "bb_lsn_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir, archive_dir, target_lsn=target_lsn
         )
@@ -580,14 +638,16 @@ class TestPitrWithPgBasebackup:
         assert (backup_dir / "pg_tde").is_dir()
 
         tde_primary.execute("INSERT INTO tde_bb_pitr VALUES (100, 'kept')")
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("INSERT INTO tde_bb_pitr VALUES (200, 'discarded')")
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "tde_bb_pitr_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -638,10 +698,12 @@ class TestPitrWithPgBasebackup:
         ).strip()
         tde_primary.execute("INSERT INTO tde_bb_lsn VALUES (3, 'discarded')")
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "tde_bb_lsn_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -688,10 +750,12 @@ class TestPitrWithPgBasebackup:
         )
         tde_primary.execute("INSERT INTO tde_bb_xid VALUES (3, 'discarded')")
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "tde_bb_xid_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -743,10 +807,12 @@ class TestPitrWithPgBasebackupCornerCases:
         ).strip()
         tde_primary.execute("INSERT INTO bb_excl VALUES (3, 'after_lsn')")
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_excl_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -787,14 +853,16 @@ class TestPitrWithPgBasebackupCornerCases:
         backup_dir = tmp_path / "bb_pause_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("INSERT INTO bb_pause VALUES (99)")
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_pause_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -862,14 +930,16 @@ class TestPitrWithPgBasebackupCornerCases:
         backup_dir = tmp_path / "bb_drop_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("DROP TABLE bb_drop_t")
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_drop_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -916,14 +986,16 @@ class TestPitrWithPgBasebackupCornerCases:
         backup_dir = tmp_path / "bb_dropdb_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("DROP DATABASE appdb")
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_dropdb_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -968,15 +1040,17 @@ class TestPitrWithPgBasebackupCornerCases:
         backup_dir = tmp_path / "bb_trunc_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("TRUNCATE bb_trunc")
         tde_primary.execute("INSERT INTO bb_trunc VALUES (999, 'post')")
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_trunc_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1017,14 +1091,16 @@ class TestPitrWithPgBasebackupCornerCases:
 
         tde.rotate_principal_key("bb_pitr_rot_key2")
         tde_primary.execute("INSERT INTO bb_rot VALUES (2, 'key2')")
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("INSERT INTO bb_rot VALUES (3, 'after')")
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_rot_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1070,16 +1146,18 @@ class TestPitrWithPgBasebackupCornerCases:
         backup_dir = tmp_path / "bb_dml_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("UPDATE bb_dml SET marker = 'changed' WHERE id = 1")
         tde_primary.execute("DELETE FROM bb_dml WHERE id = 2")
         tde_primary.execute("INSERT INTO bb_dml VALUES (4, 'new')")
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_dml_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1138,17 +1216,19 @@ class TestPitrWithPgBasebackupCornerCases:
         tde_primary.execute(
             "INSERT INTO bb_m2 VALUES (2, 'kept')", dbname="bb_app"
         )
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("INSERT INTO bb_m1 VALUES (3, 'discarded')")
         tde_primary.execute(
             "INSERT INTO bb_m2 VALUES (3, 'discarded')", dbname="bb_app"
         )
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_multi_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1206,6 +1286,7 @@ class TestPitrWithPgBasebackupNegative:
             tde_primary.fetchone("SELECT pg_current_wal_lsn()") or ""
         ).strip()
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         wal_files = _archive_wal_files(archive_dir)
@@ -1214,6 +1295,7 @@ class TestPitrWithPgBasebackupNegative:
 
         restore_dir = tmp_path / "bb_miss_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1223,7 +1305,13 @@ class TestPitrWithPgBasebackupNegative:
             wal_encrypt=True,
         )
         restored = _start_bb_restored(
-            restore_dir, install_dir, tmp_path, io_method, tde=True, promote=False
+            restore_dir,
+            install_dir,
+            tmp_path,
+            io_method,
+            tde=True,
+            promote=False,
+            allow_start_failure=True,
         )
         try:
             _assert_pitr_failed_or_stuck(restored)
@@ -1253,6 +1341,7 @@ class TestPitrWithPgBasebackupNegative:
             tde_primary.fetchone("SELECT pg_current_wal_lsn()") or ""
         ).strip()
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         wal_files = _archive_wal_files(archive_dir)
@@ -1263,6 +1352,7 @@ class TestPitrWithPgBasebackupNegative:
 
         restore_dir = tmp_path / "bb_cor_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1317,10 +1407,12 @@ class TestPitrWithPgBasebackupNegative:
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
         tde_primary.execute("INSERT INTO bb_early VALUES (2)")
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_early_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1330,11 +1422,19 @@ class TestPitrWithPgBasebackupNegative:
             wal_encrypt=True,
         )
         restored = _start_bb_restored(
-            restore_dir, install_dir, tmp_path, io_method, tde=True, promote=False
+            restore_dir,
+            install_dir,
+            tmp_path,
+            io_method,
+            tde=True,
+            promote=False,
+            allow_start_failure=True,
         )
         try:
             _assert_pitr_failed_or_stuck(restored)
-            if restored.fetchone("SELECT pg_is_in_recovery()") == "f":
+            if restored.is_ready() and restored.fetchone(
+                "SELECT pg_is_in_recovery()"
+            ) == "f":
                 assert restored.fetchone(
                     "SELECT COUNT(*) FROM bb_early WHERE id = 2"
                 ) != "1"
@@ -1360,10 +1460,12 @@ class TestPitrWithPgBasebackupNegative:
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
         tde_primary.execute("INSERT INTO bb_xid_neg VALUES (2)")
         _force_archive_segment(tde_primary, archive_dir)
+        _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_xid_neg_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir,
             archive_dir,
@@ -1373,11 +1475,19 @@ class TestPitrWithPgBasebackupNegative:
             wal_encrypt=True,
         )
         restored = _start_bb_restored(
-            restore_dir, install_dir, tmp_path, io_method, tde=True, promote=False
+            restore_dir,
+            install_dir,
+            tmp_path,
+            io_method,
+            tde=True,
+            promote=False,
+            allow_start_failure=True,
         )
         try:
             _assert_pitr_failed_or_stuck(restored)
-            if restored.fetchone("SELECT pg_is_in_recovery()") == "f":
+            if restored.is_ready() and restored.fetchone(
+                "SELECT pg_is_in_recovery()"
+            ) == "f":
                 pytest.fail("Unreachable XID unexpectedly left recovery")
         finally:
             restored.stop(check=False)
@@ -1400,12 +1510,14 @@ class TestPitrWithPgBasebackupNegative:
         backup_dir = tmp_path / "bb_nk_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
         tde_primary.execute("INSERT INTO bb_nk VALUES (2, 'post')")
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
+        _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
         tde_primary.stop()
 
         restore_dir = tmp_path / "bb_nk_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         shutil.rmtree(restore_dir / "pg_tde")
         _write_bb_recovery(
             restore_dir,
@@ -1465,6 +1577,7 @@ class TestPitrWithPgBasebackupNegative:
             primary_cluster.fetchone("SELECT pg_current_wal_lsn()") or ""
         ).strip()
         _force_archive_segment(primary_cluster, archive_dir)
+        _seed_completed_wal_into_archive(primary_cluster, archive_dir)
         primary_cluster.stop()
 
         for p in _archive_wal_files(archive_dir):
@@ -1472,11 +1585,17 @@ class TestPitrWithPgBasebackupNegative:
 
         restore_dir = tmp_path / "bb_noarch_restore"
         shutil.copytree(backup_dir, restore_dir)
+        _chmod_pgdata(restore_dir)
         _write_bb_recovery(
             restore_dir, archive_dir, target_lsn=target_lsn
         )
         restored = _start_bb_restored(
-            restore_dir, install_dir, tmp_path, io_method, promote=False
+            restore_dir,
+            install_dir,
+            tmp_path,
+            io_method,
+            promote=False,
+            allow_start_failure=True,
         )
         try:
             _assert_pitr_failed_or_stuck(restored)

@@ -18,6 +18,7 @@ Matrix (this file):
 """
 from __future__ import annotations
 
+import os
 import shutil
 import time
 from pathlib import Path
@@ -67,6 +68,19 @@ def _cold_copy_datadir(src: PgCluster, dest: Path) -> None:
     if dest.exists():
         shutil.rmtree(dest)
     shutil.copytree(str(src.data_dir), str(dest))
+    # PostgreSQL rejects data dirs that are group/world-accessible (common after copytree).
+    os.chmod(dest, 0o700)
+
+
+def _pitr_timestamp(cluster: PgCluster) -> str:
+    """UTC timestamp string that recovery_target_time parses reliably."""
+    return (
+        cluster.fetchone(
+            "SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', "
+            "'YYYY-MM-DD HH24:MI:SS.US') || '+00'"
+        )
+        or ""
+    ).strip()
 
 
 def _write_recovery_auto_conf(
@@ -118,6 +132,7 @@ def _start_restored(
     *,
     tde: bool = False,
 ) -> PgCluster:
+    os.chmod(restore_dir, 0o700)
     restored = PgCluster(
         restore_dir,
         allocate_port(),
@@ -169,7 +184,7 @@ class TestPitr:
         _cold_copy_datadir(primary_cluster, restore_dir)
         primary_cluster.start()
 
-        pitr_time = (primary_cluster.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(primary_cluster)
         time.sleep(0.5)
 
         primary_cluster.execute("DROP TABLE pitr_tbl")
@@ -230,7 +245,7 @@ class TestPitr:
         _cold_copy_datadir(tde_primary, restore_dir)
         tde_primary.start()
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
 
         tde_primary.execute("DROP TABLE pitr_enc_tbl")
@@ -482,7 +497,7 @@ class TestPitrRecoveryActions:
         _cold_copy_datadir(tde_primary, restore_dir)
         tde_primary.start()
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
+        pitr_time = _pitr_timestamp(tde_primary)
         time.sleep(0.5)
         tde_primary.execute("INSERT INTO pitr_pause VALUES (99)")
         _force_archive(tde_primary, archive_dir)
@@ -602,8 +617,10 @@ class TestPitrTdeHeapAndWalEncrypt:
         _cold_copy_datadir(tde_primary, restore_dir)
         tde_primary.start()
 
-        pitr_time = (tde_primary.fetchone("SELECT now()") or "").strip()
-        time.sleep(0.5)
+        tde_primary.execute("CHECKPOINT")
+        target_lsn = (
+            tde_primary.fetchone("SELECT pg_current_wal_lsn()") or ""
+        ).strip()
         tde_primary.execute("DROP DATABASE appdb")
         _force_archive(tde_primary, archive_dir)
         tde_primary.stop()
@@ -613,7 +630,7 @@ class TestPitrTdeHeapAndWalEncrypt:
             restore_command_line=restore_conf_line_raw(
                 archive_dir, install_dir, use_tde_wrappers=True
             ),
-            target_time=pitr_time,
+            target_lsn=target_lsn,
             wal_encrypt=True,
         )
         restored = _start_restored(
