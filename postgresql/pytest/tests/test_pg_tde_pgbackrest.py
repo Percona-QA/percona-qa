@@ -12,7 +12,8 @@ checksum / archive-async modules). Covers:
     encrypted-in-repo time/LSN/XID/exclusive/DROP/key-rotate + negative PITR
   * Encrypted-in-repo backup chains, delta, options (lz4, immediate,
     retention/expire), standby restore, and ``pg_tde_rewind`` failback
-  * ``checksum-page=n`` / ``archive-header-check=n``
+  * ``checksum-page=n`` / ``archive-header-check=n`` / ``archive-async``
+    option combination matrix (with and without ``pg_tde_archive_decrypt``)
   * Patroni-like HA restore (reinit vs stale replicas)
   * Encrypted-in-repo HA restore + rewire existing replica
   * Patroni-script parity: 3-node encrypted backup/restore
@@ -3929,6 +3930,195 @@ class TestPgBackRestChecksumPageAndArchiveHeaderCheck:
                 assert restored.fetchone("SHOW pg_tde.wal_encrypt") == "on"
         finally:
             restored.stop(check=False)
+
+
+# ── Option combination matrix (checksum / header-check / async / wrapper) ──
+
+# (decrypt_wrapper, wal_encrypt, checksum_page, archive_header_check, archive_async,
+#  expect_ok, note)
+#
+# Semantics:
+#   checksum_page / archive_header_check: False→n, True→y, None→omit (pgBR default y)
+#   expect_ok: archive+full backup must succeed (restore not required for negatives)
+_OPT_COMBOS = [
+    # ── decrypt wrapper: repo sees plaintext WAL ───────────────────────────
+    pytest.param(
+        True, True, False, True, False, True,
+        id="wrap+wal_enc+checksum_n+header_y+sync",
+    ),
+    pytest.param(
+        True, True, False, False, False, True,
+        id="wrap+wal_enc+checksum_n+header_n+sync",
+    ),
+    pytest.param(
+        True, True, True, True, False, True,
+        id="wrap+wal_enc+checksum_y+header_y+sync",
+    ),
+    pytest.param(
+        True, False, False, True, False, True,
+        id="wrap+wal_off+checksum_n+header_y+sync",
+    ),
+    # async + decrypt wrapper is unsupported / fragile
+    pytest.param(
+        True, True, False, False, True, False,
+        id="wrap+wal_enc+async_expect_fail",
+    ),
+    # ── no wrapper: encrypted-in-repo when wal_encrypt=on ──────────────────
+    pytest.param(
+        False, True, False, False, False, True,
+        id="raw+wal_enc+checksum_n+header_n+sync",
+    ),
+    pytest.param(
+        False, True, False, False, True, True,
+        id="raw+wal_enc+checksum_n+header_n+async",
+    ),
+    # header-check=y against ciphertext WAL must fail archive/backup
+    pytest.param(
+        False, True, False, True, False, False,
+        id="raw+wal_enc+header_y_expect_fail",
+    ),
+    # checksum=y alone still archives ciphertext if header-check=n
+    # (checksum failures warn; backup usually still completes)
+    pytest.param(
+        False, True, True, False, False, True,
+        id="raw+wal_enc+checksum_y+header_n+sync",
+    ),
+    # wal_encrypt off + no wrapper: plaintext everything; defaults OK
+    pytest.param(
+        False, False, True, True, False, True,
+        id="raw+wal_off+checksum_y+header_y+sync",
+    ),
+    pytest.param(
+        False, False, False, False, False, True,
+        id="raw+wal_off+checksum_n+header_n+sync",
+    ),
+]
+
+
+class TestPgBackRestOptionCombinations:
+    """
+    Matrix of ``checksum-page`` / ``archive-header-check`` / ``archive-async``
+    with and without ``pg_tde_archive_decrypt``.
+
+    Rules under test:
+
+    * ``checksum-page=n`` — about **relation pages** (``tde_heap``), not the
+      WAL decrypt wrapper. Recommended whenever encrypted heap pages are
+      backed up; independent of ``pg_tde_archive_decrypt``.
+    * ``archive-header-check=n`` — about **WAL bytes** reaching pgBackRest.
+      Required when ``wal_encrypt=on`` **and** there is **no** decrypt
+      wrapper (ciphertext in repo). Not required when
+      ``pg_tde_archive_decrypt`` feeds plaintext to ``archive-push``.
+    * ``archive-async=y`` — works with encrypted-in-repo (no wrapper) + both
+      checks disabled; not expected to work with the decrypt-wrapper path.
+    """
+
+    @pytest.mark.parametrize(
+        "decrypt_wrapper,wal_encrypt,checksum_page,archive_header_check,"
+        "archive_async,expect_ok",
+        _OPT_COMBOS,
+    )
+    def test_option_combo_archive_and_backup(
+        self,
+        pg_factory,
+        tmp_path: Path,
+        install_dir: Path,
+        decrypt_wrapper: bool,
+        wal_encrypt: bool,
+        checksum_page: Optional[bool],
+        archive_header_check: Optional[bool],
+        archive_async: bool,
+        expect_ok: bool,
+    ):
+        if decrypt_wrapper and not wrappers_available(install_dir):
+            pytest.skip("pg_tde archive wrappers not in this build")
+
+        tag = (
+            f"{'w' if decrypt_wrapper else 'r'}"
+            f"{'e' if wal_encrypt else 'p'}"
+            f"c{checksum_page!s}h{archive_header_check!s}"
+            f"{'a' if archive_async else 's'}"
+        ).replace(" ", "")
+        primary = _chk_tde_primary(pg_factory, f"opt_{tag}"[:40])
+        if wal_encrypt:
+            TdeManager(primary).enable_wal_encryption()
+            assert primary.fetchone("SHOW pg_tde.wal_encrypt") == "on"
+
+        bm = BackupManager(stanza=f"opt_{tag}"[:48], repo_path=str(tmp_path / "repo"))
+        bm.write_config(
+            pg_path=str(primary.data_dir),
+            pg_port=primary.port,
+            pg_socket_path=str(primary.socket_dir),
+            pg_bin=str(primary.bin),
+            compress_type="none",
+            archive_async=archive_async,
+            archive_header_check=archive_header_check,
+            checksum_page=checksum_page,
+        )
+        # Confirm knobs landed as requested.
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg.read(bm.conf_path)
+        g = cfg["global"]
+        if archive_async:
+            assert g.get("archive-async", "").lower() in {"y", "true", "1"}
+        if archive_header_check is False:
+            assert g.get("archive-header-check", "").lower() in {"n", "false", "0"}
+        elif archive_header_check is True:
+            assert g.get("archive-header-check", "").lower() in {"y", "true", "1"}
+        if checksum_page is False:
+            assert g.get("checksum-page", "").lower() in {"n", "false", "0"}
+        elif checksum_page is True:
+            assert g.get("checksum-page", "").lower() in {"y", "true", "1"}
+
+        bm.configure_postgres(primary, pg_tde_wal_archiving=decrypt_wrapper)
+        primary.restart()
+        primary.wait_ready(timeout=60)
+        bm.stanza_create()
+
+        marker = f"opt_{tag}"
+        primary.execute(
+            "CREATE TABLE opt_t (id INT PRIMARY KEY, payload TEXT) USING tde_heap"
+        )
+        primary.execute(
+            f"INSERT INTO opt_t "
+            f"SELECT i, '{marker}' || md5(i::text) FROM generate_series(1, 200) i"
+        )
+        primary.execute("CHECKPOINT")
+
+        archive_ok = True
+        archive_err = ""
+        try:
+            primary.execute("SELECT pg_switch_wal()")
+            bm.wait_for_wal_archive(primary, timeout=45)
+        except Exception as exc:  # noqa: BLE001 — matrix captures expected failures
+            archive_ok = False
+            archive_err = str(exc)
+
+        backup_ok = True
+        backup_err = ""
+        if archive_ok:
+            try:
+                bm.backup(backup_type="full")
+            except RuntimeError as exc:
+                backup_ok = False
+                backup_err = str(exc)
+
+        ok = archive_ok and backup_ok
+        if expect_ok:
+            assert ok, (
+                f"expected archive+backup success for {tag}:\n"
+                f"  archive_ok={archive_ok} err={archive_err!r}\n"
+                f"  backup_ok={backup_ok} err={backup_err!r}\n"
+                f"  log:\n{primary.read_log(40)}"
+            )
+            info = bm.info()
+            assert "full" in info.lower()
+        else:
+            assert not ok, (
+                f"expected archive or backup failure for {tag}, but both succeeded.\n"
+                f"  This combo should break (ciphertext header-check or async+wrapper).\n"
+                f"  log:\n{primary.read_log(40)}"
+            )
 
 
 # ── HA wal_encrypt restore (ex-test_pgbackrest_ha_wal_encrypt.py) ──

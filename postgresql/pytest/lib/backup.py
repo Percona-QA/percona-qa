@@ -146,11 +146,15 @@ class BackupManager:
             archive_async: Set ``archive-async=y`` (encrypted-in-repo WAL path;
                 not compatible with ``pg_tde_archive_decrypt`` landing under
                 ``/dev/shm``).
-            archive_header_check: When ``False``, set ``archive-header-check=n``
-                (required when archiving ``pg_tde.wal_encrypt`` ciphertext).
-            checksum_page: When ``False``, set ``checksum-page=n`` (required when
-                backing up TDE-encrypted relation pages that pgBackRest cannot
-                checksum as plaintext).
+            archive_header_check: ``False`` → ``archive-header-check=n``
+                (required when archiving ``pg_tde.wal_encrypt`` *ciphertext*).
+                ``True`` → ``archive-header-check=y``. ``None`` omits the knob
+                (pgBackRest default ``y``). With ``pg_tde_archive_decrypt`` the
+                repo sees plaintext WAL headers, so the default ``y`` is fine.
+            checksum_page: ``False`` → ``checksum-page=n`` (recommended whenever
+                backing up ``tde_heap`` pages — pgBackRest cannot checksum
+                ciphertext as plaintext). ``True`` → ``checksum-page=y``.
+                ``None`` omits the knob. Independent of the WAL decrypt wrapper.
         """
         self._pg1_path = pg_path
         self._pg1_port = pg_port
@@ -182,8 +186,12 @@ class BackupManager:
             cfg["global"]["archive-async"] = "y"
         if archive_header_check is False:
             cfg["global"]["archive-header-check"] = "n"
+        elif archive_header_check is True:
+            cfg["global"]["archive-header-check"] = "y"
         if checksum_page is False:
             cfg["global"]["checksum-page"] = "n"
+        elif checksum_page is True:
+            cfg["global"]["checksum-page"] = "y"
         cfg[f"stanza:{self.stanza}"] = {
             "pg1-path": pg_path,
             "pg1-port": str(pg_port),
