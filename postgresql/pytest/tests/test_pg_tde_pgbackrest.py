@@ -5735,6 +5735,8 @@ _WSE_MISMATCH = "mismatch of segment size"
 _WSE_TDE_PARAMS = {
     "shared_preload_libraries": "'pg_tde'",
     "default_table_access_method": "'tde_heap'",
+    # Must be ≥ primary: recovery aborts if restore has a lower max_wal_senders.
+    "max_wal_senders": "10",
 }
 _WSE_ARCHIVE_TIMEOUT_S = 5
 
@@ -5807,7 +5809,6 @@ def _wse_boot_primary(
     params = {
         **_WSE_TDE_PARAMS,
         "wal_level": "replica",
-        "max_wal_senders": "10",
         "archive_mode": archive_mode,
         "archive_timeout": f"'{_WSE_ARCHIVE_TIMEOUT_S}s'",
         "archive_command": "'/bin/true'",
