@@ -12,7 +12,10 @@
 # On a broken build: high-id rows in segment .1 decrypt as garbage / mismatch.
 set -euo pipefail
 
-INSTALL_DIR="${INSTALL_DIR:?set INSTALL_DIR to Percona PG + pg_tde prefix}"
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+
 BIN="$INSTALL_DIR/bin"
 WORKDIR="${WORKDIR:-/tmp/pg_rewind_multiseg_$$}"
 PORT_P="${PORT_P:-25410}"

@@ -188,7 +188,15 @@ check_server_version() {
 
 source_env() {
     # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/.env.sh"
+    if [[ -f "${SCRIPT_DIR}/.env.sh" ]]; then
+        source "${SCRIPT_DIR}/.env.sh"
+    fi
+    if [[ -z "${INSTALL_DIR:-}" ]]; then
+        # shellcheck source=scripts/pg_os_env.sh
+        source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+        pg_os_detect
+        pg_set_default_install_dir "${PG_MAJOR:-18}"
+    fi
     export PG_TDE_UPGRADE_DATA_DIR="$UPGRADE_DATA_DIR"
 }
 

@@ -1,12 +1,15 @@
 #!/bin/bash
 
-export INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+export INSTALL_DIR
 
 # Directory containing the .sh files (default: current directory)
 DIR="."
 
 # List of files to exclude (space-separated)
-EXCLUDE_LIST=("vault_test_setup.sh" "get_download_link.sh" "run_tests.sh")
+EXCLUDE_LIST=("vault_test_setup.sh" "get_download_link.sh" "run_tests.sh" "pg_install_env.sh")
 
 # Loop through all .sh files
 for file in "$DIR"/*.sh; do
@@ -31,4 +34,3 @@ for file in "$DIR"/*.sh; do
 
     echo "--------------------------------------"
 done
-

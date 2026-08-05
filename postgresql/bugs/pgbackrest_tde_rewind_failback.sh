@@ -21,10 +21,9 @@
 #
 set -euo pipefail
 
-if [[ -z "${INSTALL_DIR:-}" ]]; then
-  echo "ERROR: set INSTALL_DIR to the PostgreSQL install prefix"
-  exit 1
-fi
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
 
 PSQL="$INSTALL_DIR/bin/psql"
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"

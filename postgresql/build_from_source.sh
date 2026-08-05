@@ -3,6 +3,9 @@
 # Clone (or update) Percona PostgreSQL, initialise the pg_tde submodule
 # (libkmip), then build and install both from source.
 #
+# Supports Ubuntu/Debian (apt) and RHEL/OL/Rocky (dnf/yum).
+# Default WORKDIR is $HOME/pgwork (override with WORKDIR=...).
+#
 # Usage:
 #   bash build_from_source.sh [BUILD_TYPE] [OPTIONS]
 #
@@ -30,11 +33,16 @@ set -euo pipefail
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 
-WORKDIR="${WORKDIR:-/home/ubuntu/pgwork}"
-INSTALL_DIR="${WORKDIR}/pginst/18"
-PG_SRC="${WORKDIR}/postgres"
-TDE_SRC="${PG_SRC}/contrib/pg_tde"
-TDE_BUILD="${WORKDIR}/tde_build"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=pytest/scripts/pg_os_env.sh
+source "${SCRIPT_DIR}/pytest/scripts/pg_os_env.sh"
+pg_os_detect
+
+WORKDIR="${WORKDIR:-$(pg_default_workdir)}"
+INSTALL_DIR="${INSTALL_DIR:-${WORKDIR}/pginst/18}"
+PG_SRC="${PG_SRC:-${WORKDIR}/postgres}"
+TDE_SRC="${TDE_SRC:-${PG_SRC}/contrib/pg_tde}"
+TDE_BUILD="${TDE_BUILD:-${WORKDIR}/tde_build}"
 
 PG_REPO="${PG_REPO:-https://github.com/percona/postgres.git}"
 PG_BRANCH="${PG_BRANCH:-PSP_REL_18_STABLE}"
@@ -70,32 +78,16 @@ step() { echo ""; echo -e "${CYAN}═══════════════�
 
 step "1. System dependencies"
 
-# Package list from pg_tde/ci_scripts/ubuntu-deps.sh (+ cmake for libkmip subproject)
-DEPS=(
-    bison cmake docbook-xml docbook-xsl flex gettext
-    libcurl4-openssl-dev libicu-dev libipc-run-perl libkrb5-dev
-    libldap2-dev liblz4-dev libnuma-dev libpam0g-dev libperl-dev
-    libreadline-dev libselinux1-dev libssl-dev libsystemd-dev
-    liburing-dev libxml2-dev libxml2-utils libxslt1-dev libzstd-dev
-    lz4 mawk perl pkgconf python3-dev python3-pip python3-venv
-    systemtap-sdt-dev tcl-dev uuid-dev xsltproc zlib1g-dev zstd
-    meson ninja-build
-    lcov perltidy
-)
-
-sudo apt-get update -qq
-sudo apt-get install -y "${DEPS[@]}"
+info "OS family=${PG_OS_FAMILY} id=${PG_OS_ID:-?} pkg=${PG_PKG_CMD:-n/a}"
+pg_install_build_deps
 ok "System packages installed"
 
-if ! command -v bao &>/dev/null; then
-    ARCH=$(dpkg --print-architecture)
-    BAO_VERSION="${OPENBAO_VERSION:-2.5.4}"
-    BAO_DEB="openbao_${BAO_VERSION}_linux_${ARCH}.deb"
-    wget -q "https://github.com/openbao/openbao/releases/download/v${BAO_VERSION}/${BAO_DEB}"
-    sudo dpkg -i "$BAO_DEB" && rm -f "$BAO_DEB"
-    ok "OpenBao installed"
+if pg_install_openbao_if_missing; then
+    if command -v bao &>/dev/null; then
+        ok "OpenBao present ($(bao version 2>/dev/null | head -1 || bao --version 2>/dev/null | head -1))"
+    fi
 else
-    ok "OpenBao already present"
+    warn "OpenBao install skipped/failed — vault/OpenBao tests may skip"
 fi
 
 if [[ "$DO_DEPS_ONLY" -eq 1 ]]; then

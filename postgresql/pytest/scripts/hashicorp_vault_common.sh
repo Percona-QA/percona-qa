@@ -57,8 +57,12 @@ hc_vault_sql_null_or_quote() {
 }
 
 hc_vault_init_pg_tools() {
-    if [[ -z "${INSTALL_DIR:-}" ]]; then
-        hc_vault_fail "set INSTALL_DIR to a PostgreSQL install with pg_tde"
+    # shellcheck source=pg_os_env.sh
+    source "${HC_VAULT_SCRIPT_DIR}/pg_os_env.sh"
+    pg_os_detect
+    pg_set_default_install_dir "${PG_MAJOR:-18}"
+    if [[ ! -x "${INSTALL_DIR}/bin/initdb" ]]; then
+        hc_vault_fail "INSTALL_DIR=${INSTALL_DIR} has no bin/initdb (set INSTALL_DIR or install packages)"
         exit 2
     fi
     PSQL="${INSTALL_DIR}/bin/psql"

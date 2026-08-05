@@ -12,6 +12,12 @@ package_testing/
 ├── ol9/
 │   ├── Vagrantfile
 │   └── provision.sh
+├── ol10/
+│   ├── Vagrantfile
+│   └── provision.sh
+├── rhel10/
+│   ├── Vagrantfile          # default box: generic/rocky10 (RHEL-compatible)
+│   └── provision.sh
 ├── ubuntu20/
 │   ├── Vagrantfile
 │   └── provision.sh
@@ -21,3 +27,6 @@ package_testing/
 └── ubuntu24/
     ├── Vagrantfile
     └── provision.sh
+
+RHEL/OL paths use ``/usr/pgsql-$PG_MAJOR`` and ``dnf``. Ubuntu/Debian use
+``/usr/lib/postgresql/$PG_MAJOR`` and ``apt``.

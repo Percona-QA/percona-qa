@@ -5,7 +5,7 @@ export REPO=testing
 export PG_VERSION=18.2
 export PG_MAJOR=$(echo "$PG_VERSION" | cut -d. -f1)
 
-for os in debian11 debian12 ol8 ol9 ubuntu22 ubuntu24; do
+for os in debian11 debian12 ol8 ol9 ol10 rhel10 ubuntu22 ubuntu24; do
     echo -e "\n=> Running tests on ${os^^}"
     pushd $os > /dev/null
     vagrant destroy -f

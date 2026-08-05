@@ -121,8 +121,8 @@ Usage: $(basename "$0") [OPTIONS]
 Staged major upgrade (PG ${OLD_PG_MAJOR_INT:-${OLD_PG_MAJOR}} → ${NEW_PG_MAJOR_INT:-${NEW_PG_MAJOR}}) with pg_tde.
 
 Install (automated, no manual apt):
-  1) OLD: ppg-${OLD_PG_REPO_LINE:-17.10} [${OLD_REPO_COMPONENT}] → PG ${OLD_PG_MAJOR_INT:-17} at /usr/lib/postgresql/${OLD_PG_MAJOR_INT:-17}
-  2) NEW: ppg-${NEW_PG_REPO_LINE:-18.4} [${NEW_REPO_COMPONENT}] → PG ${NEW_PG_MAJOR_INT:-18} at /usr/lib/postgresql/${NEW_PG_MAJOR_INT:-18}
+  1) OLD: ppg-${OLD_PG_REPO_LINE:-17.10} [${OLD_REPO_COMPONENT}] → PG ${OLD_PG_MAJOR_INT:-17} (OS package install dir)
+  2) NEW: ppg-${NEW_PG_REPO_LINE:-18.4} [${NEW_REPO_COMPONENT}] → PG ${NEW_PG_MAJOR_INT:-18} (OS package install dir)
 
 Methods:
   pytest   Run tests/test_tde_pg_upgrade.py smoke tests with --old-install-dir
@@ -215,15 +215,17 @@ fi
 
 resolve_method() {
     case "$METHOD" in
-        pytest|debian) echo "$METHOD" ;;
+        pytest) echo "pytest" ;;
+        debian|rhel|rpm) echo "debian" ;;  # package-layout paths (OS-aware bins)
         auto)
             if command -v pg_createcluster >/dev/null 2>&1; then
                 echo "debian"
             else
+                # RHEL/OL and source builds: pytest method (temp PGDATA as current user)
                 echo "pytest"
             fi
             ;;
-        *) die "Invalid --method: ${METHOD} (use pytest, debian, or auto)" ;;
+        *) die "Invalid --method: ${METHOD} (use pytest, debian, rhel, or auto)" ;;
     esac
 }
 
@@ -336,18 +338,10 @@ install_new_packages() {
 detect_install_dir() {
     local major="$1"
     local base="${major%%.*}"
-    local candidate
-    for candidate in \
-        "/usr/lib/postgresql/${base}" \
-        "/usr/pgsql-${base}" \
-        "/opt/postgresql/${base}"
-    do
-        if [[ -x "${candidate}/bin/initdb" ]]; then
-            echo "${candidate}"
-            return 0
-        fi
-    done
-    return 1
+    # shellcheck source=scripts/pg_os_env.sh
+    source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+    pg_os_detect
+    pg_detect_install_dir "${base}"
 }
 
 write_state() {
@@ -447,14 +441,24 @@ run_pytest_smoke() {
 }
 
 debian_base_paths() {
-    DEBIAN_ROOT="/var/lib/postgresql/pg_tde_major_upgrade"
+    # Package-layout major upgrade (sudo -u postgres). Paths differ by OS:
+    #   Ubuntu/Debian: /usr/lib/postgresql/N , /var/lib/postgresql/...
+    #   RHEL/OL:       /usr/pgsql-N         , /var/lib/pgsql/...
+    # shellcheck source=scripts/pg_os_env.sh
+    source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+    pg_os_detect
+    if [[ "${PG_OS_FAMILY}" == "rhel" ]]; then
+        DEBIAN_ROOT="${PG_MAJOR_UPGRADE_ROOT:-/var/lib/pgsql/pg_tde_major_upgrade}"
+    else
+        DEBIAN_ROOT="${PG_MAJOR_UPGRADE_ROOT:-/var/lib/postgresql/pg_tde_major_upgrade}"
+    fi
+    OLD_BIN="$(pg_default_install_dir "${OLD_PG_MAJOR_INT}")/bin"
+    NEW_BIN="$(pg_default_install_dir "${NEW_PG_MAJOR_INT}")/bin"
     SOCKET_DIR="${DEBIAN_ROOT}/run"
     OLD_PORT="${PG_MAJOR_OLD_PORT:-50417}"
     NEW_PORT="${PG_MAJOR_NEW_PORT:-50418}"
     OLD_DATA="${DEBIAN_ROOT}/${OLD_PG_MAJOR_INT}/${CLUSTER_NAME}"
     NEW_DATA="${DEBIAN_ROOT}/${NEW_PG_MAJOR_INT}/${CLUSTER_NAME}"
-    OLD_BIN="/usr/lib/postgresql/${OLD_PG_MAJOR_INT}/bin"
-    NEW_BIN="/usr/lib/postgresql/${NEW_PG_MAJOR_INT}/bin"
     KEYFILE="${OLD_DATA}/major_upgrade_keyring.per"
     export DEBIAN_ROOT SOCKET_DIR OLD_PORT NEW_PORT
     export OLD_DATA NEW_DATA OLD_BIN NEW_BIN KEYFILE
@@ -672,8 +676,11 @@ echo ""
 echo "======================================================================"
 echo " pg_tde staged MAJOR upgrade workflow"
 echo "  data dir : ${UPGRADE_DATA_DIR}"
-echo "  source   : PG ${OLD_PG_MAJOR_INT} (/usr/lib/postgresql/${OLD_PG_MAJOR_INT}) ppg-${OLD_PG_REPO_LINE} [${OLD_REPO_COMPONENT}]"
-echo "  target   : PG ${NEW_PG_MAJOR_INT} (/usr/lib/postgresql/${NEW_PG_MAJOR_INT}) ppg-${NEW_PG_REPO_LINE} [${NEW_REPO_COMPONENT}]"
+# shellcheck source=scripts/pg_os_env.sh
+source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+pg_os_detect
+echo "  source   : PG ${OLD_PG_MAJOR_INT} ($(pg_default_install_dir "${OLD_PG_MAJOR_INT}")) ppg-${OLD_PG_REPO_LINE} [${OLD_REPO_COMPONENT}]"
+echo "  target   : PG ${NEW_PG_MAJOR_INT} ($(pg_default_install_dir "${NEW_PG_MAJOR_INT}")) ppg-${NEW_PG_REPO_LINE} [${NEW_REPO_COMPONENT}]"
 if [[ -n "${OLD_SERVER_VERSION}" || -n "${NEW_SERVER_VERSION}" ]]; then
     echo "  patches  : OLD_SERVER_VERSION=${OLD_SERVER_VERSION:-<repo line>} NEW_SERVER_VERSION=${NEW_SERVER_VERSION:-<repo line>}"
 fi

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install Cosmian KMS server binary (same as pg_tde ci_scripts/ubuntu-deps.sh).
+# Install Cosmian KMS server binary.
+# Ubuntu/Debian: official .deb. RHEL: try RPM, else extract static tarball if published.
 #
 # Usage (run directly — do not source):
 #   cd postgresql/pytest
@@ -10,16 +11,20 @@
 #   ./scripts/run_kmip_revalidation.sh
 set -euo pipefail
 
-COSMIAN_VERSION="${COSMIAN_VERSION:-5.21.0}"
-ARCH="$(dpkg --print-architecture)"
-DEB="cosmian-kms-server-non-fips-static-openssl_${COSMIAN_VERSION}_${ARCH}.deb"
-URL="https://package.cosmian.com/kms/${COSMIAN_VERSION}/deb/${ARCH}/non-fips/static/${DEB}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=pg_os_env.sh
+source "${SCRIPT_DIR}/pg_os_env.sh"
+pg_os_detect
 
-echo "Installing Cosmian KMS ${COSMIAN_VERSION} (${ARCH})..."
-echo "  ${URL}"
+COSMIAN_VERSION="${COSMIAN_VERSION:-5.21.0}"
+BASE="https://package.cosmian.com/kms/${COSMIAN_VERSION}"
 
 if ! command -v wget >/dev/null 2>&1; then
-    echo "ERROR: wget is required (sudo apt-get install -y wget)" >&2
+    if [[ "${PG_OS_FAMILY}" == "rhel" ]]; then
+        echo "ERROR: wget is required (sudo ${PG_PKG_CMD:-dnf} install -y wget)" >&2
+    else
+        echo "ERROR: wget is required (sudo apt-get install -y wget)" >&2
+    fi
     exit 1
 fi
 
@@ -27,11 +32,44 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 cd "${TMP}"
 
-wget -q "${URL}"
-sudo dpkg -i "${DEB}"
+_install_deb() {
+    local deb="cosmian-kms-server-non-fips-static-openssl_${COSMIAN_VERSION}_${PG_ARCH}.deb"
+    local url="${BASE}/deb/${PG_ARCH}/non-fips/static/${deb}"
+    echo "Installing Cosmian KMS ${COSMIAN_VERSION} (${PG_ARCH}) from .deb..."
+    echo "  ${url}"
+    wget -q "${url}"
+    sudo dpkg -i "${deb}"
+}
 
-# .deb ships binary + bundled legacy.so as 0500 root:root; test runner is non-root.
-sudo chmod 0755 /usr/sbin/cosmian_kms
+_install_rpm() {
+    # Cosmian publishes RPM under the same version tree when available.
+    local rpm="cosmian-kms-server-non-fips-static-openssl-${COSMIAN_VERSION}-1.${PG_ARCH_RPM}.rpm"
+    local url="${BASE}/rpm/${PG_ARCH_RPM}/non-fips/static/${rpm}"
+    echo "Installing Cosmian KMS ${COSMIAN_VERSION} (${PG_ARCH_RPM}) from .rpm..."
+    echo "  ${url}"
+    if ! wget -q "${url}"; then
+        echo "WARN: Cosmian RPM not found at ${url}" >&2
+        echo "WARN: Falling back to Debian package via alien is unsupported; try a static binary." >&2
+        return 1
+    fi
+    sudo "${PG_PKG_CMD:-dnf}" install -y "./${rpm}"
+}
+
+if [[ "${PG_OS_FAMILY}" == "rhel" ]]; then
+    if ! _install_rpm; then
+        echo "ERROR: Cosmian KMS RPM install failed on RHEL." >&2
+        echo "       Install cosmian_kms manually, or run this script on Ubuntu/Debian." >&2
+        echo "       Packages: ${BASE}/" >&2
+        exit 1
+    fi
+else
+    _install_deb
+fi
+
+# Packages often ship binary + bundled legacy.so as 0500 root:root; test runner is non-root.
+if [[ -x /usr/sbin/cosmian_kms ]]; then
+    sudo chmod 0755 /usr/sbin/cosmian_kms
+fi
 if [[ -f /usr/local/cosmian/lib/ossl-modules/legacy.so ]]; then
     sudo chmod 0755 /usr/local/cosmian/lib/ossl-modules/legacy.so
 fi

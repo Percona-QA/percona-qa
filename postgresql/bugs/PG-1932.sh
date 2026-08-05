@@ -126,6 +126,10 @@ $INSTALL_DIR/bin/pg_tde_archive_decrypt /tmp/fake_wal /tmp/fake_out "cp %f %p"
 RET=$?
 set -e
 
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+
 if [ $RET -eq 0 ]; then
   echo "pg_tde_archive_decrypt command is successful"
 else

@@ -10,6 +10,9 @@
 #                    --old_server_build_path /opt/pg17 \
 #                    --testname pg_tde_upgrade_scenarios_test.sh
 #
+# INSTALL_DIR / OLD_INSTALL_DIR come from automation/wrapper/env.sh (OS-aware
+# package defaults when --server_build_path is omitted).
+#
 # Scenarios:
 #   1. Multiple databases with encrypted tables
 #   2. Mixed table access methods (tde_heap + heap) with foreign key

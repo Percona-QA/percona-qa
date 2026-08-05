@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Set variable
-INSTALL_DIR=$HOME/postgresql/bld_18.1.1/install
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
 PRIMARY_DATA=$INSTALL_DIR/primary_data
 REPLICA_DATA=$INSTALL_DIR/replica_data
 PRIMARY_LOGFILE=$PRIMARY_DATA/server.log

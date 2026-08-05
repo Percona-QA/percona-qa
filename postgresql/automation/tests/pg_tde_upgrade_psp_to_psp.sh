@@ -19,8 +19,14 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-INSTALL_DIR="${INSTALL_DIR:-/usr/lib/postgresql/18}"
-OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-/usr/lib/postgresql/17}"
+# OS-aware default install dirs (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+_PG_OS_ENV="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../pytest/scripts" && pwd)/pg_os_env.sh"
+# shellcheck source=/dev/null
+source "$_PG_OS_ENV"
+pg_os_detect
+
+INSTALL_DIR="${INSTALL_DIR:-$(pg_resolve_install_dir 18)}"
+OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-$(pg_resolve_install_dir 17)}"
 RUN_DIR="${RUN_DIR:-/tmp/pg_tde_psp_psp}"
 
 PSQL_OLD="${OLD_INSTALL_DIR}/bin/psql"

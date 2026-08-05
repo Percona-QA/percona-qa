@@ -52,10 +52,9 @@
 #
 set -euo pipefail
 
-if [[ -z "${INSTALL_DIR:-}" ]]; then
-  echo "ERROR: set INSTALL_DIR to a PG install that ships pg_tde (e.g. /home/ubuntu/pgwork/pginst/17)."
-  exit 2
-fi
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
 
 PSQL="$INSTALL_DIR/bin/psql"
 PG_CTL="$INSTALL_DIR/bin/pg_ctl"

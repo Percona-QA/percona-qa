@@ -32,6 +32,7 @@ from lib.cluster import (
     io_uring_runtime_ready,
     io_uring_status_lines,
 )
+from lib.os_env import resolve_install_dir_default
 
 # ── port allocator ──────────────────────────────────────────────────────────
 
@@ -82,8 +83,12 @@ def resolve_upgrade_data_dir_default() -> str:
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--install-dir",
-        default=os.environ.get("INSTALL_DIR", "/usr/lib/postgresql/18"),
-        help="Path to the PostgreSQL installation (e.g. /opt/percona/pg18)",
+        default=os.environ.get("INSTALL_DIR") or resolve_install_dir_default(18),
+        help=(
+            "Path to the PostgreSQL installation "
+            "(Ubuntu: /usr/lib/postgresql/18, RHEL: /usr/pgsql-18; "
+            "auto-detected when unset)"
+        ),
     )
     parser.addoption(
         "--run-dir",

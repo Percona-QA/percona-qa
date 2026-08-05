@@ -50,7 +50,13 @@ printf '  INSTALL_DIR=%s\n' "${INSTALL_DIR:-<unset>}"
 printf '  suites=%s\n\n' "${HC_VAULT_PYTEST_SUITES}"
 
 if [[ -z "${INSTALL_DIR:-}" ]]; then
-    echo "ERROR: set INSTALL_DIR (pg_tde PostgreSQL install)" >&2
+    # shellcheck source=pg_os_env.sh
+    source "${SCRIPT_DIR}/pg_os_env.sh"
+    pg_os_detect
+    pg_set_default_install_dir "${PG_MAJOR:-18}"
+fi
+if [[ ! -x "${INSTALL_DIR}/bin/postgres" ]]; then
+    echo "ERROR: INSTALL_DIR=${INSTALL_DIR} has no bin/postgres" >&2
     exit 2
 fi
 

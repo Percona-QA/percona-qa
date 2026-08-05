@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+
 ###########################################################################################################
 # PG-1503 - Deleting a Global key provider must not be allowed when we have active keys on the database   #
 ###########################################################################################################

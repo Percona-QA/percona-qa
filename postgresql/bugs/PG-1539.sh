@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
 # Set variable
 PGDATA=$INSTALL_DIR/data
 LOG_FILE=$PGDATA/server.log

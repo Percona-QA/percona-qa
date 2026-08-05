@@ -12,8 +12,8 @@
 #   bash run_tde_upgrade_parallel.sh --bash-only     # skip pytest
 #
 # Environment:
-#   OLD_INSTALL_DIR   Source PostgreSQL prefix (default: /usr/lib/postgresql/17)
-#   INSTALL_DIR       Target PostgreSQL prefix (default: /usr/lib/postgresql/18)
+#   OLD_INSTALL_DIR   Source PostgreSQL prefix (default: OS-detected …/17 or …/pgsql-17)
+#   INSTALL_DIR       Target PostgreSQL prefix (default: OS-detected …/18 or …/pgsql-18)
 #   IO_METHOD         initdb io_method (default: worker)
 #   SKIP_BASH         Comma-separated basenames to skip (e.g. pg_tde_upgrade_scenarios_test.sh)
 
@@ -24,8 +24,12 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 AUTOMATION_WRAPPER="${REPO_ROOT}/postgresql/automation/wrapper"
 UPGRADE_WRAPPER="${REPO_ROOT}/postgresql/upgrade_testing/wrapper"
 
-OLD="${OLD_INSTALL_DIR:-/usr/lib/postgresql/17}"
-NEW="${INSTALL_DIR:-/usr/lib/postgresql/18}"
+# shellcheck source=scripts/pg_os_env.sh
+source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+pg_os_detect
+
+OLD="${OLD_INSTALL_DIR:-$(pg_resolve_install_dir 17)}"
+NEW="${INSTALL_DIR:-$(pg_resolve_install_dir 18)}"
 IO="${IO_METHOD:-worker}"
 BASH_ONLY=false
 PYTEST_ONLY=false

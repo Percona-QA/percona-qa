@@ -15,6 +15,7 @@ export HELPER_DIR
 ############################################
 # Argument Parsing
 ############################################
+# Default --server_build_path to OS package install root when omitted.
 while [[ $# -gt 0 ]]; do
   case $1 in
     --server_build_path) SERVER_BUILD_PATH="$2"; shift;;
@@ -29,6 +30,15 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+# Resolve default install dirs before sourcing env.sh (env.sh also resolves if empty).
+if [[ -z "${SERVER_BUILD_PATH:-}" ]]; then
+  # shellcheck source=../../pytest/scripts/pg_os_env.sh
+  source "$(cd "$WRAPPER_DIR/../../pytest/scripts" && pwd)/pg_os_env.sh"
+  pg_os_detect
+  SERVER_BUILD_PATH="$(pg_resolve_install_dir "${PG_MAJOR:-18}")"
+  echo "Using default SERVER_BUILD_PATH=${SERVER_BUILD_PATH} (${PG_OS_FAMILY})"
+fi
 
 ############################################
 # Process Skip List

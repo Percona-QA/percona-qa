@@ -7,13 +7,20 @@
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ── Diagnostics ────────────────────────────────────────────────────────────
+# ── Diagnostics / OS-aware INSTALL_DIR ─────────────────────────────────────
+# shellcheck source=scripts/pg_os_env.sh
+source "/workspace/scripts/pg_os_env.sh" 2>/dev/null || \
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts" && pwd)/pg_os_env.sh"
+pg_os_detect
+pg_set_default_install_dir "${PG_MAJOR:-18}"
+
 echo "=========================================="
 echo "  Percona pg_tde QA test environment"
 echo "=========================================="
 echo "  User       : $(whoami)  (uid=$(id -u))"
 echo "  PGUSER     : ${PGUSER:-<unset — will default to $(whoami)>}"
-echo "  INSTALL_DIR: ${INSTALL_DIR:-<unset>}"
+echo "  OS family  : ${PG_OS_FAMILY}"
+echo "  INSTALL_DIR: ${INSTALL_DIR}"
 echo "  OLD_INSTALL: ${OLD_INSTALL_DIR:-<unset — upgrade tests skipped>}"
 echo "  VAULT_ADDR : ${VAULT_ADDR:-<unset — vault tests skipped>}"
 
@@ -69,7 +76,7 @@ cd /workspace
 # ── Export env vars read by conftest.py ────────────────────────────────────
 # conftest.py reads INSTALL_DIR, OLD_INSTALL_DIR, VAULT_ADDR, VAULT_TOKEN,
 # IO_METHOD, and PGUSER from the environment as defaults for CLI options.
-export INSTALL_DIR="${INSTALL_DIR:-}"
+export INSTALL_DIR
 export OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-}"
 export VAULT_ADDR="${VAULT_ADDR:-}"
 export VAULT_TOKEN="${VAULT_TOKEN:-}"

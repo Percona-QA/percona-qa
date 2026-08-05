@@ -10,6 +10,9 @@
 # Same-version usage (OLD_INSTALL_DIR falls back to INSTALL_DIR automatically):
 #   ./test_runner.sh --server_build_path /opt/pg18 \
 #                    --testname pg_tde_upgrade_test.sh
+#
+# INSTALL_DIR / OLD_INSTALL_DIR come from automation/wrapper/env.sh (OS-aware
+# package defaults when --server_build_path is omitted).
 
 OLD_DATA="$RUN_DIR/pg_upgrade_old"
 NEW_DATA="$RUN_DIR/pg_upgrade_new"

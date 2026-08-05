@@ -3,7 +3,12 @@
 # Full runbook: postgresql/pytest/docs/io_uring_system_setup.md
 set -uo pipefail
 
-INSTALL_DIR="${INSTALL_DIR:-/usr/pgsql-18}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=pg_os_env.sh
+source "${SCRIPT_DIR}/pg_os_env.sh"
+pg_os_detect
+pg_set_default_install_dir "${PG_MAJOR:-18}"
+
 USER_NAME="${USER_NAME:-$(whoami)}"
 LIMITS_FILE="${LIMITS_FILE:-/etc/security/limits.conf}"
 SYSCTL_DROPIN="${SYSCTL_DROPIN:-/etc/sysctl.d/99-io-uring.conf}"
@@ -14,7 +19,7 @@ KERN_OK=0
 NEED_RELOGIN=0
 
 echo "=== io_uring readiness ==="
-echo "INSTALL_DIR=$INSTALL_DIR"
+echo "INSTALL_DIR=$INSTALL_DIR (${PG_OS_FAMILY})"
 echo "USER=$USER_NAME"
 echo "Doc: postgresql/pytest/docs/io_uring_system_setup.md"
 echo
@@ -23,7 +28,7 @@ if [[ ! -x "$INSTALL_DIR/bin/initdb" ]]; then
   echo "FAIL: $INSTALL_DIR/bin/initdb not found"
   echo
   echo "Set INSTALL_DIR to your PostgreSQL prefix, e.g.:"
-  echo "  export INSTALL_DIR=/usr/pgsql-18"
+  echo "  export INSTALL_DIR=$(pg_default_install_dir 18)"
   exit 1
 fi
 
@@ -161,7 +166,7 @@ fi
 cat <<'EOF'
 [D] Re-test after changes
     # New SSH session if you changed limits.conf
-    export INSTALL_DIR=/usr/pgsql-18   # adjust
+    export INSTALL_DIR=$(pg_default_install_dir 18)   # adjust if needed
     export PATH="$INSTALL_DIR/bin:$PATH"
 
     ulimit -l

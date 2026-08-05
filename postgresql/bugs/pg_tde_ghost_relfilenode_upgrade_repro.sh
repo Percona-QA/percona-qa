@@ -34,8 +34,12 @@
 
 set -euo pipefail
 
-OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-/usr/lib/postgresql/17}"
-NEW_INSTALL_DIR="${NEW_INSTALL_DIR:-/usr/lib/postgresql/18}"
+# OS-aware default install dirs (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+
+OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-$(pg_resolve_install_dir 17)}"
+NEW_INSTALL_DIR="${NEW_INSTALL_DIR:-$(pg_resolve_install_dir 18)}"
 RUN_DIR="${RUN_DIR:-/tmp/pg_tde_ghost_repro_$$}"
 SCENARIO="${1:-all}"
 
@@ -344,18 +348,25 @@ scenario_correct() {
 }
 
 print_manual() {
-    cat <<'MANUAL'
-# ── Manual reproduction (copy/paste on Ubuntu host) ─────────────────────────
-export OLD=/usr/lib/postgresql/17
-export NEW=/usr/lib/postgresql/18
-export RUN=/tmp/ghost_manual_$$
-export PGHOST=$RUN
+    local old_ex new_ex
+    old_ex="$(pg_default_install_dir 17)"
+    new_ex="$(pg_default_install_dir 18)"
+    cat <<MANUAL
+# ── Manual reproduction (copy/paste; paths are OS defaults) ─────────────────
+export OLD=${old_ex}
+export NEW=${new_ex}
+export RUN=/tmp/ghost_manual_\$\$
+export PGHOST=\$RUN
 export OLD_PORT=15511 NEW_PORT=15512
-export KEY=$RUN/ghost.per
-mkdir -p $RUN
+export KEY=\$RUN/ghost.per
+mkdir -p \$RUN
 
 # 1) Old cluster + ghost table
-$OLD/bin/initdb -D $RUN/old --no-data-checksums
+\$OLD/bin/initdb -D \$RUN/old --no-data-checksums
+MANUAL
+    # Keep the rest of the heredoc from the original file after the first initdb line.
+    # Fall through: print remaining steps from a static block that uses \$OLD/\$NEW.
+    cat <<'MANUAL'
 cat >> $RUN/old/postgresql.conf <<EOF
 port = $OLD_PORT
 unix_socket_directories = '$RUN'

@@ -39,7 +39,8 @@ Version terminology (keep these separate):
                  the patch (release=18.4.1, testing=18.4.2, …)
 
 Options:
-  --install-dir PATH          PostgreSQL install root (e.g. /usr/lib/postgresql/18)
+  --install-dir PATH          PostgreSQL install root
+                              (Ubuntu: /usr/lib/postgresql/18, RHEL: /usr/pgsql-18)
   --old-install-dir PATH      Old PG install for pg_upgrade tests
   --install-pkgs              Install Percona packages from configured repository
   --pg-major N                Integer major version (default: ${PG_MAJOR})
@@ -126,21 +127,21 @@ if [ "$INSTALL_PKGS" = true ]; then
     echo ""
     echo "=== 1a. Installing Percona PostgreSQL & Ecosystem ==="
     
-    # Detect OS family
-    if command -v apt-get >/dev/null 2>&1; then
-        OS_FAMILY="debian"
-        SU_CMD="sudo"
-    elif command -v yum >/dev/null 2>&1; then
-        OS_FAMILY="rhel"
-        SU_CMD="sudo"
-    else
-        fail "Unsupported distribution. Manual installation required."
+    # Detect OS family (Ubuntu/Debian vs RHEL/OL/Rocky/Alma)
+    # shellcheck source=scripts/pg_os_env.sh
+    source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+    pg_os_detect
+    OS_FAMILY="${PG_OS_FAMILY}"
+    SU_CMD="sudo"
+    if [[ "${OS_FAMILY}" != "debian" && "${OS_FAMILY}" != "rhel" ]]; then
+        fail "Unsupported distribution (${PG_OS_ID:-unknown}). Manual installation required."
     fi
+    info "OS family=${OS_FAMILY} id=${PG_OS_ID:-?} pkg=${PG_PKG_CMD}"
 
     # Set up Percona format structure for repository registration hook
     info "PG_MAJOR=${PG_MAJOR}  PG_REPO_LINE=${PG_REPO_LINE}  repo=${PPG_REPO} [${REPO_COMPONENT}]"
     if [[ -n "$SERVER_VERSION" ]]; then
-        info "SERVER_VERSION=${SERVER_VERSION} (apt: selected by repo tier; verified after install)"
+        info "SERVER_VERSION=${SERVER_VERSION} (repo tier selects the patch; verified after install)"
     fi
 
     _deb_pkg_spec() {
@@ -176,14 +177,19 @@ if [ "$INSTALL_PKGS" = true ]; then
         $SU_CMD apt-get update
             
     elif [ "$OS_FAMILY" = "rhel" ]; then
-        info "Installing prerequisites for RHEL/Yum ecosystem..."
-        $SU_CMD yum -y install curl wget gnupg
+        info "Installing prerequisites for RHEL/dnf ecosystem..."
+        $SU_CMD "${PG_PKG_CMD}" -y install curl wget gnupg2 || \
+            $SU_CMD "${PG_PKG_CMD}" -y install curl wget gnupg
 
         info "Setting up Percona RPM repository..."
-        $SU_CMD yum install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+        $SU_CMD "${PG_PKG_CMD}" install -y https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
         info "Enabling Percona repository component: ${PPG_REPO} [${REPO_COMPONENT}]..."
         $SU_CMD percona-release enable-only "${PPG_REPO}" "${REPO_COMPONENT}"
+        # AppStream postgresql module often conflicts with Percona packages.
+        $SU_CMD "${PG_PKG_CMD}" module disable postgresql -y 2>/dev/null || true
+        $SU_CMD "${PG_PKG_CMD}" clean all
+        $SU_CMD "${PG_PKG_CMD}" makecache || true
     fi
 
     # Build package array dynamically using mapped major version variables
@@ -206,15 +212,16 @@ if [ "$INSTALL_PKGS" = true ]; then
     elif [ "$OS_FAMILY" = "rhel" ]; then
         if [[ "$COMPONENTS" == *"server"* ]]; then
             PKGS_TO_INSTALL+=("$(_rpm_pkg_spec "percona-postgresql${REPO_BASE}-server")")
+            PKGS_TO_INSTALL+=("$(_rpm_pkg_spec "percona-postgresql${REPO_BASE}-contrib")")
         fi
         if [[ "$COMPONENTS" == *"pg_backrest"* ]]; then PKGS_TO_INSTALL+=("percona-pgbackrest"); fi
         if [[ "$COMPONENTS" == *"pg_tde"* ]]; then
             PKGS_TO_INSTALL+=("$(_rpm_pkg_spec "percona-pg_tde${REPO_BASE}")")
         fi
-        
+
         if [ ${#PKGS_TO_INSTALL[@]} -gt 0 ]; then
-            info "Installing requested packages via yum: ${PKGS_TO_INSTALL[*]}"
-            $SU_CMD yum install -y "${PKGS_TO_INSTALL[@]}"
+            info "Installing requested packages via ${PG_PKG_CMD}: ${PKGS_TO_INSTALL[*]}"
+            $SU_CMD "${PG_PKG_CMD}" install -y "${PKGS_TO_INSTALL[@]}"
         fi
     fi
     ok "Percona components installation complete."
@@ -224,27 +231,21 @@ fi
 echo ""
 echo "=== 2. PostgreSQL install directory ==="
 
+# shellcheck source=scripts/pg_os_env.sh
+source "${SCRIPT_DIR}/scripts/pg_os_env.sh"
+pg_os_detect
+
 if [[ -z "${INSTALL_DIR:-}" ]]; then
-    # Try common Percona/PostgreSQL install locations using base parsed major id
-    for candidate in \
-        /usr/lib/postgresql/18/bin \
-        /usr/lib/postgresql/17/bin \
-        /usr/pgsql-18/bin \
-        /usr/pgsql-17/bin \
-        /opt/postgresql/18/bin \
-        /opt/postgresql/17/bin \
-        /usr/lib/postgresql/"${REPO_BASE}"/bin \
-        /usr/pgsql-"${REPO_BASE}"/bin
-    do
-        if [[ -x "$candidate/initdb" ]]; then
-            INSTALL_DIR="${candidate%/bin}"
-            break
-        fi
-    done
+    if INSTALL_DIR="$(pg_detect_install_dir "${REPO_BASE}")"; then
+        :
+    else
+        INSTALL_DIR=""
+    fi
 fi
 
 if [[ -z "${INSTALL_DIR:-}" ]] || [[ ! -x "${INSTALL_DIR}/bin/initdb" ]]; then
-    fail "Cannot find PostgreSQL install. Pass --install-pkgs to install automatically, set INSTALL_DIR, or pass --install-dir.\n      Example: bash setup_test_env.sh --install-dir /usr/lib/postgresql/18"
+    _ex="$(pg_default_install_dir "${REPO_BASE}")"
+    fail "Cannot find PostgreSQL install. Pass --install-pkgs to install automatically, set INSTALL_DIR, or pass --install-dir.\n      Example: bash setup_test_env.sh --install-dir ${_ex}"
 fi
 
 if [[ "$INSTALL_PKGS" == true && -n "$SERVER_VERSION" && -x "${INSTALL_DIR}/bin/postgres" ]]; then
@@ -363,8 +364,11 @@ if [[ ! -d "$VENV_DIR" ]]; then
         warn "python${PY_VER}-venv not found — trying auto-install..."
         if command -v apt-get >/dev/null 2>&1; then
             sudo apt-get install -y "python${PY_VER}-venv"
-        elif command -v yum >/dev/null 2>&1; then
-            sudo yum install -y "python${PY_VER}-python-venv" || sudo yum install -y python3-libexec
+        elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+            _yum=$(command -v dnf || command -v yum)
+            sudo "$_yum" install -y "python${PY_VER}-devel" python3-pip || \
+                sudo "$_yum" install -y python3-devel python3-pip
+            # ensurepip / venv module often ships with python3 itself on RHEL.
         fi
         "$PYTHON" -m venv "$VENV_DIR" || fail "venv creation failed."
     fi

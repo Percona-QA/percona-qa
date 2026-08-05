@@ -2,8 +2,12 @@
 
 set -e
 
-# Configuration
-INSTALL_DIR="/home/mohit.joshi/postgresql/pg_tde/bld_18.0.1/install"
+# Configuration — OS-aware package install root (override with INSTALL_DIR=...)
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${_SCRIPT_DIR}/../../pytest/scripts/pg_os_env.sh"
+pg_os_detect
+INSTALL_DIR="${INSTALL_DIR:-$(pg_resolve_install_dir "${PG_MAJOR:-18}")}"
 PRIMARY_PORT="5432"
 REPLICA_PORT="5433"
 DB_NAME="sbtest"

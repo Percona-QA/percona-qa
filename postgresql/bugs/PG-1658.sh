@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 data_dir=$INSTALL_DIR/data
 source "$(dirname "${BASH_SOURCE[0]}")/helper_scripts/initialize_server.sh"

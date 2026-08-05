@@ -41,10 +41,9 @@
 #
 set -euo pipefail
 
-if [[ -z "${INSTALL_DIR:-}" ]]; then
-  echo "ERROR: set INSTALL_DIR to the PostgreSQL install prefix"
-  exit 1
-fi
+# OS-aware default INSTALL_DIR (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
 
 REPRO_ROOT="${REPRO_ROOT:-${ROOT:-/tmp/PG-2587_control_no_tde}}"
 PRIMARY="$REPRO_ROOT/primary"

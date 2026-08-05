@@ -30,6 +30,19 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+# OS-aware package install defaults when paths are omitted.
+# shellcheck source=../../pytest/scripts/pg_os_env.sh
+source "$(cd "$WRAPPER_DIR/../../pytest/scripts" && pwd)/pg_os_env.sh"
+pg_os_detect
+if [[ -z "${NEW_SERVER_BUILD_PATH:-}" ]]; then
+  NEW_SERVER_BUILD_PATH="$(pg_resolve_install_dir "${PG_NEW_MAJOR:-18}")"
+  echo "Using default NEW_SERVER_BUILD_PATH=${NEW_SERVER_BUILD_PATH} (${PG_OS_FAMILY})"
+fi
+if [[ -z "${OLD_SERVER_BUILD_PATH:-}" ]]; then
+  OLD_SERVER_BUILD_PATH="$(pg_resolve_install_dir "${PG_OLD_MAJOR:-17}")"
+  echo "Using default OLD_SERVER_BUILD_PATH=${OLD_SERVER_BUILD_PATH} (${PG_OS_FAMILY})"
+fi
+
 ############################################
 # Process Skip List
 ############################################

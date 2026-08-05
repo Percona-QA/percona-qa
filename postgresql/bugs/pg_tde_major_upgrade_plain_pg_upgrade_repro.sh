@@ -20,8 +20,12 @@
 
 set -euo pipefail
 
-OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-/usr/lib/postgresql/17}"
-NEW_INSTALL_DIR="${NEW_INSTALL_DIR:-/usr/lib/postgresql/18}"
+# OS-aware default install dirs (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+
+OLD_INSTALL_DIR="${OLD_INSTALL_DIR:-$(pg_resolve_install_dir 17)}"
+NEW_INSTALL_DIR="${NEW_INSTALL_DIR:-$(pg_resolve_install_dir 18)}"
 RUN_DIR="${RUN_DIR:-/tmp/pg_tde_upgrade_repro_$$}"
 SCENARIO="${1:-all}"
 

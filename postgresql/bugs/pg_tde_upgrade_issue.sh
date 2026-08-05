@@ -14,8 +14,11 @@
 
 set -euo pipefail
 
-OLD="${OLD:-/usr/lib/postgresql/17}"
-NEW="${NEW:-/usr/lib/postgresql/18}"
+# OS-aware default OLD/NEW install dirs (Ubuntu: /usr/lib/postgresql/N, RHEL: /usr/pgsql-N)
+# shellcheck source=pg_install_env.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
+OLD="${OLD:-$(pg_resolve_install_dir 17)}"
+NEW="${NEW:-$(pg_resolve_install_dir 18)}"
 RUN="${RUN:-/tmp/ghost_manual}"
 OLD_PORT="${OLD_PORT:-15511}"
 NEW_PORT="${NEW_PORT:-15512}"
