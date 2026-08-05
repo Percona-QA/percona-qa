@@ -74,9 +74,23 @@ else
     }
     export OPENBAO_BIN="${BAO_BIN}"
 
-    # Stop stale dev servers from prior pytest runs.
+    # Stop stale bao/vault listeners still holding the fixed pytest port 8200.
     pkill -f "[b]ao server" 2>/dev/null || true
+    pkill -f "[v]ault server" 2>/dev/null || true
+    if command -v fuser >/dev/null 2>&1; then
+        fuser -k 8200/tcp 2>/dev/null || true
+    elif command -v lsof >/dev/null 2>&1; then
+        lsof -ti tcp:8200 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+    fi
     sleep 0.5
+
+    if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :8200 )" 2>/dev/null | grep -q 8200; then
+        echo "ERROR: 127.0.0.1:8200 is still in use after cleanup." >&2
+        echo "  Free it (OpenBao/Vault pytest uses fixed port 8200), then retry:" >&2
+        echo "    fuser -k 8200/tcp   # or: lsof -ti tcp:8200 | xargs kill -9" >&2
+        echo "    OPENBAO_FORCE_RESTART=1 source scripts/setup_openbao_for_pytest.sh" >&2
+        _openbao_setup_abort
+    fi
 
     BAO_LOG="${RUN_DIR}/bao_server.log"
     : > "${BAO_LOG}"

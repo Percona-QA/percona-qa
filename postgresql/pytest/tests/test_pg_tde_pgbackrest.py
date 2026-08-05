@@ -168,6 +168,23 @@ def _pitr_timestamp(cluster: PgCluster) -> str:
     ).strip()
 
 
+def _pitr_timestamp_after_backup(
+    cluster: PgCluster, bm: BackupManager, *, archive_timeout: int = 60,
+) -> str:
+    """
+    Capture a --type=time target safely after the latest backup stop time.
+
+    pgBackRest requires backup stop time < recovery target (else exit 075).
+    ``backup()`` can return before the recorded stop timestamp is finalized, so
+    taking ``clock_timestamp()`` immediately afterward races on busy hosts.
+    Push a WAL segment, wait for archive, then sample time.
+    """
+    cluster.execute("SELECT pg_switch_wal()")
+    bm.wait_for_wal_archive(cluster, timeout=archive_timeout)
+    time.sleep(1)
+    return _pitr_timestamp(cluster)
+
+
 def _start_restored_cluster(
     restore_dir: Path,
     install_dir: Path,
@@ -1678,7 +1695,7 @@ class TestPgBackRestPitrScenarios:
         bm.backup(backup_type="full")
         bm.wait_for_wal_archive(tde_primary)
 
-        target_time = _pitr_timestamp(tde_primary)
+        target_time = _pitr_timestamp_after_backup(tde_primary, bm)
         time.sleep(2)
         tde_primary.execute("INSERT INTO pitr_pause VALUES (99)")
         bm.wait_for_wal_archive(tde_primary)
@@ -1915,7 +1932,7 @@ class TestPgBackRestPitrScenarios:
         bm.backup(backup_type="full")
         bm.wait_for_wal_archive(tde_primary)
 
-        target_time = _pitr_timestamp(tde_primary)
+        target_time = _pitr_timestamp_after_backup(tde_primary, bm)
         time.sleep(2)
         tde_primary.execute("TRUNCATE pitr_trunc")
         tde_primary.execute(
@@ -2839,7 +2856,8 @@ class TestEncryptedInRepoBackupRestorePitr:
         bm.backup(backup_type="full")
         bm.wait_for_wal_archive(primary, timeout=60)
 
-        target_time = _pitr_timestamp(primary)
+        # Must be after backup stop time or pgBackRest restore exits 075.
+        target_time = _pitr_timestamp_after_backup(primary, bm)
         time.sleep(2)
         primary.execute("DROP TABLE enc_drop_t")
         bm.wait_for_wal_archive(primary, timeout=60)

@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import time
 import urllib.error
@@ -214,6 +215,56 @@ def _bootstrap_openbao_namespace(
     return True
 
 
+def _free_openbao_listen_port(port: int = 8200) -> None:
+    """Best-effort clear of the fixed OpenBao/Vault pytest listen port."""
+    subprocess.run(
+        ["pkill", "-f", "[b]ao server"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["pkill", "-f", "[v]ault server"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if shutil.which("fuser"):
+        subprocess.run(
+            ["fuser", "-k", f"{port}/tcp"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    elif shutil.which("lsof"):
+        try:
+            out = subprocess.check_output(
+                ["lsof", "-ti", f"tcp:{port}"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            out = ""
+        for pid in out.split():
+            subprocess.run(
+                ["kill", "-9", pid],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+    time.sleep(0.5)
+
+
+def _port_in_use(port: int = 8200) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            return True
+    return False
+
+
 @dataclass
 class OpenBaoDevServer:
     """Local ``bao server -dev`` with namespace + KV mount (pytest session scope)."""
@@ -238,6 +289,15 @@ class OpenBaoDevServer:
         run_dir.mkdir(parents=True, exist_ok=True)
         log_path = run_dir / "bao_server.log"
         log_fh = log_path.open("w", encoding="utf-8")
+
+        # Pytest OpenBao always uses fixed 127.0.0.1:8200
+        _free_openbao_listen_port(8200)
+        if _port_in_use(8200):
+            raise RuntimeError(
+                "127.0.0.1:8200 is still in use after cleanup. Free it and retry:\n"
+                "  fuser -k 8200/tcp\n"
+                "  # or: lsof -ti tcp:8200 | xargs kill -9"
+            )
 
         proc = subprocess.Popen(
             [str(bao), "server", "-dev", "-dev-listen-address=127.0.0.1:8200"],
