@@ -64,6 +64,7 @@ check_dependency unzip
 check_dependency tar
 check_dependency jq
 check_dependency go
+check_dependency etcd
 
 if (( ${#MISSING[@]} > 0 )); then
     echo ""

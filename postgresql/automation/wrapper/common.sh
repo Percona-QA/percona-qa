@@ -275,24 +275,25 @@ cleanup_patroni_cluster()
 {
     echo "Cleaning Patroni cluster"
 
-    pkill -f "/usr/bin/patroni" || true
-    pkill -f "/usr/bin/etcd" || true
+    sudo pkill -f "/usr/bin/patroni" || true
+    sudo pkill -f "/usr/bin/etcd" || true
 
     sleep 2
 
-    pkill -9 -f "/usr/bin/patroni" || true
-    pkill -9 -f "/usr/bin/etcd" || true
+    sudo pkill -9 -f "/usr/bin/patroni" || true
+    sudo pkill -9 -f "/usr/bin/etcd" || true
 
     # Free ports explicitly
     for p in 2379 2380
     do
-        local pids
-        pids=$(lsof -tiTCP:$p -sTCP:LISTEN 2>/dev/null || true)
-        [ -n "$pids" ] && kill -9 $pids
+      local pids
+      pids=$(lsof -tiTCP:$p -sTCP:LISTEN 2>/dev/null || true)
+      if [ -n "$pids" ]; then
+        sudo kill -9 $pids 2>/dev/null || true
+      fi
     done
 
     rm -rf "$PATRONI_BASE" "$ETCD_DATA"
-
     mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
 }
 
