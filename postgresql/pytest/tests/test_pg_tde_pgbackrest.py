@@ -2090,7 +2090,14 @@ class TestPgBackRestPitrScenarios:
         self, tde_primary: PgCluster, tmp_path: Path,
         install_dir: Path, io_method: str,
     ):
-        """``target-action=shutdown`` stops at the target; restart sees pre-target data."""
+        """
+        ``target-action=shutdown`` must stop the postmaster at the exclusive LSN.
+
+        Data correctness at that LSN is checked with a second restore using
+        ``promote``: restarting after shutdown while leftover WAL segments still
+        sit in ``pg_wal`` can crash-recover past the stop point and re-apply
+        post-target rows (not a TDE bug — PITR harness pitfall).
+        """
         bm = _setup_tde_pgbackrest_source(
             tde_primary, tmp_path, stanza="pitr_shutdown"
         )
@@ -2108,9 +2115,10 @@ class TestPgBackRestPitrScenarios:
         tde_primary.execute("INSERT INTO pitr_shut VALUES (99)")
         bm.wait_for_wal_archive(tde_primary)
 
-        restore_dir = tmp_path / "restore_pitr_shutdown"
+        # ── A: shutdown action stops after reaching the exclusive target ──
+        restore_shut = tmp_path / "restore_pitr_shutdown"
         bm.restore(
-            str(restore_dir),
+            str(restore_shut),
             restore_type="lsn",
             target=target_lsn,
             target_action="shutdown",
@@ -2119,40 +2127,64 @@ class TestPgBackRestPitrScenarios:
         )
 
         port = allocate_port()
-        restored = PgCluster(
-            restore_dir, port, install_dir,
+        shut_cluster = PgCluster(
+            restore_shut, port, install_dir,
             socket_dir=tmp_path, io_method=io_method,
         )
-        restored.write_default_config("primary", extra_params=_TDE_RESTORED_PARAMS)
-        _strip_restored_auto_conf_socket_overrides(restore_dir)
-        restored.add_hba_entry("local all all trust")
-        os.chmod(restore_dir, 0o700)
+        shut_cluster.write_default_config(
+            "primary", extra_params=_TDE_RESTORED_PARAMS
+        )
+        _strip_restored_auto_conf_socket_overrides(restore_shut)
+        shut_cluster.add_hba_entry("local all all trust")
+        os.chmod(restore_shut, 0o700)
 
-        # First start: recover to target then shut down.
         try:
-            restored.start(timeout=120)
+            shut_cluster.start(timeout=120)
         except RuntimeError:
-            # pg_ctl -w may fail because the server exits after reaching the target.
+            # pg_ctl -w fails when the server exits after reaching the target.
             pass
 
         deadline = time.time() + 120
         while time.time() < deadline:
-            pid = restore_dir / "postmaster.pid"
-            if not pid.exists() and not restored.is_ready():
+            pid = restore_shut / "postmaster.pid"
+            if not pid.exists() and not shut_cluster.is_ready():
                 break
             time.sleep(0.5)
         else:
-            # Force stop if still running so the second start is clean.
-            restored.stop(check=False)
+            shut_cluster.stop(check=False)
+            pytest.fail(
+                "target-action=shutdown did not leave the postmaster stopped.\n"
+                f"Log:\n{shut_cluster.read_log(80)}"
+            )
 
-        # Clear leftover recovery signal if present; auto.conf already has the target.
-        (restore_dir / "recovery.signal").unlink(missing_ok=True)
-        (restore_dir / "standby.signal").unlink(missing_ok=True)
+        log_l = shut_cluster.read_log(120).lower()
+        assert any(
+            m in log_l
+            for m in (
+                "database system is shut down",
+                "shutting down",
+                "recovery stopping",
+                "recovery target",
+            )
+        ), (
+            "Expected shutdown/recovery-target evidence in the log.\n"
+            f"Log:\n{shut_cluster.read_log(80)}"
+        )
 
-        restored.start(timeout=60)
-        restored.wait_ready(timeout=60)
+        # ── B: same exclusive LSN + promote → pre-target rows only ────────
+        restore_data = tmp_path / "restore_pitr_shutdown_data"
+        bm.restore(
+            str(restore_data),
+            restore_type="lsn",
+            target=target_lsn,
+            target_action="promote",
+            target_exclusive=True,
+            pg_tde_wal_restore=True,
+        )
+        restored = _start_restored_cluster(
+            restore_data, install_dir, tmp_path, io_method, promote="wait",
+        )
         try:
-            assert restored.fetchone("SELECT pg_is_in_recovery()") == "f"
             assert restored.fetchone("SELECT COUNT(*) FROM pitr_shut") == "2"
             assert restored.fetchone(
                 "SELECT COUNT(*) FROM pitr_shut WHERE id = 99"
