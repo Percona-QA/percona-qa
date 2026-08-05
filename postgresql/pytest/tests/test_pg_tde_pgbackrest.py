@@ -6368,12 +6368,13 @@ class TestWalEncryptSafeBootstrapOrder:
             f"{detail}\n{_wse_server_log_text(cluster)}"
         )
 
-    def test_safe_bootstrap_sibling_symlink_still_hits_path_bug(
+    def test_safe_bootstrap_sibling_symlink_backup_ok(
         self, pg_factory, tmp_path: Path, install_dir: Path,
     ):
         """
-        Ordering alone cannot fix sibling-symlink key-dir derivation — decrypt
-        still looks beside the WAL volume for ``pg_tde/``.
+        Regression: with PG-2609 fixed, safe bootstrap + decrypt wrapper also
+        works on a sibling ``pg_wal`` symlink (ordering alone was never enough
+        on buggy builds; workaround A was the old escape hatch).
         """
         cluster, bm, ok, detail = self._run_b(
             pg_factory, tmp_path, install_dir, "wb_sib", sibling_symlink=True,
@@ -6382,18 +6383,17 @@ class TestWalEncryptSafeBootstrapOrder:
         _rc, err, seg = _wse_manual_archive_decrypt_probe(
             decrypt, cluster, tmp_path / "wb_sib_probe"
         )
-        still_broken = (
-            _wse_saw_mismatch(cluster, tmp_path / "wb_sib_probe" / "decrypt.err")
-            or not ok
-        )
-        assert still_broken, (
-            "expected path bug to remain under sibling symlink even with "
-            "safe bootstrap ordering (use workaround A / no wrapper instead):\n"
+        assert not _wse_saw_mismatch(
+            cluster, tmp_path / "wb_sib_probe" / "decrypt.err"
+        ), (
+            "PG-2609 segment-size mismatch on sibling pg_wal with safe bootstrap:\n"
             f"  seg={seg} decrypt.err={err!r}\n"
-            f"  backup detail={detail!r}\n"
             f"  log:\n{_wse_server_log_text(cluster)}"
         )
-        # Keep bm referenced so stanza dir isn't GC'd mid-assert in some runners.
+        assert ok, (
+            "safe bootstrap + sibling pg_wal must succeed "
+            f"(PG-2609 regression):\n{detail}\n{_wse_server_log_text(cluster)}"
+        )
         assert bm.stanza == "wb_sib"
 
 
