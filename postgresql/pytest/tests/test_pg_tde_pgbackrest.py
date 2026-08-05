@@ -6070,8 +6070,14 @@ class TestWalEncryptPgWalSymlinkRepro:
     """
     Parity: ``PG-2609_repro_wal_encrypt_pgbackrest_ha{,_wal_symlink}.sh``.
 
-    Wrapper live from t=0 → archive plaintext → enable ``wal_encrypt`` mid-stream
-    → restart. Sibling ``pg_wal`` symlink reproduces the key-dir derivation bug.
+    Historical bug: ``pg_tde_archive_decrypt`` derived the key dir as
+    ``dirname(segment)/../pg_tde`` without resolving a sibling ``pg_wal``
+    symlink, producing ``mismatch of segment size`` and backup [082].
+
+    On current builds the wrapper resolves keys correctly, so sibling-symlink
+    layouts must archive + backup cleanly (regression). Nested-under-PGDATA
+    symlinks still must not trip a TDE mismatch; pgBackRest 2.58+ may reject
+    those links with ERROR [070] independently of pg_tde.
     """
 
     def _midstream_enable_with_wrapper(
@@ -6132,32 +6138,31 @@ class TestWalEncryptPgWalSymlinkRepro:
 
         return cluster, bm, tmp_path / f"{name}_probe"
 
-    def test_sibling_symlink_pgwal_reproduces_segment_size_mismatch(
+    def test_sibling_symlink_pgwal_archive_and_backup_succeed(
         self, pg_factory, tmp_path: Path, install_dir: Path,
     ):
+        """Regression: sibling ``pg_wal`` + decrypt wrapper must not hit PG-2609."""
         decrypt = _wse_require_archive_decrypt(install_dir)
         cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
             pg_factory, tmp_path, "sib_repro", sibling_symlink=True,
         )
         rc, err, seg = _wse_manual_archive_decrypt_probe(decrypt, cluster, probe_dir)
-        ok, detail = _wse_try_backup(bm)
-
-        reproduced = (
-            _wse_saw_mismatch(cluster, probe_dir / "decrypt.err")
-            or (not ok and ("082" in detail or "not archived" in detail.lower()))
-        )
-        assert reproduced, (
-            "segment-size mismatch expected with sibling pg_wal symlink + decrypt wrapper:\n"
+        assert not _wse_saw_mismatch(cluster, probe_dir / "decrypt.err"), (
+            "PG-2609 segment-size mismatch returned on sibling pg_wal symlink:\n"
             f"  manual seg={seg} rc={rc}\n"
             f"  decrypt.err={err!r}\n"
-            f"  backup_ok={ok} detail={detail!r}\n"
             f"  server log:\n{_wse_server_log_text(cluster)}"
         )
+        ok, detail = _wse_try_backup(bm)
+        assert ok, (
+            "sibling pg_wal + decrypt wrapper backup must succeed "
+            f"(PG-2609 regression):\n{detail}"
+        )
 
-    def test_relative_sibling_symlink_pgwal_reproduces_mismatch(
+    def test_relative_sibling_symlink_pgwal_archive_and_backup_succeed(
         self, pg_factory, tmp_path: Path, install_dir: Path,
     ):
-        """Same root cause with a relative ``pg_wal -> ../…_wal`` symlink."""
+        """Same regression with a relative ``pg_wal -> ../…_wal`` symlink."""
         decrypt = _wse_require_archive_decrypt(install_dir)
         cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
             pg_factory,
@@ -6169,15 +6174,14 @@ class TestWalEncryptPgWalSymlinkRepro:
         link = (cluster.data_dir / "pg_wal").readlink()
         assert not link.is_absolute(), f"expected relative symlink, got {link}"
         rc, err, seg = _wse_manual_archive_decrypt_probe(decrypt, cluster, probe_dir)
-        ok, detail = _wse_try_backup(bm)
-        reproduced = (
-            _wse_saw_mismatch(cluster, probe_dir / "decrypt.err")
-            or (not ok and ("082" in detail or "not archived" in detail.lower()))
+        assert not _wse_saw_mismatch(cluster, probe_dir / "decrypt.err"), (
+            "PG-2609 mismatch on relative sibling pg_wal symlink:\n"
+            f"  link={link} seg={seg} rc={rc} err={err!r}"
         )
-        assert reproduced, (
-            "segment-size mismatch expected with relative sibling pg_wal symlink:\n"
-            f"  link={link} seg={seg} rc={rc} err={err!r}\n"
-            f"  backup_ok={ok} detail={detail!r}"
+        ok, detail = _wse_try_backup(bm)
+        assert ok, (
+            "relative sibling pg_wal backup must succeed "
+            f"(PG-2609 regression):\n{detail}"
         )
 
     def test_plain_pgwal_midstream_enable_control_no_mismatch(
@@ -6198,7 +6202,12 @@ class TestWalEncryptPgWalSymlinkRepro:
     def test_nested_under_pgdata_symlink_does_not_mismatch(
         self, pg_factory, tmp_path: Path, install_dir: Path,
     ):
-        """Symlink under PGDATA keeps string-concat key dir correct."""
+        """
+        Symlink under PGDATA keeps string-concat key dir correct (no TDE mismatch).
+
+        pgBackRest 2.58+ rejects ``pg_wal`` links whose destination is inside
+        PGDATA (ERROR [070]); that is independent of pg_tde and is accepted here.
+        """
         decrypt = _wse_require_archive_decrypt(install_dir)
         cluster, bm, probe_dir = self._midstream_enable_with_wrapper(
             pg_factory,
@@ -6214,7 +6223,13 @@ class TestWalEncryptPgWalSymlinkRepro:
             f"seg={seg} rc={rc} err={err}"
         )
         ok, detail = _wse_try_backup(bm)
-        assert ok, f"nested symlink backup must succeed:\n{detail}"
+        if ok:
+            return
+        detail_l = detail.lower()
+        assert "070" in detail or "is in pgdata" in detail_l, (
+            "nested symlink backup failed for an unexpected reason "
+            f"(expected success or pgBackRest [070] in-PGDATA link):\n{detail}"
+        )
 
 
 # ── Workaround A (no decrypt wrapper) ─────────────────────────────────────────
@@ -6388,11 +6403,13 @@ class TestWalEncryptSafeBootstrapOrder:
 @pytest.mark.openbao
 class TestWalEncryptOpenBaoPgWalSymlink:
     """
-    Same sibling-symlink repro with Vault/OpenBao global provider
-    (``KEY_PROVIDER=openbao`` path in the HA bash scripts).
+    Sibling ``pg_wal`` + OpenBao/Vault provider + decrypt wrapper.
+
+    Formerly a PG-2609 repro; on fixed builds this is a regression that the
+    layout archives and backs up cleanly.
     """
 
-    def test_sibling_symlink_with_vault_provider_reproduces_mismatch(
+    def test_sibling_symlink_with_vault_provider_archive_and_backup_succeed(
         self,
         pg_factory,
         tmp_path: Path,
@@ -6437,13 +6454,14 @@ class TestWalEncryptOpenBaoPgWalSymlink:
         rc, err, seg = _wse_manual_archive_decrypt_probe(
             decrypt, cluster, tmp_path / "ob_probe"
         )
-        ok, detail = _wse_try_backup(bm)
-        reproduced = (
-            _wse_saw_mismatch(cluster, tmp_path / "ob_probe" / "decrypt.err")
-            or not ok
+        assert not _wse_saw_mismatch(
+            cluster, tmp_path / "ob_probe" / "decrypt.err"
+        ), (
+            "PG-2609 mismatch on OpenBao + sibling pg_wal:\n"
+            f"  seg={seg} rc={rc} err={err!r}"
         )
-        assert reproduced, (
-            "OpenBao + sibling pg_wal symlink should reproduce segment-size mismatch:\n"
-            f"  seg={seg} rc={rc} err={err!r}\n"
-            f"  backup_ok={ok} detail={detail!r}"
+        ok, detail = _wse_try_backup(bm)
+        assert ok, (
+            "OpenBao + sibling pg_wal backup must succeed "
+            f"(PG-2609 regression):\n{detail}"
         )
