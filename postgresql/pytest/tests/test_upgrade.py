@@ -232,12 +232,25 @@ class TestUpgradeWithChecksums:
     def test_upgrade_checksums_off_to_on(
         self, old_install_dir: Optional[Path], install_dir: Path, tmp_path: Path, io_method: str
     ):
+        """
+        Old cluster checksums off, new on — pg_upgrade must reject the mismatch.
+
+        On PG18+ ``initdb`` enables checksums by default, so the old cluster
+        needs an explicit ``--no-data-checksums`` (see
+        ``initdb_args_no_data_checksums``).
+        """
         if not old_install_dir:
             pytest.skip("--old-install-dir not provided")
         old_port = allocate_port()
         old_cluster = PgCluster(tmp_path / "ncs_old", old_port, old_install_dir,
                                 socket_dir=tmp_path, io_method=io_method)
-        old_cluster.initdb()
+        old_no_cs = initdb_args_no_data_checksums(old_install_dir)
+        old_cluster.initdb(extra_args=old_no_cs or None)
+        old_ck = int(old_cluster.controldata("Data page checksum version") or "0")
+        assert old_ck == 0, (
+            "old cluster should have data checksums off "
+            f"(extra_args={old_no_cs!r}); got checksum version={old_ck}"
+        )
         old_cluster.write_default_config()
         old_cluster.add_hba_entry("local all all trust")
         old_cluster.start()
@@ -249,11 +262,23 @@ class TestUpgradeWithChecksums:
         new_data = tmp_path / "ncs_new"
         new_cluster = PgCluster(new_data, new_port, install_dir, socket_dir=tmp_path, io_method=io_method)
         new_cluster.initdb(extra_args=["--data-checksums"])
+        new_ck = int(new_cluster.controldata("Data page checksum version") or "0")
+        assert new_ck != 0, (
+            "new cluster should have data checksums on; "
+            f"got checksum version={new_ck}"
+        )
         new_cluster.stop(check=False)
 
-        # pg_upgrade should reject mismatched checksum settings
         result = _run_pg_upgrade(old_cluster, install_dir, new_data, new_port, tmp_path)
-        assert result.returncode != 0, "Expected failure when checksum settings differ"
+        combined = (result.stdout + "\n" + result.stderr).lower()
+        assert result.returncode != 0, (
+            "Expected failure when checksum settings differ (off → on)\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        assert "checksum" in combined, (
+            "pg_upgrade should mention checksum mismatch; "
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
 
 
 # ── extension compatibility ───────────────────────────────────────────────────
