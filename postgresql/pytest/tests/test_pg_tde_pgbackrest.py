@@ -4966,6 +4966,21 @@ class TestPgBackRestPatroniEncryptedBackupRestore:
             assert restored.fetchone("SHOW pg_tde.wal_encrypt") == "on"
             assert int(restored.fetchone("SELECT COUNT(*) FROM t1")) == row_count
 
+            # Force WAL recycling so pre-restore replica PGDATA cannot stream
+            # from the restored leader (PG-2587 signature). Without this, a
+            # stale replica frozen near the backup LSN may reconnect cleanly.
+            restored.configure({"wal_keep_size": "'0'"})
+            restored.restart()
+            restored.wait_ready(timeout=60)
+            for i in range(8):
+                restored.execute(
+                    "INSERT INTO t1(payload) VALUES "
+                    f"('recycle_' || md5('{i}'::text))"
+                )
+                restored.execute("CHECKPOINT")
+                restored.execute("SELECT pg_switch_wal()")
+                time.sleep(0.5)
+
             # ── observe stale replica reconnect (bash wait + pg_stat_replication)
             stale_failures: List[str] = []
             for i, frozen in enumerate(stale_dirs):
@@ -5005,25 +5020,26 @@ class TestPgBackRestPatroniEncryptedBackupRestore:
                     if any(m in log_text.lower() for m in _hae_REPLICA_FAIL_MARKERS):
                         break
                     time.sleep(1)
-                else:
-                    log_text = standby.read_log(150)
-
+                log_text = standby.read_log(150)
                 log_l = log_text.lower()
+
                 rewire_ok = (
                     not start_failed
                     and standby.is_ready()
                     and int(streaming) >= 1
                 )
-                rewire_failed = (
-                    start_failed
-                    or any(m in log_l for m in _hae_REPLICA_FAIL_MARKERS)
-                    or not rewire_ok
-                )
-                if not rewire_failed:
+                saw_fail_marker = any(m in log_l for m in _hae_REPLICA_FAIL_MARKERS)
+                if rewire_ok and not saw_fail_marker:
                     stale_failures.append(
                         f"stale replica {standby.data_dir.name} unexpectedly "
                         f"streamed after leader restore; log:\n{log_text}"
                     )
+                elif not rewire_ok and not start_failed and not saw_fail_marker:
+                    # Stuck without streaming is acceptable only if we also see
+                    # a recovery/WAL failure signature (or hard start failure).
+                    # Soft-stuck with empty logs is still a "did not reconnect"
+                    # outcome for the reinit path below.
+                    pass
                 standby.stop(check=False)
 
             assert not stale_failures, "\n\n".join(stale_failures)
@@ -6052,8 +6068,9 @@ class TestWalEncryptPgWalSymlinkRepro:
         bm.stanza_create()
 
         # Archive a few plaintext segments through the same wrapped command.
+        # Heap on purpose: extension / tde_heap are installed after this phase.
         cluster.execute(
-            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT)"
+            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT) USING heap"
         )
         cluster.execute(
             "INSERT INTO t1 SELECT g, repeat('x', 80) "
@@ -6357,7 +6374,10 @@ class TestWalEncryptOpenBaoPgWalSymlink:
         bm = _wse_make_bm(cluster, tmp_path, "ob_sib", decrypt_wrappers=True)
         cluster.start()
         bm.stanza_create()
-        cluster.execute("CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT)")
+        # Plaintext archive phase before extension / principal key.
+        cluster.execute(
+            "CREATE TABLE t1 (id INT PRIMARY KEY, payload TEXT) USING heap"
+        )
         cluster.execute(
             "INSERT INTO t1 SELECT g, repeat('x', 40) FROM generate_series(1, 500) g"
         )
