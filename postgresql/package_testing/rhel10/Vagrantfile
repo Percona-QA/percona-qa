@@ -1,0 +1,12 @@
+Vagrant.configure("2") do |config|
+  # Official RHEL boxes require a subscription; Rocky is binary-compatible with RHEL 10.
+  config.vm.box = ENV.fetch("VAGRANT_BOX", "generic/rocky10")
+  config.vm.network "forwarded_port", guest: 5432, host: 5440
+  config.vm.provision "shell",
+    path: "provision.sh",
+    env: {
+      "REPO" => ENV['REPO'],
+      "PG_VERSION" => ENV['PG_VERSION'],
+      "PG_MAJOR" => ENV['PG_MAJOR']
+    }
+end
