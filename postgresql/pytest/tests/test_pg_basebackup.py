@@ -986,8 +986,11 @@ class TestPitrWithPgBasebackupCornerCases:
         backup_dir = tmp_path / "bb_dropdb_backup"
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
-        pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        tde_primary.execute("CHECKPOINT")
+        # Exclusive LSN: stop before DROP DATABASE marks appdb invalid.
+        target_lsn = (
+            tde_primary.fetchone("SELECT pg_current_wal_lsn()") or ""
+        ).strip()
         tde_primary.execute("DROP DATABASE appdb")
         _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
@@ -1001,7 +1004,8 @@ class TestPitrWithPgBasebackupCornerCases:
             archive_dir,
             install_dir=install_dir,
             use_tde_wrappers=True,
-            target_time=pitr_time,
+            target_lsn=target_lsn,
+            target_inclusive=False,
             wal_encrypt=True,
         )
         restored = _start_bb_restored(
@@ -1010,7 +1014,8 @@ class TestPitrWithPgBasebackupCornerCases:
         try:
             assert restored.fetchone("SELECT COUNT(*) FROM keep_pg") == "1"
             assert restored.fetchone(
-                "SELECT COUNT(*) FROM pg_database WHERE datname = 'appdb'"
+                "SELECT COUNT(*) FROM pg_database "
+                "WHERE datname = 'appdb' AND datconnlimit <> -2"
             ) == "1"
             assert restored.fetchone(
                 "SELECT v FROM t WHERE id = 10", dbname="appdb"

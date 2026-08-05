@@ -564,6 +564,7 @@ class TestPgBackRestMatrix:
             restore_type="lsn",
             target=target_lsn,
             target_action="promote",
+            target_exclusive=True,
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
@@ -1811,6 +1812,7 @@ class TestPgBackRestPitrScenarios:
         bm.wait_for_wal_archive(tde_primary)
 
         tde_primary.execute("CHECKPOINT")
+        # Exclusive LSN so DROP TABLE itself is not replayed.
         target_lsn = (
             tde_primary.fetchone("SELECT pg_current_wal_lsn()") or ""
         ).strip()
@@ -1823,6 +1825,7 @@ class TestPgBackRestPitrScenarios:
             restore_type="lsn",
             target=target_lsn,
             target_action="promote",
+            target_exclusive=True,
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
@@ -1862,6 +1865,7 @@ class TestPgBackRestPitrScenarios:
         bm.wait_for_wal_archive(tde_primary)
 
         tde_primary.execute("CHECKPOINT")
+        # Exclusive LSN: stop before DROP DATABASE marks appdb invalid.
         target_lsn = (
             tde_primary.fetchone("SELECT pg_current_wal_lsn()") or ""
         ).strip()
@@ -1874,6 +1878,7 @@ class TestPgBackRestPitrScenarios:
             restore_type="lsn",
             target=target_lsn,
             target_action="promote",
+            target_exclusive=True,
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
@@ -1882,7 +1887,8 @@ class TestPgBackRestPitrScenarios:
         try:
             assert restored.fetchone("SELECT COUNT(*) FROM keep_pg") == "1"
             assert restored.fetchone(
-                "SELECT COUNT(*) FROM pg_database WHERE datname = 'appdb'"
+                "SELECT COUNT(*) FROM pg_database "
+                "WHERE datname = 'appdb' AND datconnlimit <> -2"
             ) == "1"
             assert restored.fetchone(
                 "SELECT v FROM t WHERE id = 10", dbname="appdb"
@@ -2019,6 +2025,7 @@ class TestPgBackRestPitrScenarios:
             restore_type="lsn",
             target=target_lsn,
             target_action="promote",
+            target_exclusive=True,
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
@@ -2107,6 +2114,7 @@ class TestPgBackRestPitrScenarios:
             restore_type="lsn",
             target=target_lsn,
             target_action="shutdown",
+            target_exclusive=True,
             pg_tde_wal_restore=True,
         )
 
@@ -2185,6 +2193,7 @@ class TestPgBackRestPitrScenarios:
             restore_type="lsn",
             target=target_lsn,
             target_action="promote",
+            target_exclusive=True,
             pg_tde_wal_restore=True,
         )
         restored = _start_restored_cluster(
@@ -2729,6 +2738,7 @@ class TestEncryptedInRepoBackupRestorePitr:
             restore_type="lsn",
             target=target_lsn,
             target_action="promote",
+            target_exclusive=True,
             pg_tde_wal_restore=False,
         )
         restored = _start_scenario_restored(
