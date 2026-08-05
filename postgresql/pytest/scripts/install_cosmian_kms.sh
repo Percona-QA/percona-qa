@@ -37,19 +37,22 @@ _install_deb() {
     local url="${BASE}/deb/${PG_ARCH}/non-fips/static/${deb}"
     echo "Installing Cosmian KMS ${COSMIAN_VERSION} (${PG_ARCH}) from .deb..."
     echo "  ${url}"
-    wget -q "${url}"
+    wget -q --user-agent="Mozilla/5.0" "${url}"
     sudo dpkg -i "${deb}"
 }
 
 _install_rpm() {
-    # Cosmian publishes RPM under the same version tree when available.
-    local rpm="cosmian-kms-server-non-fips-static-openssl-${COSMIAN_VERSION}-1.${PG_ARCH_RPM}.rpm"
-    local url="${BASE}/rpm/${PG_ARCH_RPM}/non-fips/static/${rpm}"
-    echo "Installing Cosmian KMS ${COSMIAN_VERSION} (${PG_ARCH_RPM}) from .rpm..."
+    # Cosmian RPM tree mirrors deb arch dirs (amd64/arm64), but RPM filenames
+    # use RPM arch tags (x86_64/aarch64) with underscores, e.g.:
+    #   …/rpm/amd64/non-fips/static/cosmian-kms-server-non-fips-static-openssl_5.21.0_x86_64.rpm
+    local dir_arch="${PG_ARCH}"   # amd64 | arm64
+    local rpm_arch="${PG_ARCH_RPM}"  # x86_64 | aarch64
+    local rpm="cosmian-kms-server-non-fips-static-openssl_${COSMIAN_VERSION}_${rpm_arch}.rpm"
+    local url="${BASE}/rpm/${dir_arch}/non-fips/static/${rpm}"
+    echo "Installing Cosmian KMS ${COSMIAN_VERSION} (${rpm_arch}) from .rpm..."
     echo "  ${url}"
-    if ! wget -q "${url}"; then
+    if ! wget -q --user-agent="Mozilla/5.0" "${url}"; then
         echo "WARN: Cosmian RPM not found at ${url}" >&2
-        echo "WARN: Falling back to Debian package via alien is unsupported; try a static binary." >&2
         return 1
     fi
     sudo "${PG_PKG_CMD:-dnf}" install -y "./${rpm}"
