@@ -78,7 +78,7 @@ fi
 if [[ -z "${KMIP_COSMIAN_HOST:-}" ]]; then
     # pg_tde CI spawns local cosmian_kms (t/CosmianKms.pm) — same path for pytest.
     if command -v cosmian_kms >/dev/null 2>&1 \
-        || [[ -x /usr/sbin/cosmian_kms ]] \
+        || [[ -e /usr/sbin/cosmian_kms ]] \
         || [[ -n "${COSMIAN_KMS_BIN:-}" ]]; then
         # shellcheck source=/dev/null
         if ! source "${SCRIPT_DIR}/setup_cosmian_local_for_pytest.sh"; then

@@ -70,21 +70,28 @@ else
 fi
 
 # Packages often ship binary + bundled legacy.so as 0500 root:root; test runner is non-root.
-if [[ -x /usr/sbin/cosmian_kms ]]; then
+# Use -e (not -x): a non-root user cannot see -x on mode 0500, so chmod would be skipped.
+if [[ -e /usr/sbin/cosmian_kms ]]; then
     sudo chmod 0755 /usr/sbin/cosmian_kms
 fi
-if [[ -f /usr/local/cosmian/lib/ossl-modules/legacy.so ]]; then
+if [[ -e /usr/local/cosmian/lib/ossl-modules/legacy.so ]]; then
     sudo chmod 0755 /usr/local/cosmian/lib/ossl-modules/legacy.so
+fi
+# RHEL/RPM may place the OpenSSL legacy provider under a different prefix.
+if [[ -e /usr/lib64/ossl-modules/legacy.so ]]; then
+    sudo chmod 0755 /usr/lib64/ossl-modules/legacy.so 2>/dev/null || true
 fi
 
 if ! command -v cosmian_kms >/dev/null 2>&1 && [[ ! -x /usr/sbin/cosmian_kms ]]; then
-    echo "ERROR: cosmian_kms not found after install" >&2
+    echo "ERROR: cosmian_kms not found after install (or still not executable)" >&2
+    ls -la /usr/sbin/cosmian_kms 2>&1 || true
     exit 1
 fi
 
 echo ""
 echo "Cosmian KMS installed:"
 command -v cosmian_kms 2>/dev/null || echo "  /usr/sbin/cosmian_kms"
+ls -la /usr/sbin/cosmian_kms 2>/dev/null || true
 echo ""
 echo "Next:"
 echo "  cd postgresql/pytest"

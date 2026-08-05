@@ -30,22 +30,60 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/kmip_env.sh"
 
 _find_cosmian_kms() {
-    if [[ -n "${COSMIAN_KMS_BIN:-}" && -x "${COSMIAN_KMS_BIN}" ]]; then
-        echo "${COSMIAN_KMS_BIN}"
-        return 0
-    fi
-    local candidate
-    for candidate in /usr/sbin/cosmian_kms /usr/local/bin/cosmian_kms cosmian_kms; do
-        if command -v "${candidate}" >/dev/null 2>&1; then
-            command -v "${candidate}"
+    if [[ -n "${COSMIAN_KMS_BIN:-}" ]]; then
+        if [[ -e "${COSMIAN_KMS_BIN}" ]]; then
+            echo "${COSMIAN_KMS_BIN}"
             return 0
         fi
-        if [[ -x "${candidate}" ]]; then
+    fi
+    local candidate resolved
+    for candidate in /usr/sbin/cosmian_kms /usr/local/bin/cosmian_kms cosmian_kms; do
+        if [[ -e "${candidate}" ]]; then
             echo "${candidate}"
             return 0
         fi
+        if command -v "${candidate}" >/dev/null 2>&1; then
+            resolved="$(command -v "${candidate}")"
+            if [[ -e "${resolved}" ]]; then
+                echo "${resolved}"
+                return 0
+            fi
+        fi
     done
     return 1
+}
+
+# Cosmian .deb/.rpm ship cosmian_kms as 0500 root:root; non-root pytest needs 0755.
+_ensure_cosmian_executable() {
+    local bin="$1"
+    if [[ -x "${bin}" ]]; then
+        return 0
+    fi
+    if [[ ! -e "${bin}" ]]; then
+        echo "ERROR: cosmian_kms binary missing: ${bin}" >&2
+        return 1
+    fi
+    echo "Fixing permissions on ${bin} (package installs as root-only)..."
+    if ! sudo chmod 0755 "${bin}"; then
+        echo "ERROR: cannot chmod ${bin} (Permission denied when running as non-root)." >&2
+        echo "  Run: sudo chmod 0755 ${bin}" >&2
+        echo "  Also: sudo chmod 0755 /usr/local/cosmian/lib/ossl-modules/legacy.so" >&2
+        return 1
+    fi
+    local legacy
+    for legacy in \
+        /usr/local/cosmian/lib/ossl-modules/legacy.so \
+        /usr/lib64/ossl-modules/legacy.so
+    do
+        if [[ -e "${legacy}" && ! -x "${legacy}" ]]; then
+            sudo chmod 0755 "${legacy}" 2>/dev/null || true
+        fi
+    done
+    if [[ ! -x "${bin}" ]]; then
+        echo "ERROR: ${bin} still not executable after chmod:" >&2
+        ls -la "${bin}" >&2 || true
+        return 1
+    fi
 }
 
 _free_port() {
@@ -63,6 +101,10 @@ if ! COSMIAN_BIN="$(_find_cosmian_kms)"; then
     echo "ERROR: cosmian_kms not found." >&2
     echo "  Run: ./scripts/install_cosmian_kms.sh" >&2
     echo "  Or: export COSMIAN_KMS_BIN=/path/to/cosmian_kms" >&2
+    _local_setup_fail
+fi
+
+if ! _ensure_cosmian_executable "${COSMIAN_BIN}"; then
     _local_setup_fail
 fi
 
