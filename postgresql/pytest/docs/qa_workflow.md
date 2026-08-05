@@ -180,7 +180,8 @@ See [docker/README.md](docker/README.md).
 |-------|----------|-------|
 | Primary suite | `tests/` | ~29 modules, 500+ tests |
 | Section control | `--skip-sections` | [test_sections.md](test_sections.md) |
-| Full catalog | `coverage_reports/test_catalog_2026-07-29.md` | Per-test inventory |
+| Full catalog | `coverage_reports/test_catalog_2026-08-05.md` | Per-test inventory |
+| Coverage (RHEL / PG-2609) | `coverage_reports/coverage_2026-08-05.md` | Platform + symlink regressions |
 | PITR coverage | `coverage_reports/coverage_2026-07-29.md` | Cold copy / basebackup / pgBackRest PITR |
 
 ### Recommended order (fresh VM)
@@ -390,7 +391,8 @@ bash run_tde_upgrade_parallel.sh
 | Key provider layout | [key_provider_matrix.md](key_provider_matrix.md) |
 | Docker tests | [docker/README.md](docker/README.md) |
 | io_uring host setup | [io_uring_system_setup.md](io_uring_system_setup.md) |
-| Full test catalog | [coverage_reports/test_catalog_2026-07-29.md](../coverage_reports/test_catalog_2026-07-29.md) |
+| Full test catalog | [coverage_reports/test_catalog_2026-08-05.md](../coverage_reports/test_catalog_2026-08-05.md) |
+| Coverage report (2026-08-05) | [coverage_reports/coverage_2026-08-05.md](../coverage_reports/coverage_2026-08-05.md) |
 | PITR coverage report | [coverage_reports/coverage_2026-07-29.md](../coverage_reports/coverage_2026-07-29.md) |
 | Environment setup | `../setup_test_env.sh` |
 | Source build | `../build_from_source.sh` |

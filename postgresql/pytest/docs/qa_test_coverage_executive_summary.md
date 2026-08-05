@@ -1,8 +1,9 @@
 # pg_tde Test Coverage — Executive Summary
 
 > **Audience:** Management, build/release, onboarding QA  
-> **Full catalog:** [coverage_reports/test_catalog_2026-07-29.md](../coverage_reports/test_catalog_2026-07-29.md) (per-test detail)  
-> **PITR coverage (2026-07-29):** [coverage_reports/coverage_2026-07-29.md](../coverage_reports/coverage_2026-07-29.md)  
+> **Full catalog:** [coverage_reports/test_catalog_2026-08-05.md](../coverage_reports/test_catalog_2026-08-05.md) (per-test detail)  
+> **Coverage (2026-08-05):** [coverage_reports/coverage_2026-08-05.md](../coverage_reports/coverage_2026-08-05.md) (RHEL + PG-2609 + harness)  
+> **Prior PITR coverage (2026-07-29):** [coverage_reports/coverage_2026-07-29.md](../coverage_reports/coverage_2026-07-29.md)  
 > **QA workflow:** [qa_workflow.md](qa_workflow.md) · **Modules by area:** [qa_test_modules.md](qa_test_modules.md)
 
 ---
@@ -11,10 +12,11 @@
 
 | Metric | Value |
 |--------|------:|
-| **pytest scenarios** | **~560** |
-| **Test modules** | **30** |
+| **pytest scenarios** | **~670** |
+| **Test modules** | **31+** |
 | **Bash automation scripts** | **~50** (Jenkins parity) |
 | **Supported KMS backends** | Cosmian, Fortanix, Thales, Akeyless, Vault KV, OpenBao |
+| **Host platforms** | Ubuntu/Debian + RHEL/OL (OS-aware `INSTALL_DIR`) |
 | **Upgrade tracks** | Major (17→18), minor in-place (patch bump) |
 
 All pytest tests run against **ephemeral PostgreSQL clusters** with `pg_tde` loaded — no manual SQL scripts required per test.
@@ -46,7 +48,7 @@ All pytest tests run against **ephemeral PostgreSQL clusters** with `pg_tde` loa
 ├─────────────────────────────────────────────────────────────────┤
 │  REWIND / HA (97)         │  REPLICATION (14)                   │
 ├─────────────────────────────────────────────────────────────────┤
-│  BACKUP: pgBackRest (72)  │  basebackup (25) │  PITR (7)       │
+│  BACKUP: pgBackRest (84)  │  basebackup (25) │  PITR (7)       │
 │  RECOVERY / CRASH (10)    │  unlogged (7)     │  bugs (18)       │
 ├─────────────────────────────────────────────────────────────────┤
 │  WAL: waldump (27)        │  CLI tools (15)  │  change_kp (16)  │

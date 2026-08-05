@@ -18,6 +18,8 @@
 > Last refreshed: **2026-07-29** (§§5–7 — PITR across cold copy /
 > `pg_basebackup` / pgBackRest; see also
 > [`coverage_2026-07-29.md`](coverage_2026-07-29.md)).
+> **Successor catalog:** [`test_catalog_2026-08-05.md`](test_catalog_2026-08-05.md)
+> ([`coverage_2026-08-05.md`](coverage_2026-08-05.md)).
 > Prior full catalog baseline: [`test_catalog_2026-05-14.md`](test_catalog_2026-05-14.md).
 
 ---
