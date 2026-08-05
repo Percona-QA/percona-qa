@@ -5084,6 +5084,26 @@ class TestPgBackRestPatroniEncryptedBackupRestore:
                     use_tde_basebackup=True
                 )
                 standby.write_default_config("replica", extra_params=_hae_HA_PARAMS)
+                # Defense in depth: never inherit primary log / archive restore_command
+                # from the backup image (pgBackRest [032] pg1-path mismatch noise).
+                log_path = standby.data_dir / "server.log"
+                if log_path.exists():
+                    log_path.write_text("")
+                auto = standby.data_dir / "postgresql.auto.conf"
+                if auto.exists():
+                    keep = [
+                        ln
+                        for ln in auto.read_text().splitlines()
+                        if not ln.strip().startswith(
+                            (
+                                "archive_command",
+                                "archive_mode",
+                                "restore_command",
+                                "archive_timeout",
+                            )
+                        )
+                    ]
+                    auto.write_text("\n".join(keep) + ("\n" if keep else ""))
                 standby.start()
                 fresh.append(standby)
 

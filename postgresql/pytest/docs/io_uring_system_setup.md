@@ -2,7 +2,23 @@
 
 Percona/PostgreSQL 18 packages may be **built with io_uring support** (`--with-liburing`).
 That is only half of the story: `io_method = io_uring` also requires **OS-level**
-settings for the user that runs `initdb` / `postgres` (e.g. `ec2-user` on AWS).
+settings for the user that runs `initdb` / `postgres`.
+
+Works the same on **Ubuntu/Debian** and **RHEL/OL/Rocky**. Only the install
+prefix differs:
+
+| OS | Typical `INSTALL_DIR` |
+|----|------------------------|
+| Ubuntu / Debian | `/usr/lib/postgresql/18` |
+| RHEL / OL / Rocky | `/usr/pgsql-18` |
+
+Quick check (auto-detects OS default install dir):
+
+```bash
+cd postgresql/pytest
+./scripts/check_io_uring_ready.sh
+# or: INSTALL_DIR=/usr/lib/postgresql/18 USER_NAME=ubuntu ./scripts/check_io_uring_ready.sh
+```
 
 If `initdb --set io_method=io_uring` fails, or the server exits on start, check
 **build** vs **system** below.
@@ -10,7 +26,10 @@ If `initdb --set io_method=io_uring` fails, or the server exits on start, check
 ## 1. Verify the PostgreSQL build accepts io_uring
 
 ```bash
-export INSTALL_DIR=/usr/pgsql-18   # adjust
+# Ubuntu/Debian:
+export INSTALL_DIR=/usr/lib/postgresql/18
+# RHEL/OL:
+# export INSTALL_DIR=/usr/pgsql-18
 export PATH="$INSTALL_DIR/bin:$PATH"
 export LD_LIBRARY_PATH="$INSTALL_DIR/lib:${LD_LIBRARY_PATH:-}"
 
@@ -28,24 +47,36 @@ not sysctl/limits changes.
 
 ## 2. Memory lock limit (`memlock`) for the test user
 
-io_uring needs **locked, unswappable memory**. Default limits on RHEL/AWS images for
-non-root users (e.g. `ec2-user`) are often too low.
+io_uring needs **locked, unswappable memory**. Default limits on cloud images
+(Ubuntu `ubuntu`, RHEL/AWS `ec2-user`) are often too low for non-root users
+(e.g. `ulimit -l` shows `2020520` instead of `unlimited`).
 
-Edit `/etc/security/limits.conf` (replace `ec2-user` with your runtime user):
-
-```text
-ec2-user    soft    memlock    unlimited
-ec2-user    hard    memlock    unlimited
-```
-
-**Log out and back in** (or start a new SSH session) so PAM applies the change.
-
-Verify:
+**Preferred:** let the check script raise it for this shell and persist PAM limits:
 
 ```bash
-ulimit -l
-# expect: unlimited
+./scripts/check_io_uring_ready.sh
+# uses: sudo prlimit --pid $$ --memlock=unlimited:unlimited
+# and writes /etc/security/limits.d/99-io-uring-memlock.conf
 ```
+
+Manual equivalent (same session, no re-login):
+
+```bash
+sudo prlimit --pid $$ --memlock=unlimited:unlimited
+ulimit -l unlimited
+ulimit -l   # expect: unlimited
+```
+
+Persistent (new SSH logins) — `/etc/security/limits.d/99-io-uring-memlock.conf`:
+
+```text
+ubuntu      soft    memlock    unlimited
+ubuntu      hard    memlock    unlimited
+# or: ec2-user …
+```
+
+`limits.conf` alone does **not** change an already-open SSH session; use `prlimit`
+or log out and back in.
 
 In Python/pytest the same check uses `resource.RLIMIT_MEMLOCK`.
 
@@ -59,7 +90,7 @@ cat /proc/sys/kernel/io_uring_disabled
 |-------|---------|
 | `0` | io_uring allowed for all users |
 | `1` | io_uring disabled completely |
-| `2` | io_uring only for privileged users (blocks `ec2-user`) |
+| `2` | io_uring only for privileged users (blocks normal users) |
 
 If you see `2` (or `1`), allow normal users:
 
@@ -95,10 +126,20 @@ Expected: `SHOW io_method` → `io_uring`.
 
 ## 5. Automated check script
 
-From `postgresql/pytest` (prints PASS/FAIL and suggested fix commands):
+From `postgresql/pytest`. By default it **checks and applies** memlock + sysctl
+(needs sudo). Use `--check-only` to report without changing the system.
 
 ```bash
+./scripts/check_io_uring_ready.sh
+
+# Ubuntu:
+INSTALL_DIR=/usr/lib/postgresql/18 USER_NAME=ubuntu ./scripts/check_io_uring_ready.sh
+
+# RHEL:
 INSTALL_DIR=/usr/pgsql-18 USER_NAME=ec2-user ./scripts/check_io_uring_ready.sh
+
+# Report only:
+./scripts/check_io_uring_ready.sh --check-only
 ```
 
 ## 6. Pytest harness

@@ -71,6 +71,14 @@ class ReplicationManager:
         # PostgreSQL 18+ refuses to start if PGDATA is not 0700 or 0750.
         # pg_basebackup / pg_tde_basebackup can preserve a looser mode from umask.
         os.chmod(self.standby.data_dir, 0o700)
+        # Basebackup copies the primary's server.log (log_directory=PGDATA). Drop it
+        # so post-start assertions do not see primary-side walsender noise such as
+        # "requested WAL segment … has already been removed".
+        for stale_log in (
+            self.standby.data_dir / "server.log",
+            self.standby.data_dir / "postgresql.log",
+        ):
+            stale_log.unlink(missing_ok=True)
         self._write_standby_signal()
         self._write_primary_conninfo()
         log.info("Standby created at %s", self.standby.data_dir)
