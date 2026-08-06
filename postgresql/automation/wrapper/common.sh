@@ -197,7 +197,6 @@ old_server_cleanup() {
 }
 
 install_pgbackrest() {
-
     if command -v pgbackrest >/dev/null 2>&1; then
         echo "pgBackRest is already installed: $(pgbackrest version)"
         return 0
@@ -217,6 +216,62 @@ install_pgbackrest() {
 	sudo yum install -y percona-pgbackrest
     fi
 }
+
+install_patroni_and_etcd() {
+    local need_patroni=0
+    local need_etcd=0
+
+    if command -v patroni >/dev/null 2>&1; then
+        echo "patroni is already installed: $(patroni --version)"
+    else
+        need_patroni=1
+    fi
+
+    if command -v etcd >/dev/null 2>&1; then
+        echo "etcd is already installed: $(etcd --version | head -1 | awk '{print $3}')"
+    else
+        need_etcd=1
+    fi
+
+    [ $need_patroni -eq 0 ] && [ $need_etcd -eq 0 ] && return 0
+
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update
+        [ $need_patroni -eq 1 ] && sudo apt-get install -y patroni
+        [ $need_etcd -eq 1 ] && sudo apt-get install -y etcd-server
+
+    elif [ -f /etc/redhat-release ]; then
+        # Install Patroni if needed
+        if [ $need_patroni -eq 1 ]; then
+            sudo dnf install -y patroni || sudo pip3 install patroni
+        fi
+
+        # Install etcd if needed
+        if [ $need_etcd -eq 1 ]; then
+            local ETCD_VER=v3.5.30
+            local arch
+
+            case $(uname -m) in
+                x86_64|amd64) arch=amd64 ;;
+                aarch64|arm64) arch=arm64 ;;
+                *)
+                    echo "Unsupported architecture: $(uname -m)"
+                    return 1
+                    ;;
+            esac
+
+            curl -L \
+              "https://github.com/etcd-io/etcd/releases/download/${ETCD_VER}/etcd-${ETCD_VER}-linux-${arch}.tar.gz" \
+              -o /tmp/etcd.tar.gz
+
+            tar -xzf /tmp/etcd.tar.gz -C /tmp
+
+            sudo install -m 0755 /tmp/etcd-${ETCD_VER}-linux-${arch}/etcd /usr/local/bin/etcd
+            sudo install -m 0755 /tmp/etcd-${ETCD_VER}-linux-${arch}/etcdctl /usr/local/bin/etcdctl
+        fi
+    fi
+}
+
 
 ###################################
 # Poll until a node has finished recovery (pg_is_in_recovery() = false).
@@ -275,13 +330,13 @@ cleanup_patroni_cluster()
 {
     echo "Cleaning Patroni cluster"
 
-    sudo pkill -f "/usr/bin/patroni" || true
-    sudo pkill -f "/usr/bin/etcd" || true
+    sudo pkill -x patroni || true
+    sudo pkill -x etcd || true
 
     sleep 2
 
-    sudo pkill -9 -f "/usr/bin/patroni" || true
-    sudo pkill -9 -f "/usr/bin/etcd" || true
+    sudo pkill -9 -x patroni || true
+    sudo pkill -9 -x etcd || true
 
     # Free ports explicitly
     for p in 2379 2380
@@ -293,8 +348,9 @@ cleanup_patroni_cluster()
       fi
     done
 
-    rm -rf "$PATRONI_BASE" "$ETCD_DATA"
-    mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
+    sudo rm -rf "$PATRONI_BASE" "$ETCD_DATA"
+    sudo mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
+    sudo chown -R "$(id -u):$(id -g)" "$PATRONI_BASE" "$ETCD_DATA"
 }
 
 start_etcd()

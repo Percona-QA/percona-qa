@@ -1,22 +1,22 @@
 #!/bin/bash
 
 #############################################
-
 # Install pgBackRest
-
 #############################################
 install_pgbackrest
 
 #############################################
-
-# CONFIG
+# Install patroni
+#############################################
+install_patroni_and_etcd
 
 #############################################
-
+# CONFIG
+#############################################
 PSQL="$INSTALL_DIR/bin/psql"
 PGBACKREST=$(command -v pgbackrest)
 
-KEYRING="/tmp/keyring.file"
+KEYRING="$RUN_DIR/keyring.file"
 ARCHIVE_DIR="$RUN_DIR/pgbackrest_repo"
 BACKREST_LOGS="$RUN_DIR/pgbackrest_logs"
 
@@ -28,9 +28,7 @@ PRIMARY_DATA="$PATRONI_NODE1/data"
 PRIMARY_PORT=5432
 
 #############################################
-
 # Helper
-
 #############################################
 
 patroni_psql()
@@ -50,9 +48,7 @@ patroni_psql()
 }
 
 #############################################
-
 # CLEANUP
-
 #############################################
 
 echo "Cleaning environment"
@@ -67,9 +63,7 @@ mkdir -p "$BACKREST_LOGS"
 cleanup_patroni_cluster
 
 #############################################
-
 # START PATRONI CLUSTER
-
 #############################################
 
 initialize_patroni_cluster 3
@@ -78,9 +72,7 @@ wait_for_patroni_leader
 wait_for_patroni_replicas 2
 
 #############################################
-
 # Configure pgBackRest
-
 #############################################
 
 cat > "$RUN_DIR/pgbackrest.conf" <<EOF
@@ -90,6 +82,7 @@ repo1-retention-full=2
 start-fast=y
 log-path=$BACKREST_LOGS
 archive-header-check=n
+checksum-page=n
 
 [demo]
 pg1-path=$PRIMARY_DATA
@@ -99,13 +92,10 @@ pg1-user=postgres
 EOF
 
 #############################################
-
 # Configure leader for pgBackRest
-
 #############################################
 
 echo "Configuring leader for pgBackRest archiving"
-
 patroni_psql 5432 -c "ALTER SYSTEM SET archive_mode = 'on';"
 
 patroni_psql 5432 -c "
@@ -121,13 +111,10 @@ ALTER SYSTEM SET restore_command =
 patroni_psql 5432 -c "ALTER SYSTEM SET archive_timeout = '10s';"
 
 #############################################
-
 # Enable pg_tde
-
 #############################################
 
 echo "Enabling pg_tde"
-
 patroni_psql 5432 -c "CREATE EXTENSION IF NOT EXISTS pg_tde;"
 
 patroni_psql 5432 -c "
@@ -152,17 +139,13 @@ SELECT pg_tde_set_default_key_using_global_key_provider(
 "
 
 #############################################
-
 # Enable WAL encryption
-
 #############################################
 
 echo "Enabling WAL encryption"
-
 patroni_psql 5432 -c "ALTER SYSTEM SET pg_tde.wal_encrypt = 'ON';"
 
 echo "Restarting leader"
-
 patronictl -c "$PATRONI_NODE1/patroni.yml" restart qa-cluster node1 --force
 
 sleep 10
@@ -171,9 +154,7 @@ wait_for_patroni_leader
 wait_for_patroni_replicas 2
 
 #############################################
-
 # Create stanza
-
 #############################################
 
 cat > "$RUN_DIR/.pgpass" <<EOF
@@ -191,9 +172,7 @@ $PGBACKREST \
 stanza-create
 
 #############################################
-
 # Generate encrypted workload
-
 #############################################
 
 echo "Generating workload"
@@ -227,21 +206,14 @@ SELECT pg_switch_wal();
 EOF
 
 #############################################
-
 # Wait for archiving
-
 #############################################
-
 echo "Waiting for WAL archiving"
-
 sleep 15
 
 #############################################
-
 # Take full backup
-
 #############################################
-
 echo "Taking full backup"
 
 $PGBACKREST \
@@ -249,7 +221,6 @@ $PGBACKREST \
 --stanza=demo \
 backup
 
-echo
 echo "Backup information"
 
 $PGBACKREST \
@@ -258,9 +229,7 @@ $PGBACKREST \
 info
 
 #############################################
-
 # Stop Patroni leader
-
 #############################################
 patronictl -c "$PATRONI_NODE1/patroni.yml" pause qa-cluster 
 
@@ -269,11 +238,8 @@ pkill -f "$PATRONI_NODE1/patroni.yml"
 sleep 5
 
 #############################################
-
 # Restore backup into leader data directory
-
 #############################################
-
 echo "Restoring backup into Patroni leader data directory"
 
 rm -rf "$PRIMARY_DATA"
@@ -286,12 +252,11 @@ $PGBACKREST \
 --pg1-path="$PRIMARY_DATA" \
 restore
 
-#############################################
+touch "$PRIMARY_DATA/recovery.signal"
 
+#############################################
 # Ensure pg_tde preload
-
 #############################################
-
 echo "Ensuring pg_tde preload"
 
 cat >> "$PRIMARY_DATA/postgresql.auto.conf" <<EOF
@@ -302,20 +267,15 @@ EOF
 rm -f "$PRIMARY_DATA/postmaster.pid"
 
 #############################################
-
 # Start Patroni leader again
-
 #############################################
-
 echo "Starting Patroni leader after restore"
 
 patroni "$PATRONI_NODE1/patroni.yml" \
 > "$PATRONI_NODE1/patroni.log" 2>&1 &
 
 #############################################
-
 # Wait for leader
-
 #############################################
 patronictl -c "$PATRONI_NODE1/patroni.yml" resume qa-cluster
 wait_for_patroni_leader
@@ -323,12 +283,16 @@ wait_for_patroni_leader
 echo
 echo "Verifying restored leader"
 
-for i in {1..120}
-do
-    if pg_isready -h 127.0.0.1 -p 5432 >/dev/null 2>&1
-    then
+for i in {1..120}; do
+    if patroni_psql 5432 -tAc "SELECT 1" >/dev/null 2>&1; then
         echo "PostgreSQL is ready"
         break
+    fi
+
+    if [ $i -eq 120 ]; then
+        echo "PostgreSQL failed to become ready"
+        tail -100 "$PATRONI_NODE1/patroni.log" || true
+        exit 1
     fi
 
     sleep 2
@@ -337,11 +301,8 @@ done
 patroni_psql 5432 -c "SELECT count(*) FROM t1;"
 
 #############################################
-
 # Observe replica recovery
-
 #############################################
-
 echo
 echo "Waiting for replicas to reconnect"
 sleep 30
@@ -379,10 +340,3 @@ SELECT
 pg_is_in_recovery(),
 pg_last_wal_replay_lsn();
 "
-
-echo
-echo "Tail replica logs if recovery failed"
-
-tail -50 "$PATRONI_NODE2/patroni.log" || true
-tail -50 "$PATRONI_NODE3/patroni.log" || true
-
