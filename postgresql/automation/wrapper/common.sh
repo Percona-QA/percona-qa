@@ -348,8 +348,8 @@ cleanup_patroni_cluster()
       fi
     done
 
-    sudo rm -rf "$PATRONI_BASE" "$ETCD_DATA"
-    sudo mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
+    rm -rf "$PATRONI_BASE" "$ETCD_DATA"
+    mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
     sudo chown -R "$(id -u):$(id -g)" "$PATRONI_BASE" "$ETCD_DATA"
 }
 
@@ -368,10 +368,13 @@ start_etcd()
         --initial-cluster-state=new \
         > "$PATRONI_BASE/etcd.log" 2>&1 &
 
-    local ETCD_PID=$!
+    ETCD_PID=$!
     echo $ETCD_PID > "$PATRONI_BASE/etcd.pid"
 
-    sleep 1
+    sleep 2
+    ps -ef | grep [e]tcd
+    ss -ltnp | grep 2379 || true
+    cat $PATRONI_BASE/etcd.log || true
 
     if ! kill -0 $ETCD_PID 2>/dev/null; then
         echo "etcd failed to start"
@@ -597,5 +600,11 @@ wait_for_port()
     done
 
     echo "ERROR: Timeout waiting for $host:$port"
+    echo "===== ss output ====="
+    ss -ltnp | grep -E "2379|2380" || true
+    echo "===== etcd process ====="
+    ps -ef | grep [e]tcd || true
+    echo "===== etcd log ====="
+    cat "$PATRONI_BASE/etcd.log" || true
     return 1
 }
