@@ -220,6 +220,7 @@ install_pgbackrest() {
 install_patroni_and_etcd() {
     local need_patroni=0
     local need_etcd=0
+    local need_etcdctl=0
 
     if command -v patroni >/dev/null 2>&1; then
         echo "patroni is already installed: $(patroni --version)"
@@ -233,12 +234,22 @@ install_patroni_and_etcd() {
         need_etcd=1
     fi
 
-    [ $need_patroni -eq 0 ] && [ $need_etcd -eq 0 ] && return 0
+    if command -v etcdctl >/dev/null 2>&1; then
+        echo "etcdctl is already installed: $(etcdctl version | awk '/etcdctl version:/ {print $3}')"
+    else
+        need_etcdctl=1
+    fi
+
+    [ $need_patroni -eq 0 ] && [ $need_etcd -eq 0 ] && [ $need_etcdctl -eq 0 ] && return 0
 
     if [ -f /etc/debian_version ]; then
         sudo apt-get update
+
         [ $need_patroni -eq 1 ] && sudo apt-get install -y patroni
-        [ $need_etcd -eq 1 ] && sudo apt-get install -y etcd-server
+
+        if [ $need_etcd -eq 1 ] || [ $need_etcdctl -eq 1 ]; then
+            sudo apt-get install -y etcd-server etcd-client
+        fi
 
     elif [ -f /etc/redhat-release ]; then
         # Install Patroni if needed
@@ -246,8 +257,8 @@ install_patroni_and_etcd() {
             sudo dnf install -y patroni || sudo pip3 install patroni
         fi
 
-        # Install etcd if needed
-        if [ $need_etcd -eq 1 ]; then
+        # Install etcd/etcdctl if needed
+        if [ $need_etcd -eq 1 ] || [ $need_etcdctl -eq 1 ]; then
             local ETCD_VER=v3.5.30
             local arch
 
@@ -271,7 +282,6 @@ install_patroni_and_etcd() {
         fi
     fi
 }
-
 
 ###################################
 # Poll until a node has finished recovery (pg_is_in_recovery() = false).
@@ -348,8 +358,8 @@ cleanup_patroni_cluster()
       fi
     done
 
-    sudo rm -rf "$PATRONI_BASE" "$ETCD_DATA"
-    sudo mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
+    rm -rf "$PATRONI_BASE" "$ETCD_DATA"
+    mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
     sudo chown -R "$(id -u):$(id -g)" "$PATRONI_BASE" "$ETCD_DATA"
 }
 
@@ -368,7 +378,7 @@ start_etcd()
         --initial-cluster-state=new \
         > "$PATRONI_BASE/etcd.log" 2>&1 &
 
-    local ETCD_PID=$!
+    ETCD_PID=$!
     echo $ETCD_PID > "$PATRONI_BASE/etcd.pid"
 
     sleep 1
@@ -597,5 +607,6 @@ wait_for_port()
     done
 
     echo "ERROR: Timeout waiting for $host:$port"
+    cat "$PATRONI_BASE/etcd.log" || true
     return 1
 }

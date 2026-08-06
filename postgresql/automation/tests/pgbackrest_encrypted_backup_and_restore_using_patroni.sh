@@ -78,6 +78,7 @@ wait_for_patroni_replicas 2
 cat > "$RUN_DIR/pgbackrest.conf" <<EOF
 [global]
 repo1-path=$ARCHIVE_DIR
+spool-path=$RUN_DIR/pgbackrest_spool
 repo1-retention-full=2
 start-fast=y
 log-path=$BACKREST_LOGS
