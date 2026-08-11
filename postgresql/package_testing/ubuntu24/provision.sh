@@ -16,7 +16,7 @@ sudo apt-get install -y percona-postgresql-$PG_MAJOR
 sudo apt-get install -y percona-pg-tde$PG_MAJOR
 
 # Add pg_tde extension in shared_preload_libraries in the PGCONF and restart server
-sudo sed -i -E "s|^\s*#shared_preload_libraries\s*=\s*'[^']*'|shared_preload_libraries = 'pg_tde'|" /etc/postgresql/$PG_VERSION/main/postgresql.conf
+sudo sed -i -E "s|^\s*#shared_preload_libraries\s*=\s*'[^']*'|shared_preload_libraries = 'pg_tde'|" /etc/postgresql/$PG_MAJOR/main/postgresql.conf
 sudo systemctl restart postgresql
 
 # Test pg_tde
