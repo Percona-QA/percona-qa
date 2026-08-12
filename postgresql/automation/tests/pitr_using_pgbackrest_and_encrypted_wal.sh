@@ -122,7 +122,6 @@ log_statement = 'ddl'
 log_min_error_statement = 'error'
 max_wal_senders = 5
 wal_log_hints = on
-io_method = '$IO_METHOD'
 shared_preload_libraries = 'pg_tde'
 archive_mode=on
 archive_command='/usr/bin/pgbackrest --stanza=demo --config=$RUN_DIR/pgbackrest.conf archive-push %p'

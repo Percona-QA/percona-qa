@@ -189,7 +189,7 @@ old_server_cleanup() {
     local PG_PIDS=$(lsof -ti:$PORT -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
-        kill -9 $PG_PIDS || true
+        sudo kill -9 $PG_PIDS || true
     fi
 
     sleep 5
