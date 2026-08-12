@@ -187,6 +187,11 @@ old_server_cleanup() {
     local PGDATA=${1:-$PGDATA}
     local PORT=${2:-$PGPORT}
     local PG_PIDS=$(lsof -ti:$PORT -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
+
+    # Stop any systemd-managed PostgreSQL services
+    sudo systemctl stop postgresql-18 2>/dev/null || true
+    sudo systemctl stop postgresql-17 2>/dev/null || true
+
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
         sudo kill -9 $PG_PIDS || true
