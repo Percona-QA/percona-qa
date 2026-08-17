@@ -16,6 +16,8 @@ and a couple of input-validation negatives. KMIP: ``tests/test_kmip.py``. Vault/
 
 Ported from automation/tests/pg_tde_change_key_provider_utility.sh.
 """
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess
