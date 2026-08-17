@@ -447,14 +447,24 @@ def _start_bb_restored(
             return restored
         raise
     if promote:
+        # recovery_target_action=promote can briefly drop connections while the
+        # postmaster leaves recovery; under suite load that race is common.
+        def _out_of_recovery() -> Optional[bool]:
+            try:
+                return restored.fetchone("SELECT pg_is_in_recovery()") == "f"
+            except RuntimeError:
+                return None
+
         deadline = time.time() + 90
         while time.time() < deadline:
-            if restored.fetchone("SELECT pg_is_in_recovery()") == "f":
+            left = _out_of_recovery()
+            if left is True:
                 break
             time.sleep(0.3)
         else:
             # recovery_target_action=promote should have finished; nudge if needed.
-            if restored.fetchone("SELECT pg_is_in_recovery()") == "t":
+            still = _out_of_recovery()
+            if still is False:
                 try:
                     restored.execute(
                         "SELECT pg_promote(wait := true, wait_seconds := 60)"
@@ -463,11 +473,15 @@ def _start_bb_restored(
                     pass
             deadline = time.time() + 60
             while time.time() < deadline:
-                if restored.fetchone("SELECT pg_is_in_recovery()") == "f":
+                left = _out_of_recovery()
+                if left is True:
                     break
                 time.sleep(0.3)
-            if restored.fetchone("SELECT pg_is_in_recovery()") != "f":
-                raise TimeoutError("restored cluster did not leave recovery")
+            if _out_of_recovery() is not True:
+                raise TimeoutError(
+                    "restored cluster did not leave recovery\n"
+                    f"log tail:\n{restored.read_log(80)}"
+                )
     return restored
 
 
@@ -540,8 +554,10 @@ class TestPitrWithPgBasebackup:
         assert (backup_dir / "PG_VERSION").is_file()
 
         primary_cluster.execute("INSERT INTO bb_pitr VALUES (100, 'kept')")
+        # Wall-clock gap so recovery_target_time is clearly after "kept" and
+        # before "discarded" under suite load (0.5s was flaky).
         pitr_time = _pitr_timestamp(primary_cluster)
-        time.sleep(0.5)
+        time.sleep(2)
         primary_cluster.execute("INSERT INTO bb_pitr VALUES (200, 'discarded')")
         _force_archive_segment(primary_cluster, archive_dir)
         _seed_completed_wal_into_archive(primary_cluster, archive_dir)
@@ -639,7 +655,7 @@ class TestPitrWithPgBasebackup:
 
         tde_primary.execute("INSERT INTO tde_bb_pitr VALUES (100, 'kept')")
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("INSERT INTO tde_bb_pitr VALUES (200, 'discarded')")
         _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
@@ -854,7 +870,7 @@ class TestPitrWithPgBasebackupCornerCases:
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("INSERT INTO bb_pause VALUES (99)")
         _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
@@ -931,7 +947,7 @@ class TestPitrWithPgBasebackupCornerCases:
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("DROP TABLE bb_drop_t")
         _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
@@ -1046,7 +1062,7 @@ class TestPitrWithPgBasebackupCornerCases:
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("TRUNCATE bb_trunc")
         tde_primary.execute("INSERT INTO bb_trunc VALUES (999, 'post')")
         _force_archive_segment(tde_primary, archive_dir)
@@ -1097,7 +1113,7 @@ class TestPitrWithPgBasebackupCornerCases:
         tde.rotate_principal_key("bb_pitr_rot_key2")
         tde_primary.execute("INSERT INTO bb_rot VALUES (2, 'key2')")
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("INSERT INTO bb_rot VALUES (3, 'after')")
         _force_archive_segment(tde_primary, archive_dir)
         _force_archive_segment(tde_primary, archive_dir)
@@ -1152,7 +1168,7 @@ class TestPitrWithPgBasebackupCornerCases:
         tde.tde_basebackup(str(backup_dir), encrypt_wal=True)
 
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("UPDATE bb_dml SET marker = 'changed' WHERE id = 1")
         tde_primary.execute("DELETE FROM bb_dml WHERE id = 2")
         tde_primary.execute("INSERT INTO bb_dml VALUES (4, 'new')")
@@ -1222,7 +1238,7 @@ class TestPitrWithPgBasebackupCornerCases:
             "INSERT INTO bb_m2 VALUES (2, 'kept')", dbname="bb_app"
         )
         pitr_time = _pitr_timestamp(tde_primary)
-        time.sleep(0.5)
+        time.sleep(2)
         tde_primary.execute("INSERT INTO bb_m1 VALUES (3, 'discarded')")
         tde_primary.execute(
             "INSERT INTO bb_m2 VALUES (3, 'discarded')", dbname="bb_app"
