@@ -77,4 +77,4 @@ EOF
 sudo systemctl stop postgresql
 
 # Uninstall PG package
-sudo apt-get -y remove percona-postgresql-$PG_VERSION
+sudo apt-get -y remove percona-postgresql-$PG_MAJOR
