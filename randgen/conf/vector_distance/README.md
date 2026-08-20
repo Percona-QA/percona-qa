@@ -33,7 +33,7 @@ perl runall-new.pl \
   --basedir=<percona-server-basedir> \
   --grammar=conf/vector_distance/vector_distance.yy \
   --gendata=conf/vector_distance/vector_distance.zz \
-  --post-gendata-sql=$PWD/conf/vector_distance/init_vectors.sql \
+  --post-gendata-sql=conf/vector_distance/init_vectors.sql \
   --threads=4 \
   --queries=50000 \
   --duration=600 \
