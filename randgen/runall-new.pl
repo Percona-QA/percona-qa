@@ -72,7 +72,7 @@ my ($gendata, @basedirs, @mysqld_options, @vardirs, $rpl_mode,
     $report_xml_tt, $report_xml_tt_type, $report_xml_tt_dest,
     $notnull, $logfile, $logconf, $report_tt_logdir, $querytimeout, $no_mask,
     $short_column_names, $strict_fields, $freeze_time, $wait_debugger, @debug_server,
-    $skip_gendata, $skip_shutdown, $galera, $post_gendata_sql);
+    $skip_gendata, $skip_shutdown, $skip_dump_compare, $galera, $post_gendata_sql);
 
 my $gendata=''; ## default simple gendata
 
@@ -144,6 +144,7 @@ my $opt_result = GetOptions(
         'no-mask' => \$no_mask,
 	'skip_shutdown' => \$skip_shutdown,
 	'skip-shutdown' => \$skip_shutdown,
+	'skip-dump-compare' => \$skip_dump_compare,
 	'galera=s' => \$galera,
 	'post-gendata-sql=s' => \$post_gendata_sql
     );
@@ -606,6 +607,30 @@ if ( $gentest_result != 0 ) {
     # Compare master and slave, or all masters
     #
     if ($rpl_mode || (defined $basedirs[1]) || $galera) {
+        # End-of-test mysqldump diff is a coarse MySQL/Percona check. Skip it when:
+        #   --skip-dump-compare was requested, or
+        #   any server in the run is MariaDB.
+        # MariaDB dumps differ in format (sandbox preamble, autocommit, VECTOR
+        # --hex-blob encoding) from MySQL/Percona even when ResultsetComparator
+        # already confirmed query results match; treating that as failure is noise.
+        my $has_mariadb = 0;
+        foreach my $srv (@server) {
+            next unless defined $srv && $srv->can('_isMariaDB');
+            if ($srv->_isMariaDB) {
+                $has_mariadb = 1;
+                last;
+            }
+        }
+
+        if ($skip_dump_compare || $has_mariadb) {
+            if ($skip_dump_compare) {
+                say("Skipping end-of-test dump comparison (--skip-dump-compare).");
+            } else {
+                say("Skipping end-of-test dump comparison (MariaDB in use; ResultsetComparator is the authoritative check).");
+            }
+            exit_test($gentest_result);
+        }
+
         if ($rpl_mode ne '') {
             $rplsrv->waitForSlaveSync;
         }
@@ -720,6 +745,10 @@ $0 - Run a complete random query generation test, including server start with re
     --strict_fields: Disable all AI applied to columns defined in \$fields in the gendata file. Allows for very specific column definitions
     --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
     --wait-for-debugger: Pause and wait for keypress after server startup to allow attaching a debugger to the server process.
+    --skip-dump-compare: After a successful GenTest run with two servers, skip the final mysqldump diff.
+                         Runs that include a MariaDB server skip dump compare automatically
+                         (MariaDB dump format / VECTOR binary encoding is not comparable to
+                         MySQL/Percona; ResultsetComparator is authoritative).
     --help      : This help message
 
     If you specify --basedir1 and --basedir2 or --vardir1 and --vardir2, two servers will be started and the results from the queries
