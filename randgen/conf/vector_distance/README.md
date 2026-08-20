@@ -1,27 +1,30 @@
 # RQG Grammar Kit — `VECTOR_DISTANCE` / `DISTANCE` Fuzz Testing
 
-Two files, meant to be dropped into your own RQG checkout:
+Files in this directory:
 
 - `vector_distance.yy` — the query grammar
 - `vector_distance.zz` — a minimal companion gendata file
+- `init_vectors.sql` — creates and populates the `VECTOR`-typed schema (`test.vt`)
 
-## Where to put them
+## Layout
 
 ```
-<your-randgen-checkout>/conf/vector_distance/vector_distance.yy
-<your-randgen-checkout>/conf/vector_distance/vector_distance.zz
+randgen/conf/vector_distance/vector_distance.yy
+randgen/conf/vector_distance/vector_distance.zz
+randgen/conf/vector_distance/init_vectors.sql
 ```
 
 ## Syntax basis
 
-This grammar's syntax was aligned against `conf/examples/example.yy` from your actual checkout, which confirmed:
+Grammar syntax follows `conf/examples/example.yy`:
+
 - Rules are semicolon-terminated (`... ;`)
-- Alternatives are `|`-separated, and may span multiple lines
-- Underscore-prefixed tokens (`_table`, `_field`, `_digit`) are RQG's built-in generators, tied to whatever `--gendata` builds
+- Alternatives are `|`-separated and may span multiple lines
+- Underscore-prefixed tokens (`_table`, `_field`, `_digit`) are RQG built-in generators tied to `--gendata`
 
-Since this grammar needs `VECTOR`-typed columns (which `--gendata`'s built-in generator doesn't produce), it defines its own literal table (`vt`) with explicit columns in `query_init`, rather than using `_table`/`_field`. This is consistent with how `example.yy` itself falls back to literal SQL identifiers where the built-in generators don't fit.
+RQG's built-in gendata generator cannot declare `VECTOR(n)` columns, so the `vt` table is created and populated by `init_vectors.sql` (passed via `--post-gendata-sql`) rather than by `--gendata` or a `query_init` rule. The grammar then references `vt` and its columns by literal name instead of `_table`/`_field`.
 
-One thing I could not confirm from the reference file: `example.yy` uses a bare `digit` token (no underscore) once, which isn't defined locally — it likely resolves via a base rule bundled elsewhere in your RQG's grammar library. This grammar avoids relying on that same undocumented behavior and sticks to confirmed tokens (`_digit`, etc.) throughout.
+This grammar uses confirmed RQG tokens (`_digit`, etc.) and does not rely on undocumented bare tokens such as `digit`.
 
 ## How to run it
 
@@ -37,11 +40,11 @@ perl runall-new.pl \
   --reporter=Shutdown,Backtrace,ErrorLog,QueryTimeout
 ```
 
-Start conservative (`--threads=1`, a few thousand `--queries`) on a first run to confirm the grammar parses cleanly and the schema builds correctly, before scaling up to a longer stress run.
+Start with a conservative first run (`--threads=1`, a few thousand `--queries`) to confirm the grammar parses and the schema builds correctly before scaling up.
 
 ## What this grammar covers
 
-Every rule maps to something already confirmed by hand in our manual testing session, so this grammar's real job is **regression coverage at scale** — running thousands of randomized variations of the same confirmed behaviors, across random data, to catch anything that only shows up under volume, concurrency, or unusual literal values.
+Rules provide regression coverage at scale for VECTOR_DISTANCE / DISTANCE behaviors across randomized inputs, concurrency, and unusual literal values.
 
 | Grammar rule | Maps to | What a failure here would mean |
 |---|---|---|
@@ -56,6 +59,6 @@ Every rule maps to something already confirmed by hand in our manual testing ses
 | `select_null_propagation` | F-4 | NULL input didn't propagate to a NULL result |
 | `select_zero_vector_cosine` | F-9 zero-norm case | Cosine on a zero vector didn't return NULL, or crashed instead |
 | `select_metadata_check` | F-13/F-14 | `CREATE TABLE ... SELECT` produced an unexpected column type |
-| `select_aggregate` / `select_where_threshold` | New coverage | `VECTOR_DISTANCE` used inside `GROUP BY`/`WHERE` — not manually tested yet; this grammar is the first coverage of that combination |
+| `select_aggregate` / `select_where_threshold` | Aggregate / filter coverage | `VECTOR_DISTANCE` used inside `GROUP BY`/`WHERE` |
 
-The three vector widths (`v3`, `v8`, `v384`) are deliberate — `v384` matches a realistic embedding dimension (e.g. `all-MiniLM-L6-v2`), while `v3`/`v8` keep small cases in the mix for cheap, fast iterations and easier failure reproduction.
+The three vector widths (`v3`, `v8`, `v384`) are intentional: `v384` matches a realistic embedding dimension (e.g. `all-MiniLM-L6-v2`), while `v3`/`v8` keep small cases available for faster iteration and easier failure reproduction.
