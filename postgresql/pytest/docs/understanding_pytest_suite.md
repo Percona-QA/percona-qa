@@ -23,6 +23,7 @@ Almost every test is: **build cluster → configure TDE/provider → do work →
 | [docs/qa_test_modules.md](postgresql/pytest/docs/qa_test_modules.md) | ~23 modules by *product area* (no filenames) |
 | [docs/qa_test_coverage_executive_summary.md](postgresql/pytest/docs/qa_test_coverage_executive_summary.md) | File ↔ area mapping |
 | [docs/test_sections.md](postgresql/pytest/docs/test_sections.md) | Markers / `--skip-sections` |
+| [docs/pg16.md](postgresql/pytest/docs/pg16.md) | Running the suite on PostgreSQL **16.15+** + pg_tde |
 
 After this you should know *areas* (encryption, KMIP, upgrade, rewind, pgBackRest…), not every test name.
 

@@ -7,7 +7,7 @@
 #
 # OPTIONS
 #   --source              Use source-build mode (compile PG + pg_tde from GitHub)
-#   --pg-major VERSION    PostgreSQL major version      (default: 17)
+#   --pg-major VERSION    PostgreSQL major version      (default: 17; use 16 for 16.15)
 #   --old-pg-major VER    Old PG for upgrade tests      (default: 16)
 #   --tde-ref REF         pg_tde git branch/tag/sha     (default: main)
 #   --tde-repo URL        pg_tde git remote URL         (source mode only)
@@ -24,6 +24,9 @@
 # EXAMPLES
 #   # All non-slow tests, package mode (PG 17)
 #   bash run_tests.sh
+#
+#   # PostgreSQL 16.15 + pg_tde packages
+#   bash run_tests.sh --pg-major 16 --old-pg-major ''
 #
 #   # Encryption tests only
 #   bash run_tests.sh -- pytest tests/test_encryption.py -v

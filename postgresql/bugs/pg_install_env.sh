@@ -6,7 +6,8 @@
 #   source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pg_install_env.sh"
 #
 # Honours existing INSTALL_DIR / OLD_INSTALL_DIR / NEW_INSTALL_DIR / OLD / NEW.
-# Defaults: PG_MAJOR=18; upgrade pairs 17→18 unless PG_OLD_MAJOR / PG_NEW_MAJOR set.
+# Defaults: PG_MAJOR=18 (override with PG_MAJOR=16 for 16.15+ pg_tde);
+# upgrade pairs 17→18 unless PG_OLD_MAJOR / PG_NEW_MAJOR set (use 16→17 for PG16).
 
 _BUGS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../pytest/scripts/pg_os_env.sh

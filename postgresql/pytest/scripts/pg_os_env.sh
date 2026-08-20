@@ -76,9 +76,36 @@ pg_os_detect() {
     export PG_OS_FAMILY PG_OS_ID PG_PKG_CMD PG_ARCH PG_ARCH_RPM
 }
 
+# Majors validated with pg_tde in the pytest suite (newest first for fallback).
+pg_supported_majors() {
+    echo "18 17 16"
+}
+
+# Normalize PG_MAJOR-style values to an integer major (16.15 / ppg-16 → 16).
+pg_normalize_major() {
+    local raw="${1:-}"
+    local default="${2:-18}"
+    raw="${raw#ppg-}"
+    raw="${raw#PPG-}"
+    if [[ -z "${raw}" ]]; then
+        echo "${default}"
+        return 0
+    fi
+    if [[ "${raw}" =~ ^[0-9]+$ ]]; then
+        echo "${raw}"
+        return 0
+    fi
+    if [[ "${raw}" =~ ^([0-9]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    echo "${default}"
+}
+
 # Preferred Percona package install prefixes for a major version.
 pg_install_dir_candidates() {
     local major="${1:?major version required}"
+    major="$(pg_normalize_major "${major}")"
     if [[ "${PG_OS_FAMILY:-}" == "rhel" ]]; then
         cat <<EOF
 /usr/pgsql-${major}
@@ -98,7 +125,8 @@ EOF
 
 # Echo the first existing install root that has bin/initdb, or empty.
 pg_detect_install_dir() {
-    local major="${1:-18}"
+    local major
+    major="$(pg_normalize_major "${1:-${PG_MAJOR:-18}}")"
     local candidate
     if [[ -n "${INSTALL_DIR:-}" && -x "${INSTALL_DIR}/bin/initdb" ]]; then
         echo "${INSTALL_DIR}"
@@ -112,9 +140,9 @@ pg_detect_install_dir() {
             return 0
         fi
     done < <(pg_install_dir_candidates "${major}")
-    # Fall back: scan other common majors.
+    # Fall back: other supported majors (18, 17, 16).
     local m
-    for m in 18 17 16; do
+    for m in $(pg_supported_majors); do
         [[ "${m}" == "${major}" ]] && continue
         while IFS= read -r candidate; do
             [[ -z "${candidate}" ]] && continue
@@ -129,7 +157,8 @@ pg_detect_install_dir() {
 
 # Default install dir string for documentation / script defaults (may not exist).
 pg_default_install_dir() {
-    local major="${1:-18}"
+    local major
+    major="$(pg_normalize_major "${1:-${PG_MAJOR:-18}}")"
     pg_os_detect
     if [[ "${PG_OS_FAMILY}" == "rhel" ]]; then
         echo "/usr/pgsql-${major}"
@@ -141,7 +170,8 @@ pg_default_install_dir() {
 # Resolve install dir: existing tree for major (or nearby majors), else OS default path.
 # Always prints a path (may not exist yet — use when setting script defaults).
 pg_resolve_install_dir() {
-    local major="${1:-${PG_MAJOR:-18}}"
+    local major
+    major="$(pg_normalize_major "${1:-${PG_MAJOR:-18}}")"
     local found=""
     found="$(pg_detect_install_dir "${major}" 2>/dev/null || true)"
     if [[ -n "${found}" ]]; then
@@ -152,9 +182,10 @@ pg_resolve_install_dir() {
 }
 
 # If INSTALL_DIR is unset/empty, set and export it from pg_resolve_install_dir.
-# Optional arg: major (default PG_MAJOR or 18).
+# Optional arg: major (default PG_MAJOR or 18). Supported majors: 16, 17, 18.
 pg_set_default_install_dir() {
-    local major="${1:-${PG_MAJOR:-18}}"
+    local major
+    major="$(pg_normalize_major "${1:-${PG_MAJOR:-18}}")"
     if [[ -z "${INSTALL_DIR:-}" ]]; then
         INSTALL_DIR="$(pg_resolve_install_dir "${major}")"
     fi
@@ -162,9 +193,12 @@ pg_set_default_install_dir() {
 }
 
 # Same for OLD_INSTALL_DIR / NEW_INSTALL_DIR (upgrade scripts).
+# Defaults remain 17→18; pass 16 17 for a PG16→PG17 major-upgrade pair.
 pg_set_default_upgrade_install_dirs() {
-    local old_major="${1:-17}"
-    local new_major="${2:-18}"
+    local old_major
+    local new_major
+    old_major="$(pg_normalize_major "${1:-17}")"
+    new_major="$(pg_normalize_major "${2:-18}")"
     if [[ -z "${OLD_INSTALL_DIR:-}" ]]; then
         OLD_INSTALL_DIR="$(pg_resolve_install_dir "${old_major}")"
     fi

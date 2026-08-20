@@ -5125,6 +5125,7 @@ class TestTdeRewindEncMedium:
     (empty ``pg_wal`` + ``--no-ensure-shutdown``), remote ``--write-recovery-conf``.
     """
 
+    @pytest.mark.pg17
     def test_rewind_enc_ext_tablespace_block_tail(
         self, install_dir: Path, tmp_path: Path, io_method: str,
     ):

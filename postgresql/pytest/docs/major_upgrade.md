@@ -45,11 +45,20 @@ loaded and `tde_heap` data exists, Percona explicitly warns to use
 ```bash
 cd postgresql/pytest && source .env.sh
 
+# 17 → 18 (default matrix)
 pytest -m upgrade \
   --old-install-dir=/usr/lib/postgresql/17 \
   --install-dir=/usr/lib/postgresql/18 \
   tests/test_tde_pg_upgrade.py tests/test_upgrade.py -v
+
+# 16 → 17 (PG 16.15 + pg_tde → PG 17)
+pytest -m upgrade \
+  --old-install-dir=/usr/lib/postgresql/16 \
+  --install-dir=/usr/lib/postgresql/17 \
+  tests/test_tde_pg_upgrade.py tests/test_upgrade.py -v
 ```
+
+See also [pg16.md](pg16.md) for installing and running the full suite on PostgreSQL 16.
 
 Skip the whole section:
 

@@ -5,6 +5,10 @@
 #
 # Supports Ubuntu/Debian (apt) and RHEL/OL/Rocky (dnf/yum).
 # Default WORKDIR is $HOME/pgwork (override with WORKDIR=...).
+# Default install is PG 18 (INSTALL_DIR=$WORKDIR/pginst/18, PG_BRANCH=PSP_REL_18_STABLE).
+# For PG 16.15 + pg_tde:
+#   INSTALL_DIR=$HOME/pgwork/pginst/16 PG_BRANCH=PSP_REL_16_STABLE bash build_from_source.sh
+# See docs/pg16.md.
 #
 # Usage:
 #   bash build_from_source.sh [BUILD_TYPE] [OPTIONS]

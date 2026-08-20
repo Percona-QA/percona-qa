@@ -59,7 +59,7 @@ markers = [
     "vault_kmip: HashiCorp Vault KMIP engine server-specific (not Vault KV v2)",
     "waldump: pg_waldump / pg_tde_waldump diagnostic-tool tests",
     "docker: tests that require Docker",
-    "pg16: tests that require PostgreSQL 16",
-    "pg17: tests that require PostgreSQL 17",
+    "pg16: tests that require PostgreSQL 16+",
+    "pg17: tests that require PostgreSQL 17+",
     "pg18: tests that require PostgreSQL 18+",
 ]

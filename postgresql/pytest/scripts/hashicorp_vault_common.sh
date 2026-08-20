@@ -202,7 +202,14 @@ hc_vault_start_pg() {
     mkdir -p "${PGDATA}"
     if [[ ! -f "${PGDATA}/PG_VERSION" ]]; then
         hc_vault_say "initdb ${PGDATA}"
-        "${INITDB}" -D "${PGDATA}" --no-data-checksums >/dev/null
+        # --no-data-checksums exists only on PostgreSQL 18+ (PG 16/17 reject it).
+        _pg_maj="$("${INSTALL_DIR}/bin/postgres" --version 2>/dev/null \
+            | sed -n 's/.* \([0-9][0-9]*\).*/\1/p' | head -1)"
+        if [[ -n "${_pg_maj}" && "${_pg_maj}" -ge 18 ]]; then
+            "${INITDB}" -D "${PGDATA}" --no-data-checksums >/dev/null
+        else
+            "${INITDB}" -D "${PGDATA}" >/dev/null
+        fi
         cat >> "${PGDATA}/postgresql.conf" <<EOF
 port = ${PORT}
 shared_preload_libraries = 'pg_tde'

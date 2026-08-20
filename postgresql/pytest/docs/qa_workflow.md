@@ -33,8 +33,12 @@ automation and Vagrant smoke tests provide Jenkins parity and multi-OS coverage.
 
 **Handover trigger:** QA receives either:
 
-- **Package handover** — e.g. `percona-postgresql-18` + `percona-pg-tde18` in `ppg-18.4` **testing**, or
+- **Package handover** — e.g. `percona-postgresql-16` + `percona-pg-tde16` in `ppg-16.15` **testing**,
+  or `percona-postgresql-18` + `percona-pg-tde18` in `ppg-18.4` **testing**, or
 - **Source handover** — validate a branch before packages are cut.
+
+Supported pytest majors with pg_tde: **16, 17, 18**. See [pg16.md](pg16.md) for the
+16.15 lab path.
 
 ### Version terminology
 

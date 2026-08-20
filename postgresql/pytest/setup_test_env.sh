@@ -34,16 +34,18 @@ for vault/kmip tests.
 
 Version terminology (keep these separate):
   PG_MAJOR       Integer PostgreSQL major (${PG_MAJOR}) — package names, install paths
+                 Supported with pg_tde: 16, 17, 18
   PG_REPO_LINE   Percona repo line (${PG_REPO_LINE:-<auto>}) → percona-release ppg-X.Y
   SERVER_VERSION Patch level — postgres --version; on apt the repo tier selects
-                 the patch (release=18.4.1, testing=18.4.2, …)
+                 the patch (e.g. release=16.15 / 18.4.1, testing=next patch)
 
 Options:
   --install-dir PATH          PostgreSQL install root
-                              (Ubuntu: /usr/lib/postgresql/18, RHEL: /usr/pgsql-18)
+                              (Ubuntu: /usr/lib/postgresql/{16,17,18},
+                               RHEL: /usr/pgsql-{16,17,18})
   --old-install-dir PATH      Old PG install for pg_upgrade tests
   --install-pkgs              Install Percona packages from configured repository
-  --pg-major N                Integer major version (default: ${PG_MAJOR})
+  --pg-major N                Integer major version (default: ${PG_MAJOR}; 16|17|18)
   --pg-repo-line X.Y          Percona repo line (default: same as --pg-major)
   --server-version X.Y.Z      Expected patch after install (verified with --install-pkgs)
   --repo-component TIER       Percona repo tier: release, testing, experimental
@@ -60,9 +62,10 @@ Environment variables (override auto-detection):
   PG_TDE_SKIP_EXTERNAL_KEY_PROVIDERS=1  Skip auto-start of Cosmian/OpenBao in pytest
 
 Examples:
+  bash $(basename "$0") --install-pkgs --pg-major 16 --pg-repo-line 16.15
   bash $(basename "$0") --install-pkgs --pg-major 18 --pg-repo-line 18.4
-  bash $(basename "$0") --install-dir /usr/lib/postgresql/18
-  bash $(basename "$0") --install-pkgs --repo-component testing --server-version 18.4.2
+  bash $(basename "$0") --install-dir /usr/lib/postgresql/16
+  bash $(basename "$0") --install-pkgs --repo-component testing --server-version 16.15
   bash $(basename "$0") --no-setup-external-key-providers
 EOF
 }

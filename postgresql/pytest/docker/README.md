@@ -9,7 +9,7 @@ The setup has **two parallel images**:
 
 | Target | What it tests | When to use |
 |---|---|---|
-| `package-env` | Percona apt packages (`percona-postgresql-17`, `percona-pg-tde-17`) | Releases / customer parity |
+| `package-env` | Percona apt packages (`percona-postgresql-16` / `17` / `18` + matching `pg-tde`) | Releases / customer parity |
 | `source-env` | PostgreSQL + pg_tde built from GitHub at given refs | New features / pre-release / debugging |
 
 Plus an optional `vault` service (HashiCorp Vault dev server) for
@@ -59,14 +59,23 @@ cd ~/Percona/percona-qa/postgresql/pytest
 # Default: PG 17 + PG 16 for upgrade tests
 docker compose build pg-tde-tests-pkg
 
+# PG 16.15 + pg_tde as primary target
+PG_MAJOR=16 docker compose build pg-tde-tests-pkg
+
 # Different PG majors
 PG_MAJOR=17 OLD_PG_MAJOR=16 docker compose build pg-tde-tests-pkg
+PG_MAJOR=18 OLD_PG_MAJOR=17 docker compose build pg-tde-tests-pkg
 ```
 
 ### Source mode (slower; builds PG + pg_tde from source)
 
 ```bash
 # Default: REL_17_STABLE + pg_tde main
+docker compose build pg-tde-tests-src
+
+# PG 16 from Percona source
+PG_REF=PSP_REL_16_STABLE PG_MAJOR=16 \
+PG_REPO=https://github.com/percona/postgres.git \
 docker compose build pg-tde-tests-src
 
 # Override branches/repos via build args

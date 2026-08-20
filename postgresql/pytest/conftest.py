@@ -32,7 +32,7 @@ from lib.cluster import (
     io_uring_runtime_ready,
     io_uring_status_lines,
 )
-from lib.os_env import resolve_install_dir_default
+from lib.os_env import resolve_install_dir_default, env_pg_major, SUPPORTED_PG_MAJORS
 
 # ── port allocator ──────────────────────────────────────────────────────────
 
@@ -81,13 +81,16 @@ def resolve_upgrade_data_dir_default() -> str:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
+    _pg_major = env_pg_major()
+    _default_install = resolve_install_dir_default(_pg_major)
     parser.addoption(
         "--install-dir",
-        default=os.environ.get("INSTALL_DIR") or resolve_install_dir_default(18),
+        default=os.environ.get("INSTALL_DIR") or _default_install,
         help=(
             "Path to the PostgreSQL installation "
-            "(Ubuntu: /usr/lib/postgresql/18, RHEL: /usr/pgsql-18; "
-            "auto-detected when unset)"
+            f"(Ubuntu: /usr/lib/postgresql/{{16,17,18}}, RHEL: /usr/pgsql-{{16,17,18}}; "
+            f"default major from PG_MAJOR={_pg_major}; supported: "
+            f"{', '.join(SUPPORTED_PG_MAJORS)}; auto-detected when unset)"
         ),
     )
     parser.addoption(
@@ -112,7 +115,8 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help=(
             f"PostgreSQL {PG_IO_METHOD_MIN_MAJOR}+ only: run each test that uses "
             "io_method once per "
-            f"{', '.join(IO_METHOD_VALUES)}. No-op on PG 17 and below."
+            f"{', '.join(IO_METHOD_VALUES)}. No-op on PG 17 and below "
+            "(including PG 16)."
         ),
     )
     parser.addoption(
