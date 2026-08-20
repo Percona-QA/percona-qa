@@ -157,29 +157,50 @@ if [[ "$DO_PG" -eq 1 ]]; then
 
     CONFIGURE_ARGS="--prefix=$INSTALL_DIR --enable-debug --enable-tap-tests"
     INSTALL_INJECTION_POINTS=0
+    # injection_points landed in PostgreSQL 17 (src/test/modules/injection_points).
+    HAS_INJECTION_POINTS=0
+    [[ -d "$PG_SRC/src/test/modules/injection_points" ]] && HAS_INJECTION_POINTS=1
 
     case "$BUILD_TYPE" in
         debug)
-            CONFIGURE_ARGS+=" --enable-cassert --enable-injection-points"
-            INSTALL_INJECTION_POINTS=1
+            CONFIGURE_ARGS+=" --enable-cassert"
+            if [[ "$HAS_INJECTION_POINTS" -eq 1 ]]; then
+                CONFIGURE_ARGS+=" --enable-injection-points"
+                INSTALL_INJECTION_POINTS=1
+            else
+                warn "injection_points not in this tree (PG 16-) — skipping --enable-injection-points"
+            fi
             ;;
         debugoptimized)
             export CFLAGS="-O2"
-            CONFIGURE_ARGS+=" --enable-cassert --enable-injection-points"
-            INSTALL_INJECTION_POINTS=1
+            CONFIGURE_ARGS+=" --enable-cassert"
+            if [[ "$HAS_INJECTION_POINTS" -eq 1 ]]; then
+                CONFIGURE_ARGS+=" --enable-injection-points"
+                INSTALL_INJECTION_POINTS=1
+            else
+                warn "injection_points not in this tree (PG 16-) — skipping --enable-injection-points"
+            fi
             ;;
         release)
             ;;
         coverage)
-            CONFIGURE_ARGS+=" --enable-injection-points --enable-coverage"
-            INSTALL_INJECTION_POINTS=1
+            CONFIGURE_ARGS+=" --enable-coverage"
+            if [[ "$HAS_INJECTION_POINTS" -eq 1 ]]; then
+                CONFIGURE_ARGS+=" --enable-injection-points"
+                INSTALL_INJECTION_POINTS=1
+            else
+                warn "injection_points not in this tree (PG 16-) — skipping --enable-injection-points"
+            fi
             ;;
         sanitize)
             export CFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -fno-inline-functions"
             ;;
     esac
 
-    [[ "$(uname -s)" == "Linux" ]] && CONFIGURE_ARGS+=" --with-liburing"
+    # liburing / io_method is PostgreSQL 18+; skip on older trees.
+    if [[ "$(uname -s)" == "Linux" ]] && grep -q liburing "$PG_SRC/configure" 2>/dev/null; then
+        CONFIGURE_ARGS+=" --with-liburing"
+    fi
 
     cd "$PG_SRC"
     # shellcheck disable=SC2086
@@ -191,8 +212,12 @@ if [[ "$DO_PG" -eq 1 ]]; then
     ok "make install-world done"
 
     if [[ "$INSTALL_INJECTION_POINTS" -eq 1 ]]; then
-        make install -j"$JOBS" -s -C src/test/modules/injection_points
-        ok "injection_points installed"
+        if [[ -d src/test/modules/injection_points ]]; then
+            make install -j"$JOBS" -s -C src/test/modules/injection_points
+            ok "injection_points installed"
+        else
+            warn "injection_points directory missing after configure — skip install"
+        fi
     fi
 
     ok "Installed: $("$INSTALL_DIR/bin/postgres" --version 2>&1 | head -1)"
