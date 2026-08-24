@@ -72,20 +72,20 @@ Dialect differences are inlined with RQG's `/*executor1 ... */` /
 `/*executor2 ... */` convention instead of a separate redefine file. Content
 inside an `/*executorN ... */` block is sent to server N only; the other server
 treats it as an ordinary SQL comment. Both servers still see identical
-`_vector_source`-generated literals, so only the function-call wrapper differs:
+equal-width literals from `_vector_3d` / `_vector_8d`, so only the
+function-call wrapper differs:
 
 ```sql
 SELECT id,
-    /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
-    _vector_source , _vector_source
-    /*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
-    AS d
+    ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+    _vector_3d , _vector_3d
+    /*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
 FROM vt WHERE id = _existing_id ;
 ```
 
-Percona (executor1): `SELECT id, VECTOR_DISTANCE( <a> , <b> , 'EUCLIDEAN' ) AS d FROM vt WHERE id = <n> ;`
+Percona (executor1): `SELECT id, ROUND(VECTOR_DISTANCE( <a> , <b> , 'EUCLIDEAN' ), 2) AS d FROM vt WHERE id = <n> ;`
 
-MariaDB (executor2): `SELECT id, VEC_DISTANCE_EUCLIDEAN( <a> , <b> ) AS d FROM vt WHERE id = <n> ;`
+MariaDB (executor2): `SELECT id, ROUND(VEC_DISTANCE_EUCLIDEAN( <a> , <b> ), 2) AS d FROM vt WHERE id = <n> ;`
 
 A `ResultsetComparator` mismatch on such a query means both engines computed
 the same distance metric on the same data through native syntax and returned
@@ -93,20 +93,26 @@ different answers.
 
 ## Scope of `vector_distance_compare.yy`
 
-Restricted to `EUCLIDEAN` and `COSINE` — the metrics with confirmed MariaDB
-function names (`VEC_DISTANCE_EUCLIDEAN` / `VEC_DISTANCE_COSINE`). Extend the
-same way as the `--redefine` files once `EUCLIDEAN_SQUARED` / `DOT` /
-`MANHATTAN` equivalents are verified on the target MariaDB build. Do not invent
-function names: a missing function can make both servers fail for unrelated
-reasons, which `ResultsetComparator` may report as "both errored, no mismatch"
-without testing meaningful behavior.
+Restricted to shared happy-path coverage:
 
-`_vector_source` includes both 3-dim (`v3`, `STRING_TO_VECTOR(_vector3)`) and
-8-dim (`v8`, `STRING_TO_VECTOR(_vector8)`) alternatives. `select_valid` picks
-each argument independently, so occasional dimension mismatches (for example
-`v3` vs `v8`) are intentional coverage. `ResultsetComparator` compares error
-codes as well as successful results, so those cases check whether both engines
-treat the error condition the same way.
+- Metrics with confirmed MariaDB names: `EUCLIDEAN`, `COSINE`
+  (`VEC_DISTANCE_EUCLIDEAN` / `VEC_DISTANCE_COSINE`)
+- Equal dimensions only (3d/3d, 4d/4d, 8d/8d, 384d/384d) via `_vector_3d` /
+  `_vector_8d` and matching column pairs
+- `ROUND(..., 2)` on float distance results (and ranking without raw floats)
+  to avoid false diffs from tiny IEEE differences
+- NULL propagation where both engines return NULL
+
+Intentionally excluded (known or expected divergence / Percona-only paths):
+
+- Cosine vs zero vector
+- Dimension mismatch, wrong arity/type
+- Percona-only metrics (`DOT`, `MANHATTAN`) and the `DISTANCE` synonym
+
+Extend with additional metrics only after MariaDB function names are verified
+on the target build. Do not invent function names: a missing function can make
+both servers fail for unrelated reasons, which `ResultsetComparator` may report
+as "both errored, no mismatch" without testing meaningful behavior.
 
 ## Interpreting output
 

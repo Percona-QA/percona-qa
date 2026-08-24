@@ -9,7 +9,7 @@
 #     --dsn2=dbi:mysql:host=127.0.0.1:port=<mdb>:user=root:database=test \
 #     --grammar=conf/vector_distance/vector_distance_compare.yy \
 #     --gendata=conf/vector_distance/vector_distance.zz \
-#     --post-gendata-sql=conf/vector_distance/init_vectors.sql \
+#     --post-gendata-sql=conf/vector_distance/init_vectors_comp.sql \
 #     --threads=1 --queries=10000 --duration=300 --sqltrace
 #
 # SCOPE (shared happy-path only):
@@ -322,7 +322,7 @@ select_literal_pair:
 	FROM vt LIMIT 1 ;
 
 # ---------------------------------------------------------------------------
-# Anomaly scenarios from the Percona manual kit (4d columns in init_vectors.sql)
+# Anomaly scenarios (4d columns seeded in init_vectors_comp.sql)
 # ---------------------------------------------------------------------------
 
 select_anomaly_comparison:
