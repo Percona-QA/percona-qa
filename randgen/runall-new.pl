@@ -607,6 +607,12 @@ if ( $gentest_result != 0 ) {
     # Compare master and slave, or all masters
     #
     if ($rpl_mode || (defined $basedirs[1]) || $galera) {
+        # Always wait for replication to catch up before end-of-test dump
+        # compare or exit -- including when dump compare is skipped.
+        if ($rpl_mode ne '') {
+            $rplsrv->waitForSlaveSync;
+        }
+
         # End-of-test mysqldump diff is a coarse MySQL/Percona check. Skip it when:
         #   --skip-dump-compare was requested, or
         #   any server in the run is MariaDB.
@@ -631,10 +637,6 @@ if ( $gentest_result != 0 ) {
             exit_test($gentest_result);
         }
 
-        if ($rpl_mode ne '') {
-            $rplsrv->waitForSlaveSync;
-        }
-        
         my @dump_files;
         
         foreach my $i (0..$#server) {
@@ -745,7 +747,8 @@ $0 - Run a complete random query generation test, including server start with re
     --strict_fields: Disable all AI applied to columns defined in \$fields in the gendata file. Allows for very specific column definitions
     --freeze_time: Freeze time for each query so that CURRENT_TIMESTAMP gives the same result for all transformers/validators
     --wait-for-debugger: Pause and wait for keypress after server startup to allow attaching a debugger to the server process.
-    --skip-dump-compare: After a successful GenTest run with two servers, skip the final mysqldump diff.
+    --skip-dump-compare: After a successful GenTest run with two servers, skip the final mysqldump diff
+                         only (replication slave sync still runs when --rpl_mode is set).
                          Runs that include a MariaDB server skip dump compare automatically
                          (MariaDB dump format / VECTOR binary encoding is not comparable to
                          MySQL/Percona; ResultsetComparator is authoritative).

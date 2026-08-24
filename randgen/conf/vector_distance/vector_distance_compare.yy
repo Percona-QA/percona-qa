@@ -50,7 +50,12 @@ query:
 	select_null_propagation |
 	select_precision_near_zero |
 	select_topk_join_filter | select_topk_cosine_filter |
-	select_having_filter ;
+	select_having_filter |
+	select_window_rank | select_cte_filter |
+	select_self_join_pairwise | select_self_join_nearest |
+	select_where_not_null | select_where_ge_ne |
+	select_distinct_bucket |
+	select_precision_extreme_magnitude ;
 
 # ---------------------------------------------------------------------------
 # Point lookups -- both metrics, both widths
@@ -534,7 +539,19 @@ select_null_propagation:
 		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		NULL , NULL
 		/*executor1 , 'COSINE' ) */ /*executor2 ) */
-		AS d ;
+		AS d |
+	SELECT
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		NULL , v3
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */
+		AS d
+	FROM vt WHERE id = _existing_id |
+	SELECT
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		v3 , NULL
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */
+		AS d
+	FROM vt WHERE id = _existing_id ;
 
 # Identical high-precision literals: both engines should report near-zero.
 # Integer flag (FLOOR at 1e6 == 0) surfaces real float32 gaps without ROUND ties.
@@ -544,6 +561,105 @@ select_precision_near_zero:
 		_hp_identical_pair
 		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 1000000) = 0) AS near_zero
 	FROM vt LIMIT 1 ;
+
+# Identical large-magnitude literals: self-distance should still be zero once
+# float32 rounding is happening at scale (1e6..1e12), not just near the origin.
+# Complements select_precision_near_zero, which only stresses values in [-1,1].
+select_precision_extreme_magnitude:
+	SELECT
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		_extreme_identical_pair
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */))) = 0) AS near_zero_at_scale
+	FROM vt LIMIT 1 ;
+
+# ---------------------------------------------------------------------------
+# Modern SQL surface: window functions, CTEs, self-joins
+# ---------------------------------------------------------------------------
+
+# Window function over a vector-distance ORDER BY -- distinct code path from
+# plain ORDER BY ranking above (query-level sort vs. windowed sort).
+select_window_rank:
+	SELECT id, label,
+		RANK() OVER (ORDER BY
+			/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
+			ASC) AS rnk
+	FROM vt
+	ORDER BY rnk , id
+	LIMIT _small_limit ;
+
+# CTE: distance computed in a WITH clause, filtered in the outer query --
+# a distinct code path from the bare WHERE and derived-subquery cases above.
+select_cte_filter:
+	WITH d AS (
+		SELECT id, label, category,
+			/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */
+			AS dist
+		FROM vt
+	)
+	SELECT id, label, category FROM d
+	WHERE dist < _threshold_cosine
+	ORDER BY id ;
+
+# Self-join: pairwise distances between distinct stored rows (column-to-column
+# via a join), instead of stored-column-vs-literal like every query above.
+select_self_join_pairwise:
+	SELECT a.id AS id_a, b.id AS id_b,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		a.v3 , b.v3
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
+	FROM vt a JOIN vt b ON a.id < b.id
+	ORDER BY id_a , id_b
+	LIMIT _small_limit ;
+
+# Nearest-neighbor per row via correlated subquery -- the actual query shape
+# most similarity-search use cases run.
+select_self_join_nearest:
+	SELECT a.id,
+		(SELECT b.id FROM vt b WHERE b.id <> a.id
+			ORDER BY /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+				a.v3 , b.v3
+				/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */ ASC , b.id ASC
+			LIMIT 1) AS nearest_id
+	FROM vt a
+	ORDER BY a.id ;
+
+# ---------------------------------------------------------------------------
+# Additional predicate operators (only '<' and BETWEEN are covered above)
+# ---------------------------------------------------------------------------
+
+select_where_not_null:
+	SELECT id FROM vt WHERE
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
+		IS NOT NULL
+	ORDER BY id ;
+
+select_where_ge_ne:
+	SELECT id FROM vt WHERE
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
+		>= _threshold
+	ORDER BY id |
+	SELECT id FROM vt WHERE
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */
+		!= _threshold_cosine
+	ORDER BY id ;
+
+select_distinct_bucket:
+	SELECT DISTINCT
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		v4_baseline , v4_anomaly_a
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 ) AS d
+	FROM vt
+	ORDER BY d ;
 
 # ---------------------------------------------------------------------------
 # Token / terminal rules -- equal-width sources only
@@ -568,6 +684,12 @@ _vector384:
 # Keep as a single line: a ';' inside a multi-line { } block ends the grammar rule.
 _hp_identical_pair:
 	{ my $s = "'[" . join(',', map { sprintf('%.12f', (rand() * 2) - 1) } (1..3)) . "]'"; "/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($s) , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($s)" } ;
+
+# One expansion -> both distance args share the same large-magnitude text, at
+# a random scale in [1e6, 1e12], to check self-distance-is-zero still holds
+# once float32 rounding is happening at scale rather than near the origin.
+_extreme_identical_pair:
+	{ my $scale = (1e6, 1e9, 1e12)[int(rand(3))]; my $s = "'[" . join(',', map { sprintf('%.4f', ((rand() * 2) - 1) * $scale) } (1..3)) . "]'"; "/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($s) , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($s)" } ;
 
 # One expansion emits both COSINE and EUCLIDEAN columns for the same Type-A literal.
 _anomaly_a_dual_metric:

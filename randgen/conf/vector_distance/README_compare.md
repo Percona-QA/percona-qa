@@ -107,7 +107,16 @@ Restricted to shared happy-path coverage:
   Euclidean/Cosine order agreement, commutativity flags, CASE buckets,
   self-distance-is-zero, UNION lookups, subquery distance filters
 - Ranking / top-k without raw floats in the SELECT list
-- NULL propagation where both engines return NULL
+- NULL propagation where both engines return NULL (both EUCLIDEAN and COSINE)
+- Modern SQL surface: window functions (`RANK() OVER (ORDER BY ...)`), CTEs
+  (`WITH ... AS`), self-joins and correlated-subquery nearest-neighbor lookups
+  -- these compute distance column-to-column via a join instead of
+  column-vs-literal, which is a distinct code path from every other query in
+  this grammar
+- `>=`, `!=`, `IS NOT NULL` predicates and `DISTINCT` over a distance
+  expression (previously only `<` and `BETWEEN` were covered)
+- Precision at large magnitude (self-distance-is-zero for identical literals
+  scaled to 1e6..1e12), complementing the existing near-zero check
 
 Intentionally excluded (known or expected divergence / Percona-only paths):
 
