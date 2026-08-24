@@ -77,15 +77,15 @@ function-call wrapper differs:
 
 ```sql
 SELECT id,
-    ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+    FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
     _vector_3d , _vector_3d
-    /*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
+    /*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
 FROM vt WHERE id = _existing_id ;
 ```
 
-Percona (executor1): `SELECT id, ROUND(VECTOR_DISTANCE( <a> , <b> , 'EUCLIDEAN' ), 2) AS d FROM vt WHERE id = <n> ;`
+Percona (executor1): `SELECT id, FLOOR(GREATEST(0, (VECTOR_DISTANCE( <a> , <b> , 'EUCLIDEAN' ))) * 10) / 10 AS d FROM vt WHERE id = <n> ;`
 
-MariaDB (executor2): `SELECT id, ROUND(VEC_DISTANCE_EUCLIDEAN( <a> , <b> ), 2) AS d FROM vt WHERE id = <n> ;`
+MariaDB (executor2): `SELECT id, FLOOR(GREATEST(0, (VEC_DISTANCE_EUCLIDEAN( <a> , <b> ))) * 10) / 10 AS d FROM vt WHERE id = <n> ;`
 
 A `ResultsetComparator` mismatch on such a query means both engines computed
 the same distance metric on the same data through native syntax and returned
@@ -99,8 +99,14 @@ Restricted to shared happy-path coverage:
   (`VEC_DISTANCE_EUCLIDEAN` / `VEC_DISTANCE_COSINE`)
 - Equal dimensions only (3d/3d, 4d/4d, 8d/8d, 384d/384d) via `_vector_3d` /
   `_vector_8d` and matching column pairs
-- `ROUND(..., 2)` on float distance results (and ranking without raw floats)
-  to avoid false diffs from tiny IEEE differences
+- Float distances emitted as `FLOOR(GREATEST(0, dist) * 10) / 10` (one
+  decimal). Coarser than cent-level truncation to absorb float32 ULP noise
+  that still flipped `0.01` bins (for example `72.7` vs `72.71`); `GREATEST`
+  clamps tiny negative cosine float noise
+- High-signal integer/boolean checks: relative closer-anomaly order,
+  Euclidean/Cosine order agreement, commutativity flags, CASE buckets,
+  self-distance-is-zero, UNION lookups, subquery distance filters
+- Ranking / top-k without raw floats in the SELECT list
 - NULL propagation where both engines return NULL
 
 Intentionally excluded (known or expected divergence / Percona-only paths):
@@ -113,6 +119,9 @@ Extend with additional metrics only after MariaDB function names are verified
 on the target build. Do not invent function names: a missing function can make
 both servers fail for unrelated reasons, which `ResultsetComparator` may report
 as "both errored, no mismatch" without testing meaningful behavior.
+
+When triageing mismatches: prefer integer/boolean column diffs. A lone
+`±0.1` gap on a truncated float column can still be residual IEEE noise.
 
 ## Interpreting output
 

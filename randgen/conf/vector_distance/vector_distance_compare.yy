@@ -16,6 +16,12 @@
 #   - Metrics with confirmed MariaDB names: EUCLIDEAN, COSINE
 #   - Equal dimensions only (3d/3d, 4d/4d, 8d/8d, 384d/384d)
 #   - NULL propagation where both engines return NULL
+# Float policy:
+#   - Emit FLOOR(GREATEST(0, dist) * 10) / 10 (one decimal). Coarser than
+#     cent bins so float32 ULP noise does not flip 0.01 boundaries (e.g.
+#     72.7 vs 72.71). GREATEST clamps tiny negative cosine float noise.
+#   - Prefer integer/boolean outcomes (relative order, equality flags) where
+#     possible -- those catch real logic bugs without IEEE sensitivity.
 # Intentionally NOT here:
 #   - cosine vs zero vector (expected: Percona NULL, MariaDB 0)
 #   - dim-mismatch, wrong arity/type, Percona-only DOT/MANHATTAN/DISTANCE synonym
@@ -25,16 +31,24 @@ query:
 	select_valid_cosine | select_valid_cosine |
 	select_valid_384 |
 	select_ranking_cosine | select_ranking_cosine | select_ranking_euclidean |
+	select_ranking_384 |
 	select_aggregate_euclidean | select_aggregate_cosine | select_aggregate_sum_count |
 	select_where_euclidean | select_where_cosine | select_where_between |
 	select_self_distance | select_self_distance_cosine |
+	select_self_is_zero |
 	select_commutativity | select_commutativity_cosine |
+	select_commutativity_flag |
 	select_column_pair | select_column_pair |
 	select_literal_pair |
 	select_anomaly_comparison | select_anomaly_comparison |
 	select_anomaly_random_severity |
+	select_relative_closer | select_relative_closer |
+	select_metric_order_agree |
+	select_case_bucket |
+	select_union_lookup |
+	select_subquery_filter |
 	select_null_propagation |
-	select_precision_truncation |
+	select_precision_near_zero |
 	select_topk_join_filter | select_topk_cosine_filter |
 	select_having_filter ;
 
@@ -44,44 +58,43 @@ query:
 
 select_valid_euclidean:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		_vector_3d , _vector_3d
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		_vector_8d , _vector_8d
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id ;
 
 select_valid_cosine:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		_vector_3d , _vector_3d
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		_vector_8d , _vector_8d
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id ;
 
-# Realistic embedding width (all rows now hold genuine 384-d vectors)
 select_valid_384:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v384 , v384
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v384 , v384
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v384 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector384)
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt WHERE id = _existing_id ;
 
 # ---------------------------------------------------------------------------
@@ -89,7 +102,6 @@ select_valid_384:
 # ---------------------------------------------------------------------------
 
 # Ranking compares row *order* only (no distance float in the SELECT list).
-# Dumping raw floats causes false ResultsetComparator diffs from tiny IEEE diffs.
 select_ranking_cosine:
 	SELECT id, label, category
 	FROM vt
@@ -130,36 +142,56 @@ select_ranking_euclidean:
 		id ASC
 	LIMIT _small_limit ;
 
-# Float compare: ROUND(..., 2) everywhere — ROUND(3+) still flips across engines.
+# Embedding-width ranking (stored v384 only -- avoid huge random literals here)
+select_ranking_384:
+	SELECT id, label, category
+	FROM vt
+	ORDER BY
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		v384 , v384
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */
+		_asc_desc ,
+		id ASC
+	LIMIT _small_limit |
+	SELECT id, label, category
+	FROM vt
+	ORDER BY
+		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		v384 , v384
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
+		_asc_desc ,
+		id ASC
+	LIMIT _small_limit ;
+
 select_aggregate_euclidean:
-	SELECT category, ROUND(AVG(
+	SELECT category, FLOOR(GREATEST(0, AVG(
 		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
 		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
-	), 2) AS avg_d
+	)) * 10) / 10 AS avg_d
 	FROM vt GROUP BY category ORDER BY category |
 	SELECT category,
-		ROUND(MIN(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, MIN(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
-			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */), 2) AS min_d ,
-		ROUND(MAX(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS min_d ,
+		FLOOR(GREATEST(0, MAX(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
-			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */), 2) AS max_d
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS max_d
 	FROM vt GROUP BY category ORDER BY category ;
 
 select_aggregate_cosine:
-	SELECT category, ROUND(AVG(
+	SELECT category, FLOOR(GREATEST(0, AVG(
 		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
 		/*executor1 , 'COSINE' ) */ /*executor2 ) */
-	), 2) AS avg_d
+	)) * 10) / 10 AS avg_d
 	FROM vt GROUP BY category ORDER BY category ;
 
 select_aggregate_sum_count:
 	SELECT category,
-		ROUND(SUM(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, SUM(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
-			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */), 2) AS sum_d ,
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS sum_d ,
 		COUNT(*) AS n
 	FROM vt GROUP BY category ORDER BY category ;
 
@@ -188,17 +220,16 @@ select_where_between:
 	ORDER BY id ;
 
 select_having_filter:
-	SELECT category, ROUND(AVG(
+	SELECT category, FLOOR(GREATEST(0, AVG(
 		/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
 		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
-	), 2) AS avg_d
+	)) * 10) / 10 AS avg_d
 	FROM vt
 	GROUP BY category
 	HAVING avg_d < _threshold_hi
 	ORDER BY category ;
 
-# Hybrid: filter by category then rank (relational + vector in one query)
 select_topk_join_filter:
 	SELECT id, label, category
 	FROM vt
@@ -227,142 +258,263 @@ select_topk_cosine_filter:
 # Algebraic / identity properties
 # ---------------------------------------------------------------------------
 
-# dist(v,v) should be ~0 for euclidean on both engines
 select_self_distance:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v3 , v3
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_self
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_self
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v8 , v8
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_self
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_self
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v384 , v384
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_self
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_self
 	FROM vt WHERE id = _existing_id ;
 
-# cosine(v,v) on a non-zero vector should be ~0 (zero-vector excluded — expected divergence)
 select_self_distance_cosine:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v3 , v3
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_self
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_self
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v8 , v8
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_self
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_self
+	FROM vt WHERE id = _existing_id |
+	SELECT id,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		v384 , v384
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_self
 	FROM vt WHERE id = _existing_id ;
 
-# dist(a,b) == dist(b,a) using stored columns (each _vector3 would re-roll independently)
+# Integer flag: self-distance truncates to 0 (stronger signal than raw float)
+select_self_is_zero:
+	SELECT id,
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v3 , v3
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) = 0) AS euclid_zero ,
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v3 , v3
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) = 0) AS cosine_zero
+	FROM vt WHERE id = _existing_id |
+	SELECT id,
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v8 , v8
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) = 0) AS euclid_zero ,
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v8 , v8
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) = 0) AS cosine_zero
+	FROM vt WHERE id = _existing_id ;
+
 select_commutativity:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_baseline , v4_anomaly_a
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_ab ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_ab ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_anomaly_a , v4_baseline
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_ba
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_ba
 	FROM vt WHERE id = _existing_id ;
 
 select_commutativity_cosine:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_baseline , v4_anomaly_b
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_ab ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_ab ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_anomaly_b , v4_baseline
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_ba
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_ba
 	FROM vt WHERE id = _existing_id ;
 
-# Stored column pairs (same width)
+# Boolean commutativity (integer 0/1) -- flags real asymmetry without float dump noise
+select_commutativity_flag:
+	SELECT id,
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v4_baseline , v4_anomaly_a
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) =
+		 FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v4_anomaly_a , v4_baseline
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10)) AS euclid_symmetric ,
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v4_baseline , v4_anomaly_b
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) =
+		 FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v4_anomaly_b , v4_baseline
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10)) AS cosine_symmetric
+	FROM vt WHERE id = _existing_id ;
+
 select_column_pair:
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_baseline , v4_anomaly_a
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_euclid ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_euclid ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_baseline , v4_anomaly_a
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_cosine
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_cosine
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_baseline , v4_anomaly_b
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_euclid ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_euclid ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_baseline , v4_anomaly_b
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_cosine
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_cosine
 	FROM vt WHERE id = _existing_id |
 	SELECT id,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_anomaly_a , v4_anomaly_b
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d_euclid ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d_euclid ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_anomaly_a , v4_anomaly_b
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d_cosine
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d_cosine
 	FROM vt WHERE id = _existing_id ;
 
-# Two random equal-width literals (both engines see identical SQL text)
+# Two independent equal-width literals (both engines see identical SQL text)
 select_literal_pair:
 	SELECT
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3) ,
 		/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt LIMIT 1 |
 	SELECT
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector8) ,
 		/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector8)
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS d
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d
 	FROM vt LIMIT 1 ;
 
 # ---------------------------------------------------------------------------
-# Anomaly scenarios (4d columns seeded in init_vectors_comp.sql)
+# Anomaly / relative-order coverage (logic bugs over float noise)
 # ---------------------------------------------------------------------------
 
 select_anomaly_comparison:
 	SELECT
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_baseline , v4_anomaly_a
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS a_cosine ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS a_cosine ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_baseline , v4_anomaly_a
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS a_euclidean ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS a_euclidean ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
 		v4_baseline , v4_anomaly_b
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS b_cosine ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS b_cosine ,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		v4_baseline , v4_anomaly_b
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS b_euclidean
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS b_euclidean
 	FROM vt WHERE id = _existing_id ;
 
-# Note: each _v4_* token expands once per appearance, so a_cosine/a_euclidean
-# intentionally share the same generated literal only within a single rule
-# alternative that references the token once -- here each metric gets its own
-# roll, which is fine for cross-engine equality of that specific expression.
+# Shared perl expansion so cosine/euclidean see the same anomaly literal per pair
 select_anomaly_random_severity:
-	SELECT
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
-		v4_baseline , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_v4_type_a_magnitude_drift)
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS a_cosine ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
-		v4_baseline , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_v4_type_a_magnitude_drift)
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS a_euclidean ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
-		v4_baseline , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_v4_type_b_directional_spike)
-		/*executor1 , 'COSINE' ) */ /*executor2 ) */, 2) AS b_cosine ,
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
-		v4_baseline , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_v4_type_b_directional_spike)
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 2) AS b_euclidean
+	SELECT id , _anomaly_a_dual_metric , _anomaly_b_dual_metric
 	FROM vt WHERE id = _existing_id ;
+
+# Which stored anomaly is closer under each metric? Integer 0/1 -- high-signal
+select_relative_closer:
+	SELECT id,
+		(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v4_baseline , v4_anomaly_a
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */ <
+		 /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v4_baseline , v4_anomaly_b
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */) AS a_closer_euclid ,
+		(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v4_baseline , v4_anomaly_a
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */ <
+		 /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v4_baseline , v4_anomaly_b
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */) AS a_closer_cosine
+	FROM vt WHERE id = _existing_id ;
+
+# Do EUCLIDEAN and COSINE agree on which anomaly is closer? (0/1)
+select_metric_order_agree:
+	SELECT id,
+		((/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v4_baseline , v4_anomaly_a
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */ <
+		  /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v4_baseline , v4_anomaly_b
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */) =
+		 (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v4_baseline , v4_anomaly_a
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */ <
+		  /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v4_baseline , v4_anomaly_b
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */)) AS metrics_agree
+	FROM vt WHERE id = _existing_id ;
+
+# Discrete distance buckets via CASE (stable integer labels)
+select_case_bucket:
+	SELECT id,
+		CASE
+			WHEN /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+				v4_baseline , v4_anomaly_a
+				/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */ < 10 THEN 0
+			WHEN /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+				v4_baseline , v4_anomaly_a
+				/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */ < 50 THEN 1
+			WHEN /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+				v4_baseline , v4_anomaly_a
+				/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */ < 100 THEN 2
+			ELSE 3
+		END AS euclid_bucket ,
+		CASE
+			WHEN /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+				v4_baseline , v4_anomaly_b
+				/*executor1 , 'COSINE' ) */ /*executor2 ) */ < 0.1 THEN 0
+			WHEN /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+				v4_baseline , v4_anomaly_b
+				/*executor1 , 'COSINE' ) */ /*executor2 ) */ < 0.5 THEN 1
+			WHEN /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+				v4_baseline , v4_anomaly_b
+				/*executor1 , 'COSINE' ) */ /*executor2 ) */ < 1.0 THEN 2
+			ELSE 3
+		END AS cosine_bucket
+	FROM vt WHERE id = _existing_id ;
+
+# UNION of metric lookups (shape + values must match across engines)
+select_union_lookup:
+	SELECT 'E' AS metric, id,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		v3 , v3
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS d
+	FROM vt WHERE id = _existing_id
+	UNION ALL
+	SELECT 'C' AS metric, id,
+		FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+		v3 , v3
+		/*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS d
+	FROM vt WHERE id = _existing_id
+	ORDER BY metric , id ;
+
+# Distance predicate inside a subquery / derived table
+select_subquery_filter:
+	SELECT id, label, category FROM vt
+	WHERE id IN (
+		SELECT id FROM vt
+		WHERE /*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+			/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */
+			< _threshold
+	)
+	ORDER BY id |
+	SELECT id, label FROM vt
+	WHERE category IN (
+		SELECT category FROM vt
+		GROUP BY category
+		HAVING MIN(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */
+			v3 , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */(_vector3)
+			/*executor1 , 'COSINE' ) */ /*executor2 ) */) < _threshold_cosine
+	)
+	ORDER BY id ;
 
 # ---------------------------------------------------------------------------
-# Shared NULL / edge behavior (both should return NULL, not error)
+# Shared NULL / precision edge behavior
 # ---------------------------------------------------------------------------
 
 select_null_propagation:
@@ -384,16 +536,13 @@ select_null_propagation:
 		/*executor1 , 'COSINE' ) */ /*executor2 ) */
 		AS d ;
 
-# float32 rounding: identical high-precision literals -> distance ~0.
-# Uses ROUND(..., 6) (not the general-purpose ROUND(..., 2)) so a real
-# float32-vs-MariaDB precision gap can surface; last-bit IEEE noise lives
-# further out. Both args come from one perl block so the literal is identical
-# (two separate _vector3_high_precision expansions would re-roll independently).
-select_precision_truncation:
+# Identical high-precision literals: both engines should report near-zero.
+# Integer flag (FLOOR at 1e6 == 0) surfaces real float32 gaps without ROUND ties.
+select_precision_near_zero:
 	SELECT
-		ROUND(/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
+		(FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */
 		_hp_identical_pair
-		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */, 6) AS d
+		/*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 1000000) = 0) AS near_zero
 	FROM vt LIMIT 1 ;
 
 # ---------------------------------------------------------------------------
@@ -420,13 +569,13 @@ _vector384:
 _hp_identical_pair:
 	{ my $s = "'[" . join(',', map { sprintf('%.12f', (rand() * 2) - 1) } (1..3)) . "]'"; "/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($s) , /*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($s)" } ;
 
-# Type-A: magnitude drift (scale all components) -- cosine should stay ~0 vs baseline direction
-_v4_type_a_magnitude_drift:
-	{ my $s = 0.5 + rand() * 2.5; "'[" . join(',', map { sprintf('%.4f', $_ * $s) } (50,55,10,45)) . "]'" } ;
+# One expansion emits both COSINE and EUCLIDEAN columns for the same Type-A literal.
+_anomaly_a_dual_metric:
+	{ my $s = 0.5 + rand() * 2.5; my $lit = "'[" . join(',', map { sprintf('%.4f', $_ * $s) } (50,55,10,45)) . "]'"; my $a = "/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($lit)"; "FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */ v4_baseline , $a /*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS a_cosine , FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */ v4_baseline , $a /*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS a_euclidean" } ;
 
-# Type-B: directional spike on one axis
-_v4_type_b_directional_spike:
-	{ my @v = (50,55,10,45); $v[int(rand(4))] += 20 + rand() * 80; "'[" . join(',', map { sprintf('%.4f', $_) } @v) . "]'" } ;
+# One expansion emits both COSINE and EUCLIDEAN columns for the same Type-B literal.
+_anomaly_b_dual_metric:
+	{ my @v = (50,55,10,45); $v[int(rand(4))] += 20 + rand() * 80; my $lit = "'[" . join(',', map { sprintf('%.4f', $_) } @v) . "]'"; my $a = "/*executor1 STRING_TO_VECTOR */ /*executor2 VEC_FromText */($lit)"; "FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_COSINE( */ v4_baseline , $a /*executor1 , 'COSINE' ) */ /*executor2 ) */)) * 10) / 10 AS b_cosine , FLOOR(GREATEST(0, (/*executor1 VECTOR_DISTANCE( */ /*executor2 VEC_DISTANCE_EUCLIDEAN( */ v4_baseline , $a /*executor1 , 'EUCLIDEAN' ) */ /*executor2 ) */)) * 10) / 10 AS b_euclidean" } ;
 
 _existing_id:
 	1 | 2 | 3 | 4 | 5 | 10 | 20 | 50 ;
@@ -449,6 +598,5 @@ _threshold_lo:
 _threshold_hi:
 	50 | 100 | 150 | 200 ;
 
-# Cosine distance is typically in [0, 2]; keep thresholds in that range
 _threshold_cosine:
 	0 | 0.1 | 0.5 | 1 | 1.5 | 2 ;
