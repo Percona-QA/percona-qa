@@ -27,17 +27,17 @@ query:
 # Valid-path queries & Synonym Equivalence (F-1, F-3, F-7, F-8, F-10, F-11, 7.1)
 # ---------------------------------------------------------------------------
 
+# _vector_pair_same_width expands once to "arg1 , arg2" at a single width so
+# valid-path weighting stays on successful distance calculations (not dim-mismatch).
 select_valid:
-	SELECT id, VECTOR_DISTANCE( _vector_source , _vector_source , _metric_valid ) AS d FROM vt WHERE id = _existing_id ;
+	SELECT id, VECTOR_DISTANCE( _vector_pair_same_width , _metric_valid ) AS d FROM vt WHERE id = _existing_id ;
 
 select_ranking:
 	SELECT id, label, category, VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) AS d FROM vt ORDER BY d _asc_desc LIMIT _small_limit ;
 
+# One Perl expansion builds both synonym columns with the same args + metric.
 select_synonym_pair:
-	SELECT 
-		DISTANCE( _vector_source , _vector_source , _metric_valid ) AS via_distance , 
-		VECTOR_DISTANCE( _vector_source , _vector_source , _metric_valid ) AS via_vector_distance 
-	FROM vt WHERE id = _existing_id ;
+	SELECT _synonym_equiv_exprs FROM vt WHERE id = _existing_id ;
 
 select_aggregate:
 	SELECT category, AVG( VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) ) AS avg_d FROM vt GROUP BY category ;
@@ -48,7 +48,7 @@ select_where_threshold:
 select_metadata_check:
 	DROP TEMPORARY TABLE IF EXISTS tmp_dist_meta ;
 	CREATE TEMPORARY TABLE IF NOT EXISTS tmp_dist_meta AS 
-		SELECT VECTOR_DISTANCE( _vector_source , _vector_source , _metric_valid ) AS d 
+		SELECT VECTOR_DISTANCE( _vector_pair_same_width , _metric_valid ) AS d 
 		FROM vt WHERE id = _existing_id ;
 
 # ---------------------------------------------------------------------------
@@ -141,6 +141,26 @@ select_zero_vector_cosine:
 
 _vector_source:
 	v3 | v8 | v384 | STRING_TO_VECTOR(_vector3) | STRING_TO_VECTOR(_vector8) | STRING_TO_VECTOR(_vector384) ;
+
+# Equal-width argument pairs only. Used by valid-path / metadata rules.
+_vector_pair_same_width:
+	v3 , v3 |
+	v3 , STRING_TO_VECTOR(_vector3) |
+	STRING_TO_VECTOR(_vector3) , v3 |
+	STRING_TO_VECTOR(_vector3) , STRING_TO_VECTOR(_vector3) |
+	v8 , v8 |
+	v8 , STRING_TO_VECTOR(_vector8) |
+	STRING_TO_VECTOR(_vector8) , v8 |
+	STRING_TO_VECTOR(_vector8) , STRING_TO_VECTOR(_vector8) |
+	v384 , v384 |
+	v384 , STRING_TO_VECTOR(_vector384) |
+	STRING_TO_VECTOR(_vector384) , v384 |
+	STRING_TO_VECTOR(_vector384) , STRING_TO_VECTOR(_vector384) ;
+
+# Keep on one line: a ';' inside a multi-line { } block ends the grammar rule.
+# Emits: DISTANCE(a,b,m) AS via_distance , VECTOR_DISTANCE(a,b,m) AS via_vector_distance
+_synonym_equiv_exprs:
+	{ my @pairs; push @pairs, ['v3','v3'], ['v8','v8'], ['v384','v384']; my $l3 = "'[" . join(',', map { sprintf('%.4f', (rand() * 200) - 100) } (1..3)) . "]'"; my $l8 = "'[" . join(',', map { sprintf('%.4f', (rand() * 200) - 100) } (1..8)) . "]'"; my $l384 = "'[" . join(',', map { sprintf('%.6f', (rand() * 2) - 1) } (1..384)) . "]'"; push @pairs, ['v3',"STRING_TO_VECTOR($l3)"], ["STRING_TO_VECTOR($l3)",'v3'], ["STRING_TO_VECTOR($l3)","STRING_TO_VECTOR($l3)"], ['v8',"STRING_TO_VECTOR($l8)"], ["STRING_TO_VECTOR($l8)",'v8'], ["STRING_TO_VECTOR($l8)","STRING_TO_VECTOR($l8)"], ['v384',"STRING_TO_VECTOR($l384)"], ["STRING_TO_VECTOR($l384)",'v384'], ["STRING_TO_VECTOR($l384)","STRING_TO_VECTOR($l384)"]; my ($a,$b) = @{$pairs[int(rand(@pairs))]}; my @m = ("'EUCLIDEAN'","'euclidean'","'EuClIdEaN'","'EUCLIDEAN_SQUARED'","'euclidean_squared'","'EuClIdEaN_sQuArEd'","'COSINE'","'cosine'","X'434F53494E45'","'DOT'","'dot'","X'444F54'","'MANHATTAN'","'manhattan'"); my $m = $m[int(rand(@m))]; "DISTANCE( $a , $b , $m ) AS via_distance , VECTOR_DISTANCE( $a , $b , $m ) AS via_vector_distance" } ;
 
 _vector_source_4d:
 	v4_baseline | v4_anomaly_a | v4_anomaly_b ;
