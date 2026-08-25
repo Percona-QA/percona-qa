@@ -19,9 +19,15 @@ query:
 	select_aggregate |
 	select_where_threshold |
 	select_precision_truncation_check |
+	select_precision_extreme_magnitude |
 	select_dot_product_ordering |
 	select_anomaly_comparison |
-	select_anomaly_random_severity ;
+	select_anomaly_random_severity |
+	select_window_rank | select_cte_filter |
+	select_self_join_pairwise | select_self_join_nearest |
+	select_where_not_null | select_where_ge_ne |
+	select_distinct_bucket |
+	select_update_by_distance ;
 
 # ---------------------------------------------------------------------------
 # Valid-path queries & Synonym Equivalence (F-1, F-3, F-7, F-8, F-10, F-11, 7.1)
@@ -85,8 +91,21 @@ select_anomaly_random_severity:
 # Phase 4 Scenario: float32 Precision & Rounding Verification (Section 5)
 # ---------------------------------------------------------------------------
 
+# The two STRING_TO_VECTOR(_vector3_high_precision) calls this replaced each
+# expanded _vector3_high_precision independently, so the two operands were
+# two DIFFERENT random vectors -- not the identical pair the rule name and
+# Section-5 self-distance intent require. _hp_identical_pair expands once so
+# both operands share the same literal text (same fix as _vector_pair_same_width
+# / _synonym_equiv_exprs above, applied to this rule).
 select_precision_truncation_check:
-	SELECT VECTOR_DISTANCE( STRING_TO_VECTOR(_vector3_high_precision) , STRING_TO_VECTOR(_vector3_high_precision) , 'EUCLIDEAN' ) FROM vt LIMIT 1 ;
+	SELECT VECTOR_DISTANCE( _hp_identical_pair , 'EUCLIDEAN' ) FROM vt LIMIT 1 ;
+
+# Large-magnitude counterpart to the check above -- same shared-pair
+# requirement, but at scale 1e6..1e12 instead of within [0,1], to check
+# self-distance-is-zero still holds once float32 rounding is happening at
+# scale rather than near the origin.
+select_precision_extreme_magnitude:
+	SELECT VECTOR_DISTANCE( _extreme_identical_pair , 'EUCLIDEAN' ) FROM vt LIMIT 1 ;
 
 # ---------------------------------------------------------------------------
 # Error-path queries (F-1, F-2, F-3, F-5, F-6)
@@ -134,6 +153,76 @@ select_null_propagation:
 # F-9: Cosine on a zero-norm vector -> NULL, warning clause check
 select_zero_vector_cosine:
 	SELECT VECTOR_DISTANCE( STRING_TO_VECTOR('[0,0,0]') , v3 , 'COSINE' ) FROM vt WHERE id = _existing_id ;
+
+# ---------------------------------------------------------------------------
+# Modern SQL surface: window functions, CTEs, self-joins
+# ---------------------------------------------------------------------------
+
+select_window_rank:
+	SELECT id, label,
+		RANK() OVER (ORDER BY VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) ASC) AS rnk
+	FROM vt
+	ORDER BY rnk , id
+	LIMIT _small_limit ;
+
+select_cte_filter:
+	WITH d AS (
+		SELECT id, label, category, VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) AS dist
+		FROM vt
+	)
+	SELECT id, label, category FROM d
+	WHERE dist < _threshold
+	ORDER BY id ;
+
+# Self-join: pairwise distances between distinct stored rows (column-to-column
+# via a join), instead of stored-column-vs-literal like every query above.
+select_self_join_pairwise:
+	SELECT a.id AS id_a, b.id AS id_b, VECTOR_DISTANCE( a.v3 , b.v3 , _metric_valid ) AS d
+	FROM vt a JOIN vt b ON a.id < b.id
+	ORDER BY id_a , id_b
+	LIMIT _small_limit ;
+
+# Nearest-neighbor per row via correlated subquery -- the actual query shape
+# most similarity-search use cases run.
+select_self_join_nearest:
+	SELECT a.id,
+		(SELECT b.id FROM vt b WHERE b.id <> a.id
+			ORDER BY VECTOR_DISTANCE( a.v3 , b.v3 , _metric_valid ) ASC , b.id ASC
+			LIMIT 1) AS nearest_id
+	FROM vt a
+	ORDER BY a.id ;
+
+# ---------------------------------------------------------------------------
+# Additional predicate operators (only '<' is exercised via select_where_threshold)
+# ---------------------------------------------------------------------------
+
+select_where_not_null:
+	SELECT id FROM vt WHERE
+		VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) IS NOT NULL
+	ORDER BY id ;
+
+select_where_ge_ne:
+	SELECT id FROM vt WHERE
+		VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) >= _threshold
+	ORDER BY id |
+	SELECT id FROM vt WHERE
+		VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) != _threshold
+	ORDER BY id ;
+
+select_distinct_bucket:
+	SELECT DISTINCT FLOOR(VECTOR_DISTANCE( v4_baseline , v4_anomaly_a , _metric_valid )) AS d
+	FROM vt
+	ORDER BY d ;
+
+# ---------------------------------------------------------------------------
+# Write-path coverage: VECTOR_DISTANCE driving a DML predicate, not just SELECT
+# ---------------------------------------------------------------------------
+
+# LEFT(label,28) caps the result at 32 chars (28 + length('_upd')) so this
+# can't hit a data-too-long error under strict SQL mode across repeated runs.
+select_update_by_distance:
+	UPDATE vt SET label = CONCAT(LEFT(label, 28), '_upd')
+	WHERE VECTOR_DISTANCE( v3 , STRING_TO_VECTOR(_vector3) , _metric_valid ) < _threshold ;
 
 # ---------------------------------------------------------------------------
 # Token / terminal rules
@@ -198,6 +287,17 @@ _vector384:
 # Phase 4: High-precision values to challenge IEEE-754 round-to-nearest boundary limits
 _vector3_high_precision:
 	{ "'[" . join(',', map { sprintf('%.15f', rand()) } (1..3)) . "]'" } ;
+
+# One expansion -> both distance args share the same high-precision text.
+# Keep on one line: a ';' inside a multi-line { } block ends the grammar rule.
+_hp_identical_pair:
+	{ my $s = "STRING_TO_VECTOR('[" . join(',', map { sprintf('%.15f', rand()) } (1..3)) . "]')"; "$s , $s" } ;
+
+# One expansion -> both distance args share the same large-magnitude text, at
+# a random scale in [1e6, 1e12], to check self-distance-is-zero still holds
+# once float32 rounding is happening at scale rather than near the origin.
+_extreme_identical_pair:
+	{ my $scale = (1e6, 1e9, 1e12)[int(rand(3))]; my $s = "STRING_TO_VECTOR('[" . join(',', map { sprintf('%.4f', ((rand() * 2) - 1) * $scale) } (1..3)) . "]')"; "$s , $s" } ;
 
 # Phase 3 Scenario Vectors: Industrial Sensor Drift Simulation
 _v4_type_a_magnitude_drift:

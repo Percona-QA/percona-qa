@@ -60,5 +60,12 @@ Rules provide regression coverage at scale for VECTOR_DISTANCE / DISTANCE behavi
 | `select_zero_vector_cosine` | F-9 zero-norm case | Cosine on a zero vector didn't return NULL, or crashed instead |
 | `select_metadata_check` | F-13/F-14 | `CREATE TABLE ... SELECT` produced an unexpected column type |
 | `select_aggregate` / `select_where_threshold` | Aggregate / filter coverage | `VECTOR_DISTANCE` used inside `GROUP BY`/`WHERE` |
+| `select_precision_truncation_check` / `select_precision_extreme_magnitude` | Section 5, self-distance-is-zero | Float32 rounding breaks self-distance at near-zero or at large-magnitude scale |
+| `select_window_rank` / `select_cte_filter` | Modern SQL surface | `VECTOR_DISTANCE` inside `RANK() OVER (...)` or a `WITH` CTE crashed or mis-ordered |
+| `select_self_join_pairwise` / `select_self_join_nearest` | Column-to-column via self-join | Distance between two *stored* rows (not stored-vs-literal) diverges from the equivalent literal-based query |
+| `select_where_not_null` / `select_where_ge_ne` / `select_distinct_bucket` | Predicate/operator coverage | `>=`, `!=`, `IS NOT NULL`, `DISTINCT` over a distance expression behave inconsistently |
+| `select_update_by_distance` | Write-path coverage | `UPDATE ... WHERE VECTOR_DISTANCE(...) < x` crashed or updated the wrong rows |
 
 The three vector widths (`v3`, `v8`, `v384`) are intentional: `v384` matches a realistic embedding dimension (e.g. `all-MiniLM-L6-v2`), while `v3`/`v8` keep small cases available for faster iteration and easier failure reproduction.
+
+Rules that need two operands to be genuinely identical (e.g. a self-distance-is-zero check) build both from a single Perl block — `_vector_pair_same_width`, `_synonym_equiv_exprs`, `_hp_identical_pair`, `_extreme_identical_pair` — rather than referencing the same token twice, since two references to the same token expand independently and produce two different random values.
