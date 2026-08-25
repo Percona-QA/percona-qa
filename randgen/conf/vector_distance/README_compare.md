@@ -13,7 +13,7 @@ replaces a standalone cross-engine diff script and reduces the two-file
 |---|---|---|---|
 | Runs both engines automatically | No — separate runs | No — separate runs | Yes, one command |
 | Diffs results automatically | Custom code | Custom (none built-in) | Built-in `ResultsetComparator` |
-| Auto-minimizes found bugs | No | No | Yes, via `ResultsetComparatorSimplify` |
+| Auto-minimizes found bugs | No | No | Yes, via `ResultsetComparatorCrossDBSimplify` |
 | Works cross-product (Postgres etc.) | Yes | No (MySQL-family only) | Yes, via `gentest.pl --dsn1/--dsn2/--dsn3` |
 | Files needed | 1 script + config + cases | 2 grammar files | 1 grammar file |
 
@@ -132,14 +132,79 @@ as "both errored, no mismatch" without testing meaningful behavior.
 When triageing mismatches: prefer integer/boolean column diffs. A lone
 `±0.1` gap on a truncated float column can still be residual IEEE noise.
 
+## Auto-minimizing a mismatch: `ResultsetComparatorCrossDBSimplify`
+
+RQG's stock `ResultsetComparatorSimplify` validator does **not** work for any
+grammar built on `/*executorN ... */` dialect tags, including this one. Its
+shrinking oracle re-sends `$results->[0]->query()` -- the query text already
+resolved to executor 0's own dialect (its own tag unwrapped, every other
+executor's tag stripped) -- to *every* executor, including executor 2. That
+is correct only when both servers share one SQL dialect. As soon as the two
+sides genuinely differ (any grammar comparing two engines that each spell a
+feature with their own function name/syntax), sending executor 0's resolved
+text to executor 1 verbatim fails outright -- typically a "function/procedure
+does not exist" or syntax error from the second server. `simplify()` then
+aborts on its very first check with *"Could not simplify failure, appears to
+be sporadic"*, without ever attempting a single reduction, no matter how
+reproducible the mismatch actually is.
+
+`ResultsetComparatorCrossDBSimplify` (`lib/GenTest/Validator/ResultsetComparatorCrossDBSimplify.pm`)
+is a fork of that validator for this general case: it simplifies each
+executor's own query against its own baseline result, so it never sends one
+server's SQL to another. It logs a separately-minimized query per executor
+instead of one shared text, since the two dialects' minimal reproducers are
+not expected to be textually identical.
+
+It is not specific to this grammar -- use it for any RQG dual/multi-server
+comparison where the executors are different database engines or dialects,
+not just this one.
+
+Known limitation it does **not** fix: the SQL parser
+`GenTest::Simplifier::SQL` uses to build a prunable tree (`DBIx::MyParsePP`)
+predates window functions and CTEs, so it cannot parse `RANK() OVER (...)` or
+`WITH ... AS (...)` at all. A mismatch on `select_window_rank` or
+`select_cte_filter` will still fail to simplify with this validator too --
+triage those by hand from the plain mismatch report instead.
+
+Example -- rerun a targeted, low-volume pass with it once a mismatch is
+suspected (it runs extra queries against both servers per candidate
+reduction, so avoid it on a long high-volume run):
+
+```bash
+perl runall-new.pl \
+  --basedir1=/path/to/percona-server/bld \
+  --basedir2=/path/to/mariadb-server/bld \
+  --vardir1=/tmp/rqg_var_ps \
+  --vardir2=/tmp/rqg_var_mdb \
+  --grammar=conf/vector_distance/vector_distance_compare.yy \
+  --gendata=conf/vector_distance/vector_distance.zz \
+  --post-gendata-sql=conf/vector_distance/init_vectors_comp.sql \
+  --threads=1 \
+  --queries=2000 \
+  --duration=120 \
+  --validators=ResultsetComparatorCrossDBSimplify \
+  --sqltrace
+```
+
+Or against already-running servers, with `gentest.pl --dsn1=/--dsn2=`:
+
+```bash
+perl gentest.pl \
+  --dsn1="dbi:mysql:host=127.0.0.1:port=<ps_port>:user=root:database=test" \
+  --dsn2="dbi:mysql:host=127.0.0.1:port=<mdb_port>:user=root:database=test" \
+  --grammar=conf/vector_distance/vector_distance_compare.yy \
+  --threads=1 \
+  --queries=2000 \
+  --duration=120 \
+  --validators=ResultsetComparatorCrossDBSimplify
+```
+
 ## Interpreting output
 
 - Any `ResultsetComparator` mismatch report is the primary signal.
 - Exit status: GenTest `STATUS_OK (0)` is the success criterion. Runs that
   include MariaDB log that dump comparison was skipped; a missing dump diff is
   not a failure.
-- For automatic bug minimization, add
-  `--validators=ResultsetComparatorSimplify`. That validator runs extra queries
-  against both servers and can introduce side effects; use it on a targeted
-  rerun after a specific discrepancy is suspected, not on a long high-volume
-  run.
+- For automatic bug minimization, add `--validators=ResultsetComparatorCrossDBSimplify`
+  (see above) -- not the stock `ResultsetComparatorSimplify`, which cannot
+  simplify a genuinely cross-dialect mismatch on this grammar.
