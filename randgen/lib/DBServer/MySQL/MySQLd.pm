@@ -379,8 +379,8 @@ sub createMysqlBase  {
                        "--no-defaults",
                        "--basedir=".$install_basedir,
                        "--datadir=".$self->datadir,
-                       "--auth-root-authentication-method=normal",
                        "--force");  # allow install when hostname lookup fails in CI/sandbox
+            push @cmd, "--auth-root-authentication-method=normal" if $self->_isMariaDB;
             my $user = getpwuid($<);
             push @cmd, "--user=$user" if defined $user && $< != 0;
             $command = join(' ', map { '"'.$_.'"' } @cmd);
