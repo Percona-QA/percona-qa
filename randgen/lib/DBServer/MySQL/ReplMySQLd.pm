@@ -44,6 +44,60 @@ use constant REPLMYSQLD_VALGRIND => 10;
 use constant REPLMYSQLD_VALGRIND_OPTIONS => 11;
 use constant REPLMYSQLD_GENERAL_LOG => 12;
 use constant REPLMYSQLD_DEBUG_SERVER => 13;
+use constant REPLMYSQLD_TERMS => 14;
+
+# MySQL/Percona 8.0.23 introduced SOURCE/REPLICA replication terminology as
+# accepted aliases for the original MASTER/SLAVE terms, then 8.4.0 removed
+# the original terms outright (STOP SLAVE / CHANGE MASTER TO / START SLAVE /
+# SHOW MASTER STATUS / SHOW SLAVE STATUS / MASTER_POS_WAIT() are hard syntax
+# errors from 8.4 onward, not just deprecation warnings) -- confirmed live
+# against a Percona Server 9.7 build, where every one of those statements is
+# rejected. MariaDB never made this change and only accepts the original
+# terminology at every current version. Picking the wrong vocabulary doesn't
+# degrade gracefully -- it fails replication setup outright before a single
+# grammar query runs -- so detect it from the same version string
+# startServer() already fetches, rather than hardcoding either one.
+my %LEGACY_REPLICATION_TERMS = (
+    stop_replica         => 'STOP SLAVE',
+    change_source         => 'CHANGE MASTER TO',
+    source_port           => 'MASTER_PORT',
+    source_host           => 'MASTER_HOST',
+    source_user           => 'MASTER_USER',
+    source_connect_retry  => 'MASTER_CONNECT_RETRY',
+    start_replica         => 'START SLAVE',
+    binlog_status         => 'SHOW MASTER STATUS',
+    pos_wait_func          => 'MASTER_POS_WAIT',
+    replica_status        => 'SHOW SLAVE STATUS',
+);
+
+my %MODERN_REPLICATION_TERMS = (
+    stop_replica         => 'STOP REPLICA',
+    change_source         => 'CHANGE REPLICATION SOURCE TO',
+    source_port           => 'SOURCE_PORT',
+    source_host           => 'SOURCE_HOST',
+    source_user           => 'SOURCE_USER',
+    source_connect_retry  => 'SOURCE_CONNECT_RETRY',
+    start_replica         => 'START REPLICA',
+    binlog_status         => 'SHOW BINARY LOG STATUS',
+    pos_wait_func          => 'SOURCE_POS_WAIT',
+    replica_status        => 'SHOW REPLICA STATUS',
+);
+
+sub _replicationTerms {
+    my ($version_string) = @_;
+
+    return \%LEGACY_REPLICATION_TERMS if $version_string =~ m{mariadb}sio;
+
+    my ($major, $minor, $patch) = $version_string =~ m{^(\d+)\.(\d+)\.(\d+)}sio;
+    if (defined $major &&
+        (($major > 8) ||
+         ($major == 8 && $minor > 0) ||
+         ($major == 8 && $minor == 0 && $patch >= 23))) {
+        return \%MODERN_REPLICATION_TERMS;
+    }
+
+    return \%LEGACY_REPLICATION_TERMS;
+}
 
 sub new {
     my $class = shift;
@@ -183,29 +237,53 @@ sub startServer {
 		$master_dbh->do("SET GLOBAL BINLOG_FORMAT = '".$self->mode."'");
 		$slave_dbh->do("SET GLOBAL BINLOG_FORMAT = '".$self->mode."'");
 	}
-    
-	$slave_dbh->do("STOP SLAVE");
+
+	my $terms = _replicationTerms($master_version);
+	$self->[REPLMYSQLD_TERMS] = $terms;
+
+	$slave_dbh->do($terms->{stop_replica});
 
 #	$slave_dbh->do("SET GLOBAL storage_engine = '$engine'") if defined $engine;
-    
-	$slave_dbh->do("CHANGE MASTER TO ".
-                   " MASTER_PORT = ".$self->master->port.",".
-                   " MASTER_HOST = '127.0.0.1',".
-                   " MASTER_USER = 'root',".
-                   " MASTER_CONNECT_RETRY = 1");
-    
-	$slave_dbh->do("START SLAVE");
-    
+
+	$slave_dbh->do($terms->{change_source}.
+                   " ".$terms->{source_port}." = ".$self->master->port.",".
+                   " ".$terms->{source_host}." = '127.0.0.1',".
+                   " ".$terms->{source_user}." = 'root',".
+                   " ".$terms->{source_connect_retry}." = 1");
+
+	$slave_dbh->do($terms->{start_replica});
+
     return DBSTATUS_OK;
 }
 
 sub waitForSlaveSync {
     my ($self) = @_;
-    my ($file, $pos) = $self->master->dbh->selectrow_array("SHOW MASTER STATUS");
+    my $terms = $self->[REPLMYSQLD_TERMS] || \%LEGACY_REPLICATION_TERMS;
+
+    # A reporter such as "Shutdown" can legitimately terminate the servers
+    # as its own coverage check before GenTest::App::GenTest returns, and
+    # runall-new.pl's post-run master/slave comparison calls this
+    # unconditionally whenever --rpl_mode is set, with no way to know that
+    # already happened. Fail clearly rather than crashing the whole process
+    # on ->selectrow_array against an undef/disconnected dbh.
+    my $master_dbh = $self->master->dbh;
+    if (not defined $master_dbh) {
+        say("waitForSlaveSync: master connection is gone (server already stopped?), cannot compare.");
+        return DBSTATUS_FAILURE;
+    }
+
+    my ($file, $pos) = $master_dbh->selectrow_array($terms->{binlog_status});
     say("master status $file/$pos");
-    my $wait_result = $self->slave->dbh->selectrow_array("SELECT MASTER_POS_WAIT('$file',$pos)");
+
+    my $slave_dbh = $self->slave->dbh;
+    if (not defined $slave_dbh) {
+        say("waitForSlaveSync: slave connection is gone (server already stopped?), cannot compare.");
+        return DBSTATUS_FAILURE;
+    }
+
+    my $wait_result = $slave_dbh->selectrow_array("SELECT ".$terms->{pos_wait_func}."('$file',$pos)");
     if (not defined $wait_result) {
-        my @slave_status = $self->slave->dbh->selectrow_array("SHOW SLAVE STATUS");
+        my @slave_status = $slave_dbh->selectrow_array($terms->{replica_status});
         say("Slave SQL thread has stopped with error: ".$slave_status[37]);
 		return DBSTATUS_FAILURE;
     } else {
@@ -215,10 +293,14 @@ sub waitForSlaveSync {
 
 sub stopServer {
     my ($self) = @_;
+    my $terms = $self->[REPLMYSQLD_TERMS] || \%LEGACY_REPLICATION_TERMS;
 
     $self->waitForSlaveSync();
-    $self->slave->dbh->do("STOP SLAVE");
-    
+    # Same rationale as the guards in waitForSlaveSync(): a prior reporter
+    # (e.g. "Shutdown") may have already stopped the slave.
+    my $slave_dbh = $self->slave->dbh;
+    $slave_dbh->do($terms->{stop_replica}) if defined $slave_dbh;
+
     $self->slave->stopServer;
     $self->master->stopServer;
 

@@ -803,15 +803,37 @@ sub version {
 	return $dbh->selectrow_array("SELECT VERSION()");
 }
 
+# MySQL/Percona 8.0.23 introduced REPLICA/SOURCE terminology as accepted
+# aliases for the original SLAVE/MASTER replication statements, then 8.4.0
+# removed the original statements outright -- SHOW SLAVE HOSTS and
+# SHOW MASTER STATUS are hard syntax errors from 8.4 onward, not just
+# deprecation warnings (confirmed live against a Percona Server 9.7 build).
+# MariaDB never made this change and only accepts the original statements at
+# every current version. Column layout is unchanged in both renames, only
+# the statement text differs.
+sub _usesModernReplicationSyntax {
+	my ($version_string) = @_;
+	return 0 if not defined $version_string;
+	return 0 if $version_string =~ m{mariadb}sio;
+	my ($major, $minor, $patch) = $version_string =~ m{^(\d+)\.(\d+)\.(\d+)}sio;
+	return 0 if not defined $major;
+	return (($major > 8) ||
+	        ($major == 8 && $minor > 0) ||
+	        ($major == 8 && $minor == 0 && $patch >= 23)) ? 1 : 0;
+}
+
 sub slaveInfo {
 	my $executor = shift;
-	my $slave_info = $executor->dbh()->selectrow_arrayref("SHOW SLAVE HOSTS");
+	my $modern = _usesModernReplicationSyntax($executor->version());
+	my $slave_info = $executor->dbh()->selectrow_arrayref($modern ? "SHOW REPLICAS" : "SHOW SLAVE HOSTS");
+	return ('', '') if not defined $slave_info;
 	return ($slave_info->[SLAVE_INFO_HOST], $slave_info->[SLAVE_INFO_PORT]);
 }
 
 sub masterStatus {
 	my $executor = shift;
-	return $executor->dbh()->selectrow_array("SHOW MASTER STATUS");
+	my $modern = _usesModernReplicationSyntax($executor->version());
+	return $executor->dbh()->selectrow_array($modern ? "SHOW BINARY LOG STATUS" : "SHOW MASTER STATUS");
 }
 
 #

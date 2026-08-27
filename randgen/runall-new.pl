@@ -328,7 +328,16 @@ if ($rpl_mode ne '') {
         }
         croak("Could not start replicating server pair");
     }
-    
+
+    # The non-replication server-start branch below creates $database
+    # explicitly (see "CREATE DATABASE IF NOT EXISTS $database" further
+    # down); this branch never did, so GenTest's first connection -- and
+    # --gendata/--post-gendata-sql after it -- failed outright with
+    # "Unknown database" before a single query could run. Creating it on the
+    # master only is enough: it's ordinary DDL, so replication propagates it
+    # to the slave the same way it would propagate anything else.
+    $rplsrv->master->dbh()->do("CREATE DATABASE IF NOT EXISTS $database");
+
     $dsns[0] = $rplsrv->master->dsn($database);
     $dsns[1] = undef; ## passed to gentest. No dsn for slave!
     $server[0] = $rplsrv->master;
