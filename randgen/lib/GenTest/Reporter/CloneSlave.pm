@@ -27,6 +27,7 @@ use GenTest;
 use GenTest::Constants;
 use GenTest::Reporter;
 use GenTest::Comparator;
+use GenTest::ReplicationTerms qw(replicationTerms);
 use Data::Dumper;
 use IPC::Open2;
 use IPC::Open3;
@@ -137,30 +138,31 @@ sub monitor {
 
 	my $dump_file = $slave_datadir.'/'.time().'.dump';
 	say("Dumping master to $dump_file ...");
-	my $mysqldump_command = $client_basedir.'/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --password='' --protocol=tcp --port='.$master_port.' --single-transaction --master-data --skip-tz-utc --databases '.$databases_string.' > '.$dump_file;
+	my $mysqldump_command = "$client_basedir/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --password='' --protocol=tcp --port=$master_port --single-transaction --master-data --skip-tz-utc --databases $databases_string > $dump_file";
 	say($mysqldump_command);
 	system($mysqldump_command);
 	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
 	say("Mysqldump done.");
 
 	say("Loading dump from $dump_file into cloned slave ...");
-	my $mysql_command = $client_basedir.'/mysql -uroot --password='' --max_allowed_packet=30M --protocol=tcp --port='.$slave_port.' < '.$dump_file;
+	my $mysql_command = "$client_basedir/mysql -uroot --password='' --max_allowed_packet=30M --protocol=tcp --port=$slave_port < $dump_file";
 	say($mysql_command);
 	system($mysql_command);
 	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
 	say("Mysql done.");
 
-	say("Issuing START SLAVE on the cloned slave.");
+	say("Issuing START SLAVE / START REPLICA on the cloned slave.");
 
+	my $terms = replicationTerms($reporter->serverVariable('version'));
 	$slave_dbh->do("
-		CHANGE MASTER TO
-		MASTER_PORT = ".$master_port.",
-		MASTER_HOST = '127.0.0.1',
-		MASTER_USER = 'root',
-		MASTER_CONNECT_RETRY = 1
+		".$terms->{change_source}."
+		".$terms->{source_port}." = ".$master_port.",
+		".$terms->{source_host}." = '127.0.0.1',
+		".$terms->{source_user}." = 'root',
+		".$terms->{source_connect_retry}." = 1
 	");
 
-	$slave_dbh->do("START SLAVE");
+	$slave_dbh->do($terms->{start_replica});
 
 	return STATUS_OK;
 }
@@ -183,13 +185,15 @@ sub report {
 	my $slave_port = $master_port + 4;
 	my $master_dbh = DBI->connect($reporter->dsn());
 	my $slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 1 } );
+	my $terms = replicationTerms($reporter->serverVariable('version'));
 
-	say("Issuing START SLAVE on the cloned slave.");
-	$slave_dbh->do("START SLAVE");
+	say("Issuing ".$terms->{start_replica}." on the cloned slave.");
+	$slave_dbh->do($terms->{start_replica});
 
         #
-        # We call MASTER_POS_WAIT at 100K increments in order to avoid buildbot timeout in case
-        # one big MASTER_POS_WAIT would take more than 20 minutes.
+        # We call MASTER_POS_WAIT / SOURCE_POS_WAIT at 100K increments in order
+        # to avoid buildbot timeout in case one big wait would take more than
+        # 20 minutes.
         #
 
         my $sth_binlogs = $master_dbh->prepare("SHOW BINARY LOGS");
@@ -197,10 +201,11 @@ sub report {
         while (my ($intermediate_binlog_file, $intermediate_binlog_size) = $sth_binlogs->fetchrow_array()) {
                 my $intermediate_binlog_pos = $intermediate_binlog_size < 10000000 ? $intermediate_binlog_size : 10000000;
                 do {
-                        say("Executing intermediate MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos) on cloned slave.");
-                        my $intermediate_wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos)");
+                        say("Executing intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) on cloned slave.");
+                        my $intermediate_wait_result = $slave_dbh->selectrow_array(
+				"SELECT ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos)");
                         if (not defined $intermediate_wait_result) {
-                                say("Intermediate MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos) failed on cloned slave on port $slave_port.");
+                                say("Intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) failed on cloned slave on port $slave_port.");
                                 return STATUS_REPLICATION_FAILURE;
                         }
                         $intermediate_binlog_pos += 10000000;
@@ -208,14 +213,15 @@ sub report {
         }
 
 
-	my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+	my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array($terms->{binlog_status});
 	exit_test(STATUS_UNKNOWN_ERROR) if !defined $final_binlog_file;
 
         say("Waiting for cloned slave to catch up..., file $final_binlog_file, pos $final_binlog_pos .");
-	my $final_wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos)");
+	my $final_wait_result = $slave_dbh->selectrow_array(
+		"SELECT ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos)");
 
 	if (not defined $final_wait_result) {
-                say("MASTER_POS_WAIT() failed. Cloned slave replication thread not running.");
+                say($terms->{pos_wait_func}."() failed. Cloned slave replication thread not running.");
                 return STATUS_REPLICATION_FAILURE;        }
 	
 	say("Cloned slave caught up.");

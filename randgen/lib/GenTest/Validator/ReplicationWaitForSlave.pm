@@ -47,6 +47,7 @@ sub validate {
 	my ($validator, $executors, $results) = @_;
 
 	my $master_executor = $executors->[0];
+	my $terms = $master_executor->replicationTerms();
 
 	my ($file, $pos) = $master_executor->masterStatus();
 	return STATUS_OK if ($file eq '') || ($pos eq '');
@@ -54,12 +55,15 @@ sub validate {
 	my $slave_dbh = $validator->dbh();
 	return STATUS_OK if not defined $slave_dbh;
 
-	my $wait_status = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT(?, ?)", undef, $file, $pos);
-	
+	my $wait_status = $slave_dbh->selectrow_array(
+		"SELECT ".$terms->{pos_wait_func}."(?, ?)", undef, $file, $pos);
+
 	if (not defined $wait_status) {
-		my @slave_status = $slave_dbh->selectrow_array("SHOW SLAVE STATUS");
-		my $slave_status = $slave_status[37];
-		say("Slave SQL thread has stopped with error: ".$slave_status);
+		my $slave_status = $slave_dbh->selectrow_hashref($terms->{replica_status});
+		my $err = (defined $slave_status)
+			? ($slave_status->{Last_SQL_Error} || $slave_status->{Last_Error} || '')
+			: '';
+		say("Slave SQL thread has stopped with error: ".$err);
 		return STATUS_REPLICATION_FAILURE;
 	} else {
 		return STATUS_OK;

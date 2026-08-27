@@ -24,6 +24,7 @@ use DBI;
 use GenTest;
 use GenTest::Constants;
 use GenTest::Reporter;
+use GenTest::ReplicationTerms qw(replicationTerms);
 
 my $reporter_called = 0;
 
@@ -37,7 +38,8 @@ sub report {
 	my $master_port = $reporter->serverVariable('port');
 	my $slave_port;
 
-	my $slave_info = $master_dbh->selectrow_arrayref("SHOW SLAVE HOSTS");
+	my $terms = replicationTerms($reporter->serverVariable('version'));
+	my $slave_info = $master_dbh->selectrow_arrayref($terms->{replicas});
 	if (defined $slave_info) {
 		$slave_port = $slave_info->[2];
 	} else {
@@ -49,11 +51,12 @@ sub report {
 
 	return STATUS_REPLICATION_FAILURE if not defined $slave_dbh;
 
-	$slave_dbh->do("START SLAVE");
+	$slave_dbh->do($terms->{start_replica});
 
 	#
-	# We call MASTER_POS_WAIT at 100K increments in order to avoid buildbot timeout in case
-	# one big MASTER_POS_WAIT would take more than 20 minutes.
+	# We call MASTER_POS_WAIT / SOURCE_POS_WAIT at 100K increments in order
+	# to avoid buildbot timeout in case one big wait would take more than
+	# 20 minutes.
 	#
 
 	my $sth_binlogs = $master_dbh->prepare("SHOW BINARY LOGS");
@@ -61,26 +64,28 @@ sub report {
 	while (my ($intermediate_binlog_file, $intermediate_binlog_size) = $sth_binlogs->fetchrow_array()) {
 		my $intermediate_binlog_pos = $intermediate_binlog_size < 10000000 ? $intermediate_binlog_size : 10000000;
 		do {
-			say("Executing intermediate MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos).");
-			my $intermediate_wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$intermediate_binlog_file',$intermediate_binlog_pos)");
+			say("Executing intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos).");
+			my $intermediate_wait_result = $slave_dbh->selectrow_array(
+				"SELECT ".$terms->{pos_wait_func}."('$intermediate_binlog_file',$intermediate_binlog_pos)");
 			if (not defined $intermediate_wait_result) {
-				say("Intermediate MASTER_POS_WAIT('$intermediate_binlog_file', $intermediate_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
+				say("Intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
 				return STATUS_REPLICATION_FAILURE;
 			}
 			$intermediate_binlog_pos += 10000000;
 	        } while (  $intermediate_binlog_pos <= $intermediate_binlog_size );
 	}
 
-        my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+        my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array($terms->{binlog_status});
 
-	say("Executing final MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos.");
-	my $final_wait_result = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT('$final_binlog_file',$final_binlog_pos)");
+	say("Executing final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos.");
+	my $final_wait_result = $slave_dbh->selectrow_array(
+		"SELECT ".$terms->{pos_wait_func}."('$final_binlog_file',$final_binlog_pos)");
 
 	if (not defined $final_wait_result) {
-		say("Final MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
+		say("Final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
 		return STATUS_REPLICATION_FAILURE;
 	} else {
-		say("Final MASTER_POS_WAIT('$final_binlog_file', $final_binlog_pos) complete.");
+		say("Final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos) complete.");
 	}
 
 	my @all_databases = @{$master_dbh->selectcol_arrayref("SHOW DATABASES")};

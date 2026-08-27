@@ -40,6 +40,7 @@ use strict;
 use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
+use GenTest::ReplicationTerms qw(replicationTerms);
 
 my $rpl_semi_sync_master_timeout = 10;
 
@@ -49,6 +50,7 @@ sub monitor {
 	say("GenTest::Reporter::ReplicationSemiSync: Test cycle starting.");
 
 	my $prng = $reporter->prng();
+	my $terms = replicationTerms($reporter->serverVariable('version'));
 
     my $slave_host;
     my $slave_port;
@@ -73,7 +75,7 @@ sub monitor {
 	$slave_dbh->do("SET GLOBAL rpl_semi_sync_slave_enabled = 1");
 	$slave_dbh->do("SET GLOBAL rpl_semi_sync_slave_trace_level = 80");
 
-	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh, 1);
+	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh, 1, $terms);
 # 	sleep(1);
 
 # 	my ($unused2, $rpl_semi_sync_master_status_first) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
@@ -151,13 +153,13 @@ sub monitor {
 	}
 	
 	say("GenTest::Reporter::ReplicationSemiSync: Starting slave IO thread.");
-	$slave_dbh->do("START SLAVE IO_THREAD");
+	$slave_dbh->do($terms->{start_replica_io});
 
 	#
 	# Make sure master and slave can reconcile and semisync will be turned on again
 	#
 
-	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh, 0);
+	return STATUS_REPLICATION_FAILURE if waitForSlave($master_dbh, $slave_dbh, 0, $terms);
 # 	sleep(1);
 
 # 	my ($unused7, $rpl_semi_sync_master_status_last) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
@@ -176,15 +178,16 @@ sub type {
 }
 
 sub isSlaveBehind {
-	my ($master_dbh, $slave_dbh) = @_;
+	my ($master_dbh, $slave_dbh, $terms) = @_;
 
 	my $binlogs = $master_dbh->selectall_arrayref("SHOW BINARY LOGS");
 	my ($last_log_name, $last_log_pos) = ($binlogs->[$#$binlogs]->[0], $binlogs->[$#$binlogs]->[1]);
 	my ($last_log_id) = $last_log_name =~ m{(\d+)}sgio;
 	say("Master: last_log_name = $last_log_name; last_log_pos = $last_log_pos; $last_log_id = $last_log_id.");
 			
-	my $slave_status = $slave_dbh->selectrow_arrayref("SHOW SLAVE STATUS");
-	my ($master_log_file, $read_master_log_pos) = ($slave_status->[5], $slave_status->[6]);
+	my $slave_status = $slave_dbh->selectrow_hashref($terms->{replica_status});
+	my $master_log_file = $slave_status->{Source_Log_File} // $slave_status->{Master_Log_File};
+	my $read_master_log_pos = $slave_status->{Read_Source_Log_Pos} // $slave_status->{Read_Master_Log_Pos};
 	my ($master_log_id) = $master_log_file =~ m{(\d+)}sgio;
 	say("GenTest::Reporter::ReplicationSemiSync: slave: master_log_file = $master_log_file; read_master_log_pos = $read_master_log_pos; master_log_id = $master_log_id.");
 	if ( 
@@ -198,26 +201,23 @@ sub isSlaveBehind {
 }
 
 sub waitForSlave {
-	my ($master_dbh, $slave_dbh, $stop_slave) = @_;
+	my ($master_dbh, $slave_dbh, $stop_slave, $terms) = @_;
 
 	say("GenTest::Reporter::ReplicationSemiSync: Flushing tables with read lock on master...");
 	$master_dbh->do("FLUSH NO_WRITE_TO_BINLOG TABLES WITH READ LOCK");
 	say("GenTest::Reporter::ReplicationSemiSync: ... flushed.");
 
-	my ($file, $pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
+	my ($file, $pos) = $master_dbh->selectrow_array($terms->{binlog_status});
 
 	if (($file eq '') || ($pos eq '')) {
-		 say("GenTest::Reporter::ReplicationSemiSync: SHOW MASTER STATUS failed.");
+		 say("GenTest::Reporter::ReplicationSemiSync: ".$terms->{binlog_status}." failed.");
 		 return STATUS_REPLICATION_FAILURE;
 	}
 
 	say("GenTest::Reporter::ReplicationSemiSync: Waiting for slave...");
-	#say("SHOW MASTER STATUS: " . $file . ", " . $pos);
-	my $wait_status = $slave_dbh->selectrow_array("SELECT MASTER_POS_WAIT(?, ?)", undef, $file, $pos);
+	my $wait_status = $slave_dbh->selectrow_array(
+		"SELECT ".$terms->{pos_wait_func}."(?, ?)", undef, $file, $pos);
 	say("GenTest::Reporter::ReplicationSemiSync: ... slave caught up with master.");
-
-	#my ($new_file, $new_pos) = $master_dbh->selectrow_array("SHOW MASTER STATUS");
-	#say("SHOW MASTER STATUS: " . $new_file . ", " . $new_pos);
 
 	my ($unused2, $rpl_semi_sync_master_status) = $master_dbh->selectrow_array("SHOW STATUS LIKE 'Rpl_semi_sync_master_status'");
 	if (not $rpl_semi_sync_master_status eq 'ON') {
@@ -230,14 +230,14 @@ sub waitForSlave {
 	    say("GenTest::Reporter::ReplicationSemiSync: Flushed status.");
 	    $master_dbh->do("SET GLOBAL rpl_semi_sync_master_timeout = ".($rpl_semi_sync_master_timeout * 1000));
 	    say("GenTest::Reporter::ReplicationSemiSync: stopping slave IO thread.");
-	    $slave_dbh->do("STOP SLAVE IO_THREAD");
+	    $slave_dbh->do($terms->{stop_replica_io});
 	    say("GenTest::Reporter::ReplicationSemiSync: stopped slave IO thread.");
 	}
 
 	$master_dbh->do("UNLOCK TABLES");
 
 	if (not defined $wait_status) {
-		say("GenTest::Reporter::ReplicationSemiSync: MASTER_POS_WAIT() has failed. Slave SQL thread has likely stopped.");
+		say("GenTest::Reporter::ReplicationSemiSync: ".$terms->{pos_wait_func}."() has failed. Slave SQL thread has likely stopped.");
 		return STATUS_REPLICATION_FAILURE;
 	}
 	return 0;

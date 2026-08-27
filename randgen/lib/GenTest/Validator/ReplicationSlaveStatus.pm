@@ -27,17 +27,11 @@ use GenTest;
 use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
-use GenTest::Executor::MySQL;
 
-# Previously hardcoded positional indices into SHOW SLAVE STATUS output
-# (19/35/38) -- fragile by construction, since MySQL has added columns to
-# this output across versions, and confirmed actually wrong on a live
-# Percona Server 9.7 build (Last_IO_Error sits at position 35, Last_SQL_Error
-# at 37, not 38/35). Switched to name-based access below instead: MySQL kept
-# the column names Last_Error/Last_IO_Error/Last_SQL_Error unchanged when it
-# renamed the statement itself to SHOW REPLICA STATUS in 8.0.23+, so
-# selectrow_hashref() works correctly regardless of which statement variant
-# ran, with no version-dependent column positions to track.
+# Error columns are read by name via selectrow_hashref(). Positional indices
+# into SHOW SLAVE/REPLICA STATUS have shifted across MySQL versions; the
+# Last_*_Error column names themselves were kept stable through the
+# SOURCE/REPLICA rename.
 
 sub init {
 	my ($validator, $executors) = @_;
@@ -55,6 +49,10 @@ sub init {
 	my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
 
 	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 0 });
+	if (not defined $slave_dbh) {
+		say("Unable to connect to replica at $slave_dsn");
+		return STATUS_REPLICATION_FAILURE;
+	}
 	$validator->setDbh($slave_dbh);
 	return STATUS_OK;
 }
@@ -64,16 +62,18 @@ sub validate {
 
 	my $master_executor = $executors->[0];
 
-	# init() may have failed to obtain a slave connection (e.g. slaveInfo()
-	# found no registered replica) without that being surfaced here -- guard
-	# rather than crash the whole worker on ->selectrow_hashref() against an
-	# undef $dbh.
 	my $dbh = $validator->dbh();
-	return STATUS_WONT_HANDLE if not defined $dbh;
+	if (not defined $dbh) {
+		say("Replica connection is gone; cannot check replication status.");
+		return STATUS_REPLICATION_FAILURE;
+	}
 
-	my $modern = GenTest::Executor::MySQL::_usesModernReplicationSyntax($master_executor->version());
-	my $slave_status = $dbh->selectrow_hashref($modern ? "SHOW REPLICA STATUS" : "SHOW SLAVE STATUS");
-	return STATUS_WONT_HANDLE if not defined $slave_status;
+	my $terms = $master_executor->replicationTerms();
+	my $slave_status = $dbh->selectrow_hashref($terms->{replica_status});
+	if (not defined $slave_status) {
+		say("SHOW REPLICA/SLAVE STATUS returned no data.");
+		return STATUS_REPLICATION_FAILURE;
+	}
 
 	for my $error_column (qw(Last_IO_Error Last_SQL_Error Last_Error)) {
 		if (defined $slave_status->{$error_column} && $slave_status->{$error_column} ne '') {

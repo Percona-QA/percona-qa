@@ -59,6 +59,7 @@ if (defined $ENV{RQG_HOME}) {
 
 use Getopt::Long;
 use GenTest::Constants;
+use GenTest::ReplicationTerms qw(replicationTerms);
 use DBI;
 use Cwd;
 
@@ -429,18 +430,19 @@ if ($rpl_mode) {
 		$slave_dbh->do("SET GLOBAL BINLOG_FORMAT = '$rpl_mode'");
 	}
 
-	$slave_dbh->do("STOP SLAVE");
-
 	$slave_dbh->do("SET GLOBAL storage_engine = '$engine'") if defined $engine;
 
-	$slave_dbh->do("CHANGE MASTER TO
-		MASTER_PORT = $master_ports[0],
-		MASTER_HOST = '127.0.0.1',
-               MASTER_USER = 'root',
-               MASTER_CONNECT_RETRY = 1
+	my $terms = replicationTerms($master_version);
+	$slave_dbh->do($terms->{stop_replica});
+
+	$slave_dbh->do($terms->{change_source}."
+		".$terms->{source_port}." = $master_ports[0],
+		".$terms->{source_host}." = '127.0.0.1',
+               ".$terms->{source_user}." = 'root',
+               ".$terms->{source_connect_retry}." = 1
 	");
 
-	$slave_dbh->do("START SLAVE");
+	$slave_dbh->do($terms->{start_replica});
 }
 
 #

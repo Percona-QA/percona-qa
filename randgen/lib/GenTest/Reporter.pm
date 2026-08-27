@@ -34,6 +34,7 @@ use strict;
 use GenTest;
 use GenTest::Result;
 use GenTest::Random;
+use GenTest::ReplicationTerms qw(replicationTerms);
 use DBI;
 use File::Find;
 use File::Spec;
@@ -87,9 +88,11 @@ sub new {
 
 	$sth->finish();
 
-	# SHOW SLAVE HOSTS may fail if user does not have the REPLICATION SLAVE privilege
+	# SHOW SLAVE HOSTS / SHOW REPLICAS may fail if user does not have the
+	# REPLICATION SLAVE privilege
 	$dbh->{PrintError} = 0;
-	my $slave_info = $dbh->selectrow_arrayref("SHOW SLAVE HOSTS");
+	my $terms = replicationTerms($reporter->serverVariable('version'));
+	my $slave_info = $dbh->selectrow_arrayref($terms->{replicas});
 	$dbh->{PrintError} = 1;
 	if (defined $slave_info) {
 		$reporter->[REPORTER_SERVER_INFO]->{slave_host} = $slave_info->[1];
