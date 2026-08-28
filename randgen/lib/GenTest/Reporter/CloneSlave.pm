@@ -49,7 +49,7 @@ sub monitor {
 	my $reporter = shift;
 
 	# In case of two servers, we will be called twice.
-	# Only clone a slave when called for the master
+	# Only clone a replica when called for the source
 
         $first_reporter = $reporter if not defined $first_reporter;
         return STATUS_OK if $reporter ne $first_reporter;
@@ -78,16 +78,16 @@ sub monitor {
 	my $lc_messages_dir = $reporter->serverVariable('lc_messages_dir');
 	my $datadir = $reporter->serverVariable('datadir');
 	$datadir =~ s{[\\/]$}{}sgio;
-	my $slave_datadir = $datadir.'_clonedslave';
-	mkdir($slave_datadir);
-	my $master_port = $reporter->serverVariable('port');
-	my $slave_port = $master_port + 4;
+	my $replica_datadir = $datadir.'_clonedslave';
+	mkdir($replica_datadir);
+	my $source_port = $reporter->serverVariable('port');
+	my $replica_port = $source_port + 4;
 	my $pid = $reporter->serverInfo('pid');
 	my $plugin_dir = $reporter->serverVariable('plugin_dir');
 	my $plugins = $reporter->serverPlugins();
 	my $engine = $reporter->serverVariable('storage_engine');
 
-	my $master_dbh = DBI->connect($reporter->dsn());
+	my $source_dbh = DBI->connect($reporter->dsn());
 
 	my @mysqld_options = (
 		'--no-defaults',
@@ -96,15 +96,15 @@ sub monitor {
 		'--loose-console',
 		'--language='.$language,
 		'--loose-lc-messages-dir='.$lc_messages_dir,
-		'--datadir="'.$slave_datadir.'"',
+		'--datadir="'.$replica_datadir.'"',
 		'--log-output=file',
 		'--skip-grant-tables',
 		'--general-log',
 		'--relay-log=clonedslave-relay',
-		'--general_log_file="'.$slave_datadir.'/clonedslave.log"',
-		'--log_error="'.$slave_datadir.'/clonedslave.err"',
-		'--datadir="'.$slave_datadir.'"',
-		'--port='.$slave_port,
+		'--general_log_file="'.$replica_datadir.'/clonedslave.log"',
+		'--log_error="'.$replica_datadir.'/clonedslave.err"',
+		'--datadir="'.$replica_datadir.'"',
+		'--port='.$replica_port,
 		'--loose-plugin-dir='.$plugin_dir,
 		'--max-allowed-packet=20M',
 		'--innodb',
@@ -116,53 +116,53 @@ sub monitor {
 	};
 
 	my $mysqld_command = $binary.' '.join(' ', @mysqld_options).' 2>&1';
-	say("Starting a new mysqld for the cloned slave.");
+	say("Starting a new mysqld for the cloned replica.");
 	say("$mysqld_command.");
 	my $mysqld_pid = open2(\*RDRFH, \*WTRFH, $mysqld_command);
 
-	my $slave_dbh;
+	my $replica_dbh;
 
 	foreach my $try (1..120) {
 		sleep(1);
-		$slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 0 , PrintError => 0 } );
-		next if not defined $slave_dbh;
-		last if $slave_dbh->ping();
+		$replica_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$replica_port, undef, undef, { RaiseError => 0 , PrintError => 0 } );
+		next if not defined $replica_dbh;
+		last if $replica_dbh->ping();
 	}
 
-	return STATUS_ENVIRONMENT_FAILURE if not defined $slave_dbh;
+	return STATUS_ENVIRONMENT_FAILURE if not defined $replica_dbh;
 
-	say("Cloned slave has started.");
-	
-        my @all_databases = @{$master_dbh->selectcol_arrayref("SHOW DATABASES")};
+	say("Cloned replica has started.");
+
+        my @all_databases = @{$source_dbh->selectcol_arrayref("SHOW DATABASES")};
         my $databases_string = join(' ', grep { $_ !~ m{^(mysql|information_schema|performance_schema)$}sgio } @all_databases );
 
-	my $dump_file = $slave_datadir.'/'.time().'.dump';
-	say("Dumping master to $dump_file ...");
-	my $mysqldump_command = "$client_basedir/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --password='' --protocol=tcp --port=$master_port --single-transaction --master-data --skip-tz-utc --databases $databases_string > $dump_file";
+	my $dump_file = $replica_datadir.'/'.time().'.dump';
+	say("Dumping source to $dump_file ...");
+	my $mysqldump_command = "$client_basedir/mysqldump --max_allowed_packet=25M --net_buffer_length=1M -uroot --password='' --protocol=tcp --port=$source_port --single-transaction --master-data --skip-tz-utc --databases $databases_string > $dump_file";
 	say($mysqldump_command);
 	system($mysqldump_command);
 	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
 	say("Mysqldump done.");
 
-	say("Loading dump from $dump_file into cloned slave ...");
-	my $mysql_command = "$client_basedir/mysql -uroot --password='' --max_allowed_packet=30M --protocol=tcp --port=$slave_port < $dump_file";
+	say("Loading dump from $dump_file into cloned replica ...");
+	my $mysql_command = "$client_basedir/mysql -uroot --password='' --max_allowed_packet=30M --protocol=tcp --port=$replica_port < $dump_file";
 	say($mysql_command);
 	system($mysql_command);
 	return STATUS_ENVIRONMENT_FAILURE if $? != 0;
 	say("Mysql done.");
 
-	say("Issuing START SLAVE / START REPLICA on the cloned slave.");
+	say("Issuing START SLAVE / START REPLICA on the cloned replica.");
 
 	my $terms = replicationTerms($reporter->serverVariable('version'));
-	$slave_dbh->do("
+	$replica_dbh->do("
 		".$terms->{change_source}."
-		".$terms->{source_port}." = ".$master_port.",
+		".$terms->{source_port}." = ".$source_port.",
 		".$terms->{source_host}." = '127.0.0.1',
 		".$terms->{source_user}." = 'root',
 		".$terms->{source_connect_retry}." = 1
 	");
 
-	$slave_dbh->do($terms->{start_replica});
+	$replica_dbh->do($terms->{start_replica});
 
 	return STATUS_OK;
 }
@@ -181,14 +181,14 @@ sub report {
 
 	die "can't determine client_basedir; basedir = $basedir" if not defined $client_basedir;
 
-	my $master_port = $reporter->serverVariable('port');
-	my $slave_port = $master_port + 4;
-	my $master_dbh = DBI->connect($reporter->dsn());
-	my $slave_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$slave_port, undef, undef, { RaiseError => 1 } );
+	my $source_port = $reporter->serverVariable('port');
+	my $replica_port = $source_port + 4;
+	my $source_dbh = DBI->connect($reporter->dsn());
+	my $replica_dbh = DBI->connect("dbi:mysql:user=root:host=127.0.0.1:port=".$replica_port, undef, undef, { RaiseError => 1 } );
 	my $terms = replicationTerms($reporter->serverVariable('version'));
 
-	say("Issuing ".$terms->{start_replica}." on the cloned slave.");
-	$slave_dbh->do($terms->{start_replica});
+	say("Issuing ".$terms->{start_replica}." on the cloned replica.");
+	$replica_dbh->do($terms->{start_replica});
 
         #
         # We call MASTER_POS_WAIT / SOURCE_POS_WAIT at 100K increments in order
@@ -196,16 +196,16 @@ sub report {
         # 20 minutes.
         #
 
-        my $sth_binlogs = $master_dbh->prepare("SHOW BINARY LOGS");
+        my $sth_binlogs = $source_dbh->prepare("SHOW BINARY LOGS");
         $sth_binlogs->execute();
         while (my ($intermediate_binlog_file, $intermediate_binlog_size) = $sth_binlogs->fetchrow_array()) {
                 my $intermediate_binlog_pos = $intermediate_binlog_size < 10000000 ? $intermediate_binlog_size : 10000000;
                 do {
-                        say("Executing intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) on cloned slave.");
-                        my $intermediate_wait_result = $slave_dbh->selectrow_array(
+                        say("Executing intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) on cloned replica.");
+                        my $intermediate_wait_result = $replica_dbh->selectrow_array(
 				"SELECT ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos)");
                         if (not defined $intermediate_wait_result) {
-                                say("Intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) failed on cloned slave on port $slave_port.");
+                                say("Intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) failed on cloned replica on port $replica_port.");
                                 return STATUS_REPLICATION_FAILURE;
                         }
                         $intermediate_binlog_pos += 10000000;
@@ -213,23 +213,23 @@ sub report {
         }
 
 
-	my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array($terms->{binlog_status});
+	my ($final_binlog_file, $final_binlog_pos) = $source_dbh->selectrow_array($terms->{binlog_status});
 	exit_test(STATUS_UNKNOWN_ERROR) if !defined $final_binlog_file;
 
-        say("Waiting for cloned slave to catch up..., file $final_binlog_file, pos $final_binlog_pos .");
-	my $final_wait_result = $slave_dbh->selectrow_array(
+        say("Waiting for cloned replica to catch up..., file $final_binlog_file, pos $final_binlog_pos .");
+	my $final_wait_result = $replica_dbh->selectrow_array(
 		"SELECT ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos)");
 
 	if (not defined $final_wait_result) {
-                say($terms->{pos_wait_func}."() failed. Cloned slave replication thread not running.");
+                say($terms->{pos_wait_func}."() failed. Cloned replica replication thread not running.");
                 return STATUS_REPLICATION_FAILURE;        }
-	
-	say("Cloned slave caught up.");
 
-        my @all_databases = @{$master_dbh->selectcol_arrayref("SHOW DATABASES")};
+	say("Cloned replica caught up.");
+
+        my @all_databases = @{$source_dbh->selectcol_arrayref("SHOW DATABASES")};
         my $databases_string = join(' ', grep { $_ !~ m{^(mysql|information_schema|performance_schema)$}sgio } @all_databases );
-		
-	my @dump_ports = ($master_port, $slave_port);
+
+	my @dump_ports = ($source_port, $replica_port);
 	my @dump_files;
 
 	foreach my $i (0..$#dump_ports) {
@@ -244,7 +244,7 @@ sub report {
 	my $diff_result = system("diff -u $dump_files[0] $dump_files[1]") >> 8;
 
 	if ($diff_result == 0) {
-		say("No differences were found between master and cloned slave.");
+		say("No differences were found between source and cloned replica.");
         }
 
         foreach my $dump_file (@dump_files) {

@@ -37,23 +37,23 @@ sub init {
 	my ($validator, $executors) = @_;
 	my $master_executor = $executors->[0];
 
-	my ($slave_host, $slave_port) = $master_executor->slaveInfo();
+	my ($replica_host, $replica_port) = $master_executor->replicaInfo();
 
 	if (
-		($slave_host eq '') ||
-		($slave_port eq '')
+		($replica_host eq '') ||
+		($replica_port eq '')
 	) {
 		say("SHOW REPLICAS / SHOW SLAVE HOSTS returned no data.");
 		return STATUS_REPLICATION_FAILURE;
 	}
-	my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
+	my $replica_dsn = 'dbi:mysql:host='.$replica_host.':port='.$replica_port.':user=root';
 
-	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 0 });
-	if (not defined $slave_dbh) {
-		say("Unable to connect to replica at $slave_dsn");
+	my $replica_dbh = DBI->connect($replica_dsn, undef, undef, { PrintError => 0 });
+	if (not defined $replica_dbh) {
+		say("Unable to connect to replica at $replica_dsn");
 		return STATUS_REPLICATION_FAILURE;
 	}
-	$validator->setDbh($slave_dbh);
+	$validator->setDbh($replica_dbh);
 	return STATUS_OK;
 }
 
@@ -69,15 +69,15 @@ sub validate {
 	}
 
 	my $terms = $master_executor->replicationTerms();
-	my $slave_status = $dbh->selectrow_hashref($terms->{replica_status});
-	if (not defined $slave_status) {
+	my $replica_status = $dbh->selectrow_hashref($terms->{replica_status});
+	if (not defined $replica_status) {
 		say("SHOW REPLICA/SLAVE STATUS returned no data.");
 		return STATUS_REPLICATION_FAILURE;
 	}
 
 	for my $error_column (qw(Last_IO_Error Last_SQL_Error Last_Error)) {
-		if (defined $slave_status->{$error_column} && $slave_status->{$error_column} ne '') {
-			say("Replica has stopped with error ($error_column): ".$slave_status->{$error_column});
+		if (defined $replica_status->{$error_column} && $replica_status->{$error_column} ne '') {
+			say("Replica has stopped with error ($error_column): ".$replica_status->{$error_column});
 			return STATUS_REPLICATION_FAILURE;
 		}
 	}

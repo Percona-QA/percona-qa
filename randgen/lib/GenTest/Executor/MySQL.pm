@@ -99,11 +99,11 @@ my @patterns = map { qr{$_}i } @errors;
 use constant EXECUTOR_MYSQL_AUTOCOMMIT => 20;
 
 #
-# Column positions for SHOW SLAVES
-# 
+# Column positions for SHOW REPLICAS / SHOW SLAVE HOSTS
+#
 
-use constant SLAVE_INFO_HOST => 1;
-use constant SLAVE_INFO_PORT => 2;
+use constant REPLICA_INFO_HOST => 1;
+use constant REPLICA_INFO_PORT => 2;
 
 #
 # MySQL status codes taken from errmsg.h
@@ -817,15 +817,15 @@ sub replicationTerms {
 	return GenTest::ReplicationTerms::replicationTerms($executor->version());
 }
 
-sub slaveInfo {
+sub replicaInfo {
 	my $executor = shift;
 	my $terms = $executor->replicationTerms();
-	my $slave_info = $executor->dbh()->selectrow_arrayref($terms->{replicas});
-	return ('', '') if not defined $slave_info;
-	return ($slave_info->[SLAVE_INFO_HOST], $slave_info->[SLAVE_INFO_PORT]);
+	my $replica_info = $executor->dbh()->selectrow_arrayref($terms->{replicas});
+	return ('', '') if not defined $replica_info;
+	return ($replica_info->[REPLICA_INFO_HOST], $replica_info->[REPLICA_INFO_PORT]);
 }
 
-sub masterStatus {
+sub sourceStatus {
 	my $executor = shift;
 	my $terms = $executor->replicationTerms();
 	return $executor->dbh()->selectrow_array($terms->{binlog_status});

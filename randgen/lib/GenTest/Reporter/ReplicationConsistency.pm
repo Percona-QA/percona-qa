@@ -34,24 +34,24 @@ sub report {
 	return STATUS_WONT_HANDLE if $reporter_called == 1;
 	$reporter_called = 1;
 
-	my $master_dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
-	my $master_port = $reporter->serverVariable('port');
-	my $slave_port;
+	my $source_dbh = DBI->connect($reporter->dsn(), undef, undef, {PrintError => 0});
+	my $source_port = $reporter->serverVariable('port');
+	my $replica_port;
 
 	my $terms = replicationTerms($reporter->serverVariable('version'));
-	my $slave_info = $master_dbh->selectrow_arrayref($terms->{replicas});
-	if (defined $slave_info) {
-		$slave_port = $slave_info->[2];
+	my $replica_info = $source_dbh->selectrow_arrayref($terms->{replicas});
+	if (defined $replica_info) {
+		$replica_port = $replica_info->[2];
 	} else {
-		$slave_port = $master_port + 2;
+		$replica_port = $source_port + 2;
 	}
 
-        my $slave_dsn = "dbi:mysql:host=127.0.0.1:port=".$slave_port.":user=root";
-        my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 1 } );
+        my $replica_dsn = "dbi:mysql:host=127.0.0.1:port=".$replica_port.":user=root";
+        my $replica_dbh = DBI->connect($replica_dsn, undef, undef, { PrintError => 1 } );
 
-	return STATUS_REPLICATION_FAILURE if not defined $slave_dbh;
+	return STATUS_REPLICATION_FAILURE if not defined $replica_dbh;
 
-	$slave_dbh->do($terms->{start_replica});
+	$replica_dbh->do($terms->{start_replica});
 
 	#
 	# We call MASTER_POS_WAIT / SOURCE_POS_WAIT at 100K increments in order
@@ -59,39 +59,39 @@ sub report {
 	# 20 minutes.
 	#
 
-	my $sth_binlogs = $master_dbh->prepare("SHOW BINARY LOGS");
+	my $sth_binlogs = $source_dbh->prepare("SHOW BINARY LOGS");
 	$sth_binlogs->execute();
 	while (my ($intermediate_binlog_file, $intermediate_binlog_size) = $sth_binlogs->fetchrow_array()) {
 		my $intermediate_binlog_pos = $intermediate_binlog_size < 10000000 ? $intermediate_binlog_size : 10000000;
 		do {
 			say("Executing intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos).");
-			my $intermediate_wait_result = $slave_dbh->selectrow_array(
+			my $intermediate_wait_result = $replica_dbh->selectrow_array(
 				"SELECT ".$terms->{pos_wait_func}."('$intermediate_binlog_file',$intermediate_binlog_pos)");
 			if (not defined $intermediate_wait_result) {
-				say("Intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
+				say("Intermediate ".$terms->{pos_wait_func}."('$intermediate_binlog_file', $intermediate_binlog_pos) failed in replica on port $replica_port. Replica replication thread not running.");
 				return STATUS_REPLICATION_FAILURE;
 			}
 			$intermediate_binlog_pos += 10000000;
 	        } while (  $intermediate_binlog_pos <= $intermediate_binlog_size );
 	}
 
-        my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array($terms->{binlog_status});
+        my ($final_binlog_file, $final_binlog_pos) = $source_dbh->selectrow_array($terms->{binlog_status});
 
 	say("Executing final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos).");
-	my $final_wait_result = $slave_dbh->selectrow_array(
+	my $final_wait_result = $replica_dbh->selectrow_array(
 		"SELECT ".$terms->{pos_wait_func}."('$final_binlog_file',$final_binlog_pos)");
 
 	if (not defined $final_wait_result) {
-		say("Final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos) failed in slave on port $slave_port. Slave replication thread not running.");
+		say("Final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos) failed in replica on port $replica_port. Replica replication thread not running.");
 		return STATUS_REPLICATION_FAILURE;
 	} else {
 		say("Final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos) complete.");
 	}
 
-	my @all_databases = @{$master_dbh->selectcol_arrayref("SHOW DATABASES")};
+	my @all_databases = @{$source_dbh->selectcol_arrayref("SHOW DATABASES")};
 	my $databases_string = join(' ', grep { $_ !~ m{^(mysql|information_schema|performance_schema)$}sgio } @all_databases );
 	
-	my @dump_ports = ($master_port , $slave_port);
+	my @dump_ports = ($source_port , $replica_port);
 	my @dump_files;
 
 	foreach my $i (0..$#dump_ports) {

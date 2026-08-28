@@ -51,6 +51,19 @@ my %LEGACY_REPLICATION_TERMS = (
 	pos_wait_func         => 'MASTER_POS_WAIT',
 	replica_status        => 'SHOW SLAVE STATUS',
 	replicas              => 'SHOW SLAVE HOSTS',
+	# Semi-sync plugin: system/status variable names, not just statement
+	# text. Confirmed live against Percona Server 9.7 -- the *_source_*/
+	# *_replica_* names below don't exist there at all; only *_master_*/
+	# *_slave_* do on a legacy-syntax server (installing the semisync_master/
+	# semisync_slave plugins registers these names).
+	semisync_source_enabled       => 'rpl_semi_sync_master_enabled',
+	semisync_source_trace_level   => 'rpl_semi_sync_master_trace_level',
+	semisync_source_timeout       => 'rpl_semi_sync_master_timeout',
+	semisync_replica_enabled      => 'rpl_semi_sync_slave_enabled',
+	semisync_replica_trace_level  => 'rpl_semi_sync_slave_trace_level',
+	semisync_source_status        => 'Rpl_semi_sync_master_status',
+	semisync_source_yes_tx        => 'Rpl_semi_sync_master_yes_tx',
+	semisync_source_no_tx         => 'Rpl_semi_sync_master_no_tx',
 );
 
 my %MODERN_REPLICATION_TERMS = (
@@ -69,9 +82,22 @@ my %MODERN_REPLICATION_TERMS = (
 	pos_wait_func         => 'SOURCE_POS_WAIT',
 	replica_status        => 'SHOW REPLICA STATUS',
 	replicas              => 'SHOW REPLICAS',
+	# Confirmed live against Percona Server 9.7: installing
+	# semisync_source.so/semisync_replica.so registers exactly these names
+	# (SHOW VARIABLES/SHOW STATUS LIKE '%semi_sync%'); the legacy
+	# rpl_semi_sync_master_*/rpl_semi_sync_slave_* names are not present.
+	semisync_source_enabled       => 'rpl_semi_sync_source_enabled',
+	semisync_source_trace_level   => 'rpl_semi_sync_source_trace_level',
+	semisync_source_timeout       => 'rpl_semi_sync_source_timeout',
+	semisync_replica_enabled      => 'rpl_semi_sync_replica_enabled',
+	semisync_replica_trace_level  => 'rpl_semi_sync_replica_trace_level',
+	semisync_source_status        => 'Rpl_semi_sync_source_status',
+	semisync_source_yes_tx        => 'Rpl_semi_sync_source_yes_tx',
+	semisync_source_no_tx         => 'Rpl_semi_sync_source_no_tx',
 );
 
 my %_modern_cache;
+my %_binlog_status_cache;
 
 sub usesModernReplicationSyntax {
 	my ($version_string) = @_;
@@ -93,11 +119,40 @@ sub usesModernReplicationSyntax {
 	return $modern;
 }
 
+# SHOW BINARY LOG STATUS (replacing SHOW MASTER STATUS) landed later than the
+# rest of the SOURCE/REPLICA rollout: confirmed live that Percona Server
+# 8.0.46 accepts SHOW REPLICA STATUS/SHOW REPLICAS/CHANGE REPLICATION SOURCE
+# TO/SOURCE_POS_WAIT() but rejects SHOW BINARY LOG STATUS as a syntax error,
+# while it works from MySQL 8.2.0 onward. Gate this term on its own boundary
+# rather than the 8.0.23 one used for everything else.
+sub usesBinaryLogStatusSyntax {
+	my ($version_string) = @_;
+	return 0 if not defined $version_string;
+	return $_binlog_status_cache{$version_string} if exists $_binlog_status_cache{$version_string};
+
+	my $modern = 0;
+	if ($version_string !~ m{mariadb}sio) {
+		my ($major, $minor, $patch) = $version_string =~ m{^(\d+)\.(\d+)\.(\d+)}sio;
+		if (defined $major &&
+		    (($major > 8) ||
+		     ($major == 8 && $minor >= 2))) {
+			$modern = 1;
+		}
+	}
+
+	$_binlog_status_cache{$version_string} = $modern;
+	return $modern;
+}
+
 sub replicationTerms {
 	my ($version_string) = @_;
-	return usesModernReplicationSyntax($version_string)
-		? \%MODERN_REPLICATION_TERMS
-		: \%LEGACY_REPLICATION_TERMS;
+	my %terms = usesModernReplicationSyntax($version_string)
+		? %MODERN_REPLICATION_TERMS
+		: %LEGACY_REPLICATION_TERMS;
+
+	$terms{binlog_status} = 'SHOW MASTER STATUS' if not usesBinaryLogStatusSyntax($version_string);
+
+	return \%terms;
 }
 
 1;

@@ -29,20 +29,20 @@ use GenTest::Reporter;
 sub monitor {
 	my $reporter = shift;
 
-	my $slave_host = $reporter->serverInfo('slave_host');
-	my $slave_port = $reporter->serverInfo('slave_port');
+	my $replica_host = $reporter->serverInfo('replica_host');
+	my $replica_port = $reporter->serverInfo('replica_port');
 
-	my $master_dsn = $reporter->dsn();
-	my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
+	my $source_dsn = $reporter->dsn();
+	my $replica_dsn = 'dbi:mysql:host='.$replica_host.':port='.$replica_port.':user=root';
 
-	my $slave_dbh = DBI->connect($slave_dsn);
-	
-	my $databases = $slave_dbh->selectcol_arrayref("SHOW DATABASES");
+	my $replica_dbh = DBI->connect($replica_dsn);
+
+	my $databases = $replica_dbh->selectcol_arrayref("SHOW DATABASES");
 	foreach my $database (@$databases) {
 		next if $database =~ m{^(mysql|information_schema|pbxt|performance_schema)$}sio;
-                my $tables = $slave_dbh->selectcol_arrayref("SHOW TABLES FROM `$database`");
+                my $tables = $replica_dbh->selectcol_arrayref("SHOW TABLES FROM `$database`");
                 foreach my $table (@$tables) {
-			$slave_dbh->do("ANALYZE TABLE `$database`.`$table`");
+			$replica_dbh->do("ANALYZE TABLE `$database`.`$table`");
 		}
 	}
 

@@ -32,12 +32,12 @@ sub init {
 	my ($validator, $executors) = @_;
 	my $master_executor = $executors->[0];
 
-	my ($slave_host, $slave_port) = $master_executor->slaveInfo();
+	my ($replica_host, $replica_port) = $master_executor->replicaInfo();
 
-	if (($slave_host ne '') && ($slave_port ne '')) {
-		my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
-		my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { RaiseError => 1 });
-		$validator->setDbh($slave_dbh);
+	if (($replica_host ne '') && ($replica_port ne '')) {
+		my $replica_dsn = 'dbi:mysql:host='.$replica_host.':port='.$replica_port.':user=root';
+		my $replica_dbh = DBI->connect($replica_dsn, undef, undef, { RaiseError => 1 });
+		$validator->setDbh($replica_dbh);
 	}
 
 	return 1;
@@ -49,21 +49,21 @@ sub validate {
 	my $master_executor = $executors->[0];
 	my $terms = $master_executor->replicationTerms();
 
-	my ($file, $pos) = $master_executor->masterStatus();
+	my ($file, $pos) = $master_executor->sourceStatus();
 	return STATUS_OK if ($file eq '') || ($pos eq '');
 
-	my $slave_dbh = $validator->dbh();
-	return STATUS_OK if not defined $slave_dbh;
+	my $replica_dbh = $validator->dbh();
+	return STATUS_OK if not defined $replica_dbh;
 
-	my $wait_status = $slave_dbh->selectrow_array(
+	my $wait_status = $replica_dbh->selectrow_array(
 		"SELECT ".$terms->{pos_wait_func}."(?, ?)", undef, $file, $pos);
 
 	if (not defined $wait_status) {
-		my $slave_status = $slave_dbh->selectrow_hashref($terms->{replica_status});
-		my $err = (defined $slave_status)
-			? ($slave_status->{Last_SQL_Error} || $slave_status->{Last_Error} || '')
+		my $replica_status = $replica_dbh->selectrow_hashref($terms->{replica_status});
+		my $err = (defined $replica_status)
+			? ($replica_status->{Last_SQL_Error} || $replica_status->{Last_Error} || '')
 			: '';
-		say("Slave SQL thread has stopped with error: ".$err);
+		say("Replica SQL thread has stopped with error: ".$err);
 		return STATUS_REPLICATION_FAILURE;
 	} else {
 		return STATUS_OK;

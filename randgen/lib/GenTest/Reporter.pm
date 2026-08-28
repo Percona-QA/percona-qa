@@ -92,11 +92,11 @@ sub new {
 	# REPLICATION SLAVE privilege
 	$dbh->{PrintError} = 0;
 	my $terms = replicationTerms($reporter->serverVariable('version'));
-	my $slave_info = $dbh->selectrow_arrayref($terms->{replicas});
+	my $replica_info = $dbh->selectrow_arrayref($terms->{replicas});
 	$dbh->{PrintError} = 1;
-	if (defined $slave_info) {
-		$reporter->[REPORTER_SERVER_INFO]->{slave_host} = $slave_info->[1];
-		$reporter->[REPORTER_SERVER_INFO]->{slave_port} = $slave_info->[2];
+	if (defined $replica_info) {
+		$reporter->[REPORTER_SERVER_INFO]->{replica_host} = $replica_info->[1];
+		$reporter->[REPORTER_SERVER_INFO]->{replica_port} = $replica_info->[2];
 	}
 
 	if ($reporter->serverVariable('version') !~ m{^5\.0}sgio) {
