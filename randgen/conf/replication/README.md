@@ -70,15 +70,46 @@ happened to match.
 
 ## Version compatibility
 
-MySQL/Percona 8.0.23 introduced `REPLICA`/`SOURCE` replication terminology as
-accepted aliases for the original `SLAVE`/`MASTER` terms; 8.4.0 removed the
-original terms outright (`STOP SLAVE`, `CHANGE MASTER TO`, `SHOW MASTER
+MySQL/Percona introduced `REPLICA`/`SOURCE` replication terminology as
+accepted aliases for the original `SLAVE`/`MASTER` terms, then later removed
+the original terms outright (`STOP SLAVE`, `CHANGE MASTER TO`, `SHOW MASTER
 STATUS`, `SHOW SLAVE STATUS`, `SHOW SLAVE HOSTS`, `MASTER_POS_WAIT()` are hard
-syntax errors from 8.4 onward). MariaDB never made this change. All
+syntax errors on current versions). MariaDB never made this change. All
 replication-related code in this repo (`ReplMySQLd.pm`, the replication
 Reporters/Validators, `runall.pl`/`runall-new.pl`) selects the correct
 vocabulary per-server via `GenTest::ReplicationTerms`, based on the
 connected server's version string -- no manual flag needed either way.
+
+Not every statement and function in that rename landed in the same server
+release. The bulk of the new vocabulary (the `SHOW REPLICA STATUS`-style
+statements, `CHANGE REPLICATION SOURCE TO`, `START`/`STOP REPLICA`) shipped
+together, but a couple of individual pieces -- the binlog-status query and
+the position-wait function -- were confirmed by testing against real servers
+to lag behind on a later point release, while everything else already
+worked. `GenTest::ReplicationTerms` gates those specific terms on their own
+boundary rather than assuming the whole rollout is atomic. If a replication
+run against a new server version starts failing with a "does not exist" or
+syntax error on a name this module emits, that's the first thing to check --
+the affected term likely needs its own boundary rather than sharing an
+existing one, and the fix should be confirmed against a real server of that
+version rather than assumed from release notes alone.
+
+## `ReplicationThreadRestarter` reporter
+
+Periodically issues a random `START`/`STOP` against the replica's IO thread,
+SQL thread, both, or neither, independent of anything else going on in the
+test. It's useful for exercising how replication behaves when it's toggled
+mid-run rather than left running continuously throughout.
+
+It's deliberately adversarial toward validators that assert the replica's
+SQL thread is currently running (`ReplicationSlaveStatus`,
+`ReplicationWaitForSlave`) -- pairing them can produce a
+`STATUS_REPLICATION_FAILURE` that just reflects the validator catching the
+replica mid-toggle, not a real bug. Check the general log for the actual
+`START`/`STOP` statements the reporter sent (and whether they succeeded)
+before concluding a failure from that combination means something is
+actually broken. Run it alongside reporters/validators that don't assert
+thread state if the goal is to test the toggling itself in isolation.
 
 ## Known issue: `CloneSlave` / `CloneSlaveXtrabackup` reporters
 

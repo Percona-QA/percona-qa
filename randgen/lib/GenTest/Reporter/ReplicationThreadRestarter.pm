@@ -24,6 +24,7 @@ use strict;
 use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
+use GenTest::ReplicationTerms qw(replicationTerms);
 
 sub monitor {
 
@@ -37,6 +38,8 @@ sub monitor {
 	my $replica_dsn = 'dbi:mysql:host='.$replica_host.':port='.$replica_port.':user=root';
 	my $replica_dbh = DBI->connect($replica_dsn);
 
+	my $terms = replicationTerms($reporter->serverVariable('version'));
+
 	my $verb = $prng->arrayElement(['START','STOP']);
 	my $threads = $prng->arrayElement([
 		'',
@@ -46,7 +49,7 @@ sub monitor {
 		'SQL_THREAD'
 	]);
 
-	my $query = $verb.' SLAVE '.$threads;
+	my $query = $verb.' '.$terms->{replica_keyword}.' '.$threads;
 
 	if (defined $replica_dbh) {
 		$replica_dbh->do($query);

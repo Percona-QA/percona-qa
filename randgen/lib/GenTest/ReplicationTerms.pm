@@ -51,6 +51,11 @@ my %LEGACY_REPLICATION_TERMS = (
 	pos_wait_func         => 'MASTER_POS_WAIT',
 	replica_status        => 'SHOW SLAVE STATUS',
 	replicas              => 'SHOW SLAVE HOSTS',
+	# Bare noun for callers that build START/STOP <noun> <arbitrary thread
+	# clause> themselves rather than using the start_replica*/stop_replica*
+	# statements above (which only cover the "both threads" and "IO_THREAD
+	# only" cases).
+	replica_keyword       => 'SLAVE',
 	# Semi-sync plugin: system/status variable names, not just statement
 	# text. Confirmed live against Percona Server 9.7 -- the *_source_*/
 	# *_replica_* names below don't exist there at all; only *_master_*/
@@ -82,6 +87,7 @@ my %MODERN_REPLICATION_TERMS = (
 	pos_wait_func         => 'SOURCE_POS_WAIT',
 	replica_status        => 'SHOW REPLICA STATUS',
 	replicas              => 'SHOW REPLICAS',
+	replica_keyword       => 'REPLICA',
 	# Confirmed live against Percona Server 9.7: installing
 	# semisync_source.so/semisync_replica.so registers exactly these names
 	# (SHOW VARIABLES/SHOW STATUS LIKE '%semi_sync%'); the legacy
@@ -98,6 +104,7 @@ my %MODERN_REPLICATION_TERMS = (
 
 my %_modern_cache;
 my %_binlog_status_cache;
+my %_pos_wait_cache;
 
 sub usesModernReplicationSyntax {
 	my ($version_string) = @_;
@@ -144,6 +151,32 @@ sub usesBinaryLogStatusSyntax {
 	return $modern;
 }
 
+# SOURCE_POS_WAIT() also landed later than the rest of the SOURCE/REPLICA
+# rollout: confirmed live against Percona Server 8.0.23-14 and 8.0.25-15 that
+# SOURCE_POS_WAIT() is rejected with "FUNCTION ... does not exist" (it isn't
+# a registered builtin yet) even though SHOW REPLICA STATUS/SHOW REPLICAS/
+# CHANGE REPLICATION SOURCE TO/START REPLICA/STOP REPLICA all already work,
+# and MASTER_POS_WAIT() still does. Gate this term on its own boundary too.
+sub usesSourcePosWaitSyntax {
+	my ($version_string) = @_;
+	return 0 if not defined $version_string;
+	return $_pos_wait_cache{$version_string} if exists $_pos_wait_cache{$version_string};
+
+	my $modern = 0;
+	if ($version_string !~ m{mariadb}sio) {
+		my ($major, $minor, $patch) = $version_string =~ m{^(\d+)\.(\d+)\.(\d+)}sio;
+		if (defined $major &&
+		    (($major > 8) ||
+		     ($major == 8 && $minor > 0) ||
+		     ($major == 8 && $minor == 0 && $patch >= 26))) {
+			$modern = 1;
+		}
+	}
+
+	$_pos_wait_cache{$version_string} = $modern;
+	return $modern;
+}
+
 sub replicationTerms {
 	my ($version_string) = @_;
 	my %terms = usesModernReplicationSyntax($version_string)
@@ -151,6 +184,7 @@ sub replicationTerms {
 		: %LEGACY_REPLICATION_TERMS;
 
 	$terms{binlog_status} = 'SHOW MASTER STATUS' if not usesBinaryLogStatusSyntax($version_string);
+	$terms{pos_wait_func} = 'MASTER_POS_WAIT' if not usesSourcePosWaitSyntax($version_string);
 
 	return \%terms;
 }
