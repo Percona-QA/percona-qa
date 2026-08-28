@@ -77,7 +77,7 @@ sub report {
 
         my ($final_binlog_file, $final_binlog_pos) = $master_dbh->selectrow_array($terms->{binlog_status});
 
-	say("Executing final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos.");
+	say("Executing final ".$terms->{pos_wait_func}."('$final_binlog_file', $final_binlog_pos).");
 	my $final_wait_result = $slave_dbh->selectrow_array(
 		"SELECT ".$terms->{pos_wait_func}."('$final_binlog_file',$final_binlog_pos)");
 
