@@ -41,20 +41,20 @@ sub monitor {
 
 	my $dbh = DBI->connect($dsn);
 
-	my $slave_host = $reporter->serverInfo('slave_host');
-	my $master_port = $reporter->serverVariable('port');
+	my $replica_host = $reporter->serverInfo('replica_host');
+	my $source_port = $reporter->serverVariable('port');
 
 	# If interface is not specified, tcpkill will auto-pick the first available
 
-	my $interface = $slave_host eq '127.0.0.1' ? 'lo' : '';
+	my $interface = $replica_host eq '127.0.0.1' ? 'lo' : '';
 
-        my $slave_local = $dbh->selectrow_array("
+        my $replica_local = $dbh->selectrow_array("
 		SELECT HOST
 		FROM INFORMATION_SCHEMA.PROCESSLIST
 		WHERE COMMAND = 'Binlog Dump'
 	");
-	
-	my ($slave_local_host, $slave_local_port) = split (':', $slave_local);
+
+	my ($replica_local_host, $replica_local_port) = split (':', $replica_local);
 
 	$tcpkill_pid = fork();
 
@@ -65,7 +65,7 @@ sub monitor {
 		$tcpkill_pid = undef;
 		return(STATUS_OK);
 	} else {
-		my $command = "/usr/sbin/tcpkill -i $interface src host $slave_local_host and src port $slave_local_port and dst port $master_port";
+		my $command = "/usr/sbin/tcpkill -i $interface src host $replica_local_host and src port $replica_local_port and dst port $source_port";
 		say("Executing $command");
 		exec($command);
 		exit(STATUS_OK);

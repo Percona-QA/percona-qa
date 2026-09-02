@@ -58,39 +58,39 @@ sub create_repl_server1 {
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
-    my $master_vardir= cwd()."/unit/tmpwd1/";
-    my $slave_vardir= cwd()."/unit/tmpwd1_slave";
-    
+    my $source_vardir= cwd()."/unit/tmpwd1/";
+    my $replica_vardir= cwd()."/unit/tmpwd1_slave";
+
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
-    
+
     my $server = DBServer::MySQL::ReplMySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                                   debug_server => $debug_server,
-                                                  master_vardir => $master_vardir,
+                                                  source_vardir => $source_vardir,
                                                   mode => 'statement',
-                                                  master_port => $portbase);
+                                                  source_port => $portbase);
     $self->assert_not_null($server);
-    
-    $self->assert(-f $master_vardir."/data/mysql/db.MYD","No ".$master_vardir."/data/mysql/db.MYD");
-    $self->assert(-f $slave_vardir."/data/mysql/db.MYD","No ".$slave_vardir."/data/mysql/db.MYD");
-    
+
+    $self->assert(-f $source_vardir."/data/mysql/db.MYD","No ".$source_vardir."/data/mysql/db.MYD");
+    $self->assert(-f $replica_vardir."/data/mysql/db.MYD","No ".$replica_vardir."/data/mysql/db.MYD");
+
     $server->startServer;
-    push @pids,$server->master->serverpid;
-    push @pids,$server->slave->serverpid;
+    push @pids,$server->source->serverpid;
+    push @pids,$server->replica->serverpid;
 
 
-    $server->master->dbh->do("CREATE TABLE test.t (i integer)");
-    $server->master->dbh->do("INSERT INTO test.t VALUES(42)");
+    $server->source->dbh->do("CREATE TABLE test.t (i integer)");
+    $server->source->dbh->do("INSERT INTO test.t VALUES(42)");
 
-    $server->waitForSlaveSync();
-    
-    my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
-    
+    $server->waitForReplicaSync();
+
+    my $result = $server->replica->dbh->selectrow_array("SELECT * FROM test.t");
+
     $self->assert_num_equals(42, $result);
-    
+
     $server->stopServer;
-    
-    sayFile($server->master->errorlog);
-    sayFile($server->slave->errorlog);
+
+    sayFile($server->source->errorlog);
+    sayFile($server->replica->errorlog);
 }
 
 sub create_repl_server2 {
@@ -98,47 +98,47 @@ sub create_repl_server2 {
     
     my $portbase = 30 + ($ENV{TEST_PORTBASE}?int($ENV{TEST_PORTBASE}):22120);
 
-    my $master_vardir= cwd()."/unit/tmpwd1/";
-    my $slave_vardir= cwd()."/unit/tmpwd1_slave";
-    
+    my $source_vardir= cwd()."/unit/tmpwd1/";
+    my $replica_vardir= cwd()."/unit/tmpwd1_slave";
+
     $self->assert(defined $ENV{RQG_MYSQL_BASE},"RQG_MYSQL_BASE not defined");
-    
-    my $master = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+
+    my $source = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                               debug_server => $debug_server,
-                                              vardir => $master_vardir,
+                                              vardir => $source_vardir,
                                               port => $portbase);
-    my $slave = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
+    my $replica = DBServer::MySQL::MySQLd->new(basedir => $ENV{RQG_MYSQL_BASE},
                                              debug_server => $debug_server,
-                                             vardir => $slave_vardir,
+                                             vardir => $replica_vardir,
                                              port => $portbase+2);
-    
-    my $server = DBServer::MySQL::ReplMySQLd->new(slave => $slave,
-                                                  master => $master,
+
+    my $server = DBServer::MySQL::ReplMySQLd->new(replica => $replica,
+                                                  source => $source,
                                                   mode => 'mixed');
-                                             
+
     $self->assert_not_null($server);
-    
-    $self->assert(-f $master_vardir."/data/mysql/db.MYD","No ".$master_vardir."/data/mysql/db.MYD");
-    $self->assert(-f $slave_vardir."/data/mysql/db.MYD","No ".$slave_vardir."/data/mysql/db.MYD");
-    
+
+    $self->assert(-f $source_vardir."/data/mysql/db.MYD","No ".$source_vardir."/data/mysql/db.MYD");
+    $self->assert(-f $replica_vardir."/data/mysql/db.MYD","No ".$replica_vardir."/data/mysql/db.MYD");
+
     $server->startServer;
-    push @pids,$server->master->serverpid;
-    push @pids,$server->slave->serverpid;
+    push @pids,$server->source->serverpid;
+    push @pids,$server->replica->serverpid;
 
 
-    $server->master->dbh->do("CREATE TABLE test.t (i integer)");
-    $server->master->dbh->do("INSERT INTO test.t VALUES(42)");
+    $server->source->dbh->do("CREATE TABLE test.t (i integer)");
+    $server->source->dbh->do("INSERT INTO test.t VALUES(42)");
 
-    $server->waitForSlaveSync();
-    
-    my $result = $server->slave->dbh->selectrow_array("SELECT * FROM test.t");
-    
+    $server->waitForReplicaSync();
+
+    my $result = $server->replica->dbh->selectrow_array("SELECT * FROM test.t");
+
     $self->assert_num_equals(42, $result);
-    
+
     $server->stopServer;
-    
-    sayFile($server->master->errorlog);
-    sayFile($server->slave->errorlog);
+
+    sayFile($server->source->errorlog);
+    sayFile($server->replica->errorlog);
 }
 
 # Start replication server1

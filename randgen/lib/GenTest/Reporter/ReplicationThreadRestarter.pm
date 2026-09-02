@@ -24,6 +24,7 @@ use strict;
 use GenTest;
 use GenTest::Reporter;
 use GenTest::Constants;
+use GenTest::ReplicationTerms qw(replicationTerms);
 
 sub monitor {
 
@@ -31,11 +32,13 @@ sub monitor {
 
 	my $prng = $reporter->prng();
 
-	my $slave_host = $reporter->serverInfo('slave_host');
-	my $slave_port = $reporter->serverInfo('slave_port');
+	my $replica_host = $reporter->serverInfo('replica_host');
+	my $replica_port = $reporter->serverInfo('replica_port');
 
-	my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
-	my $slave_dbh = DBI->connect($slave_dsn);
+	my $replica_dsn = 'dbi:mysql:host='.$replica_host.':port='.$replica_port.':user=root';
+	my $replica_dbh = DBI->connect($replica_dsn);
+
+	my $terms = replicationTerms($reporter->serverVariable('version'));
 
 	my $verb = $prng->arrayElement(['START','STOP']);
 	my $threads = $prng->arrayElement([
@@ -46,12 +49,12 @@ sub monitor {
 		'SQL_THREAD'
 	]);
 
-	my $query = $verb.' SLAVE '.$threads;
+	my $query = $verb.' '.$terms->{replica_keyword}.' '.$threads;
 
-	if (defined $slave_dbh) {
-		$slave_dbh->do($query);
-		if ($slave_dbh->err()) {
-			say("Query: $query failed: ".$slave_dbh->errstr());
+	if (defined $replica_dbh) {
+		$replica_dbh->do($query);
+		if ($replica_dbh->err()) {
+			say("Query: $query failed: ".$replica_dbh->errstr());
 			return STATUS_REPLICATION_FAILURE;
 		} else {
 			return STATUS_OK;

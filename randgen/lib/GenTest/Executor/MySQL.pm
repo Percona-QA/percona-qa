@@ -28,6 +28,7 @@ use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Executor;
 use GenTest::QueryPerformance;
+use GenTest::ReplicationTerms;
 use Time::HiRes;
 use Digest::MD5;
 
@@ -98,11 +99,11 @@ my @patterns = map { qr{$_}i } @errors;
 use constant EXECUTOR_MYSQL_AUTOCOMMIT => 20;
 
 #
-# Column positions for SHOW SLAVES
-# 
+# Column positions for SHOW REPLICAS / SHOW SLAVE HOSTS
+#
 
-use constant SLAVE_INFO_HOST => 1;
-use constant SLAVE_INFO_PORT => 2;
+use constant REPLICA_INFO_HOST => 1;
+use constant REPLICA_INFO_PORT => 2;
 
 #
 # MySQL status codes taken from errmsg.h
@@ -803,15 +804,31 @@ sub version {
 	return $dbh->selectrow_array("SELECT VERSION()");
 }
 
-sub slaveInfo {
+# Public wrappers around GenTest::ReplicationTerms so callers can ask the
+# executor (which already knows how to fetch VERSION()) without reaching into
+# a private helper. Results are cached by version string inside ReplicationTerms.
+sub usesModernReplicationSyntax {
 	my $executor = shift;
-	my $slave_info = $executor->dbh()->selectrow_arrayref("SHOW SLAVE HOSTS");
-	return ($slave_info->[SLAVE_INFO_HOST], $slave_info->[SLAVE_INFO_PORT]);
+	return GenTest::ReplicationTerms::usesModernReplicationSyntax($executor->version());
 }
 
-sub masterStatus {
+sub replicationTerms {
 	my $executor = shift;
-	return $executor->dbh()->selectrow_array("SHOW MASTER STATUS");
+	return GenTest::ReplicationTerms::replicationTerms($executor->version());
+}
+
+sub replicaInfo {
+	my $executor = shift;
+	my $terms = $executor->replicationTerms();
+	my $replica_info = $executor->dbh()->selectrow_arrayref($terms->{replicas});
+	return ('', '') if not defined $replica_info;
+	return ($replica_info->[REPLICA_INFO_HOST], $replica_info->[REPLICA_INFO_PORT]);
+}
+
+sub sourceStatus {
+	my $executor = shift;
+	my $terms = $executor->replicationTerms();
+	return $executor->dbh()->selectrow_array($terms->{binlog_status});
 }
 
 #

@@ -223,7 +223,7 @@ if ( $build_thread eq 'auto' ) {
 
 my @ports = (10000 + 10 * $build_thread, 10000 + 10 * $build_thread + 2);
 
-say("master_port : $ports[0] slave_port : $ports[1] ports : @ports MTR_BUILD_THREAD : $build_thread ");
+say("source_port : $ports[0] replica_port : $ports[1] ports : @ports MTR_BUILD_THREAD : $build_thread ");
 
 #
 # If the user has provided two vardirs and one basedir, start second
@@ -303,11 +303,11 @@ if ($rpl_mode ne '') {
         push @options, @{$mysqld_options[0]};
     }
     $rplsrv = DBServer::MySQL::ReplMySQLd->new(basedir => $basedirs[0],
-                                               master_vardir => $vardirs[0],
+                                               source_vardir => $vardirs[0],
                                                debug_server => $debug_server[0],
-                                               master_port => $ports[0],
-                                               slave_vardir => $vardirs[1],
-                                               slave_port => $ports[1],
+                                               source_port => $ports[0],
+                                               replica_vardir => $vardirs[1],
+                                               replica_port => $ports[1],
                                                mode => $rpl_mode,
                                                server_options => \@options,
                                                valgrind => $valgrind,
@@ -320,19 +320,28 @@ if ($rpl_mode ne '') {
     if ($status > DBSTATUS_OK) {
         stopServers();
         if (osWindows()) {
-            say(system("dir ".unix2winPath($rplsrv->master->datadir)));
-            say(system("dir ".unix2winPath($rplsrv->slave->datadir)));
+            say(system("dir ".unix2winPath($rplsrv->source->datadir)));
+            say(system("dir ".unix2winPath($rplsrv->replica->datadir)));
         } else {
-            say(system("ls -l ".$rplsrv->master->datadir));
-            say(system("ls -l ".$rplsrv->slave->datadir));
+            say(system("ls -l ".$rplsrv->source->datadir));
+            say(system("ls -l ".$rplsrv->replica->datadir));
         }
         croak("Could not start replicating server pair");
     }
-    
-    $dsns[0] = $rplsrv->master->dsn($database);
-    $dsns[1] = undef; ## passed to gentest. No dsn for slave!
-    $server[0] = $rplsrv->master;
-    $server[1] = $rplsrv->slave;
+
+    # The non-replication server-start branch below creates $database
+    # explicitly (see "CREATE DATABASE IF NOT EXISTS $database" further
+    # down); this branch never did, so GenTest's first connection -- and
+    # --gendata/--post-gendata-sql after it -- failed outright with
+    # "Unknown database" before a single query could run. Creating it on the
+    # source only is enough: it's ordinary DDL, so replication propagates it
+    # to the replica the same way it would propagate anything else.
+    $rplsrv->source->dbh()->do("CREATE DATABASE IF NOT EXISTS $database");
+
+    $dsns[0] = $rplsrv->source->dsn($database);
+    $dsns[1] = undef; ## passed to gentest. No dsn for replica!
+    $server[0] = $rplsrv->source;
+    $server[1] = $rplsrv->replica;
 
 } elsif ($galera ne '') {
 
@@ -607,7 +616,7 @@ if ( $gentest_result != 0 ) {
     #
     if ($rpl_mode || (defined $basedirs[1]) || $galera) {
         if ($rpl_mode ne '') {
-            $rplsrv->waitForSlaveSync;
+            $rplsrv->waitForReplicaSync;
         }
         
         my @dump_files;
