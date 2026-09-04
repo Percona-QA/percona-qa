@@ -321,14 +321,42 @@ sub generateMysqldumpCommand {
     my($self) = @_;
     my $executors = $self->executors();
     my $dumper = "mysqldump";
-    if (defined $ENV{RQG_MYSQL_BASE}) {
-        $dumper = DBServer::MySQL::MySQLd::_find(undef,
-                                                 [$ENV{RQG_MYSQL_BASE}],
-                                                 osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
-                                                 osWindows()?"mysqldump.exe":"mysqldump");
+
+    # RQG_MYSQL_BASE lets the caller point at a basedir explicitly, but
+    # nothing requires it to be set. Simplifier::Test/Tables run inside a
+    # forked worker process with only $executors and $results in hand -- no
+    # config object, no basedir -- so there's no clean way to reach whatever
+    # --basedir1/--basedir2 runall-new.pl was given (GenTest::App::GenTest's
+    # own _findMySQLClient() solves the equivalent problem for the mysql
+    # client the same way, but only because it runs in the main process
+    # where $self->config is still in scope). Ask the server itself instead:
+    # $executors->[0] already holds a live connection to exactly the server
+    # we're about to dump, and every MySQL/MariaDB server reports its own
+    # install location as @@basedir -- no additional plumbing required, and
+    # it works the same whether RQG was launched via runall-new.pl or
+    # gentest.pl --dsn1/--dsn2 against already-running servers.
+    my $basedir = $ENV{RQG_MYSQL_BASE};
+    if (not defined $basedir) {
+        my $server_basedir = eval { ($executors->[0]->dbh()->selectrow_array('SELECT @@basedir'))[0] };
+        $basedir = $server_basedir if defined $server_basedir && $server_basedir ne '';
     }
-    
-    return $dumper . 
+
+    if (defined $basedir) {
+        # _find() croaks if the binary isn't under any of the expected
+        # subdirectories (e.g. a basedir without bundled client tools, or a
+        # remote server whose @@basedir isn't a path that exists on this
+        # machine) -- fall through to the bare "mysqldump" PATH lookup
+        # rather than letting that kill the worker.
+        my $found = eval {
+            DBServer::MySQL::MySQLd::_find(undef,
+                                           [$basedir],
+                                           osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
+                                           osWindows()?"mysqldump.exe":"mysqldump");
+        };
+        $dumper = $found if defined $found;
+    }
+
+    return $dumper .
         " -uroot --password='' --host=".$executors->[0]->host().
         " --port=".$executors->[0]->port()
 }

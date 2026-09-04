@@ -604,11 +604,23 @@ sub doPostGendataSQL {
         say("ERROR: Could not find mysql client binary");
         return STATUS_ENVIRONMENT_FAILURE;
     }
+
+    # Pre-process SQL file once to handle SOURCE commands (inline content)
+    my $base_sql_content = $self->_processSQLFileWithSources($abs_sql_file, {});
+    if (not defined $base_sql_content) {
+        say("ERROR: Failed to process SQL file with SOURCE commands");
+        return STATUS_ENVIRONMENT_FAILURE;
+    }
+
+    my $sql_file_dir = dirname($abs_sql_file);
     
     my $i = -1;
     foreach my $dsn (@{$self->config->dsn}) {
         $i++;
         next if $dsn eq '';
+
+        # Same id scheme as workerProcess: dsn[0] => executor1, dsn[1] => executor2, ...
+        my $executor_id = $i + 1;
         
         # Extract connection info from DSN
         my $dsn_info = $self->_extractDSNInfo($dsn);
@@ -655,9 +667,6 @@ sub doPostGendataSQL {
             }
         }
         
-        # Get SQL file directory for SOURCE command path resolution
-        my $sql_file_dir = dirname($abs_sql_file);
-        
         # Build command array
         my @mysql_cmd_array = ($mysql_client, @mysql_args);
         
@@ -667,17 +676,18 @@ sub doPostGendataSQL {
             say("WARNING: Could not change to directory '$sql_file_dir', continuing anyway");
         };
         
-        # Pre-process SQL file to handle SOURCE commands
-        # Parse SOURCE commands and inline the content to avoid mysql readline buffer limits
-        my $processed_sql_content = $self->_processSQLFileWithSources($abs_sql_file, {});
-        if (not defined $processed_sql_content) {
-            say("ERROR: Failed to process SQL file with SOURCE commands");
-            chdir($original_dir) if defined $original_dir;
-            return STATUS_ENVIRONMENT_FAILURE;
+        # Per-DSN copy, then filter /*executorN */ the same way GenTest::Executor::MySQL does
+        my $processed_sql_content = $base_sql_content;
+        if (index($processed_sql_content, 'executor') > -1) {
+            $processed_sql_content =~ s{/\*executor$executor_id (.*?) \*/}{$1}sg;
+            $processed_sql_content =~ s{/\*executor.*?\*/}{}sgo;
+            say("DEBUG: Applied executor$executor_id filtering to post-gendata SQL") if rqg_debug();
         }
+
+        say("Executing post-gendata SQL for executor$executor_id");
         
-        # Write processed SQL to a temporary file
-        my $temp_sql_file = File::Spec->catfile($sql_file_dir, ".rqg_post_gendata_$$.sql");
+        # Write processed SQL to a temporary file (unique per executor to avoid clobbering)
+        my $temp_sql_file = File::Spec->catfile($sql_file_dir, ".rqg_post_gendata_${$}_e${executor_id}.sql");
         open(my $temp_fh, '>', $temp_sql_file) or do {
             say("ERROR: Unable to create temporary SQL file '$temp_sql_file': $!");
             chdir($original_dir) if defined $original_dir;
