@@ -1,0 +1,26 @@
+# vector_distance.zz
+# Companion gendata file for vector_distance.yy.
+#
+# The VECTOR-typed schema (table `vt`) is created and populated by
+# init_vectors.sql via --post-gendata-sql. RQG's built-in data generator
+# cannot declare VECTOR(n) columns natively.
+#
+# This .zz defines a small auxiliary table so --gendata has a valid target.
+# It also provides a secondary ordinary table for possible future JOINs
+# between VECTOR_DISTANCE queries and regular relational data (e.g. joining
+# `vt` to a lookup table by category).
+
+$tables = {
+	rows => [1, 10, 50],
+	'names' => ['aux_lookup']
+};
+
+$fields = {
+	'types' => [ 'int', 'varchar(32)' ],
+	'indexes' => [ undef ],
+};
+
+$data = {
+	'numbers' => [ 'tinyint', 'digit' ],
+	'strings' => [ 'letter', 'english' ],
+};
