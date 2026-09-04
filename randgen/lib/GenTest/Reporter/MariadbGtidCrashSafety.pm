@@ -66,8 +66,8 @@ sub monitor {
 
 	if (!$slave_dsn) {
 		# Running for the first time
-		my $slave_host = $reporter->serverInfo('slave_host');
-		my $slave_port = $reporter->serverInfo('slave_port');
+		my $slave_host = $reporter->serverInfo('replica_host');
+		my $slave_port = $reporter->serverInfo('replica_port');
 		$slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
 		$reporter->properties->servers->[1]->addServerOptions(['--skip-slave-start']);
 	}

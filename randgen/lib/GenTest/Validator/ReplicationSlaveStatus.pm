@@ -28,27 +28,32 @@ use GenTest::Constants;
 use GenTest::Result;
 use GenTest::Validator;
 
-use constant SLAVE_STATUS_LAST_ERROR		=> 19;
-use constant SLAVE_STATUS_LAST_SQL_ERROR	=> 35;
-use constant SLAVE_STATUS_LAST_IO_ERROR		=> 38;
+# Error columns are read by name via selectrow_hashref(). Positional indices
+# into SHOW SLAVE/REPLICA STATUS have shifted across MySQL versions; the
+# Last_*_Error column names themselves were kept stable through the
+# SOURCE/REPLICA rename.
 
 sub init {
 	my ($validator, $executors) = @_;
 	my $master_executor = $executors->[0];
 
-	my ($slave_host, $slave_port) = $master_executor->slaveInfo();
+	my ($replica_host, $replica_port) = $master_executor->replicaInfo();
 
 	if (
-		($slave_host eq '') || 
-		($slave_port eq '')
+		($replica_host eq '') ||
+		($replica_port eq '')
 	) {
-		say("SHOW SLAVE HOSTS returns no data.");
+		say("SHOW REPLICAS / SHOW SLAVE HOSTS returned no data.");
 		return STATUS_REPLICATION_FAILURE;
 	}
-	my $slave_dsn = 'dbi:mysql:host='.$slave_host.':port='.$slave_port.':user=root';
+	my $replica_dsn = 'dbi:mysql:host='.$replica_host.':port='.$replica_port.':user=root';
 
-	my $slave_dbh = DBI->connect($slave_dsn, undef, undef, { PrintError => 0 });
-	$validator->setDbh($slave_dbh);
+	my $replica_dbh = DBI->connect($replica_dsn, undef, undef, { PrintError => 0 });
+	if (not defined $replica_dbh) {
+		say("Unable to connect to replica at $replica_dsn");
+		return STATUS_REPLICATION_FAILURE;
+	}
+	$validator->setDbh($replica_dbh);
 	return STATUS_OK;
 }
 
@@ -57,20 +62,26 @@ sub validate {
 
 	my $master_executor = $executors->[0];
 
-	my $slave_status = $validator->dbh()->selectrow_arrayref("SHOW SLAVE STATUS");
+	my $dbh = $validator->dbh();
+	if (not defined $dbh) {
+		say("Replica connection is gone; cannot check replication status.");
+		return STATUS_REPLICATION_FAILURE;
+	}
 
-	if ($slave_status->[SLAVE_STATUS_LAST_IO_ERROR] ne '') {
-		say("Slave IO thread has stopped with error: ".$slave_status->[SLAVE_STATUS_LAST_IO_ERROR]);
+	my $terms = $master_executor->replicationTerms();
+	my $replica_status = $dbh->selectrow_hashref($terms->{replica_status});
+	if (not defined $replica_status) {
+		say("SHOW REPLICA/SLAVE STATUS returned no data.");
 		return STATUS_REPLICATION_FAILURE;
-	} elsif ($slave_status->[SLAVE_STATUS_LAST_SQL_ERROR] ne '') {
-		say("Slave SQL thread has stopped with error: ".$slave_status->[SLAVE_STATUS_LAST_SQL_ERROR]);
-		return STATUS_REPLICATION_FAILURE;
-	} elsif ($slave_status->[SLAVE_STATUS_LAST_ERROR] ne '') {
-		say("Slave has stopped with error: ".$slave_status->[SLAVE_STATUS_LAST_ERROR]);
-		return STATUS_REPLICATION_FAILURE;
-        } else {
-                return STATUS_OK;
-        }
+	}
+
+	for my $error_column (qw(Last_IO_Error Last_SQL_Error Last_Error)) {
+		if (defined $replica_status->{$error_column} && $replica_status->{$error_column} ne '') {
+			say("Replica has stopped with error ($error_column): ".$replica_status->{$error_column});
+			return STATUS_REPLICATION_FAILURE;
+		}
+	}
+	return STATUS_OK;
 }
 
 1;

@@ -12,7 +12,7 @@
 declare -ga KMIP_CONTAINER_NAMES
 declare -gA KMIP_CONFIGS_DEFAULTS=(
     #[pykmip]="addr=127.0.0.1,image=satyapercona/kmip:latest,port=5696,name=kmip_pykmip"
-    [hashicorp]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.sh"
+    [hashicorp]="addr=127.0.0.1,port=5696,name=kmip_hashicorp,setup_script=hashicorp-kmip-setup.py"
     [fortanix]="addr=216.180.120.88,port=5696,name=kmip_fortanix,setup_script=fortanix_kmip_setup.py"
     #[ciphertrust]="addr=127.0.0.1,port=5696,name=kmip_ciphertrust,setup_script=setup_kmip_api.py"
 )
@@ -283,7 +283,7 @@ setup_hashicorp() {
     # Download first, then execute the hashicorp setup
     script=$(curl -fsSL --retry 5 --retry-delay 2 --retry-connrefused \
         --connect-timeout 5 --max-time 30 \
-        https://raw.githubusercontent.com/Percona-QA/percona-qa/refs/heads/master/"$setup_script")
+        https://raw.githubusercontent.com/Percona-QA/percona-qa/master/"$setup_script")
         
     curl_exit_code=$?
 
@@ -320,7 +320,8 @@ setup_hashicorp() {
     fi
 
     # Execute the script
-    echo "$script" | sudo bash -s -- --cert-dir="$cert_dir" --license="$license_file"
+    # Execute the Python script from a variable
+    echo "$script" | python3 - --cert-dir="$cert_dir" --license="$license_file"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Failed to execute script $setup_script, (exit code: $exit_code)" >&2

@@ -25,6 +25,7 @@ BACKREST_LOGS="$RUN_DIR/pgbackrest_logs"
 echo "Cleaning environment"
 
 old_server_cleanup "$PRIMARY_DATA"
+old_server_cleanup "$REPLICA_DATA"
 rm -rf "$ARCHIVE_DIR" || true
 rm -rf "$KEYRING" || true
 mkdir -p "$ARCHIVE_DIR"
@@ -68,6 +69,7 @@ restore_command = '$PGBACKREST --stanza=demo --config=$RUN_DIR/pgbackrest.conf a
 archive_timeout = 10s
 max_wal_senders = 5
 wal_level = replica
+wal_log_hints = on
 EOF
 
 #############################################
@@ -109,6 +111,7 @@ log_statement='all'
 
 max_wal_senders=5
 wal_level=replica
+wal_log_hints = on
 
 archive_mode=on
 archive_command = '$PGBACKREST --stanza=demo --config=$RUN_DIR/pgbackrest.conf archive-push %p'

@@ -36,3 +36,12 @@ export LOG_DIR="$RUN_DIR/test_logs"
 export ARCHIVE_DIR="$RUN_DIR/wal_archive"
 export BACKUP_DIR="$RUN_DIR/base_backup"
 export FAILED_DIR="$RUN_DIR/failed_tests"
+
+export PG_MAJOR=$($INSTALL_DIR/bin/postgres --version | awk '{sub(/[^0-9].*/, "", $3); print $3}')
+
+# Patroni related Global variables
+export PATRONI_CLUSTER="qa-cluster"
+export PATRONI_BASE="$RUN_DIR/patroni"
+export ETCD_DATA="$RUN_DIR/etcd"
+export PATRONI_USER=postgres
+export PATRONI_PASSWORD=postgres

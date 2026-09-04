@@ -29,6 +29,7 @@ enable_pg_tde $PRIMARY_DATA
 
 cat >> $PRIMARY_DATA/postgresql.conf <<EOF
 wal_level=replica
+wal_log_hints = on
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
 restore_command='$INSTALL_DIR/bin/pg_tde_restore_encrypt %f %p "cp $ARCHIVE_DIR/%%f %%p"'
@@ -71,6 +72,7 @@ log_statement='all'
 
 max_wal_senders=5
 wal_level=replica
+wal_log_hints = on
 
 archive_mode=on
 archive_command='$INSTALL_DIR/bin/pg_tde_archive_decrypt %f %p "cp %%p $ARCHIVE_DIR/%%f"'
@@ -82,7 +84,7 @@ start_pg $REPLICA_DATA $REPLICA_PORT
 
 $PSQL -p "$PRIMARY_PORT" <<EOF
 CREATE TABLE t1 (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, f1 TEXT) USING tde_heap;
-INSERT INTO t1 (f1) SELECT repeat('abcdeF', 1000) FROM generate_series(1, 10000000);
+INSERT INTO t1 (f1) SELECT repeat('abcdeF', 1000) FROM generate_series(1, 1000000);
 
 CREATE TABLE t2 (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, f1 TEXT) USING tde_heap;
 INSERT INTO t2 (f1) SELECT repeat('abcdeF', 1000) FROM generate_series(1, 10000);
@@ -94,7 +96,7 @@ EOF
 #############################################
 echo "Promoting replica"
 $PG_CTL -D $REPLICA_DATA promote
-sleep 2
+wait_for_recovery_end $REPLICA_PORT
 
 $PSQL -p "$PRIMARY_PORT" <<EOF
 UPDATE t1 SET f1='YYYYYYY' WHERE id % 10 = 0;

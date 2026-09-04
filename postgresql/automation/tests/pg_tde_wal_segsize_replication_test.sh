@@ -102,7 +102,7 @@ for phase in {1..4}; do
     "$INSTALL_DIR/bin/pg_ctl" -D "$data_dir" stop
     sleep 2
     "$INSTALL_DIR/bin/pg_ctl" -D "$replica_dir" promote
-    sleep 3
+    wait_for_recovery_end $replica_port
     echo "Replica promoted. Running on promoted replica."
     WORKLOAD_PORT=$replica_port
 

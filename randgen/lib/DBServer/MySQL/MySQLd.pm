@@ -710,9 +710,19 @@ sub running {
         ## non-working solution for unix....
         return -f $self->pidfile;
     } else {
-        ## Check if the child process is active.
-        my $child_status = waitpid($self->serverpid,WNOHANG);
-        return $child_status != -1;
+        return 0 if not defined $self->serverpid;
+        # waitpid() only reports on direct children. The command in
+        # startServer() is exec()'d as a single string with I/O redirection,
+        # so Perl invokes it via "/bin/sh -c ..."; some shells (e.g. dash,
+        # confirmed on this class of system) fork a child for the redirected
+        # command instead of exec-replacing themselves, leaving the actual
+        # mysqld process a grandchild rather than a direct child. waitpid()
+        # then always returns ECHILD for it -- even while it's fully alive --
+        # which made this always report "not running" and left stopServer()
+        # believing shutdown succeeded before it actually had, orphaning the
+        # server process once the caller exits. Checking for the process's
+        # existence directly is independent of the parent/child relationship.
+        return kill(0, $self->serverpid) ? 1 : 0;
     }
 }
 

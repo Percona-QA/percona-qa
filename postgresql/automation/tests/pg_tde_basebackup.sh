@@ -90,9 +90,11 @@ $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PRIMARY_PORT \
   --threads=$THREADS --tables=$SYSBENCH_TABLES --table-size=$SYSBENCH_RECORDS \
   /usr/share/sysbench/oltp_write_only.lua prepare
 
-echo "=> Rotate Keys and Run Load in Parallel while pg_tde_basebackup takes backup of primary server"
-rotate_wal_key 60 > $RUN_DIR/rotate_wal.log 2>&1 &
-rotate_table_key 60 > $RUN_DIR/rotate_table.log 2>&1 &
+echo "=> Rotate Keys"
+rotate_wal_key 10 > $RUN_DIR/rotate_wal.log 2>&1 &
+rotate_table_key 10 > $RUN_DIR/rotate_table.log 2>&1 &
+# Wait for key rotations to finish. Key rotation must not be done in parallel while basebackup is running
+wait
 
 $SYSBENCH --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=$PRIMARY_PORT \
   --pgsql-user=$DB_USER --pgsql-db=$DB_NAME \

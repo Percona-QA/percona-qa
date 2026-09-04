@@ -18,21 +18,7 @@ set -u
 # =========================================================
 
 DB_NAME="postgres"
-
-PGDATA="$INSTALL_DIR/data"
-PORT=5432
-
-KEYRING_FILE="$PGDATA/keyring.file"
-
-# =========================================================
-# Validation
-# =========================================================
-
-if [[ -z "${INSTALL_DIR:-}" ]]; then
-    echo "ERROR: INSTALL_DIR is not set"
-    exit 1
-fi
-
+KEYRING_FILE="$RUN_DIR/keyring.file"
 PSQL="$INSTALL_DIR/bin/psql -X -v ON_ERROR_STOP=1 -p $PORT -d $DB_NAME"
 
 # =========================================================
@@ -50,19 +36,12 @@ log() {
 main() {
 
     log "Cleaning previous environment..."
-
     old_server_cleanup "$PGDATA" "$PORT"
-
     rm -f "$KEYRING_FILE" || true
-
     log "Initializing PostgreSQL cluster..."
-
     initialize_server "$PGDATA" "$PORT"
-
     enable_pg_tde "$PGDATA"
-
     log "Starting PostgreSQL..."
-
     start_pg "$PGDATA" "$PORT"
 
     # =====================================================
@@ -70,9 +49,7 @@ main() {
     # =====================================================
 
     log "Creating pg_tde extension..."
-
     $PSQL -c "CREATE EXTENSION IF NOT EXISTS pg_tde;"
-
     log "Creating global key provider..."
 
     $PSQL -c "

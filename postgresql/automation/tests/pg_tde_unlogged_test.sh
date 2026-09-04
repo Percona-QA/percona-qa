@@ -18,17 +18,10 @@ mkdir -p "$TABLESPACE_DIR"
 chmod 700 "$TABLESPACE_DIR" || true
 
 echo "1. Initializing cluster with pg_tde..."
-$INSTALL_DIR/bin/initdb -D "$PGDATA" --set shared_preload_libraries=pg_tde --set io_method=$IO_METHOD --set unix_socket_directories="$RUN_DIR" > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "Error: initdb failed."
-    exit 1
-fi
+initialize_server "$PGDATA" "$PORT"
+enable_pg_tde "$PGDATA"
 cat >> "$PGDATA/postgresql.conf" <<EOF
 default_table_access_method = tde_heap
-logging_collector = on
-log_directory = '$PGDATA'
-log_filename = 'server.log'
-log_statement = 'all'
 EOF
 
 start_pg "$PGDATA" "$UNLOGGED_PORT"

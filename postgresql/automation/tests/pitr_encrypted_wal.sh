@@ -76,7 +76,7 @@ for i in {1..4}; do
 
     echo "=== Promote the server ==="
     "$INSTALL_DIR/bin/pg_ctl" -D "$PGDATA" promote
-    sleep 3
+    wait_for_recovery_end $PORT
 
     echo "=== Insert post-promotion data ==="
     "$INSTALL_DIR/bin/psql" -d postgres -p $PORT -c "CREATE TABLE IF NOT EXISTS t_recovery_$i (id INT PRIMARY KEY, name TEXT) USING tde_heap;"

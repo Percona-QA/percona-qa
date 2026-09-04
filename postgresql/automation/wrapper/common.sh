@@ -53,6 +53,10 @@ crash_pg() {
     local PID=$(head -1 "$PGDATA/postmaster.pid")
     kill -9 "$PID"
 
+    while kill -0 "$PID" 2>/dev/null; do
+      sleep 1
+    done
+
     # Wait for ALL postgres processes using this datadir to exit
     while pgrep -f "$PGDATA" >/dev/null; do
         sleep 1
@@ -63,6 +67,9 @@ crash_pg() {
             return 1
         fi
     done
+
+    # Give the kernel a moment to release IPC resources (helps on slower ARM systems).
+    sleep 2
 
     rm -f "$PGDATA/postmaster.pid"
     rm -f "$RUN_DIR/.s.PGSQL.$PORT"
@@ -82,14 +89,14 @@ enable_pg_tde() {
 }
 
 get_pg_major_version() {
-    $INSTALL_DIR/bin/postgres --version | awk '{print $3}' | cut -d. -f1
+    $INSTALL_DIR/bin/postgres --version | awk '{sub(/[^0-9].*/, "", $3); print $3}'
 }
 
 # Return the major version from an arbitrary PostgreSQL bin directory.
 # Usage: get_pg_major_version_from_dir /path/to/pgsql/bin
 get_pg_major_version_from_dir() {
     local bin_dir="$1"
-    "$bin_dir/postgres" --version | awk '{print $3}' | cut -d. -f1
+    "$bin_dir/postgres" --version | awk '{sub(/[^0-9].*/, "", $3); print $3}'
 }
 
 # Start a PostgreSQL cluster using a specific binary directory.
@@ -137,6 +144,7 @@ log_filename = 'server.log'
 log_statement = 'ddl'
 log_min_error_statement = 'error'
 max_wal_senders = 5
+wal_log_hints = on
 EOF
 
     # io_method exists only in PG 18+
@@ -148,7 +156,6 @@ EOF
         cat >> "$PGDATA/postgresql.conf" <<EOF
 wal_level = replica
 wal_compression = on
-wal_log_hints = on
 wal_keep_size = 512MB
 max_replication_slots = 2
 max_wal_senders = 5
@@ -180,9 +187,14 @@ old_server_cleanup() {
     local PGDATA=${1:-$PGDATA}
     local PORT=${2:-$PGPORT}
     local PG_PIDS=$(lsof -ti:$PORT -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
+
+    # Stop any systemd-managed PostgreSQL services
+    sudo systemctl stop postgresql-18 2>/dev/null || true
+    sudo systemctl stop postgresql-17 2>/dev/null || true
+
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
-        kill -9 $PG_PIDS || true
+        sudo kill -9 $PG_PIDS || true
     fi
 
     sleep 5
@@ -190,7 +202,6 @@ old_server_cleanup() {
 }
 
 install_pgbackrest() {
-
     if command -v pgbackrest >/dev/null 2>&1; then
         echo "pgBackRest is already installed: $(pgbackrest version)"
         return 0
@@ -205,7 +216,402 @@ install_pgbackrest() {
         sudo apt-get install -y percona-pgbackrest
     elif [ -f /etc/redhat-release ]; then
 	wget -q https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+	sudo yum install -y ./percona-release-latest.noarch.rpm
 	sudo percona-release enable-only ppg-18
 	sudo yum install -y percona-pgbackrest
     fi
+}
+
+install_patroni_and_etcd() {
+    local need_patroni=0
+    local need_etcd=0
+    local need_etcdctl=0
+
+    if command -v patroni >/dev/null 2>&1; then
+        echo "patroni is already installed: $(patroni --version)"
+    else
+        need_patroni=1
+    fi
+
+    if command -v etcd >/dev/null 2>&1; then
+        echo "etcd is already installed: $(etcd --version | head -1 | awk '{print $3}')"
+    else
+        need_etcd=1
+    fi
+
+    if command -v etcdctl >/dev/null 2>&1; then
+        echo "etcdctl is already installed: $(etcdctl version | awk '/etcdctl version:/ {print $3}')"
+    else
+        need_etcdctl=1
+    fi
+
+    [ $need_patroni -eq 0 ] && [ $need_etcd -eq 0 ] && [ $need_etcdctl -eq 0 ] && return 0
+
+    if [ -f /etc/debian_version ]; then
+        sudo apt-get update
+
+        [ $need_patroni -eq 1 ] && sudo apt-get install -y patroni
+
+        if [ $need_etcd -eq 1 ] || [ $need_etcdctl -eq 1 ]; then
+            sudo apt-get install -y etcd-server etcd-client
+        fi
+
+    elif [ -f /etc/redhat-release ]; then
+        # Install Patroni if needed
+        if [ $need_patroni -eq 1 ]; then
+            sudo dnf install -y patroni || sudo pip3 install patroni
+        fi
+
+        # Install etcd/etcdctl if needed
+        if [ $need_etcd -eq 1 ] || [ $need_etcdctl -eq 1 ]; then
+            local ETCD_VER=v3.5.30
+            local arch
+
+            case $(uname -m) in
+                x86_64|amd64) arch=amd64 ;;
+                aarch64|arm64) arch=arm64 ;;
+                *)
+                    echo "Unsupported architecture: $(uname -m)"
+                    return 1
+                    ;;
+            esac
+
+            curl -L \
+              "https://github.com/etcd-io/etcd/releases/download/${ETCD_VER}/etcd-${ETCD_VER}-linux-${arch}.tar.gz" \
+              -o /tmp/etcd.tar.gz
+
+            tar -xzf /tmp/etcd.tar.gz -C /tmp
+
+            sudo install -m 0755 /tmp/etcd-${ETCD_VER}-linux-${arch}/etcd /usr/local/bin/etcd
+            sudo install -m 0755 /tmp/etcd-${ETCD_VER}-linux-${arch}/etcdctl /usr/local/bin/etcdctl
+        fi
+    fi
+}
+
+###################################
+# Poll until a node has finished recovery (pg_is_in_recovery() = false).
+# Use after a promote instead of a fixed `sleep N`.
+#   wait_for_recovery_end [PORT] [TIMEOUT_SECONDS]
+###################################
+wait_for_recovery_end() {
+    local PORT="${1:-$PGPORT}"
+    local TIMEOUT="${2:-120}"
+    local elapsed=0 in_rec
+    while true; do
+        in_rec=$("$INSTALL_DIR/bin/psql" -p "$PORT" -d postgres -tAc "SELECT pg_is_in_recovery();" 2>/dev/null)
+        if [[ "$in_rec" == "f" ]]; then
+            echo "Recovery complete on port $PORT (${elapsed}s)"
+            return 0
+        fi
+        if (( elapsed >= TIMEOUT )); then
+            echo "❌ Timed out after ${TIMEOUT}s waiting for recovery to end on port $PORT"
+            return 1
+        fi
+        sleep 1; elapsed=$((elapsed + 1))
+    done
+}
+
+###################################
+# Poll until a streaming replica has replayed all WAL the primary had
+# written at call time (replay_lsn >= primary's current LSN snapshot).
+# Use instead of a fixed `sleep N` waiting for replication to catch up.
+#   wait_for_replica_catchup [PRIMARY_PORT] [REPLICA_PORT] [TIMEOUT_SECONDS]
+###################################
+wait_for_replica_catchup() {
+    local P_PORT="${1:-$PRIMARY_PORT}"
+    local R_PORT="${2:-$REPLICA_PORT}"
+    local TIMEOUT="${3:-120}"
+    local elapsed=0 target replayed caught
+    target=$("$INSTALL_DIR/bin/psql" -p "$P_PORT" -d postgres -tAc "SELECT pg_current_wal_lsn();" 2>/dev/null)
+    while true; do
+        replayed=$("$INSTALL_DIR/bin/psql" -p "$R_PORT" -d postgres -tAc "SELECT pg_last_wal_replay_lsn();" 2>/dev/null)
+        if [[ -n "$target" && -n "$replayed" ]]; then
+            caught=$("$INSTALL_DIR/bin/psql" -p "$P_PORT" -d postgres -tAc \
+                "SELECT pg_wal_lsn_diff('$replayed', '$target') >= 0;" 2>/dev/null)
+            if [[ "$caught" == "t" ]]; then
+                echo "Replica (port $R_PORT) caught up to $target (${elapsed}s)"
+                return 0
+            fi
+        fi
+        if (( elapsed >= TIMEOUT )); then
+            echo "❌ Timed out after ${TIMEOUT}s waiting for replica catch-up (target=$target last=$replayed)"
+            return 1
+        fi
+        sleep 1; elapsed=$((elapsed + 1))
+    done
+}
+
+cleanup_patroni_cluster()
+{
+    echo "Cleaning Patroni cluster"
+
+    sudo pkill -x patroni || true
+    sudo pkill -x etcd || true
+
+    sleep 2
+
+    sudo pkill -9 -x patroni || true
+    sudo pkill -9 -x etcd || true
+
+    # Free ports explicitly
+    for p in 2379 2380
+    do
+      local pids
+      pids=$(lsof -tiTCP:$p -sTCP:LISTEN 2>/dev/null || true)
+      if [ -n "$pids" ]; then
+        sudo kill -9 $pids 2>/dev/null || true
+      fi
+    done
+
+    rm -rf "$PATRONI_BASE" "$ETCD_DATA"
+    mkdir -p "$PATRONI_BASE" "$ETCD_DATA"
+    sudo chown -R "$(id -u):$(id -g)" "$PATRONI_BASE" "$ETCD_DATA"
+}
+
+start_etcd()
+{
+    echo "Starting etcd"
+
+    etcd \
+        --name=default \
+        --data-dir="$ETCD_DATA" \
+        --listen-client-urls=http://127.0.0.1:2379 \
+        --advertise-client-urls=http://127.0.0.1:2379 \
+        --listen-peer-urls=http://127.0.0.1:2380 \
+        --initial-advertise-peer-urls=http://127.0.0.1:2380 \
+        --initial-cluster="default=http://127.0.0.1:2380" \
+        --initial-cluster-state=new \
+        > "$PATRONI_BASE/etcd.log" 2>&1 &
+
+    ETCD_PID=$!
+    echo $ETCD_PID > "$PATRONI_BASE/etcd.pid"
+
+    sleep 1
+
+    if ! kill -0 $ETCD_PID 2>/dev/null; then
+        echo "etcd failed to start"
+        cat "$PATRONI_BASE/etcd.log"
+        return 1
+    fi
+
+    wait_for_port 2379 || return 1
+    wait_for_port 2380 || return 1
+
+    for i in {1..30}
+    do
+        if ETCDCTL_API=3 etcdctl \
+            --endpoints=http://127.0.0.1:2379 \
+            endpoint health >/dev/null 2>&1
+        then
+            echo "etcd is healthy"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "etcd failed health check"
+    cat "$PATRONI_BASE/etcd.log"
+    return 1
+}
+
+generate_patroni_config()
+{
+    local node=$1
+    local port=$((5431 + node))
+    local rest=$((8007 + node))
+
+    local dir="$PATRONI_BASE/node$node"
+
+    mkdir -p "$dir"
+    rm -rf "$dir/data"
+
+    cat > "$dir/patroni.yml" <<EOF
+scope: $PATRONI_CLUSTER
+name: node$node
+
+restapi:
+  listen: 127.0.0.1:$rest
+  connect_address: 127.0.0.1:$rest
+
+etcd3:
+  host: 127.0.0.1:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  users:
+    replicator:
+      password: replpass
+      options:
+        - replication
+
+postgresql:
+  listen: 127.0.0.1:$port
+  connect_address: 127.0.0.1:$port
+
+  data_dir: $dir/data
+  bin_dir: $INSTALL_DIR/bin
+
+  authentication:
+    replication:
+      username: replicator
+      password: replpass
+    superuser:
+      username: postgres
+      password: postgres
+
+  create_replica_methods:
+    - basebackup
+
+  basebackup:
+    checkpoint: fast
+
+  parameters:
+    shared_preload_libraries: 'pg_tde'
+    wal_level: replica
+    hot_standby: on
+    max_wal_senders: 10
+    max_replication_slots: 10
+    shared_buffers: 256MB
+    logging_collector: on
+    log_destination: stderr
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+EOF
+}
+
+initialize_patroni_cluster()
+{
+    local nodes=$1
+
+    cleanup_patroni_cluster
+
+    start_etcd
+
+    for i in $(seq 1 $nodes)
+    do
+        generate_patroni_config $i
+    done
+}
+
+start_patroni_cluster()
+{
+    local nodes=$1
+
+    echo "Starting Patroni cluster ($nodes nodes)"
+
+    # Start node1 first
+    patroni "$PATRONI_BASE/node1/patroni.yml" \
+       > "$PATRONI_BASE/node1/patroni.log" 2>&1 &
+
+    wait_for_patroni_leader
+
+    # Start remaining nodes
+    for i in $(seq 2 $nodes)
+    do
+        local dir="$PATRONI_BASE/node$i"
+        patroni "$dir/patroni.yml" \
+           > "$dir/patroni.log" 2>&1 &
+    done
+
+    if [ $nodes -gt 1 ]; then
+        wait_for_patroni_replicas $((nodes - 1))
+    fi
+}
+
+wait_for_patroni_leader()
+{
+    echo "Waiting for Patroni leader"
+
+    for i in {1..60}
+    do
+        local leader
+
+	leader=$(patronictl -c \
+	    "$PATRONI_BASE/node1/patroni.yml" \
+	    list 2>/dev/null | awk -F'|' '/Leader/ {gsub(/ /, "", $2); print $2}')
+
+        if [ -n "$leader" ]
+        then
+            echo "Leader: $leader"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    echo "Leader not elected"
+    exit 1
+}
+
+wait_for_patroni_replicas()
+{
+    local expected=$1
+    echo "Waiting for $expected replica(s)"
+
+    for i in {1..120}
+    do
+        local count
+        count=$(patronictl -c "$PATRONI_BASE/node1/patroni.yml" list 2>/dev/null | awk -F'|' '
+            {
+                role=$4
+                gsub(/^[ \t]+|[ \t]+$/, "", role)
+                if (role == "Replica")
+                    count++
+            }
+            END {
+                print count+0
+            }')
+
+        echo "Attempt $i: replica count=$count expected=$expected"
+
+        if [ "$count" -eq "$expected" ] ; then
+            echo "Replicas ready"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    echo "Replicas did not join"
+    exit 1
+}
+
+wait_for_port()
+{
+    local port=$1
+    local host=${2:-127.0.0.1}
+    local timeout=${3:-60}
+
+    echo "Waiting for $host:$port"
+
+    for i in $(seq 1 $timeout)
+    do
+        if nc -z "$host" "$port" >/dev/null 2>&1
+        then
+            echo "Port $port is ready"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    echo "ERROR: Timeout waiting for $host:$port"
+    cat "$PATRONI_BASE/etcd.log" || true
+    return 1
 }
