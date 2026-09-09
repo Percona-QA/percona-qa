@@ -50,9 +50,21 @@ test_body()
 
     log_info "pg_stat_monitor version: ${version}"
 
+    local expected_version
+    expected_version="${PGSM_EXPECTED_VERSION}"
+
     assert_not_empty \
-        "pg_stat_monitor version" \
-        "${version}"
+        "Expected pg_stat_monitor version is configured" \
+        "${expected_version}" || return 1
+
+    assert_not_empty \
+        "Installed pg_stat_monitor version" \
+        "${version}" || return 1
+
+    assert_equal \
+        "pg_stat_monitor version matches expected release version" \
+        "${expected_version}" \
+        "${version}" || return 1
 
     return 0
 }

@@ -531,22 +531,17 @@ run_test()
     local test_end
     local duration
     local status
+    local test_rc
 
     test_start="$(date +%s)"
 
-    status="PASS"
+    test_rc=0
 
-    #
-    # Run the test in a subshell.
-    #
-    # This prevents variables/functions defined by one test from
-    # unintentionally affecting another test.
-    #
-    if (
-        source "${test_file}"
+    (
+        source "${test_file}" || exit 1
 
         if declare -F test_setup >/dev/null 2>&1; then
-            test_setup
+            test_setup || exit 1
         fi
 
         if ! declare -F test_body >/dev/null 2>&1; then
@@ -555,19 +550,30 @@ run_test()
         fi
 
         test_body
+        test_rc=$?
 
         if declare -F test_cleanup >/dev/null 2>&1; then
-            test_cleanup
+            test_cleanup || true
         fi
 
-    ); then
+        exit "${test_rc}"
+
+    )
+
+    test_rc=$?
+
+    test_end="$(date +%s)"
+    duration=$((test_end - test_start))
+
+    if [[ "${test_rc}" -eq 0 ]]; then
+        status="PASS"
 
         PASSED_TESTS=$((PASSED_TESTS + 1))
+
         log_success "${test_id} - ${test_name}"
-
     else
-
         status="FAIL"
+
         FAILED_TESTS=$((FAILED_TESTS + 1))
 
         FAILED_TEST_NAMES+=("${test_id} - ${test_name}")
@@ -575,16 +581,14 @@ run_test()
         log_failure "${test_id} - ${test_name}"
 
         echo "${test_id} - ${test_name}" >> "${FAILURES_FILE}"
-
     fi
-
-    test_end="$(date +%s)"
-    duration=$((test_end - test_start))
 
     echo "${test_id},\"${test_name}\",${test_suite},${status},${duration}" \
         >> "${RESULTS_FILE}"
 
     log_debug "Duration: ${duration}s"
+
+    return "${test_rc}"
 }
 
 ###############################################################################
@@ -595,12 +599,16 @@ run_tests()
 {
     local test_file
     local found=0
+    local overall_rc=0
 
     while IFS= read -r test_file; do
 
         if should_run_test "${test_file}"; then
             found=1
-            run_test "${test_file}"
+
+            if ! run_test "${test_file}"; then
+                overall_rc=1
+            fi
         fi
 
     done < <(discover_tests)
@@ -628,8 +636,9 @@ run_tests()
         return 1
     fi
 
-    return 0
+    return "${overall_rc}"
 }
+
 
 setup_test_environment()
 {
@@ -769,8 +778,10 @@ main()
         log_info "Test: ${TEST_ID}"
     fi
 
+    local test_run_rc=0
+
     if ! run_tests; then
-        exit 1
+        test_run_rc=1
     fi
 
     cleanup_test_environment
@@ -780,7 +791,7 @@ main()
         exit 1
     fi
 
-    exit 0
+    exit "${test_run_rc}"
 }
 
 main "$@"

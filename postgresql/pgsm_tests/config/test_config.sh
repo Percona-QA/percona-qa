@@ -51,6 +51,7 @@ PGSM_TEST_USER="${USER}"
 # PGSM_PG_BIN_DIR="/usr/lib/postgresql/17/bin"
 
 PGSM_PG_BIN_DIR="$HOME/postgresql/bld_18.6.1/install/bin"
+PGSM_EXPECTED_VERSION="2.4.0"
 
 ###############################################################################
 # PostgreSQL initialization

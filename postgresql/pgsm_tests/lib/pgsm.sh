@@ -73,20 +73,6 @@ pgsm_is_loaded()
         return 1
     fi
 
-    local result
-
-    result="$(
-        execute_sql \
-            "SELECT 1
-               FROM pg_settings
-              WHERE name = 'shared_preload_libraries'
-                AND pg_stat_monitor = ANY(string_to_array(setting, ','));"
-    )" 2>/dev/null || true
-
-    #
-    # The above query is intentionally kept simple below by using a more
-    # reliable regexp check against the actual setting.
-    #
     local libraries
 
     libraries="$(
