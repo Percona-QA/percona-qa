@@ -33,6 +33,10 @@ use Data::Dumper;
 use File::Path qw(mkpath rmtree);
 use File::Spec::Functions qw(catfile);
 
+# Cache for _isMariaDB; keyed by binary path. MySQLd objects are ARRAY refs,
+# so do not stash this as $self->{...}.
+my %_rqg_mariadb_by_binary;
+
 use constant MYSQLD_BASEDIR => 0;
 use constant MYSQLD_VARDIR => 1;
 use constant MYSQLD_DATADIR => 2;
@@ -131,9 +135,17 @@ sub new {
         };
         # If mysqld server is not found, use mysqld-debug server.
         if (!$self->[MYSQLD_MYSQLD]) {
+            eval {
+                $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
+                                                      osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
+                                                      osWindows()?"mysqld-debug.exe":"mysqld-debug");
+            };
+        }
+        # MariaDB packages / builds may ship mariadbd instead of (or as well as) mysqld.
+        if (!$self->[MYSQLD_MYSQLD]) {
             $self->[MYSQLD_MYSQLD] = $self->_find([$self->basedir],
                                                   osWindows()?["sql/Debug","sql/RelWithDebInfo","sql/Release","bin"]:["sql","libexec","bin","sbin"],
-                                                  osWindows()?"mysqld-debug.exe":"mysqld-debug");
+                                                  osWindows()?"mariadbd.exe":"mariadbd");
         }
         
         $self->serverType($self->[MYSQLD_MYSQLD]);
@@ -143,7 +155,7 @@ sub new {
 
     $self->[MYSQLD_DUMPER] = $self->_find([$self->basedir],
                                           osWindows()?["client/Debug","client/RelWithDebInfo","client/Release","bin"]:["client","bin"],
-                                          osWindows()?"mysqldump.exe":"mysqldump");
+                                          osWindows()?("mysqldump.exe","mariadb-dump.exe"):("mysqldump","mariadb-dump"));
 
 
     ## Check for CMakestuff to get hold of source dir:
@@ -170,24 +182,27 @@ sub new {
         $self->[MYSQLD_VALGRIND_SUPPRESSION_FILE] = undef;
     }
     
-    foreach my $file ("mysql_system_tables.sql", 
-                      "mysql_performance_tables.sql",
-                      "mysql_system_tables_data.sql", 
-                      "mysql_test_data_timezone.sql",
-                      "fill_help_tables.sql") {
-        my $script = 
+    foreach my $file (
+        # Classic MySQL / older MariaDB names
+        ["mysql_system_tables.sql", "mariadb_system_tables.sql"],
+        ["mysql_performance_tables.sql", "mariadb_performance_tables.sql"],
+        ["mysql_system_tables_data.sql", "mariadb_system_tables_data.sql"],
+        ["mysql_test_data_timezone.sql", "mariadb_test_data_timezone.sql"],
+        ["fill_help_tables.sql"],
+    ) {
+        my $script =
              eval { $self->_find(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir],
-                          ["scripts","share/mysql","share"], $file) };
+                          ["scripts","share/mysql","share/mariadb","share"], @$file) };
         push(@{$self->[MYSQLD_BOOT_SQL]},$script) if $script;
     }
     
     $self->[MYSQLD_MESSAGES] = 
        $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir], 
-                       ["sql/share","share/mysql","share"], "english/errmsg.sys");
+                       ["sql/share","share/mysql","share/mariadb","share"], "english/errmsg.sys");
 
     $self->[MYSQLD_CHARSETS] =
         $self->_findDir(defined $self->sourcedir?[$self->basedir,$self->sourcedir]:[$self->basedir], 
-                        ["sql/share/charsets","share/mysql/charsets","share/charsets"], "Index.xml");
+                        ["sql/share/charsets","share/mysql/charsets","share/mariadb/charsets","share/charsets"], "Index.xml");
                          
     
     #$self->[MYSQLD_LIBMYSQL] = 
@@ -195,13 +210,15 @@ sub new {
     #                   osWindows()?["libmysql/Debug","libmysql/RelWithDebInfo","libmysql/Release","lib","lib/debug","lib/opt","bin"]:["libmysql","libmysql/.libs","lib/mysql","lib"], 
     #                   osWindows()?"libmysql.dll":osMac()?"libmysqlclient.dylib":"libmysqlclient.so");
     
-    $self->[MYSQLD_STDOPTS] = ["--basedir=".$self->basedir,
-                               "--datadir=".$self->datadir,
-                               $self->_messages,
-                               "--character-sets-dir=".$self->[MYSQLD_CHARSETS],
-                               "--default-storage-engine=innodb",
-                               "--log_error_verbosity=1",
-                               "--tmpdir=".$self->tmpdir];    
+    my @stdopts = ("--basedir=".$self->basedir,
+                   "--datadir=".$self->datadir,
+                   $self->_messages,
+                   "--character-sets-dir=".$self->[MYSQLD_CHARSETS],
+                   "--default-storage-engine=innodb",
+                   "--tmpdir=".$self->tmpdir);
+    # MySQL/Percona-only; MariaDB rejects unknown system variables without --loose-
+    push @stdopts, "--log_error_verbosity=1" unless $self->_isMariaDB;
+    $self->[MYSQLD_STDOPTS] = \@stdopts;
 
     if ($self->[MYSQLD_START_DIRTY]) {
         say("Using existing data for MySQL " .$self->version ." at ".$self->datadir);
@@ -324,31 +341,110 @@ sub createMysqlBase  {
     mkpath($self->vardir);
     mkpath($self->tmpdir);
     mkpath($self->datadir);
-    
-    my $init_options = [
-        "--no-defaults",
-        "--initialize-insecure",  # Creates root user without password
-        "--datadir=" . $self->datadir,
-        "--basedir=" . $self->basedir
-    ];
-    
-    ## 4. Initialize database
-    my $exit_code;
-    my $initlog;
-    if (osWindows()) {
-        # Todo Untested code (WINDOWS).
-        my $command = $self->generateCommand($init_options, $self->[MYSQLD_STDOPTS]);
 
-        $initlog = catfile($self->vardir, "init.log");
-        $exit_code = system(qq{$command > "$initlog" 2>&1});
+    # Shared boot/init SQL: ensure `test` exists after either bootstrap or --initialize.
+    my $boot = catfile($self->vardir, "boot.sql");
+    open(my $boot_fh, ">", $boot) or croak("Could not open $boot: $!");
+    print $boot_fh "CREATE DATABASE IF NOT EXISTS test;\n";
+
+    my $command;
+    my $initlog = catfile($self->vardir, "boot.log");
+
+    # MariaDB (and MySQL < 5.7.5) need install-db / --bootstrap.
+    # MySQL/Percona 5.7.5+ use --initialize-insecure.
+    # Detection must NOT use MariaDB-fork _isMySQL alone: Percona 9.x would
+    # incorrectly take the bootstrap path.
+    if ($self->_isMariaDB || $self->_olderThan(5, 7, 5)) {
+        close $boot_fh;  # install-db creates system tables itself; keep boot.sql for optional later use
+
+        # Prefer mariadb-install-db / mysql_install_db when available (package + build trees).
+        # Raw --bootstrap against modern packaged MariaDB can hang (signal-handler teardown).
+        my $install_db = eval {
+            $self->_find([$self->basedir],
+                         ["scripts", "bin", "sbin"],
+                         "mariadb-install-db", "mysql_install_db");
+        };
+        if (!$install_db) {
+            # Also allow a system helper when basedir is a shim pointing at /usr.
+            foreach my $cand ("/usr/bin/mariadb-install-db", "/usr/sbin/mariadb-install-db",
+                              "/usr/bin/mysql_install_db", "/usr/sbin/mysql_install_db") {
+                if (-x $cand) { $install_db = $cand; last; }
+            }
+        }
+
+        if ($install_db) {
+            my $install_basedir = $self->_installDbBasedir;
+            say("Initializing MariaDB/MySQL with $install_db (basedir=$install_basedir)");
+            my @cmd = ($install_db,
+                       "--no-defaults",
+                       "--basedir=".$install_basedir,
+                       "--datadir=".$self->datadir,
+                       "--force");  # allow install when hostname lookup fails in CI/sandbox
+            push @cmd, "--auth-root-authentication-method=normal" if $self->_isMariaDB;
+            my $user = getpwuid($<);
+            push @cmd, "--user=$user" if defined $user && $< != 0;
+            $command = join(' ', map { '"'.$_.'"' } @cmd);
+        } else {
+            say("Initializing with --bootstrap (" .
+                ($self->_isMariaDB ? "MariaDB" : "MySQL < 5.7.5") . ")");
+
+            if (!@{$self->[MYSQLD_BOOT_SQL]}) {
+                croak("Bootstrap init requires mysql_/mariadb_system_tables*.sql under ".
+                      "share/mysql or share/mariadb (basedir=".$self->basedir.")");
+            }
+
+            open($boot_fh, ">", $boot) or croak("Could not open $boot: $!");
+            print $boot_fh "CREATE DATABASE IF NOT EXISTS test;\n";
+            print $boot_fh "CREATE DATABASE mysql;\n";
+            print $boot_fh "USE mysql;\n";
+            foreach my $b (@{$self->[MYSQLD_BOOT_SQL]}) {
+                open(my $bfh, "<", $b) or croak("Could not open boot SQL '$b': $!");
+                while (<$bfh>) {
+                    print $boot_fh $_;
+                }
+                close $bfh;
+            }
+
+            # MariaDB 10.4+ replaced mysql.user with mysql.global_priv.
+            my $usertable = ($self->versionNumeric() gt '100400' ? 'global_priv' : 'user');
+            print $boot_fh "USE mysql;\n";
+            print $boot_fh "DELETE FROM $usertable WHERE `User` = '';\n";
+            close $boot_fh;
+
+            my $boot_options = [
+                "--no-defaults",
+                @{$self->[MYSQLD_STDOPTS]},
+                "--skip-log-bin",
+                "--bootstrap",
+            ];
+            push @$boot_options, "--loose-innodb-encrypt-tables=OFF",
+                                 "--loose-innodb-encrypt-log=OFF";
+            if (defined $self->[MYSQLD_SERVER_OPTIONS]) {
+                push @$boot_options, @{$self->[MYSQLD_SERVER_OPTIONS]};
+            }
+
+            $command = $self->generateCommand($boot_options);
+            $command = "$command < \"$boot\"";
+        }
     } else {
-        my $command = $self->generateCommand($init_options, $self->[MYSQLD_STDOPTS]);
+        close $boot_fh;
+        say("Initializing with --initialize-insecure (MySQL/Percona)");
+
+        my $init_options = [
+            "--no-defaults",
+            "--initialize-insecure",
+            "--datadir=" . $self->datadir,
+            "--basedir=" . $self->basedir,
+            "--init-file=$boot",
+        ];
+        $command = $self->generateCommand($init_options, $self->[MYSQLD_STDOPTS]);
         $initlog = catfile($self->vardir, "init.log");
-        $exit_code = system(qq{$command > "$initlog" 2>&1});
     }
 
+    say("Bootstrap/init command: $command");
+    my $exit_code = system(qq{$command > "$initlog" 2>&1});
     if ($exit_code != 0) {
-        croak("MySQL initialization failed. Check log: $initlog");
+        croak("MySQL/MariaDB initialization failed. Check log: $initlog");
     }
 }
 
@@ -715,25 +811,44 @@ sub version {
 
     if (not defined $self->[MYSQLD_VERSION]) {
         my $ver;
-        if (osWindows) {
-            my $conf = $self->_find([$self->basedir], 
-                                    ['scripts',
-                                     'bin',
-                                     'sbin'], 
-                                    'mysql_config.pl');
-            ## This will not work if there is no perl installation,
-            ## but without perl, RQG won't work either :-)
-            $ver = `perl $conf --version`;
-        } else {
-            my $conf = $self->_find([$self->basedir], 
-                                    ['scripts',
-                                     'bin',
-                                     'sbin'], 
-                                    'mysql_config');
-            
-            $ver = `sh "$conf" --version`;
+
+        # Prefer the server binary banner — mysql_config on a shim basedir can
+        # point at a different product (e.g. system MySQL while binary is MariaDB).
+        my $out = `"$self->[MYSQLD_MYSQLD]" --version 2>&1`;
+        if ($out =~ /(\d+\.\d+\.\d+)/) {
+            $ver = $1;
         }
-        chop($ver);
+
+        if (not defined $ver) {
+            if (osWindows) {
+                my $conf = eval {
+                    $self->_find([$self->basedir],
+                                 ['scripts', 'bin', 'sbin'],
+                                 'mariadb_config.pl', 'mysql_config.pl');
+                };
+                if ($conf) {
+                    $ver = `perl $conf --version`;
+                }
+            } else {
+                my $conf = eval {
+                    $self->_find([$self->basedir],
+                                 ['scripts', 'bin', 'sbin'],
+                                 'mariadb_config', 'mysql_config');
+                };
+                if ($conf) {
+                    $ver = `sh "$conf" --version`;
+                }
+            }
+        }
+
+        if ((not defined $ver) || $ver eq '') {
+            croak("Unable to determine server version from binary --version or mysql_config/mariadb_config");
+        }
+        chop($ver) if defined $ver && $ver =~ /\n$/;
+        $ver =~ s/^\s+|\s+$//g;
+        if ($ver =~ /(\d+\.\d+\.\d+)/) {
+            $ver = $1;
+        }
         $self->[MYSQLD_VERSION] = $ver;
     }
     return $self->[MYSQLD_VERSION];
@@ -756,6 +871,12 @@ sub versionNumbers {
     $self->version =~ m/([0-9]+)\.([0-9]+)\.([0-9]+)/;
 
     return (int($1),int($2),int($3));
+}
+
+sub versionNumeric {
+    my $self = shift;
+    $self->version =~ /([0-9]+)\.([0-9]+)\.([0-9]+)/;
+    return sprintf("%02d%02d%02d", int($1), int($2), int($3));
 }
 
 #############  Version specific stuff
@@ -784,10 +905,73 @@ sub _logOptions {
     }
 }
 
+# Resolve a basedir that mariadb-install-db can actually use. Shim basedirs
+# (symlinks to /usr/sbin/mariadbd) often lack install-db helpers; follow the
+# server binary to the real install prefix when it lives outside basedir.
+sub _installDbBasedir {
+    my ($self) = @_;
+    my $bd = $self->basedir;
+
+    my $bin = $self->binary;
+    my $guard = 0;
+    while (-l $bin && $guard++ < 10) {
+        my $target = readlink($bin);
+        last unless defined $target;
+        if ($target =~ m{^/}) {
+            $bin = $target;
+        } else {
+            my ($vol, $dir, undef) = File::Spec->splitpath($bin);
+            $bin = File::Spec->catpath($vol, $dir, $target);
+        }
+    }
+    if ($bin =~ m{^(.*)/(?:sbin|bin|libexec)/[^/]+$}) {
+        my $prefix = $1;
+        # If the real binary lives under a different prefix (package shim case),
+        # prefer that prefix for install-db.
+        if ($prefix ne $bd && (-x "$prefix/bin/my_print_defaults"
+                               || -d "$prefix/share/mariadb"
+                               || -d "$prefix/share/mysql")) {
+            return $prefix;
+        }
+    }
+
+    return $bd if (-x "$bd/bin/my_print_defaults"
+                   || -x "$bd/extra/my_print_defaults"
+                   || -x "$bd/scripts/my_print_defaults");
+    return $bd;
+}
+
+# True when the server binary identifies as MariaDB (not MySQL/Percona).
+# Prefer the version banner over major-number heuristics so Percona 9.x stays
+# on --initialize-insecure while MariaDB 10/11 use --bootstrap.
+sub _isMariaDB {
+    my ($self) = @_;
+    my $bin = $self->[MYSQLD_MYSQLD];
+    return $_rqg_mariadb_by_binary{$bin} if exists $_rqg_mariadb_by_binary{$bin};
+
+    my $out = `"$bin" --version 2>&1`;
+    my $is = ($out =~ /MariaDB/i) ? 1 : 0;
+    # Fallback for odd builds that omit the word but use 10.x/11.x numbering
+    # while the banner did not look like Oracle/Percona MySQL.
+    if (!$is && $out !~ /Percona|Oracle|MySQL Community|mysql  Ver/i) {
+        my ($v1) = $self->versionNumbers;
+        $is = 1 if ($v1 == 10 || $v1 == 11);
+    }
+    $_rqg_mariadb_by_binary{$bin} = $is;
+    return $is;
+}
+
+# For _olderThan we remap MariaDB 10.x onto MySQL 5.6/5.7 feature baselines
+# (same approach as MariaDB/randgen).
 sub _olderThan {
     my ($self,$b1,$b2,$b3) = @_;
     
     my ($v1, $v2, $v3) = $self->versionNumbers;
+
+    if ($v1 == 10 and $b1 == 5 and $v2 >= 0 and $v2 < 3) { $v1 = 5; $v2 = 6 }
+    elsif ($v1 == 10 and $b1 == 5 and $v2 >= 3) { $v1 = 5; $v2 = 7 }
+    elsif ($v1 == 5 and $b1 == 10 and $b2 >= 0 and $b2 < 3) { $b1 = 5; $b2 = 6 }
+    elsif ($v1 == 5 and $b1 == 10 and $b2 >= 3) { $b1 = 5; $b2 = 7 }
 
     my $b = $b1*1000 + $b2 * 100 + $b3;
     my $v = $v1*1000 + $v2 * 100 + $v3;
@@ -806,4 +990,5 @@ sub _newerThan {
     return $v > $b;
 }
 
+1;
 
