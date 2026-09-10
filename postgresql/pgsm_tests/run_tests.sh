@@ -321,9 +321,14 @@ initialize_results()
     timestamp="$(date '+%Y-%m-%d_%H-%M-%S')"
 
     RUN_RESULT_DIR="${RESULT_DIR}/${timestamp}"
+    RUN_LOG_DIR="${LOG_DIR}/${timestamp}"
 
     mkdir -p "${RUN_RESULT_DIR}"
-    mkdir -p "${LOG_DIR}"
+    mkdir -p "${RUN_LOG_DIR}"
+
+    FRAMEWORK_LOG="${RUN_LOG_DIR}/framework.log"
+
+    touch "${FRAMEWORK_LOG}"
 
     SUMMARY_FILE="${RUN_RESULT_DIR}/summary.txt"
     RESULTS_FILE="${RUN_RESULT_DIR}/results.csv"

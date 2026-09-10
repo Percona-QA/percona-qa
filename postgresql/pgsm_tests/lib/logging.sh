@@ -9,37 +9,52 @@ LOG_LEVEL_WARN=2
 LOG_LEVEL_ERROR=3
 LOG_LEVEL_DEBUG=4
 
-PGSM_LOG_LEVEL="${PGSM_LOG_LEVEL:-${LOG_LEVEL_INFO}}"
-
+PGSM_VERBOSE="${PGSM_VERBOSE:-0}"
 
 log_timestamp()
 {
     date '+%Y-%m-%d %H:%M:%S'
 }
 
+log_write()
+{
+    local level="$1"
+    shift
+
+    local message
+    message="$(printf '[%s] %s %s' "${level}" "$(log_timestamp)" "$*")"
+
+    # Always display log message on the console.
+    printf '%s\n' "${message}"
+
+    # Also write to framework log when configured.
+    if [[ -n "${FRAMEWORK_LOG:-}" ]]; then
+	printf '%s\n' "${message}" >> "${FRAMEWORK_LOG}"
+    fi
+}
 
 log_info()
 {
-    echo "[INFO] $(log_timestamp) $*"
+    log_write "INFO" "$@" >&2
 }
 
 
 log_warn()
 {
-    echo "[WARN] $(log_timestamp) $*" >&2
+    log_write "WARN" "$@" >&2
 }
 
 
 log_error()
 {
-    echo "[ERROR] $(log_timestamp) $*" >&2
+    log_write "ERROR" "$@" >&2
 }
 
 
 log_debug()
 {
-    if [[ "${PGSM_VERBOSE:-0}" -eq 1 ]]; then
-        echo "[DEBUG] $(log_timestamp) $*"
+    if [[ "${PGSM_VERBOSE}" -eq 1 ]]; then
+	log_write "DEBUG" "$@"
     fi
 }
 
