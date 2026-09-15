@@ -483,6 +483,36 @@ execute_sql()
         -c "${sql}"
 }
 
+###############################################################################
+# Execute SQL in a single PostgreSQL session
+###############################################################################
+
+execute_sql_session()
+{
+    local database="${1:-${PGSM_TEST_DB}}"
+
+    if [[ -z "${database}" ]]; then
+        log_error "Database name cannot be empty"
+        return 1
+    fi
+
+    if ! postgres_is_running; then
+        log_error "PostgreSQL is not running"
+        return 1
+    fi
+
+    log_debug "Executing SQL session on database '${database}'"
+
+    "${PSQL}" \
+        -X \
+        -h "${PGSM_PGHOST}" \
+        -p "${PGSM_PGPORT}" \
+        -U "${PGSM_TEST_USER}" \
+        -d "${database}" \
+        -v ON_ERROR_STOP=1 \
+        -At
+}
+
 
 ###############################################################################
 # Execute SQL file
