@@ -1,28 +1,73 @@
-How to obtain data sets for GIS testing
-=======================================
+Percona Random Query Generator (RQG): GIS Grammars
+==================================================
+This directory contains a suite of grammar (.yy) files specifically designed to 
+test the Spatial/GIS extensions within Percona Server for MySQL and MySQL-compatible 
+databases. These grammars have been optimized for compatibility across version branches
 
-The datasets from the OpenStreetMap project can be converted into
-LINESTRINGs compatible with MySQL and PostGIS as follows:
+Grammar Overview
+---------------------------------------------------------------------------------------------------------------------------
+Grammar File          Complexity    Setup Requirement        Description
+---------------------------------------------------------------------------------------------------------------------------
+gis_functional.yy     Basic         schema.sql               Standard functional testing of basic geometry types 
+                                                             (POINT, POLYGON). Ideal for quick smoke tests.
+                                                             
+linestring.yy         Targeted      osm_to_sql.py            Focuses on LINESTRING and MULTILINESTRING operations. 
+                                                             Uses real-world OSM data to test spatial index hints.
+                                                             
+gis.yy                Advanced      Self-contained           High-complexity stress testing. Includes nested 
+                                                             functions, collections, and spatial relations.
+---------------------------------------------------------------------------------------------------------------------------
 
-1. Use the software at
+Execution Details
 
-http://www.tm.kit.edu/~mayer/osm2wkt/
+1. gis_functional.yy
+	The gis_functional.yy grammar relies on tables created by the schema.sql file. 
+	You must use the --post-gendata-sql flag to instruct the RQG to execute the SQL setup 
+	after it completes the initial data generation phase but before it starts the query loop.
 
-to convert an OpenStreetMap XML to WKT, or use one of the existing WKT
-files on that site.
+	perl runall-new.pl \
+  	  --basedir=$BASEDIR \
+  	  --vardir=$VARDIR \
+  	  --post-gendata-sql=conf/gis/schema.sql \
+  	  --grammar=conf/gis/gis_functional.yy \
+  	  --threads=2 \
+  	  --queries=10000
 
-2. Pipe the WKT file through the conf/gis/wkt2sql.pl script to obtain SQL:
+	To use custom schema, Pipe the WKT file through the wkt2sql.pl script to obtain SQL
 
-perl conf/gis/wkt2sql.pl [MySQL|PostGIS] < venice.wkt > venice.sql
+2. linestring.yy
+	Running the linestring.yy grammar is a data-driven process. 
+	This grammar is designed to test how the optimizer handles real-world spatial data distributions.
+
+	Use the osm_to_sql.py script to fetch data from OpenStreetMap for any city.
+	  python3 osm_to_sql.py "Kanyakumari" linestring.sql --mysql-version 5.7
+
+	perl runall-new.pl \
+	  --basedir=$BASEDIR \
+	  --vardir=$VARDIR \
+	  --post-gendata-sql=conf/gis/linestring.sql \
+	  --grammar=conf/gis/linestring.yy \
+	  --threads=2 \
+	  --queries=10000
+
+3. gis.yy
+  	Running the gis.yy grammar is the most straightforward. It is designed to be self-contained. 
+	It does not require external SQL files or Python pre-processing scripts; instead, it relies 
+	on the RQG's internal random generators to produce both the spatial data and the queries. 
+
+	perl runall-new.pl \
+  	  --basedir=$BASEDIR \
+  	  --vardir=$VARDIR \
+  	  --grammar=conf/gis/gis.yy \
+  	  --threads=2 \
+  	  --queries=10000
 
 
 Copyright notices on the map data
 =================================
 
 Due to licensing incompatibility, map data is not part of the RQG source
-tree. It can be downloaded from
-
-http://www.tm.kit.edu/~mayer/osm2wkt/
+tree. It can be downloaded from https://overpass-turbo.eu/
 
 The map data is (c) OpenStreetMap contributors and has a CC-BY-SA license. See
 

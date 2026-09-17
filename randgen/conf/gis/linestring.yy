@@ -1,5 +1,5 @@
 query:
-	SELECT AsText(linestring_nokey) FROM linestring /*executor1 FORCE KEY ( linestring_key ) */  WHERE where_cond AND ST_Length( linestring_nokey ) > 1;
+	SELECT ST_AsText(linestring_nokey) FROM linestring /*executor1 FORCE KEY ( linestring_key ) */  WHERE where_cond AND ST_Length( linestring_nokey ) > 1;
 
 where_cond:
 	bool_cond |
@@ -13,9 +13,9 @@ and_or:
 bool_cond:
         ST_INTERSECTS( geometry , geometry_column ) |
        ST_CROSSES( geometry , geometry_column ) |
-	ST_CONTAINS( GeomFromText('POLYGON( polygon_wkt )') , geometry_column ) |
+	ST_CONTAINS( ST_GeomFromText('POLYGON( polygon_wkt )', 0) , geometry_column ) |
 	ST_EQUALS( ( SELECT linestring_nokey FROM linestring WHERE pk = pk_value ) , geometry_column ) |
-	ST_WITHIN( GeomFromText('POLYGON( polygon_wkt )') , geometry_column ) |
+	ST_WITHIN( ST_GeomFromText('POLYGON( polygon_wkt )', 0) , geometry_column ) |
 	ST_DISJOINT( geometry , geometry_column ) |
 	ST_TOUCHES( geometry , geometry_column ) ;
 ;
@@ -24,8 +24,8 @@ geometry_column:
 	linestring_key | linestring_key | linestring_key | linestring_key | linestring_nokey ;
 
 geometry:
-	GeomFromText('LINESTRING( point_list )') |
-	GeomFromText('MULTILINESTRING( line_list )') ;
+	ST_GeomFromText('LINESTRING( point_list )', 0) |
+	ST_GeomFromText('MULTILINESTRING( line_list )', 0) ;
 #|
 #	( SELECT linestring_nokey FROM linestring WHERE pk = pk_value ) ;
 
