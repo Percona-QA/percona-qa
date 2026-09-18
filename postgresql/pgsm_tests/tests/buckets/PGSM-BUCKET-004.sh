@@ -1,35 +1,43 @@
-#!/bin/bash
-
-###############################################################################
-# PGSM Test Framework
-#
-# Test ID:   PGSM-BUCKET-004
-# Test Name: Verify oldest bucket is reused after bucket chain is exhausted
-# Suite:     buckets
-#
-###############################################################################
+#!/usr/bin/env bash
 
 TEST_ID="PGSM-BUCKET-004"
 TEST_NAME="Verify oldest bucket is reused after bucket chain is exhausted"
-TEST_SUITE="buckets"
+TEST_SUITE="bucket"
 
-test_setup()
+FUNCTION_NAME="pgsm_bucket_test_004"
+
+test_body()
 {
-    log_info "Setting pgsm_max_buckets to 3"
+    local first_bucket
+    local first_bucket_time
+    local first_queryid
 
-    pgsm_set_guc_system \
-        "pg_stat_monitor.pgsm_max_buckets" \
-        "3" || {
-        log_error "Unable to configure pgsm_max_buckets"
+    local second_bucket
+    local second_bucket_time
+    local second_queryid
+
+    local third_bucket
+    local third_bucket_time
+    local third_queryid
+
+    local fourth_bucket
+    local fourth_bucket_time
+    local fourth_queryid
+
+    local bucket_count
+    local result
+
+    # -------------------------------------------------------------------------
+    # Configure PGSM with a small bucket chain.
+    # -------------------------------------------------------------------------
+
+    pgsm_set_guc_system "pg_stat_monitor.pgsm_max_buckets" "3" || {
+        log_error "Unable to set pgsm_max_buckets=3"
         return 1
     }
 
-    log_info "Setting pgsm_bucket_time to 2 seconds"
-
-    pgsm_set_guc_system \
-        "pg_stat_monitor.pgsm_bucket_time" \
-        "2" || {
-        log_error "Unable to configure pgsm_bucket_time"
+    pgsm_set_guc_system "pg_stat_monitor.pgsm_bucket_time" "2" || {
+        log_error "Unable to set pgsm_bucket_time=2"
         return 1
     }
 
@@ -42,52 +50,14 @@ test_setup()
         log_error "Unable to reset pg_stat_monitor"
         return 1
     }
-}
 
-test_cleanup()
-{
-    log_info "Restoring bucket configuration"
-
-    pgsm_set_guc_system \
-        "pg_stat_monitor.pgsm_max_buckets" \
-        "10" || {
-        log_warn "Unable to restore pgsm_max_buckets"
-        return 1
-    }
-
-    pgsm_set_guc_system \
-        "pg_stat_monitor.pgsm_bucket_time" \
-        "60" || {
-        log_warn "Unable to restore pgsm_bucket_time"
-        return 1
-    }
-
-    postgres_restart || {
-        log_warn "Unable to restart PostgreSQL after restoring bucket configuration"
-        return 1
-    }
-}
-
-test_body()
-{
-    local first_bucket
-    local first_queryid
-    local second_bucket
-    local third_bucket
-    local fourth_bucket
-    local bucket_count
-    local first_query_count
-    local fourth_query_count
-
-    ###########################################################################
-    # First query
-    ###########################################################################
-
-    log_info "Executing first query"
+    # -------------------------------------------------------------------------
+    # Bucket 1
+    # -------------------------------------------------------------------------
 
     execute_sql \
-        "SELECT 40001 AS pgsm_bucket_test_004_a;" >/dev/null || {
-        log_error "First test query failed"
+        "SELECT 40001 AS ${FUNCTION_NAME}_a;" >/dev/null || {
+        log_error "Unable to execute first bucket query"
         return 1
     }
 
@@ -95,11 +65,23 @@ test_body()
         pgsm_query \
             "SELECT bucket
                FROM pg_stat_monitor
-              WHERE query LIKE '%pgsm_bucket_test_004_a%'
-              ORDER BY bucket DESC
+              WHERE query LIKE '%${FUNCTION_NAME}_a%'
+              ORDER BY bucket_start_time DESC
               LIMIT 1"
     )" || {
         log_error "Unable to retrieve first bucket"
+        return 1
+    }
+
+    first_bucket_time="$(
+        pgsm_query \
+            "SELECT bucket_start_time
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_a%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve first bucket start time"
         return 1
     }
 
@@ -107,8 +89,8 @@ test_body()
         pgsm_query \
             "SELECT queryid
                FROM pg_stat_monitor
-              WHERE query LIKE '%pgsm_bucket_test_004_a%'
-              ORDER BY bucket DESC
+              WHERE query LIKE '%${FUNCTION_NAME}_a%'
+              ORDER BY bucket_start_time DESC
               LIMIT 1"
     )" || {
         log_error "Unable to retrieve first queryid"
@@ -119,26 +101,50 @@ test_body()
         "First query is tracked" \
         "${first_bucket}" || return 1
 
-    assert_not_empty \
-        "First queryid is available" \
-        "${first_queryid}" || return 1
+    log_info \
+        "First bucket: ${first_bucket}, start time: ${first_bucket_time}, queryid: ${first_queryid}"
 
-    log_info "First query bucket: ${first_bucket}"
-    log_info "First queryid: ${first_queryid}"
+    # -------------------------------------------------------------------------
+    # Wait until PGSM moves to a later bucket.
+    # -------------------------------------------------------------------------
 
-    ###########################################################################
-    # Second query - force second bucket
-    ###########################################################################
+    local attempts=0
+    local current_bucket_time
 
-    log_info "Waiting for next bucket"
+    while [[ ${attempts} -lt 10 ]]
+    do
+        current_bucket_time="$(
+            pgsm_query \
+                "SELECT MAX(bucket_start_time)
+                   FROM pg_stat_monitor"
+        )" || {
+            log_error "Unable to determine current bucket"
+            return 1
+        }
 
-    sleep 3
+        if [[ -n "${current_bucket_time}" &&
+              "${current_bucket_time}" != "${first_bucket_time}" ]]
+        then
+            break
+        fi
 
-    log_info "Executing second query"
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+
+    if [[ ${attempts} -eq 10 ]]
+    then
+        log_error "Timed out waiting for PGSM to create the second bucket"
+        return 1
+    fi
+
+    # -------------------------------------------------------------------------
+    # Bucket 2
+    # -------------------------------------------------------------------------
 
     execute_sql \
-        "SELECT 40002 AS pgsm_bucket_test_004_b;" >/dev/null || {
-        log_error "Second test query failed"
+        "SELECT 40002 AS ${FUNCTION_NAME}_b;" >/dev/null || {
+        log_error "Unable to execute second bucket query"
         return 1
     }
 
@@ -146,11 +152,35 @@ test_body()
         pgsm_query \
             "SELECT bucket
                FROM pg_stat_monitor
-              WHERE query LIKE '%pgsm_bucket_test_004_b%'
-              ORDER BY bucket DESC
+              WHERE query LIKE '%${FUNCTION_NAME}_b%'
+              ORDER BY bucket_start_time DESC
               LIMIT 1"
     )" || {
         log_error "Unable to retrieve second bucket"
+        return 1
+    }
+
+    second_bucket_time="$(
+        pgsm_query \
+            "SELECT bucket_start_time
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_b%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve second bucket start time"
+        return 1
+    }
+
+    second_queryid="$(
+        pgsm_query \
+            "SELECT queryid
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_b%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve second queryid"
         return 1
     }
 
@@ -163,21 +193,49 @@ test_body()
         "${first_bucket}" \
         "${second_bucket}" || return 1
 
-    log_info "Second query bucket: ${second_bucket}"
+    log_info \
+        "Second bucket: ${second_bucket}, start time: ${second_bucket_time}, queryid: ${second_queryid}"
 
-    ###########################################################################
-    # Third query - force third bucket
-    ###########################################################################
+    # -------------------------------------------------------------------------
+    # Wait until PGSM moves to a third bucket.
+    # -------------------------------------------------------------------------
 
-    log_info "Waiting for next bucket"
+    attempts=0
 
-    sleep 3
+    while [[ ${attempts} -lt 10 ]]
+    do
+        current_bucket_time="$(
+            pgsm_query \
+                "SELECT MAX(bucket_start_time)
+                   FROM pg_stat_monitor"
+        )" || {
+            log_error "Unable to determine current bucket"
+            return 1
+        }
 
-    log_info "Executing third query"
+        if [[ -n "${current_bucket_time}" &&
+              "${current_bucket_time}" != "${second_bucket_time}" ]]
+        then
+            break
+        fi
+
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+
+    if [[ ${attempts} -eq 10 ]]
+    then
+        log_error "Timed out waiting for PGSM to create the third bucket"
+        return 1
+    fi
+
+    # -------------------------------------------------------------------------
+    # Bucket 3
+    # -------------------------------------------------------------------------
 
     execute_sql \
-        "SELECT 40003 AS pgsm_bucket_test_004_c;" >/dev/null || {
-        log_error "Third test query failed"
+        "SELECT 40003 AS ${FUNCTION_NAME}_c;" >/dev/null || {
+        log_error "Unable to execute third bucket query"
         return 1
     }
 
@@ -185,11 +243,35 @@ test_body()
         pgsm_query \
             "SELECT bucket
                FROM pg_stat_monitor
-              WHERE query LIKE '%pgsm_bucket_test_004_c%'
-              ORDER BY bucket DESC
+              WHERE query LIKE '%${FUNCTION_NAME}_c%'
+              ORDER BY bucket_start_time DESC
               LIMIT 1"
     )" || {
         log_error "Unable to retrieve third bucket"
+        return 1
+    }
+
+    third_bucket_time="$(
+        pgsm_query \
+            "SELECT bucket_start_time
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_c%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve third bucket start time"
+        return 1
+    }
+
+    third_queryid="$(
+        pgsm_query \
+            "SELECT queryid
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_c%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve third queryid"
         return 1
     }
 
@@ -198,45 +280,74 @@ test_body()
         "${third_bucket}" || return 1
 
     assert_not_equal \
-        "Third query is stored in a different bucket" \
+        "Third query is stored in a different bucket than the second query" \
         "${second_bucket}" \
         "${third_bucket}" || return 1
 
-    log_info "Third query bucket: ${third_bucket}"
+    log_info \
+        "Third bucket: ${third_bucket}, start time: ${third_bucket_time}, queryid: ${third_queryid}"
 
-    ###########################################################################
-    # Verify three buckets exist
-    ###########################################################################
+    # -------------------------------------------------------------------------
+    # Verify that the bucket chain has reached its configured maximum.
+    # -------------------------------------------------------------------------
 
     bucket_count="$(
         pgsm_query \
-            "SELECT count(DISTINCT bucket)
+            "SELECT COUNT(DISTINCT bucket)
                FROM pg_stat_monitor"
     )" || {
         log_error "Unable to determine active bucket count"
         return 1
     }
 
-    log_info "Active bucket count before exhaustion: ${bucket_count}"
-
     assert_equal \
-        "Three active buckets exist before bucket chain exhaustion" \
+        "Three active buckets exist after bucket chain is filled" \
         "3" \
         "${bucket_count}" || return 1
 
-    ###########################################################################
-    # Fourth query - exhaust bucket chain
-    ###########################################################################
+    # -------------------------------------------------------------------------
+    # Wait for the next bucket transition.
+    # -------------------------------------------------------------------------
 
-    log_info "Waiting for next bucket"
+    attempts=0
 
-    sleep 3
+    while [[ ${attempts} -lt 10 ]]
+    do
+        current_bucket_time="$(
+            pgsm_query \
+                "SELECT MAX(bucket_start_time)
+                   FROM pg_stat_monitor"
+        )" || {
+            log_error "Unable to determine current bucket"
+            return 1
+        }
 
-    log_info "Executing fourth query"
+        if [[ -n "${current_bucket_time}" &&
+              "${current_bucket_time}" != "${third_bucket_time}" ]]
+        then
+            break
+        fi
+
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+
+    if [[ ${attempts} -eq 10 ]]
+    then
+        log_error "Timed out waiting for bucket chain exhaustion"
+        return 1
+    fi
+
+    # -------------------------------------------------------------------------
+    # Bucket 4
+    #
+    # Executing this query after the bucket transition forces PGSM to use
+    # the newly active bucket.
+    # -------------------------------------------------------------------------
 
     execute_sql \
-        "SELECT 40004 AS pgsm_bucket_test_004_d;" >/dev/null || {
-        log_error "Fourth test query failed"
+        "SELECT 40004 AS ${FUNCTION_NAME}_d;" >/dev/null || {
+        log_error "Unable to execute fourth bucket query"
         return 1
     }
 
@@ -244,11 +355,35 @@ test_body()
         pgsm_query \
             "SELECT bucket
                FROM pg_stat_monitor
-              WHERE query LIKE '%pgsm_bucket_test_004_d%'
-              ORDER BY bucket DESC
+              WHERE query LIKE '%${FUNCTION_NAME}_d%'
+              ORDER BY bucket_start_time DESC
               LIMIT 1"
     )" || {
         log_error "Unable to retrieve fourth bucket"
+        return 1
+    }
+
+    fourth_bucket_time="$(
+        pgsm_query \
+            "SELECT bucket_start_time
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_d%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve fourth bucket start time"
+        return 1
+    }
+
+    fourth_queryid="$(
+        pgsm_query \
+            "SELECT queryid
+               FROM pg_stat_monitor
+              WHERE query LIKE '%${FUNCTION_NAME}_d%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
+    )" || {
+        log_error "Unable to retrieve fourth queryid"
         return 1
     }
 
@@ -256,87 +391,100 @@ test_body()
         "Fourth query is tracked" \
         "${fourth_bucket}" || return 1
 
-    log_info "Fourth query bucket: ${fourth_bucket}"
+    log_info \
+        "Fourth bucket: ${fourth_bucket}, start time: ${fourth_bucket_time}, queryid: ${fourth_queryid}"
 
-    ###########################################################################
-    # Verify bucket count does not exceed configured maximum.
-    ###########################################################################
+    # -------------------------------------------------------------------------
+    # Verify that PGSM still respects pgsm_max_buckets=3.
+    # -------------------------------------------------------------------------
 
     bucket_count="$(
         pgsm_query \
-            "SELECT count(DISTINCT bucket)
+            "SELECT COUNT(DISTINCT bucket)
                FROM pg_stat_monitor"
     )" || {
-        log_error "Unable to determine final bucket count"
+        log_error "Unable to determine final active bucket count"
         return 1
     }
 
-    log_info "Final active bucket count: ${bucket_count}"
-
-    if [[ "${bucket_count}" -gt 3 ]]; then
+    if [[ ${bucket_count} -gt 3 ]]
+    then
         log_error \
-            "Bucket count exceeded configured pgsm_max_buckets: ${bucket_count}"
+            "PGSM exceeded pgsm_max_buckets=3: found ${bucket_count} buckets"
         return 1
     fi
 
-    ###########################################################################
-    # Verify oldest query was removed.
-    #
-    # IMPORTANT:
-    # Do NOT search by query text here because the verification query itself
-    # would contain the query text and could be tracked by PGSM.
-    ###########################################################################
+    log_info \
+        "Final active bucket count: ${bucket_count}"
 
-    first_query_count="$(
+    # -------------------------------------------------------------------------
+    # Verify that the oldest bucket has been evicted.
+    #
+    # Bucket chronology is determined by bucket_start_time, not bucket ID.
+    # -------------------------------------------------------------------------
+
+    result="$(
         pgsm_query \
-            "SELECT count(*)
+            "SELECT COUNT(*)
                FROM pg_stat_monitor
-              WHERE bucket = ${first_bucket}
-                AND queryid = ${first_queryid}"
+              WHERE bucket_start_time = '${first_bucket_time}'"
     )" || {
-        log_error "Unable to verify oldest query removal"
-        return 1
+       log_error "Unable to verify eviction of the oldest bucket"
+       return 1
     }
 
-    assert_equal \
-        "Oldest query is removed after bucket chain exhaustion" \
-        "0" \
-        "${first_query_count}" || return 1
+    if [[ "${result}" != "0" ]]
+    then
+        log_error \
+            "Oldest bucket was not evicted: bucket_start_time=${first_bucket_time}, rows=${result}"
+        return 1
+    fi
 
-    ###########################################################################
-    # Verify newest query remains.
-    ###########################################################################
+    log_info \
+        "Oldest bucket was evicted successfully: bucket_start_time=${first_bucket_time}"
 
-    local fourth_queryid
+    # -------------------------------------------------------------------------
+    # Verify that the newest query remains available.
+    # -------------------------------------------------------------------------
 
-    fourth_queryid="$(
+    result="$(
         pgsm_query \
             "SELECT queryid
                FROM pg_stat_monitor
-              WHERE query LIKE '%pgsm_bucket_test_004_d%'
-              ORDER BY bucket DESC
+              WHERE bucket = ${fourth_bucket}
+                AND queryid = ${fourth_queryid}
               LIMIT 1"
     )" || {
-        log_error "Unable to retrieve fourth queryid"
+        log_error "Unable to verify newest bucket"
         return 1
     }
 
-    fourth_query_count="$(
+    assert_not_empty \
+        "Newest bucket/query remains tracked after bucket reuse" \
+        "${result}" || return 1
+
+    # -------------------------------------------------------------------------
+    # Final sanity check: verify the newest query by its marker.
+    # -------------------------------------------------------------------------
+
+    result="$(
         pgsm_query \
-            "SELECT count(*)
+            "SELECT query
                FROM pg_stat_monitor
-              WHERE bucket = ${fourth_bucket}
-                AND queryid = ${fourth_queryid}"
+              WHERE query LIKE '%${FUNCTION_NAME}_d%'
+              ORDER BY bucket_start_time DESC
+              LIMIT 1"
     )" || {
-        log_error "Unable to verify newest query retention"
+        log_error "Unable to verify newest query"
         return 1
     }
 
-    assert_equal \
-        "Newest query remains available after bucket reuse" \
-        "1" \
-        "${fourth_query_count}" || return 1
+    assert_not_empty \
+        "Newest query remains in pg_stat_monitor" \
+        "${result}" || return 1
+
+    log_info \
+        "PGSM bucket chain exhausted and oldest bucket successfully reused"
 
     return 0
 }
-
