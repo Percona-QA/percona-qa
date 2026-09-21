@@ -1,0 +1,29 @@
+{
+  "basedir": "",
+  "binlog_server_bin": "",
+  "sysbench_bin": "",
+  "sysbench_table_count": "",
+  "sysbench_threads_count": "",
+  "sysbench_table_size": "",
+  "sysbench_script": "",
+  "sysbench_run_time": "",
+  "fetch_timeout": "",
+  "encryption": "",
+  "encryption_kek_id": "",
+  "encryption_cipher": "",
+  "keyring_file_cipher": "",
+  "connection": {
+    "host": "",
+    "port": 3306,
+    "user": "",
+    "password": ""
+  },
+  "s3": {
+    "access_key_id": "",
+    "secret_access_key": "",
+    "secret_access_key_env": "",
+    "bucket": "",
+    "region": "",
+    "endpoint": ""
+  }
+}

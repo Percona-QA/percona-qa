@@ -1,0 +1,6 @@
+# Optional. Only needed for automatic per-run S3 cleanup
+# (setup.py's cleanup_s3_storage_path()) when config.json's s3.bucket is
+# set. Every other feature of this test suite is pure-stdlib and needs
+# nothing installed. Without boto3, S3-backend tests still run correctly;
+# cleanup is just skipped with a warning at the end of each run.
+boto3
