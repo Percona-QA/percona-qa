@@ -58,8 +58,18 @@ sub simplify {
 	my @tables_named = $initial_query =~ m{(table[a-z0-9_]+)}sgio;
 	my @tables_quoted = $initial_query =~ m{`(.*?)`}sgio;
 	my @tables_letters = $initial_query =~ m{[ `]([A-Z]|AA|BB|CC|DD|EE|FF|GG|HH|II|JJ|KK|LL|MM|NN|OO|PP|QQ|RR|SS|TT|UU|VV|WW|XX|YY|ZZ|AAA|BBB|CCC|DDD|EEE|FFF|GGG|HHH|III|JJJ|KKK|LLL|MMM|NNN|OOO|PPP|QQQ|RRR|SSS|TTT|UUU|VVV|WWW|XXX|YYY|ZZZ)[ `]}sgo;
-	
-	my @participating_tables = (@tables_named, @tables_quoted, @tables_letters);
+
+	# The three heuristics above only recognize RQG's own --gendata naming
+	# convention (tableNN...), backtick-quoted names, or single/double/triple
+	# uppercase-letter names -- never a bare custom table name from a
+	# hand-written schema (e.g. --post-gendata-sql), such as this grammar's
+	# `vt`. Catch any identifier immediately following FROM/JOIN/UPDATE/INTO
+	# as well. A false positive here (a keyword or alias that isn't really a
+	# table) is harmless: it is silently skipped a few lines down by the
+	# `SHOW TABLES ... LIKE` existence check.
+	my @tables_from_clause = $initial_query =~ m{\b(?:FROM|JOIN|UPDATE|INTO)\s+`?([a-zA-Z_][a-zA-Z0-9_]*)`?}sgio;
+
+	my @participating_tables = (@tables_named, @tables_quoted, @tables_letters, @tables_from_clause);
 
 	my %participating_tables;
 	map {$participating_tables{$_} = 1 } @participating_tables;
@@ -104,21 +114,29 @@ sub simplify {
 	        my %indices;
 	        map {$indices{$_->[4]}=$_->[2]} @{$dbh->selectall_arrayref("SHOW INDEX FROM `$new_table_name` IN $new_database")};
 
-	        ## Calculate which fields to keep
+	        ## Calculate which fields to keep. @participating_fields above only
+	        ## recognizes RQG's own --gendata field-naming convention
+	        ## (col_TYPE...) or backtick-quoted names -- never an ordinary
+	        ## column name from a hand-written schema (e.g. --post-gendata-sql).
+	        ## Fall back to checking whether the actual field name appears
+	        ## anywhere in the query as a whole word, which covers both cases
+	        ## and doesn't rely on any naming convention.
 	        my %keep;
 		foreach my $actual_field (@$actual_fields) {
-	            if (not exists $participating_fields{$actual_field}) {
-	                ## Not used field, but may be part of multi-column index where other column is used
-	                if (exists $indices{$actual_field}) {
-	                    foreach my $x (keys %indices) {
-	                        $keep{$actual_field} = 1 
-	                            if (exists $participating_fields{$x}) and
-	                            ($indices{$x} eq $indices{$actual_field});
-	                    }
-	                }
-	            } else {
-	                ## Explicitely used field
-	                $keep{$actual_field}=1;
+	            if ((exists $participating_fields{$actual_field}) ||
+	                ($initial_query =~ m{\b\Q$actual_field\E\b}s)) {
+	                ## Explicitly used field
+	                $keep{$actual_field} = 1;
+	            }
+	        }
+	        ## A field not directly referenced may still need to stay if it
+	        ## shares a multi-column index with a field that IS kept.
+		foreach my $actual_field (@$actual_fields) {
+	            next if $keep{$actual_field};
+	            next if not exists $indices{$actual_field};
+	            foreach my $x (keys %indices) {
+	                $keep{$actual_field} = 1
+	                    if $keep{$x} and ($indices{$x} eq $indices{$actual_field});
 	            }
 	        }
 
