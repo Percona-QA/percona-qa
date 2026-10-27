@@ -62,8 +62,12 @@ sudo mkdir -p $BACKREST_CONFIG
 mkdir -p $BACKREST_REPO $BACKREST_LOGS
 chmod 755 $BACKREST_LOGS
 
+# checksum-page=n: pg_tde stores encrypted pages, so pgBackRest's page checksum
+# validation flags them; since pgBackRest 2.60 a restore then fails. Recommended
+# setting for clusters with pg_tde encrypted tables.
 sudo tee $BACKREST_CONFIG/pgbackrest.conf > /dev/null <<EOF
 [global]
+checksum-page=n
 repo1-path=$BACKREST_REPO
 repo1-retention-full=2
 process-max=4
