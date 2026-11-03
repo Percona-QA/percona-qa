@@ -9,7 +9,6 @@ TABLESPACE_TEST=${TABLESPACE_TEST:-1}
 CHANGE_KEY_PROVIDER=${CHANGE_KEY_PROVIDER:-1}
 TABLESPACE_FILE="$RUN_DIR/ts1_primary"
 TABLESPACE_FILE_REPL="$RUN_DIR/ts1_replica"
-SYSBENCH=$(command -v sysbench)
 
 #############################################
 # BINARIES
@@ -18,6 +17,7 @@ PG_CTL="$INSTALL_DIR/bin/pg_ctl"
 PG_BASEBACKUP="$INSTALL_DIR/bin/pg_tde_basebackup"
 PG_REWIND="$INSTALL_DIR/bin/pg_tde_rewind"
 PSQL="$INSTALL_DIR/bin/psql"
+PGBENCH="$INSTALL_DIR/bin/pgbench"
 
 #############################################
 # HELPERS
@@ -127,21 +127,16 @@ start_pg "$REPLICA_DATA" "$REPLICA_PORT"
 run_test() {
 
   ###########################################
-  # Base table + sysbench prepare
+  # Base table + pgbench prepare
   ###########################################
   $PSQL -p $PRIMARY_PORT -c "CREATE TABLE t1(id INT) USING tde_heap;"
   $PSQL -p $PRIMARY_PORT -c "INSERT INTO t1 SELECT generate_series(1,1000);"
 
-  echo "Preparing sysbench data on primary"
-  $SYSBENCH /usr/share/sysbench/oltp_read_write.lua \
-    --pgsql-user=$(whoami) \
-    --pgsql-db=postgres \
-    --db-driver=pgsql \
-    --pgsql-port=$PRIMARY_PORT \
-    --threads=5 \
-    --tables=10 \
-    --table-size=10000 \
-    prepare
+  # pgbench instead of sysbench: sysbench's Lua engine (LuaJIT 2.1.0-beta3)
+  # crashes on Ubuntu 22.04 arm64. Scale 1 = 100,000 rows in pgbench_accounts,
+  # the same volume as the former 10 sysbench tables of 10,000 rows.
+  echo "Preparing pgbench data on primary"
+  $PGBENCH -p $PRIMARY_PORT -d postgres -i -s 1 -q
 
   $PSQL -p $PRIMARY_PORT -c "CHECKPOINT;"
 
@@ -224,18 +219,12 @@ run_test() {
     CHECKPOINT;
   "
 
-  # Concurrent sysbench
-  echo "Running concurrent sysbench"
+  # Concurrent pgbench (--max-tries retries deadlocks and serialization
+  # failures, as sysbench ignored them)
+  echo "Running concurrent pgbench"
   for i in {1..3}; do
     (
-      $SYSBENCH /usr/share/sysbench/oltp_read_write.lua \
-        --pgsql-user=$(whoami) \
-        --pgsql-db=postgres \
-        --db-driver=pgsql \
-        --pgsql-port=$REPLICA_PORT \
-        --threads=2 \
-        --tables=10 \
-        --time=20 run
+      $PGBENCH -p $REPLICA_PORT -d postgres -c 2 -j 2 -T 20 --max-tries=10
     ) &
   done
 
@@ -296,14 +285,7 @@ run_test() {
   ###########################################
   # Stress workload
   ###########################################
-  $SYSBENCH /usr/share/sysbench/oltp_read_write.lua \
-    --pgsql-user=$(whoami) \
-    --pgsql-db=postgres \
-    --db-driver=pgsql \
-    --pgsql-port=$REPLICA_PORT \
-    --threads=5 \
-    --tables=10 \
-    --time=30 run
+  $PGBENCH -p $REPLICA_PORT -d postgres -c 5 -j 5 -T 30 --max-tries=10
 
   ###########################################
   # Crash simulation
@@ -332,9 +314,9 @@ run_test() {
   #$PSQL -p $PRIMARY_PORT -c "REINDEX TABLE t1;"
   #$PSQL -p $PRIMARY_PORT -c "VACUUM FULL t1;"
 
-  # Validate sysbench tables
-  #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM sbtest1;"
-  #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM sbtest5;"
+  # Validate pgbench tables
+  #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM pgbench_accounts;"
+  #$PSQL -p $PRIMARY_PORT -c "SELECT count(*) FROM pgbench_history;"
 }
 
 #############################################

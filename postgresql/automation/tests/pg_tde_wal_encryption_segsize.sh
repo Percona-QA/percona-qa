@@ -37,32 +37,16 @@ EOF
 
   restart_pg $data_dir $PORT
 
-  echo "Creating 10 tables with initial rows..."
-  sysbench /usr/share/sysbench/oltp_insert.lua \
-  --db-driver=pgsql \
-  --pgsql-db=postgres \
-  --pgsql-user=$(whoami) \
-  --pgsql-port=$PORT \
-  --pgsql-host=127.0.0.1 \
-  --tables=10 \
-  --table-size=100 \
-  --threads=2 \
-  prepare
+  # pgbench instead of sysbench: sysbench's Lua engine (LuaJIT 2.1.0-beta3)
+  # crashes on Ubuntu 22.04 arm64.
+  echo "Creating pgbench tables with initial rows..."
+  "$INSTALL_DIR/bin/pgbench" -h 127.0.0.1 -p $PORT -U $(whoami) -d postgres -i -s 1 -q
 
-  # Run sysbench workload in 4 chunks of 30 seconds, restarting server in between
+  # Run pgbench workload in 4 chunks, restarting server in between
   for phase in {1..4}; do
-    echo "Phase $phase: running sysbenchbench for 30s..."
-    sysbench /usr/share/sysbench/oltp_read_write.lua \
-  --db-driver=pgsql \
-  --pgsql-db=postgres \
-  --pgsql-user=`whoami` \
-  --pgsql-port=$PORT \
-  --pgsql-host=127.0.0.1 \
-  --threads=2 \
-  --tables=10 \
-  --time=50 \
-  --report-interval=5 \
-  run &
+    echo "Phase $phase: running pgbench..."
+    "$INSTALL_DIR/bin/pgbench" -h 127.0.0.1 -p $PORT -U $(whoami) -d postgres \
+      -c 2 -j 2 -T 50 -P 5 --max-tries=10 &
 
     if [[ $phase -lt 4 ]]; then
       echo "Killing PostgreSQL server after 10 s..."
@@ -74,11 +58,17 @@ EOF
     fi
   done
 
+  # A distinctive row written just before the check: unencrypted WAL would
+  # contain it in plain text. (pgbench's rows have no identifiable text, and
+  # the WAL that created its tables may already be recycled.)
+  WAL_MARKER="walmarker-$RANDOM$RANDOM"
+  "$INSTALL_DIR/bin/psql" -h 127.0.0.1 -p $PORT -d postgres -c "CREATE TABLE IF NOT EXISTS wal_marker(v text); INSERT INTO wal_marker VALUES ('$WAL_MARKER');"
+
   # Verify WAL files
   echo "Sample hexdump from WAL file:"
   for WAL_FILE in "$data_dir/pg_wal"/[0-9A-F]*; do
     if [[ -f "$WAL_FILE" ]]; then
-      if strings "$WAL_FILE" | grep -qi "sbtest"; then
+      if strings "$WAL_FILE" | grep -qF "$WAL_MARKER"; then
         echo "ERROR: WAL appears to be unencrypted (plaintext found)"
         exit 1
       else
