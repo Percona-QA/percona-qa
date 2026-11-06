@@ -188,9 +188,12 @@ old_server_cleanup() {
     local PORT=${2:-$PGPORT}
     local PG_PIDS=$(lsof -ti:$PORT -ti:${PRIMARY_PORT:-5433} -ti:${REPLICA_PORT:-5434} 2>/dev/null) || true
 
-    # Stop any systemd-managed PostgreSQL services
-    sudo systemctl stop postgresql-18 2>/dev/null || true
-    sudo systemctl stop postgresql-17 2>/dev/null || true
+    # Stop any systemd-managed PostgreSQL services, whatever the major
+    # (postgresql-19 on RHEL, postgresql@19-main on Debian, ...). Otherwise
+    # systemd restarts a killed service and it keeps the test port.
+    for svc in $(systemctl list-units --type=service --all --plain --no-legend 'postgresql*' 2>/dev/null | awk '{print $1}'); do
+        sudo systemctl stop "$svc" 2>/dev/null || true
+    done
 
     if [[ -n "$PG_PIDS" ]]; then
         echo "Killing PostgreSQL processes: $PG_PIDS"
